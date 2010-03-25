@@ -1,0 +1,4 @@
+exportPattern("^([^.]|\\..+\\.)")
+
+importFrom(stats, predict, fitted, termplot, residuals)
+

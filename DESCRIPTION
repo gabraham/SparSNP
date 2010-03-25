@@ -1,0 +1,11 @@
+Package: sgd
+Type: Package
+Title: Stochastic gradient descent
+Version: 0.1
+Date: 2010-03-23
+Author: Gad Abraham
+Maintainer: Gad Abraham <gabraham@csse.unimelb.edu.au>
+Description: Implements stochastic gradient descent
+Depends: stats
+License: GPL (>=2)
+LazyLoad: yes
