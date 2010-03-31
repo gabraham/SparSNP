@@ -58,9 +58,14 @@ coxdloss <- function(x, y, b)
 }
 
 # Batch gradient descent
-gd <- function(x, y, loss, dloss, lambda1=0, lambda2=0, lambdaE=0, alpha=NULL,
+gd <- function(x, y, model=c("linear", "logistic", "hinge"),
+      lambda1=0, lambda2=0, lambdaE=0, alpha=NULL,
       threshold=1e-4, stepsize=1 / nrow(x), anneal=1e-9, maxiter=100)
 {
+   model <- match.arg(model)
+   loss <- switch(model, linear=l2loss, logistic=logloss, hinge=hingeloss)
+   dloss <- switch(model, linear=l2dloss, logistic=logdloss, hinge=hingedloss)
+
    x <- cbind(1, scale(x))
    p <- ncol(x)
    b <- rep(0, p)
@@ -91,7 +96,7 @@ gd <- function(x, y, loss, dloss, lambda1=0, lambda2=0, lambdaE=0, alpha=NULL,
    }
    cat("converged at", i-1, "iterations\n")
 
-   b
+   structure(b, class="gd", model=model, iter=i)
 }
 
 sgd <- function(x, y, ...)
@@ -99,10 +104,15 @@ sgd <- function(x, y, ...)
    UseMethod("sgd")
 }
 
-sgd.matrix <- function(x, y, loss, dloss, lambda1=0, lambda2=0, lambdaE=0,
+sgd.matrix <- function(x, y, model=c("linear", "logistic", "hinge"),
+      lambda1=0, lambda2=0, lambdaE=0,
       alpha=NULL, threshold=1e-4, stepsize=1 / nrow(x),
       maxepochs=1, anneal=1e-9, maxiter=Inf)
 {
+   model <- match.arg(model)
+   loss <- switch(model, linear=l2loss, logistic=logloss, hinge=hingeloss)
+   dloss <- switch(model, linear=l2dloss, logistic=logdloss, hinge=hingedloss)
+
    x <- cbind(1, scale(x))
    p <- ncol(x)
    n <- nrow(x)
@@ -121,6 +131,7 @@ sgd.matrix <- function(x, y, loss, dloss, lambda1=0, lambda2=0, lambdaE=0,
       l.new <- l.new <- 0
       for(i in 1:n)
       {
+	 #cat("[", x[i,], "]", "\n")
 	 grad <- (drop(dloss(x[i, , drop=FALSE], y[i], b)) 
 	    + lambda2 * b + lambda1 * sign(b))
 	 l.new <- l.new + loss(x[i, , drop=FALSE], y[i], b)
@@ -130,27 +141,35 @@ sgd.matrix <- function(x, y, loss, dloss, lambda1=0, lambda2=0, lambdaE=0,
       cat("Epoch", epoch, ", loss:", l.new, "\n")
       epoch <- epoch + 1
    }
-   b
+   structure(b, class="sgd", model=model, p=p, epochs=epoch, source="matrix") 
 }
 
-sgd.character <- function(x="", y, loss, dloss, lambda1=0, lambda2=0,
-      lambdaE=0, alpha=NULL, threshold=1e-4, stepsize=1 / nrow(x),
-      maxepochs=1, anneal=1e-9, blocksize=3, sep=",", maxiter=Inf)
+sgd.character <- function(x="", y, p, model=c("linear", "logistic", "hinge"),
+      lambda1=0, lambda2=0, lambdaE=0, alpha=NULL, threshold=1e-4,
+      stepsize=1e-4, maxepochs=1, anneal=1e-9, blocksize=1,
+      maxiter=Inf, subset=NULL)
 {
    if(nchar(x) == 0)
       stop("filename x not supplied")
 
-   fname <- x
+   if(!is.null(subset) && blocksize > 1)
+      stop("blocksize > 1 currently not supported when subset is used")
 
-   f <- file(fname, open="r")
-   header <- strsplit(readLines(f, n=1), sep)[[1]]
-   p <- length(header) - 1
+   if(is.null(subset))
+      subset <- rep(TRUE, length(y))
+
+   model <- match.arg(model)
+   loss <- switch(model, linear=l2loss, logistic=logloss, hinge=hingeloss)
+   dloss <- switch(model, linear=l2dloss, logistic=logdloss, hinge=hingedloss)
+
+   fname <- x
+   f <- file(fname, open="rb")
 
    # Don't penalise intercept
-   lambda1 <- c(0, rep(lambda1, p - 1))
-   lambda2 <- c(0, rep(lambda2, p - 1))
+   lambda1 <- c(0, rep(lambda1, p))
+   lambda2 <- c(0, rep(lambda2, p))
 
-   b <- rep(0, p)
+   b <- rep(0, p + 1)
    l.old <- Inf
    l.new <- 0
    epoch <- 1
@@ -160,39 +179,116 @@ sgd.character <- function(x="", y, loss, dloss, lambda1=0, lambda2=0,
       i <- 1
       while(TRUE)
       {
-	 dat <- readLines(f, n=blocksize)
+	 cat("block", i, "\r")
+	 dat <- readBin(f, what="numeric", n=p * blocksize)
 	 if(length(dat) == 0 || i > maxiter)
 	    break
 
-	 x <- sapply(dat, function(r) {
-	    as.numeric(strsplit(r, sep)[[1]][-1])
-	 }, USE.NAMES=FALSE)
-	 x <- t(x)
-	 k <- ((i-1) * blocksize + 1):(i * blocksize)
-	 k <- k[1:nrow(x)]
-	 l.new <- l.new + loss(x, y[k], b)
-	 grad <- dloss(x, y[k], b) + lambda2 * b
-	 b <- b - stepsize * drop(grad)
+	 if(subset[i]) {
+	    x <- matrix(dat, nrow=min(blocksize, length(dat) / p), ncol=p,
+	          byrow=TRUE)
+	    x <- cbind(1, x)
+	    k <- ((i-1) * blocksize + 1):(i * blocksize)
+	    k <- k[1:nrow(x)]
+	    l.new <- l.new + loss(x, y[k], b)
+	    grad <- drop(dloss(x, y[k], b)) + lambda2 * b + lambda1 * sign(b)
+	    cat(grad[1:10], "\n")
+	    b <- b - stepsize * grad
+	 } else {
+	    cat("skipping", i, "\n")
+	 }
 	 i <- i + 1
       }
       stepsize <- stepsize * 1 / (1 + anneal)
       cat("Epoch", epoch, ", loss:", l.new, "\n")
       epoch <- epoch + 1
       close(f)
-      f <- file(fname, open="r")
-
-      # header
-      dat <- readLines(f, 1)
+      f <- file(fname, open="rb")
    }
 
    close(f)
 
-   b
+   structure(b, class="sgd", model=model, p=p, epochs=epoch, source="file")
 }
+
+#crossval <- function(nfolds=3, nreps=1, ...)
+#{
+#
+#}
+
+predict.gd <- function(b, x, scale=TRUE, type=c("linear", "response"))
+{
+   type <- match.arg(type)
+   if(attr(b, "model") != "logistic" && type == "response")
+   {
+      stop("don't know what to do with model of type '", attr(b, "model"),
+	    "and type=response")
+   }
+
+   if(scale)
+      x <- scale(x)
+   pr <- cbind(1, x) %*% b
+   if(type == "linear") {
+      pr
+   } else if(attr(b, "model") == "logistic") {
+      1 / (1 + exp(-pr))
+   }
+}
+
+predict.sgd <- function(b, x, blocksize=1, type=c("linear", "response"),
+      subset=NULL)
+{
+   type <- match.arg(type)
+   if(is.matrix(x))
+      return(predict.gd(b, x, scale=FALSE, type=type))
+
+   if(nchar(x) == 0)
+      stop("filename x not supplied")
+   
+   if(attr(b, "model") != "logistic" && type == "response")
+   {
+      stop("don't know what to do with model of type '", attr(b, "model"),
+	    "and type=response")
+   }
+
+   fname <- x
+   f <- file(fname, open="rb")
+   pr <- numeric(0)
+   p <- attr(b, "p")
+   if(is.null(subset))
+      subset <- rep(TRUE, length(p))
+
+   i <- 1
+   while(TRUE)
+   {
+      dat <- readBin(f, what="numeric", n=p)
+      if(length(dat) == 0)
+	 break
+      
+      if(subset[i]) {
+         x <- matrix(dat, nrow=blocksize, ncol=p) 
+         pr <- c(pr, drop(cbind(1, x) %*% b))
+      } else {
+         cat("skipping", i, "\n")
+      }
+      
+      i <- i + 1
+   }
+   close(f)
+   
+   if(type == "linear") {
+      pr
+   } else if(attr(b, "model") == "logistic") {
+      1 / (1 + exp(-pr))
+   }
+}
+
 
 # Batch gradient descent
 gdsvd <- function(x, maxiter=100)
 {
+   stop("broken")
+
    # Initialise to anything but zero
    V <- matrix(rnorm(n * m), n, m)
    U <- matrix(rnorm(m * n), m, n)
@@ -204,8 +300,8 @@ gdsvd <- function(x, maxiter=100)
    
    for(i in 1:maxiter)
    {
-      z1 <- 2 * (V %*% t(U) %*% x - diag(n)) %*% t(x) %*% U
-      z2 <- 2 * (V %*% t(U) %*% x - diag(n)) %*% t(V) %*% t(x)
+      #z1 <- 2 * (V %*% t(U) %*% x - diag(n)) %*% t(x) %*% U
+      #z2 <- 2 * (V %*% t(U) %*% x - diag(n)) %*% t(V) %*% t(x)
       V <- V - stepsize * z1
       U <- U - stepsize * z2
    
