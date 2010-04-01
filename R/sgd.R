@@ -135,7 +135,7 @@ sgd.matrix <- function(x, y, model=c("linear", "logistic", "hinge"),
    epoch <- 1
    while(epoch <= maxepochs && max(abs(l.old - l.new)) >= threshold)
    {
-      l.new <- l.new <- 0
+      l.new <- l.old <- 0
       for(i in 1:n)
       {
 	 grad <- (drop(dloss(x[i, , drop=FALSE], y[i], b)) 
