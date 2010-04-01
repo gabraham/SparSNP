@@ -184,7 +184,9 @@ sgd.character <- function(x="", y, p, model=c("linear", "logistic", "hinge"),
    totalloss <- 0
    epoch <- 2
    while(epoch <= 2 || (epoch <= maxepochs + 1
-	 && max(abs(losses[epoch] - losses[epoch-1])) >= threshold))
+	 && (max(abs(losses[epoch] - losses[epoch-1])) >= threshold) ||
+	 losss[epoch] > losses[epoch-1])
+   )
    {
       #losses[epoch] <- losses[epoch-1]
       i <- 1
@@ -203,11 +205,7 @@ sgd.character <- function(x="", y, p, model=c("linear", "logistic", "hinge"),
 	    k <- k[1:nrow(x)]
 	    l <- loss(x, y[k], b)
 	    losses[epoch] <- losses[epoch] + l
-	    #if(l > 0) {
-	    #   cat(i, l, "\n")
-	    #}
 	    grad <- drop(dloss(x, y[k], b)) + lambda2 * b + lambda1 * sign(b)
-	    #cat(grad[1:5], "\n")
 	    b <- b - stepsize * grad
 	 } else {
 	    cat("skipping", i, "\n")
