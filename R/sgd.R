@@ -179,14 +179,12 @@ sgd.character <- function(x="", y, p, model=c("linear", "logistic", "hinge"),
    lambda1 <- c(0, rep(lambda1, p))
    lambda2 <- c(0, rep(lambda2, p))
 
-   b <- rep(0, p + 1)
+   b <- b.best <- rep(0, p + 1)
    losses <- rep(0, maxepochs + 1)
    totalloss <- 0
    epoch <- 2
-   while(epoch <= 2 || (epoch <= maxepochs + 1
-	 && (max(abs(losses[epoch] - losses[epoch-1])) >= threshold) ||
-	 losses[epoch] > losses[epoch-1])
-   )
+   while(epoch <= 2 || epoch <= maxepochs + 1
+	 && max(abs(losses[epoch] - losses[epoch-1])) >= threshold)
    {
       #losses[epoch] <- losses[epoch-1]
       i <- 1
@@ -212,7 +210,13 @@ sgd.character <- function(x="", y, p, model=c("linear", "logistic", "hinge"),
 	 }
 	 i <- i + 1
       }
-      stepsize <- stepsize / (1 + anneal)
+      if(losses[epoch] > losses[epoch-1]) {
+	 stepsize <- stepsize / 2 
+      } else {
+	 stepsize <- stepsize / (1 + anneal)
+	 b.best <- b
+      }
+	 
       cat("Epoch", epoch-1, ", loss:", losses[epoch], "\n")
       epoch <- epoch + 1
       close(f)
@@ -221,7 +225,7 @@ sgd.character <- function(x="", y, p, model=c("linear", "logistic", "hinge"),
 
    close(f)
 
-   structure(b, class="sgd", model=model, p=p, epochs=epoch-1, source="file",
+   structure(b.best, class="sgd", model=model, p=p, epochs=epoch-1, source="file",
 	 losses=losses[-1], stepsize=stepsize, anneal=anneal)
 }
 
