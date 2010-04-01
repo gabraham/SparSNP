@@ -144,7 +144,7 @@ sgd.matrix <- function(x, y, model=c("linear", "logistic", "hinge"),
 	 if(l > 0)
 	    cat(i, l, "\n")
 	 l.new <- l.new + l
-	 cat(grad[1:5], "\n")
+	 #cat(grad[1:5], "\n")
 	 b <- b - stepsize * grad
       }
       stepsize <- stepsize / (1 + anneal)
@@ -207,7 +207,7 @@ sgd.character <- function(x="", y, p, model=c("linear", "logistic", "hinge"),
 	       cat(i, l, "\n")
 	    }
 	    grad <- drop(dloss(x, y[k], b)) + lambda2 * b + lambda1 * sign(b)
-	    cat(grad[1:5], "\n")
+	    #cat(grad[1:5], "\n")
 	    b <- b - stepsize * grad
 	 } else {
 	    cat("skipping", i, "\n")
