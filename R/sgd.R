@@ -141,8 +141,8 @@ sgd.matrix <- function(x, y, model=c("linear", "logistic", "hinge"),
 	 grad <- (drop(dloss(x[i, , drop=FALSE], y[i], b)) 
 	    + lambda2 * b + lambda1 * sign(b))
 	 l <- loss(x[i, , drop=FALSE], y[i], b) 
-	 if(l > 0)
-	    cat(i, l, "\n")
+	 #if(l > 0)
+	 #   cat(i, l, "\n")
 	 l.new <- l.new + l
 	 #cat(grad[1:5], "\n")
 	 b <- b - stepsize * grad
@@ -203,9 +203,9 @@ sgd.character <- function(x="", y, p, model=c("linear", "logistic", "hinge"),
 	    k <- k[1:nrow(x)]
 	    l <- loss(x, y[k], b)
 	    losses[epoch] <- losses[epoch] + l
-	    if(l > 0) {
-	       cat(i, l, "\n")
-	    }
+	    #if(l > 0) {
+	    #   cat(i, l, "\n")
+	    #}
 	    grad <- drop(dloss(x, y[k], b)) + lambda2 * b + lambda1 * sign(b)
 	    #cat(grad[1:5], "\n")
 	    b <- b - stepsize * grad
