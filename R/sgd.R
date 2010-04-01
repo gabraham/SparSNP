@@ -138,7 +138,6 @@ sgd.matrix <- function(x, y, model=c("linear", "logistic", "hinge"),
       l.new <- l.new <- 0
       for(i in 1:n)
       {
-	 #cat("[", x[i,], "]", "\n")
 	 grad <- (drop(dloss(x[i, , drop=FALSE], y[i], b)) 
 	    + lambda2 * b + lambda1 * sign(b))
 	 l.new <- l.new + loss(x[i, , drop=FALSE], y[i], b)
@@ -153,8 +152,8 @@ sgd.matrix <- function(x, y, model=c("linear", "logistic", "hinge"),
 
 sgd.character <- function(x="", y, p, model=c("linear", "logistic", "hinge"),
       lambda1=0, lambda2=0, lambdaE=0, alpha=NULL, threshold=1e-4,
-      stepsize=1e-4, maxepochs=1, anneal=1e-9, blocksize=1,
-      maxiter=Inf, subset=NULL)
+      stepsize=1e-4, maxepochs=1, anneal=stepsize, blocksize=1,
+      maxiter=Inf, subset=NULL, saveloss=FALSE)
 {
    if(nchar(x) == 0)
       stop("filename x not supplied")
@@ -177,16 +176,17 @@ sgd.character <- function(x="", y, p, model=c("linear", "logistic", "hinge"),
    lambda2 <- c(0, rep(lambda2, p))
 
    b <- rep(0, p + 1)
-   l.old <- Inf
-   l.new <- 0
-   epoch <- 1
-   while(epoch <= maxepochs && max(abs(l.old - l.new)) >= threshold)
+   losses <- rep(0, maxepochs + 1)
+   totalloss <- 0
+   epoch <- 2
+   while(epoch <= 2 || (epoch <= maxepochs + 1
+	 && max(abs(losses[epoch] - losses[epoch-1])) >= threshold))
    {
-      l.old <- l.new <- 0
+      #losses[epoch] <- losses[epoch-1]
       i <- 1
       while(TRUE)
       {
-	 cat("block", i, "\r")
+	 #cat("block", i, "\r")
 	 dat <- readBin(f, what="numeric", n=p * blocksize)
 	 if(length(dat) == 0 || i > maxiter)
 	    break
@@ -197,7 +197,11 @@ sgd.character <- function(x="", y, p, model=c("linear", "logistic", "hinge"),
 	    x <- cbind(1, x)
 	    k <- ((i-1) * blocksize + 1):(i * blocksize)
 	    k <- k[1:nrow(x)]
-	    l.new <- l.new + loss(x, y[k], b)
+	    l <- loss(x, y[k], b)
+	    losses[epoch] <- losses[epoch] + l
+	    if(l > 0)
+	       cat(i, l, "\n")
+	    cat(b[1:10], "\n")
 	    grad <- drop(dloss(x, y[k], b)) + lambda2 * b + lambda1 * sign(b)
 	    b <- b - stepsize * grad
 	 } else {
@@ -205,8 +209,8 @@ sgd.character <- function(x="", y, p, model=c("linear", "logistic", "hinge"),
 	 }
 	 i <- i + 1
       }
-      stepsize <- stepsize * 1 / (1 + anneal)
-      cat("Epoch", epoch, ", loss:", l.new, "\n")
+      stepsize <- stepsize / (1 + anneal)
+      cat("Epoch", epoch-1, ", loss:", losses[epoch], "\n")
       epoch <- epoch + 1
       close(f)
       f <- file(fname, open="rb")
@@ -214,7 +218,8 @@ sgd.character <- function(x="", y, p, model=c("linear", "logistic", "hinge"),
 
    close(f)
 
-   structure(b, class="sgd", model=model, p=p, epochs=epoch, source="file")
+   structure(b, class="sgd", model=model, p=p, epochs=epoch-1, source="file",
+	 losses=losses[-1], stepsize=stepsize, anneal=anneal)
 }
 
 #crossval <- function(nfolds=3, nreps=1, ...)
@@ -222,7 +227,8 @@ sgd.character <- function(x="", y, p, model=c("linear", "logistic", "hinge"),
 #
 #}
 
-predict.gd <- function(b, x, scale=TRUE, type=c("linear", "response"))
+predict.gd <- function(b, x, scale=TRUE, type=c("linear", "response"),
+      subset=NULL)
 {
    type <- match.arg(type)
    if(attr(b, "model") != "logistic" && type == "response")
@@ -231,9 +237,12 @@ predict.gd <- function(b, x, scale=TRUE, type=c("linear", "response"))
 	    "and type=response")
    }
 
+   if(is.null(subset))
+      subset <- rep(TRUE, nrow(x))
+
    if(scale)
       x <- scale(x)
-   pr <- cbind(1, x) %*% b
+   pr <- cbind(1, x[subset, , drop=FALSE]) %*% b
    if(type == "linear") {
       pr
    } else if(attr(b, "model") == "logistic") {
@@ -246,7 +255,7 @@ predict.sgd <- function(b, x, blocksize=1, type=c("linear", "response"),
 {
    type <- match.arg(type)
    if(is.matrix(x))
-      return(predict.gd(b, x, scale=FALSE, type=type))
+      return(predict.gd(b, x, scale=FALSE, type=type, subset=subset))
 
    if(nchar(x) == 0)
       stop("filename x not supplied")
@@ -262,7 +271,7 @@ predict.sgd <- function(b, x, blocksize=1, type=c("linear", "response"),
    pr <- numeric(0)
    p <- attr(b, "p")
    if(is.null(subset))
-      subset <- rep(TRUE, length(p))
+      subset <- rep(TRUE, p)
 
    i <- 1
    while(TRUE)
