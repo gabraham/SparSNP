@@ -225,11 +225,18 @@ sgd.character <- function(x="", y, p, model=c("linear", "logistic", "hinge"),
 
    close(f)
 
-   cat("Best solution at Epoch", epoch.best, "loss:", losses[epoch.best],
+   cat("Best solution at Epoch", epoch.best - 1, "loss:", losses[epoch.best],
 	 "\n")
 
    structure(b.best, class="sgd", model=model, p=p, epochs=epoch-1, source="file",
 	 losses=losses[-1], stepsize=stepsize, anneal=anneal)
+}
+
+scale.character <- function(x="", p)
+{
+   mu <- rep(0, p)
+   sumq <- rep(0, p)
+
 }
 
 #crossval <- function(nfolds=3, nreps=1, ...)
