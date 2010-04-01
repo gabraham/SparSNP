@@ -201,7 +201,6 @@ sgd.character <- function(x="", y, p, model=c("linear", "logistic", "hinge"),
 	    losses[epoch] <- losses[epoch] + l
 	    if(l > 0)
 	       cat(i, l, "\n")
-	    cat(b[1:10], "\n")
 	    grad <- drop(dloss(x, y[k], b)) + lambda2 * b + lambda1 * sign(b)
 	    b <- b - stepsize * grad
 	 } else {
