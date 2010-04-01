@@ -196,7 +196,7 @@ sgd.character <- function(x="", y, p, model=c("linear", "logistic", "hinge"),
 	    k <- k[1:nrow(x)]
 	    l.new <- l.new + loss(x, y[k], b)
 	    grad <- drop(dloss(x, y[k], b)) + lambda2 * b + lambda1 * sign(b)
-	    cat(grad[1:10], "\n")
+	    #cat(grad[1:10], "\n")
 	    b <- b - stepsize * grad
 	 } else {
 	    cat("skipping", i, "\n")
