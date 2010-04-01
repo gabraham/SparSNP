@@ -60,7 +60,7 @@ coxdloss <- function(x, y, b)
 # Batch gradient descent
 gd <- function(x, y, model=c("linear", "logistic", "hinge"),
       lambda1=0, lambda2=0, lambdaE=0, alpha=NULL,
-      threshold=1e-4, stepsize=1 / nrow(x), anneal=1e-9, maxiter=100,
+      threshold=1e-4, stepsize=1 / nrow(x), anneal=stepsize, maxiter=100,
       scale=TRUE)
 {
    model <- match.arg(model)
@@ -94,7 +94,7 @@ gd <- function(x, y, model=c("linear", "logistic", "hinge"),
       b <- b - stepsize * grad
       l.new <- loss(x, y, b)
       cat(l.new, "\n")
-      stepsize <- stepsize * 1 / (1 + anneal)
+      stepsize <- stepsize / (1 + anneal)
       i <- i + 1
    }
    cat("converged at", i-1, "iterations\n")
@@ -110,7 +110,7 @@ sgd <- function(x, y, ...)
 sgd.matrix <- function(x, y, model=c("linear", "logistic", "hinge"),
       lambda1=0, lambda2=0, lambdaE=0,
       alpha=NULL, threshold=1e-4, stepsize=1 / nrow(x),
-      maxepochs=1, anneal=1e-9, maxiter=Inf, scale=TRUE)
+      maxepochs=1, anneal=stepsize, maxiter=Inf, scale=TRUE)
 {
    model <- match.arg(model)
    loss <- switch(model, linear=l2loss, logistic=logloss, hinge=hingeloss)
@@ -143,7 +143,7 @@ sgd.matrix <- function(x, y, model=c("linear", "logistic", "hinge"),
 	 l.new <- l.new + loss(x[i, , drop=FALSE], y[i], b)
 	 b <- b - stepsize * grad
       }
-      stepsize <- stepsize * 1 / (1 + anneal)
+      stepsize <- stepsize / (1 + anneal)
       cat("Epoch", epoch, ", loss:", l.new, "\n")
       epoch <- epoch + 1
    }
