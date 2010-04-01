@@ -185,7 +185,7 @@ sgd.character <- function(x="", y, p, model=c("linear", "logistic", "hinge"),
    epoch <- 2
    while(epoch <= 2 || (epoch <= maxepochs + 1
 	 && (max(abs(losses[epoch] - losses[epoch-1])) >= threshold) ||
-	 loss[epoch] > losses[epoch-1])
+	 losses[epoch] > losses[epoch-1])
    )
    {
       #losses[epoch] <- losses[epoch-1]
