@@ -157,7 +157,7 @@ sgd.matrix <- function(x, y, model=c("linear", "logistic", "hinge"),
 sgd.character <- function(x="", y, p, model=c("linear", "logistic", "hinge"),
       lambda1=0, lambda2=0, lambdaE=0, alpha=NULL, threshold=1e-4,
       stepsize=1e-4, maxepochs=1, anneal=stepsize, blocksize=1,
-      maxiter=Inf, subset=NULL, saveloss=FALSE)
+      maxiter=Inf, subset=NULL, saveloss=FALSE, order=c(1, 2))
 {
    if(nchar(x) == 0)
       stop("filename x not supplied")
@@ -185,7 +185,7 @@ sgd.character <- function(x="", y, p, model=c("linear", "logistic", "hinge"),
    epoch <- 2
    while(epoch <= 2 || (epoch <= maxepochs + 1
 	 && (max(abs(losses[epoch] - losses[epoch-1])) >= threshold) ||
-	 losss[epoch] > losses[epoch-1])
+	 loss[epoch] > losses[epoch-1])
    )
    {
       #losses[epoch] <- losses[epoch-1]
