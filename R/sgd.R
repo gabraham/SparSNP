@@ -60,13 +60,16 @@ coxdloss <- function(x, y, b)
 # Batch gradient descent
 gd <- function(x, y, model=c("linear", "logistic", "hinge"),
       lambda1=0, lambda2=0, lambdaE=0, alpha=NULL,
-      threshold=1e-4, stepsize=1 / nrow(x), anneal=1e-9, maxiter=100)
+      threshold=1e-4, stepsize=1 / nrow(x), anneal=1e-9, maxiter=100,
+      scale=TRUE)
 {
    model <- match.arg(model)
    loss <- switch(model, linear=l2loss, logistic=logloss, hinge=hingeloss)
    dloss <- switch(model, linear=l2dloss, logistic=logdloss, hinge=hingedloss)
 
-   x <- cbind(1, scale(x))
+   x <- if(scale) {
+      cbind(1, scale(x))
+   } else cbind(1, x)
    p <- ncol(x)
    b <- rep(0, p)
    l.old <- Inf
