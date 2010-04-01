@@ -180,17 +180,16 @@ sgd.character <- function(x="", y, p, model=c("linear", "logistic", "hinge"),
    lambda2 <- c(0, rep(lambda2, p))
 
    b <- b.best <- rep(0, p + 1)
+   epoch.best <- 2
    losses <- rep(0, maxepochs + 1)
    totalloss <- 0
    epoch <- 2
    while(epoch <= 2 || epoch <= maxepochs + 1
 	 && max(abs(losses[epoch] - losses[epoch-1])) >= threshold)
    {
-      #losses[epoch] <- losses[epoch-1]
       i <- 1
       while(TRUE)
       {
-	 #cat("block", i, "\r")
 	 dat <- readBin(f, what="numeric", n=p * blocksize)
 	 if(length(dat) == 0 || i > maxiter)
 	    break
@@ -215,6 +214,7 @@ sgd.character <- function(x="", y, p, model=c("linear", "logistic", "hinge"),
       } else {
 	 stepsize <- stepsize / (1 + anneal)
 	 b.best <- b
+	 epoch.best <- epoch
       }
 	 
       cat("Epoch", epoch-1, ", loss:", losses[epoch], "\n")
@@ -224,6 +224,9 @@ sgd.character <- function(x="", y, p, model=c("linear", "logistic", "hinge"),
    }
 
    close(f)
+
+   cat("Best solution at Epoch", epoch.best, "loss:", losses[epoch.best],
+	 "\n")
 
    structure(b.best, class="sgd", model=model, p=p, epochs=epoch-1, source="file",
 	 losses=losses[-1], stepsize=stepsize, anneal=anneal)
