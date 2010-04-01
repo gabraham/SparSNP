@@ -140,7 +140,10 @@ sgd.matrix <- function(x, y, model=c("linear", "logistic", "hinge"),
       {
 	 grad <- (drop(dloss(x[i, , drop=FALSE], y[i], b)) 
 	    + lambda2 * b + lambda1 * sign(b))
-	 l.new <- l.new + loss(x[i, , drop=FALSE], y[i], b)
+	 l <-loss(x[i, , drop=FALSE], y[i], b) 
+	    if(l > 0)
+	       cat(i, l, "\n")
+	 l.new <- l.new + l
 	 b <- b - stepsize * grad
       }
       stepsize <- stepsize / (1 + anneal)
