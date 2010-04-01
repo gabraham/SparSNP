@@ -157,7 +157,7 @@ sgd.matrix <- function(x, y, model=c("linear", "logistic", "hinge"),
 sgd.character <- function(x="", y, p, model=c("linear", "logistic", "hinge"),
       lambda1=0, lambda2=0, lambdaE=0, alpha=NULL, threshold=1e-4,
       stepsize=1e-4, maxepochs=1, anneal=stepsize, blocksize=1,
-      maxiter=Inf, subset=NULL, saveloss=FALSE, order=c(1, 2))
+      maxiter=Inf, subset=NULL, saveloss=FALSE, mu=0, sigma=1)
 {
    if(nchar(x) == 0)
       stop("filename x not supplied")
@@ -197,7 +197,7 @@ sgd.character <- function(x="", y, p, model=c("linear", "logistic", "hinge"),
 	 if(subset[i]) {
 	    x <- matrix(dat, nrow=min(blocksize, length(dat) / p), ncol=p,
 	          byrow=TRUE)
-	    x <- cbind(1, x)
+	    x <- cbind(1, (x - mu) / sigma)
 	    k <- ((i-1) * blocksize + 1):(i * blocksize)
 	    k <- k[1:nrow(x)]
 	    l <- loss(x, y[k], b)
@@ -232,11 +232,28 @@ sgd.character <- function(x="", y, p, model=c("linear", "logistic", "hinge"),
 	 losses=losses[-1], stepsize=stepsize, anneal=anneal)
 }
 
-scale.character <- function(x="", p)
+# Get scale and L2 norm from disk file
+scaler <- function(x="", p, blocksize=1)
 {
-   mu <- rep(0, p)
-   sumq <- rep(0, p)
-
+   musum <- rep(0, p)
+   sumsq <- rep(0, p)
+   f <- file(x, "rb")
+   n <- 0
+   while(TRUE)
+   {
+      dat <- readBin(f, what="numeric", blocksize * p)
+      m <- min(blocksize, length(dat) / p) 
+      if(length(dat) == 0)
+	 break
+      cat("Read", m, "rows\n")
+      x <- matrix(dat, nrow=m, ncol=p, byrow=TRUE)
+      musum <- musum + colSums(x)
+      sumsq <- sumsq + colSums(x^2)
+      n <- n + m
+   }
+   close(f)
+   cat("Read", n, "rows in total\n")
+   list(mean=musum / n, norm=sqrt(sumsq) / n)
 }
 
 #crossval <- function(nfolds=3, nreps=1, ...)
