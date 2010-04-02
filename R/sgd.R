@@ -245,7 +245,7 @@ scaler <- function(x="", p, blocksize=1)
       m <- min(blocksize, length(dat) / p) 
       if(length(dat) == 0)
 	 break
-      cat("Read", m, "rows\n")
+      cat("Read", m, "row/s\n")
       x <- matrix(dat, nrow=m, ncol=p, byrow=TRUE)
       musum <- musum + colSums(x)
       sumsq <- sumsq + colSums(x^2)
