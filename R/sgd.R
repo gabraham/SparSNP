@@ -157,7 +157,7 @@ sgd.matrix <- function(x, y, model=c("linear", "logistic", "hinge"),
 sgd.character <- function(x="", y, p, model=c("linear", "logistic", "hinge"),
       lambda1=0, lambda2=0, lambdaE=0, alpha=NULL, threshold=1e-4,
       stepsize=1e-4, maxepochs=1, anneal=stepsize, blocksize=1,
-      maxiter=Inf, subset=NULL, saveloss=FALSE, mu=0, sigma=1)
+      maxiter=Inf, subset=NULL, saveloss=FALSE, mu=0, sigma=1, features=1:p)
 {
    if(nchar(x) == 0)
       stop("filename x not supplied")
@@ -282,6 +282,31 @@ predict.gd <- function(b, x, scale=TRUE, type=c("linear", "response"),
    } else if(attr(b, "model") == "logistic") {
       1 / (1 + exp(-pr))
    }
+}
+
+rfesgd <- function(x, y, ...,
+      nfeats=sort(unique(2^(0:floor(log2(ncol(x)))), ncol(x))))
+{
+   models <- vector("list", nfeats)
+   nfeats <- rev(nfeats[nfeats < ncol(x)])
+
+   # Full model
+   models[[1]] <- sgd(x, y, ...)
+   for(i seq(along=nfeats))
+   {
+      n <- nfeats[i]
+      while(n >= nf)
+      {
+	 r <- order(abs(models[[1]]), decreasing=TRUE)
+	 models[[i]] <- sgd(x, y, ..., features=sort(r[1:n]))
+	 n <- f(n - nf <= 100) {
+	    n - 1
+	 } else {
+	    n - nf - 100
+	 }
+      }
+   }
+   models
 }
 
 predict.sgd <- function(b, x, blocksize=1, type=c("linear", "response"),
