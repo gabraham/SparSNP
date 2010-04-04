@@ -60,7 +60,7 @@ coxdloss <- function(x, y, b)
 # Batch gradient descent
 gd <- function(x, y, model=c("linear", "logistic", "hinge"),
       lambda1=0, lambda2=0, lambdaE=0, alpha=NULL,
-      threshold=1e-4, stepsize=1 / nrow(x), anneal=stepsize, maxiter=100,
+      threshold=1e-3, stepsize=1 / nrow(x), anneal=stepsize, maxiter=100,
       scale=TRUE)
 {
    model <- match.arg(model)
@@ -109,7 +109,7 @@ sgd <- function(x, y, ...)
 
 sgd.matrix <- function(x, y, model=c("linear", "logistic", "hinge"),
       lambda1=0, lambda2=0, lambdaE=0,
-      alpha=NULL, threshold=1e-4, stepsize=1 / nrow(x),
+      alpha=NULL, threshold=1e-3, stepsize=1 / nrow(x),
       maxepochs=1, anneal=stepsize, maxiter=Inf, scale=TRUE)
 {
    model <- match.arg(model)
@@ -155,9 +155,10 @@ sgd.matrix <- function(x, y, model=c("linear", "logistic", "hinge"),
 }
 
 sgd.character <- function(x="", y, p, model=c("linear", "logistic", "hinge"),
-      lambda1=0, lambda2=0, lambdaE=0, alpha=NULL, threshold=1e-4,
-      stepsize=1e-4, maxepochs=1, anneal=stepsize, blocksize=1,
-      maxiter=Inf, subset=NULL, saveloss=FALSE, mu=0, sigma=1, features=1:p)
+      lambda1=0, lambda2=0, lambdaE=0, alpha=NULL, threshold=1e-3,
+      stepsize=1e-4, maxepochs=50, anneal=stepsize, blocksize=1,
+      maxiter=Inf, subset=NULL, saveloss=FALSE, mu=0, norm=1, features=1:p,
+      verbose=TRUE)
 {
    if(nchar(x) == 0)
       stop("filename x not supplied")
@@ -175,18 +176,28 @@ sgd.character <- function(x="", y, p, model=c("linear", "logistic", "hinge"),
    fname <- x
    f <- file(fname, open="rb")
 
-   # Don't penalise intercept
-   lambda1 <- c(0, rep(lambda1, p))
-   lambda2 <- c(0, rep(lambda2, p))
+   nf <- length(features)
+   if(length(mu) == p)
+      mu <- mu[features]
 
-   b <- b.best <- rep(0, p + 1)
-   epoch.best <- 2
+   if(length(norm) == p)
+      norm <- norm[features] 
+
+   # Don't penalise intercept
+   lambda1 <- c(0, rep(lambda1, nf))
+   lambda2 <- c(0, rep(lambda2, nf))
+
+   b <- b.best <- rep(0, nf + 1)
+   names(b) <- names(b.best) <- 1:length(b)
    losses <- rep(0, maxepochs + 1)
-   totalloss <- 0
-   epoch <- 2
-   while(epoch <= 2 || epoch <= maxepochs + 1
-	 && max(abs(losses[epoch] - losses[epoch-1])) >= threshold)
+   epoch <- epoch.best <- 2
+   cat("features:", features, "\n")
+
+   # Loop over epochs
+   #while((epoch <= 2 || (epoch <= maxepochs + 1 && losses[epoch] - losses[epoch-1] < threshold))
+   while(TRUE)
    {
+      # Loop over samples
       i <- 1
       while(TRUE)
       {
@@ -196,19 +207,22 @@ sgd.character <- function(x="", y, p, model=c("linear", "logistic", "hinge"),
 
 	 if(subset[i]) {
 	    x <- matrix(dat, nrow=min(blocksize, length(dat) / p), ncol=p,
-	          byrow=TRUE)
-	    x <- cbind(1, (x - mu) / sigma)
+	          byrow=TRUE)[, features, drop=FALSE]
+	    x <- cbind(1, (x - mu) / norm)
 	    k <- ((i-1) * blocksize + 1):(i * blocksize)
 	    k <- k[1:nrow(x)]
 	    l <- loss(x, y[k], b)
 	    losses[epoch] <- losses[epoch] + l
 	    grad <- drop(dloss(x, y[k], b)) + lambda2 * b + lambda1 * sign(b)
+	    if(verbose > 1)
+	       cat(i, grad[1:10], "\n")
 	    b <- b - stepsize * grad
-	 } else {
+	 } else if(verbose) {
 	    cat("skipping", i, "\n")
 	 }
 	 i <- i + 1
       }
+
       if(losses[epoch] > losses[epoch-1]) {
 	 stepsize <- stepsize / 2 
       } else {
@@ -217,7 +231,17 @@ sgd.character <- function(x="", y, p, model=c("linear", "logistic", "hinge"),
 	 epoch.best <- epoch
       }
 	 
-      cat("Epoch", epoch-1, ", loss:", losses[epoch], "\n")
+      if(verbose)
+      {
+	 cat("Epoch", epoch-1, ", loss:", losses[epoch], "diff:",
+	       abs(losses[epoch-1] - losses[epoch]), 
+	       "\n")
+      }
+      if(epoch == maxepochs || abs(losses[epoch-1] - losses[epoch]) < threshold)
+      {
+	 #cat("converged", abs(losses[epoch-1] - losses[epoch]) < threshold, "\n")
+	 break
+      }
       epoch <- epoch + 1
       close(f)
       f <- file(fname, open="rb")
@@ -225,15 +249,19 @@ sgd.character <- function(x="", y, p, model=c("linear", "logistic", "hinge"),
 
    close(f)
 
-   cat("Best solution at Epoch", epoch.best - 1, "loss:", losses[epoch.best],
-	 "\n")
+   if(verbose) {
+      cat("Best solution at Epoch", epoch.best - 1,
+	 "loss:", losses[epoch.best], "\n")
+   }
 
-   structure(b.best, class="sgd", model=model, p=p, epochs=epoch-1, source="file",
-	 losses=losses[-1], stepsize=stepsize, anneal=anneal)
+   structure(b.best, class="sgd", model=model, lambda1=lambda1,
+	 lambda2=lambda2, features=features, subset=subset,
+	 p=p, epochs=epoch-1, nsamples=length(y), source="file",
+	 losses=losses[-1][2:epoch-1], stepsize=stepsize, anneal=anneal)
 }
 
-# Get scale and L2 norm from disk file
-scaler <- function(x="", p, blocksize=1)
+# Get scale and L2 norm from disk file, for each column
+scaler <- function(x="", p, blocksize=1, verbose=TRUE)
 {
    musum <- rep(0, p)
    sumsq <- rep(0, p)
@@ -245,14 +273,16 @@ scaler <- function(x="", p, blocksize=1)
       m <- min(blocksize, length(dat) / p) 
       if(length(dat) == 0)
 	 break
-      cat("Read", m, "row/s\n")
+      if(verbose)
+	 cat("Read", m, "row/s\n")
       x <- matrix(dat, nrow=m, ncol=p, byrow=TRUE)
       musum <- musum + colSums(x)
       sumsq <- sumsq + colSums(x^2)
       n <- n + m
    }
    close(f)
-   cat("Read", n, "rows in total\n")
+   if(verbose)
+      cat("Read", n, "rows in total\n")
    list(mean=musum / n, norm=sqrt(sumsq) / n)
 }
 
@@ -267,8 +297,8 @@ predict.gd <- function(b, x, scale=TRUE, type=c("linear", "response"),
    type <- match.arg(type)
    if(attr(b, "model") != "logistic" && type == "response")
    {
-      stop("don't know what to do with model of type '", attr(b, "model"),
-	    "and type=response")
+      stop("don't know what to do with model of type '",
+	 attr(b, "model"), "and type=response")
    }
 
    if(is.null(subset))
@@ -284,33 +314,52 @@ predict.gd <- function(b, x, scale=TRUE, type=c("linear", "response"),
    }
 }
 
-rfesgd <- function(x, y, ...,
-      nfeats=sort(unique(2^(0:floor(log2(ncol(x)))), ncol(x))))
+rfesgd <- function(x, y, p, nfeats, ...)
 {
-   models <- vector("list", nfeats)
-   nfeats <- rev(nfeats[nfeats < ncol(x)])
+   UseMethod("rfesgd")
+}
 
-   # Full model
-   models[[1]] <- sgd(x, y, ...)
-   for(i seq(along=nfeats))
+rfesgd.character <- function(x, y, p,
+      nfeats=sort(unique(c(2^(0:floor(log2(p))), p))), ...)
+{
+   models <- vector("list", length(nfeats))
+   nfeats <- sort(nfeats, decreasing=TRUE)
+
+   for(i in seq(along=nfeats))
    {
-      n <- nfeats[i]
+      cat(">>>>> nfeats:", nfeats[i], "\n")
+      nf <- nfeats[i]
+
+      # If we've already trained a previous model, use it, otherwise start
+      # from all features
+      n <- ifelse(i == 1, p, nfeats[i-1])
+
       while(n >= nf)
       {
-	 r <- order(abs(models[[1]]), decreasing=TRUE)
-	 models[[i]] <- sgd(x, y, ..., features=sort(r[1:n]))
-	 n <- f(n - nf <= 100) {
+	 cat("\tTraining", nfeats[i], "\n")
+	 # Order features from previous model but ignore intercept
+	 r <- if(i > 1) {
+	    order(abs(models[[i-1]])[-1], decreasing=TRUE)
+	 } else {
+	    1:p
+	 }
+	 cat("\torder:", r, "\n")
+
+	 models[[i]] <- sgd(x, y, p, features=sort(r[1:n]), ...)
+	 attr(models[[i]], "order") <- r
+	 n <- if(n - nf <= 100) {
 	    n - 1
 	 } else {
 	    n - nf - 100
 	 }
       }
    }
+
    models
 }
 
 predict.sgd <- function(b, x, blocksize=1, type=c("linear", "response"),
-      subset=NULL)
+      subset=NULL, verbose=TRUE)
 {
    type <- match.arg(type)
    if(is.matrix(x))
@@ -330,7 +379,9 @@ predict.sgd <- function(b, x, blocksize=1, type=c("linear", "response"),
    pr <- numeric(0)
    p <- attr(b, "p")
    if(is.null(subset))
-      subset <- rep(TRUE, p)
+      subset <- rep(TRUE, attr(b, "nsamples"))
+
+   features <- attr(b, "features")
 
    i <- 1
    while(TRUE)
@@ -340,9 +391,9 @@ predict.sgd <- function(b, x, blocksize=1, type=c("linear", "response"),
 	 break
       
       if(subset[i]) {
-         x <- matrix(dat, nrow=blocksize, ncol=p) 
+         x <- matrix(dat, nrow=blocksize, ncol=p)[, features, drop=FALSE]
          pr <- c(pr, drop(cbind(1, x) %*% b))
-      } else {
+      } else if(verbose) {
          cat("skipping", i, "\n")
       }
       
