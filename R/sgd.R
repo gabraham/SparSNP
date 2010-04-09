@@ -278,7 +278,7 @@ sgd.character <- function(x="", y, p,
 	       y[k, , drop=FALSE]
 	    } else y[k]
 	    l <- loss(x, yk, b)
-	    l <- if(is.nan(l) {
+	    l <- if(is.nan(l)) {
 	       stepsize <- stepsize / 2
 	       0
 	    } else{
