@@ -280,7 +280,7 @@ sgd.character <- function(x="", y, p,
 	    l <- loss(x, yk, b)
 	    losses[epoch] <- losses[epoch] + l
 	    if(verbose)
-	       cat("loss:", l, "\n")
+	       cat("loss:", losses[epoch], "\n")
 	    grad <- drop(dloss(x, yk, b)) + lambda2 * b + lambda1 * sign(b)
 	    if(verbose > 1)
 	       cat(i, grad[1:10], "\n") 
