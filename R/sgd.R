@@ -251,7 +251,7 @@ sgd.character <- function(x="", y, p,
    #names(b) <- names(b.best) <- 1:length(b)
    losses <- rep(0, maxepochs + 1)
    epoch <- epoch.best <- 2
-   cat("features:", features, "\n")
+   #cat("features:", features, "\n")
 
    # Loop over epochs
    while(TRUE)
@@ -260,9 +260,13 @@ sgd.character <- function(x="", y, p,
       i <- 1
       while(TRUE)
       {
+	 if(verbose)
+	    cat("reading data... ")
 	 dat <- readBin(f, what="numeric", n=p * blocksize)
 	 if(length(dat) == 0 || i > maxiter)
 	    break
+	 if(verbose)
+	    cat("read", length(dat), "items\n")
 
 	 if(subset[i]) {
 	    x <- matrix(dat, nrow=min(blocksize, length(dat) / p), ncol=p,
