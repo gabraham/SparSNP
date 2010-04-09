@@ -266,7 +266,7 @@ sgd.character <- function(x="", y, p,
 	 if(length(dat) == 0 || i > maxiter)
 	    break
 	 if(verbose)
-	    cat("read", length(dat), "items;")
+	    cat("read", length(dat), "items; ")
 
 	 if(subset[i]) {
 	    x <- matrix(dat, nrow=min(blocksize, length(dat) / p), ncol=p,
@@ -278,6 +278,12 @@ sgd.character <- function(x="", y, p,
 	       y[k, , drop=FALSE]
 	    } else y[k]
 	    l <- loss(x, yk, b)
+	    l <- if(is.nan(l) {
+	       stepsize <- stepsize / 2
+	       0
+	    } else{
+	       l
+	    }
 	    losses[epoch] <- losses[epoch] + l
 	    if(verbose)
 	       cat("loss:", losses[epoch], "\n")
