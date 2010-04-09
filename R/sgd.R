@@ -261,7 +261,7 @@ sgd.character <- function(x="", y, p,
       while(TRUE)
       {
 	 if(verbose)
-	    cat("reading data... ")
+	    cat(i, "reading data... ")
 	 dat <- readBin(f, what="numeric", n=p * blocksize)
 	 if(length(dat) == 0 || i > maxiter)
 	    break
