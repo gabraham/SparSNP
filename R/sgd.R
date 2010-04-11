@@ -1,3 +1,22 @@
+
+#setGeneric("train", function(object, x, y, ...) standardGeneric("train"))
+#setGeneric("predict")
+#setGeneric("crossval", function(object, x, y, ...) standardGeneric("crossval"))
+#setGeneric("bootstrap", function(object, x, y, ...) standardGeneric("bootstrap"))
+#setGeneric("bag", function(object, x, y, ...) standardGeneric("bag"))
+#
+#setClass("sgd", representation(
+#  B="matrix", model="character", lambda1="numeric",
+#  lambda2="numeric", features="integer", subset="integer",
+#  p="numeric", epochs="integer", nsamples="integer", source="character",
+#  losses="numeric", stepsize="numeric", anneal="numeric")
+#), prototype())
+
+################################################################################
+# Loss functions
+# 
+# These functions return the *gradient* wrt b, not the derivative.
+
 # Squared loss for regression
 l2loss <- function(x, y, b)
 {
@@ -6,7 +25,8 @@ l2loss <- function(x, y, b)
 
 l2dloss <- function(x, y, b)
 {
-   crossprod(y - x %*% b, -x)
+   #crossprod(y - x %*% b, -x)
+   crossprod(x, x %*% b - y)
 }
 
 # Hinge loss for SVM classification
@@ -38,15 +58,15 @@ logdloss <- function(x, y, b)
 # b is a matrix of coefficients
 mlogloss <- function(x, Y, B)
 {
-   p <- tcrossprod(x, B)
+   p <- x %*% B
    -sum(Y * (p - log(rowSums(exp(p)))))
 }
 
 mlogdloss <- function(x, Y, B)
 {
-   q <- exp(tcrossprod(x, B))
+   q <- exp(x %*% B)
    p <- q / rowSums(q)
-   crossprod(Y - p, -x)
+   crossprod(x, p - Y)
 }
 
 # Cox proportional hazards
@@ -59,33 +79,180 @@ coxdloss <- function(x, y, b)
 {
 }
 
+
+################################################################################
+
 test.multinom <- function()
 {
    set.seed(10278)
-   K <- 5
+   K <- 2
    N <- 1000
    p <- 10
    x <- matrix(rnorm(N * p), N, p)
-   #beta <- rnorm(p)
-   y <- sample(1:K, N, TRUE)
+   beta <- rnorm(p)
+   #y <- sample(1:K, N, TRUE)
+   y <- as.numeric(factor(sign(x %*% beta)))
    #g <- glmnet(x, factor(y), family="multinomial", alpha=0, lambda=0)
    #pr <- predict(g, x)
    Y <- sapply(1:K, function(i) as.numeric(y == i))
    stepsize <- 1e-3
 
-   B <- matrix(0, K, p)
+   maxepochs <- 100
+   B <- matrix(0, p, K)
    loss <- numeric(N)
-   for(i in 1:N)
+   for(epoch in 1:maxepochs)
    {
-      loss[i] <- mlogloss(x[i, , drop=FALSE], Y[i,,drop=FALSE], B) 
-      cat("loss:", loss[i], "\n")
-      B <- B - stepsize * mlogdloss(x[i,,drop=FALSE], Y[i,,drop=FALSE], B) 
+      for(i in 1:N)
+      {
+	 loss[i] <- mlogloss(x[i, , drop=FALSE], Y[i,,drop=FALSE], B) 
+	 #cat("loss:", loss[i], "\n")
+	 B <- B - stepsize * mlogdloss(x[i,,drop=FALSE], Y[i,,drop=FALSE], B)
+      }
    }
- 
-   q <- exp(tcrossprod(x, B))
-   p <- q / rowSums(q)
-   mean(apply(p, 1, which.max) != y)
-   mean(apply(pr, 1, which.max) != y)
+
+   q <- exp(x %*% B)
+   pr1 <- q / rowSums(q)
+   mean(apply(pr1, 1, which.max) != y)
+   #mean(apply(pr2, 1, which.max) != y)
+}
+
+################################################################################
+
+sgd <- function(x, y, ...)
+{
+   UseMethod("sgd")
+}
+
+rfesgd <- function(x, y, p, nfeats, ...)
+{
+   UseMethod("rfesgd")
+}
+
+setClass("gd", representation(B="matrix"), prototype(B=matrix()))
+
+setClass("sgd", contains="gd")
+
+setClass("sgdMem", contains="sgd")
+
+setClass("sgdDisk", contains="sgd")
+
+################################################################################
+# Fitting functions
+#
+
+sgd.gmatrixMem <- function(g,
+      model=c("linear", "logistic", "hinge", "multinomial"),
+      lambda1=0, lambda2=0, lambdaE=0, alpha=NULL, threshold=1e-3,
+      stepsize=1e-4, maxepochs=50, anneal=stepsize, blocksize=1,
+      maxiter=Inf, subset=NULL, saveloss=FALSE, mu=0, norm=1,
+      features=1:g@ncol,
+      verbose=TRUE)
+{
+   if(!is.null(subset) && blocksize > 1)
+      stop("blocksize > 1 currently not supported when subset is used")
+
+   if(is.null(subset))
+      subset <- rep(TRUE, g@nrow)
+
+   model <- match.arg(model)
+   loss <- switch(model,
+	 linear=l2loss,
+	 logistic=logloss,
+	 hinge=hingeloss,
+	 multinomial=mlogloss
+   )
+   dloss <- switch(model,
+	 linear=l2dloss,
+      	 logistic=logdloss,
+      	 hinge=hingedloss,
+      	 multinomial=mlogdloss
+   )
+
+   nf <- length(features)
+   if(length(mu) == g@ncol)
+      mu <- mu[features]
+
+   if(length(norm) == g@ncol)
+      norm <- norm[features] 
+
+   # Don't penalise intercept
+   lambda1 <- c(0, rep(lambda1, nf))
+   lambda2 <- c(0, rep(lambda2, nf))
+
+   if(model == "multinomial") {
+      K <- length(unique(y))
+      b <- b.best <- matrix(0, nf + 1, K)
+      colnames(b) <- colnames(b.best) <- 1:ncol(b)
+      y <- sapply(1:K, function(i) as.numeric(y == i))
+   } else {
+      b <- b.best <- matrix(0, nf + 1, 1)
+      #names(b) <- names(b.best) <- 1:length(b)
+   }
+
+   losses <- rep(0, maxepochs + 1)
+   epoch <- epoch.best <- 2
+
+   # Loop over epochs
+   while(TRUE)
+   {
+      # Loop over samples
+      for(i in 1:g@nrow)
+      {
+	 r <- nextRow(g)
+	 if(length(r) == 0 || i > maxiter)
+	    break
+
+	 if(subset[i]) {
+	    x <- r[[1]]
+	    y <- r[[2]]$y
+	    x <- cbind(1, (x - mu) / norm)
+	    l <- loss(x, y, b)
+	    l <- if(is.nan(l)) {
+	       stepsize <- stepsize / 2
+	       0
+	    } else{
+	       l
+	    }
+	    losses[epoch] <- losses[epoch] + l
+	    grad <- dloss(x, y, b) + lambda2 * b + lambda1 * sign(b)
+	    b <- b - stepsize * grad
+	    
+	 } else if(verbose) {
+	    cat("skipping", i, "\n")
+	 }
+      }
+
+      if(losses[epoch] > losses[epoch-1]) {
+	 stepsize <- stepsize / 2 
+      } else {
+	 stepsize <- stepsize / (1 + anneal)
+	 b.best <- b
+	 epoch.best <- epoch
+      }
+	 
+      if(verbose) {
+	 cat("Epoch", epoch-1, ", loss:", losses[epoch], "diff:",
+	       abs(losses[epoch-1] - losses[epoch]), 
+	       "stepsize:", stepsize,
+	       "\n")
+      }
+
+      if(epoch == maxepochs
+	 || abs(losses[epoch-1] - losses[epoch]) < threshold) {
+	 break
+      }
+      epoch <- epoch + 1
+   }
+
+   if(verbose) {
+      cat("Best solution at Epoch", epoch.best - 1,
+	 "loss:", losses[epoch.best], "\n")
+   }
+
+   structure(b.best, class="sgd", model=model, lambda1=lambda1,
+	 lambda2=lambda2, features=features, subset=subset,
+	 p=g@ncol, epochs=epoch-1, nsamples=length(y), source="file",
+	 losses=losses[-1][2:epoch-1], stepsize=stepsize, anneal=anneal)
 }
 
 # Batch gradient descent
@@ -106,10 +273,10 @@ gd <- function(x, y, model=c("linear", "logistic", "hinge", "multinomial"),
    } else cbind(1, x)
    p <- ncol(x)
    if(model == "multinomial") {
-      b <- matrix(0, K, p)
+      b <- matrix(0, p, K)
       y <- sapply(1:K, function(i) as.numeric(y == i))
    } else {
-      b <- rep(0, p)
+      b <- matrix(0, p, 1)
    }
    l.old <- Inf
    l.new <- 0
@@ -129,7 +296,7 @@ gd <- function(x, y, model=c("linear", "logistic", "hinge", "multinomial"),
    while(i <= maxiter && max(abs(l.old - l.new)) >= threshold)
    {
       l.old <- l.new
-      grad <- drop(dloss(x, y, b)) + lambda2 * b + lambda1 * sign(b)
+      grad <- dloss(x, y, b) + lambda2 * b + lambda1 * sign(b)
       b <- b - stepsize * grad
       l.new <- loss(x, y, b)
       cat(l.new, "\n")
@@ -141,19 +308,17 @@ gd <- function(x, y, model=c("linear", "logistic", "hinge", "multinomial"),
    structure(b, class="gd", model=model, iter=i)
 }
 
-sgd <- function(x, y, ...)
-{
-   UseMethod("sgd")
-}
-
-sgd.matrix <- function(x, y, model=c("linear", "logistic", "hinge"),
+sgd.matrix <- function(x, y,
+      model=c("linear", "logistic", "hinge", "multinomial"),
       lambda1=0, lambda2=0, lambdaE=0,
       alpha=NULL, threshold=1e-3, stepsize=1 / nrow(x),
       maxepochs=1, anneal=stepsize, maxiter=Inf, scale=TRUE)
 {
    model <- match.arg(model)
-   loss <- switch(model, linear=l2loss, logistic=logloss, hinge=hingeloss)
-   dloss <- switch(model, linear=l2dloss, logistic=logdloss, hinge=hingedloss)
+   loss <- switch(model, linear=l2loss, logistic=logloss, hinge=hingeloss,
+	 multinomial=mlogloss)
+   dloss <- switch(model, linear=l2dloss, logistic=logdloss, hinge=hingedloss,
+	 multinomial=mlogdloss)
 
    x <- if(scale) {
       cbind(1, scale(x))
@@ -163,11 +328,20 @@ sgd.matrix <- function(x, y, model=c("linear", "logistic", "hinge"),
    p <- ncol(x)
    n <- nrow(x)
    n <- min(maxiter, n)
-   b <- rep(0, p)
 
    # Don't penalise intercept
    lambda1 <- c(0, rep(lambda1, p - 1))
    lambda2 <- c(0, rep(lambda2, p - 1))
+   
+   if(model == "multinomial") {
+      K <- length(unique(y))
+      b <- b.best <- matrix(0, nf + 1, K)
+      colnames(b) <- colnames(b.best) <- 1:ncol(b)
+      y <- sapply(1:K, function(i) as.numeric(y == i))
+   } else {
+      b <- b.best <- rep(0, nf + 1)
+      names(b) <- names(b.best) <- 1:length(b)
+   }
 
    l.old <- Inf
    l.new <- 0
@@ -177,13 +351,10 @@ sgd.matrix <- function(x, y, model=c("linear", "logistic", "hinge"),
       l.new <- l.old <- 0
       for(i in 1:n)
       {
-	 grad <- (drop(dloss(x[i, , drop=FALSE], y[i], b)) 
-	    + lambda2 * b + lambda1 * sign(b))
+	 grad <- (dloss(x[i, , drop=FALSE], y[i], b)
+	       + lambda2 * b + lambda1 * sign(b))
 	 l <- loss(x[i, , drop=FALSE], y[i], b) 
-	 #if(l > 0)
-	 #   cat(i, l, "\n")
 	 l.new <- l.new + l
-	 #cat(grad[1:5], "\n")
 	 b <- b - stepsize * grad
       }
       stepsize <- stepsize / (1 + anneal)
@@ -239,7 +410,7 @@ sgd.character <- function(x="", y, p,
 
    if(model == "multinomial") {
       K <- length(unique(y))
-      b <- b.best <- matrix(0, K, nf + 1)
+      b <- b.best <- matrix(0, nf + 1, K)
       colnames(b) <- colnames(b.best) <- 1:ncol(b)
       y <- sapply(1:K, function(i) as.numeric(y == i))
    } else {
@@ -287,7 +458,8 @@ sgd.character <- function(x="", y, p,
 	    losses[epoch] <- losses[epoch] + l
 	    if(verbose)
 	       cat("loss:", losses[epoch], "\n")
-	    grad <- drop(dloss(x, yk, b)) + lambda2 * b + lambda1 * sign(b)
+	    grad <- (dloss(x[i, , drop=FALSE], y[i], b)
+		  + lambda2 * b + lambda1 * sign(b))
 	    if(verbose > 1)
 	       cat(i, grad[1:10], "\n") 
 	    b <- b - stepsize * grad
@@ -336,65 +508,6 @@ sgd.character <- function(x="", y, p,
 	 losses=losses[-1][2:epoch-1], stepsize=stepsize, anneal=anneal)
 }
 
-# Get scale and L2 norm from disk file, for each column
-scaler <- function(x="", p, blocksize=1, verbose=TRUE)
-{
-   musum <- rep(0, p)
-   sumsq <- rep(0, p)
-   f <- file(x, "rb")
-   n <- 0
-   while(TRUE)
-   {
-      dat <- readBin(f, what="numeric", blocksize * p)
-      m <- min(blocksize, length(dat) / p) 
-      if(length(dat) == 0)
-	 break
-      if(verbose)
-	 cat("Read", m, "row/s\n")
-      x <- matrix(dat, nrow=m, ncol=p, byrow=TRUE)
-      musum <- musum + colSums(x)
-      sumsq <- sumsq + colSums(x^2)
-      n <- n + m
-   }
-   close(f)
-   if(verbose)
-      cat("Read", n, "rows in total\n")
-   list(mean=musum / n, norm=sqrt(sumsq) / n)
-}
-
-#crossval <- function(nfolds=3, nreps=1, ...)
-#{
-#
-#}
-
-predict.gd <- function(b, x, scale=TRUE, type=c("linear", "response"),
-      subset=NULL)
-{
-   type <- match.arg(type)
-   if(attr(b, "model") != "logistic" && type == "response")
-   {
-      stop("don't know what to do with model of type '",
-	 attr(b, "model"), "and type=response")
-   }
-
-   if(is.null(subset))
-      subset <- rep(TRUE, nrow(x))
-
-   if(scale)
-      x <- scale(x)
-   pr <- cbind(1, x[subset, , drop=FALSE]) %*% b
-   if(type == "linear") {
-      pr
-   } else if(attr(b, "model") == "logistic") {
-      1 / (1 + exp(-pr))
-   }
-}
-
-rfesgd <- function(x, y, p, nfeats, ...)
-{
-   UseMethod("rfesgd")
-}
-
 rfesgd.character <- function(x, y, p,
       nfeats=sort(unique(c(2^(0:floor(log2(p))), p))), ...)
 {
@@ -433,57 +546,6 @@ rfesgd.character <- function(x, y, p,
 
    models
 }
-
-predict.sgd <- function(b, x, blocksize=1, type=c("linear", "response"),
-      subset=NULL, verbose=TRUE)
-{
-   type <- match.arg(type)
-   if(is.matrix(x))
-      return(predict.gd(b, x, scale=FALSE, type=type, subset=subset))
-
-   if(nchar(x) == 0)
-      stop("filename x not supplied")
-   
-   if(attr(b, "model") != "logistic" && type == "response")
-   {
-      stop("don't know what to do with model of type '", attr(b, "model"),
-	    "and type=response")
-   }
-
-   fname <- x
-   f <- file(fname, open="rb")
-   pr <- numeric(0)
-   p <- attr(b, "p")
-   if(is.null(subset))
-      subset <- rep(TRUE, attr(b, "nsamples"))
-
-   features <- attr(b, "features")
-
-   i <- 1
-   while(TRUE)
-   {
-      dat <- readBin(f, what="numeric", n=p)
-      if(length(dat) == 0)
-	 break
-      
-      if(subset[i]) {
-         x <- matrix(dat, nrow=blocksize, ncol=p)[, features, drop=FALSE]
-         pr <- c(pr, drop(cbind(1, x) %*% b))
-      } else if(verbose) {
-         cat("skipping", i, "\n")
-      }
-      
-      i <- i + 1
-   }
-   close(f)
-   
-   if(type == "linear") {
-      pr
-   } else if(attr(b, "model") == "logistic") {
-      1 / (1 + exp(-pr))
-   }
-}
-
 
 # Batch gradient descent
 gdsvd <- function(x, maxiter=100)
@@ -551,6 +613,126 @@ sgdsvd <- function(x, maxiter=100)
 
    list(u=u, d=d, v=v)
 }
+
+################################################################################
+# 
+# Utility functions
+#
+
+# Get scale and L2 norm from disk file, for each column
+scaler <- function(x="", p, blocksize=1, verbose=TRUE)
+{
+   musum <- rep(0, p)
+   sumsq <- rep(0, p)
+   f <- file(x, "rb")
+   n <- 0
+   while(TRUE)
+   {
+      dat <- readBin(f, what="numeric", blocksize * p)
+      m <- min(blocksize, length(dat) / p) 
+      if(length(dat) == 0)
+	 break
+      if(verbose)
+	 cat("Read", m, "row/s\n")
+      x <- matrix(dat, nrow=m, ncol=p, byrow=TRUE)
+      musum <- musum + colSums(x)
+      sumsq <- sumsq + colSums(x^2)
+      n <- n + m
+   }
+   close(f)
+   if(verbose)
+      cat("Read", n, "rows in total\n")
+   list(mean=musum / n, norm=sqrt(sumsq) / n)
+}
+
+#crossval <- function(nfolds=3, nreps=1, ...)
+#{
+#
+#}
+
+################################################################################
+# 
+# Prediction functions
+#
+
+predict.gd <- function(b, x, scale=TRUE, type=c("linear", "response"),
+      subset=NULL)
+{
+   type <- match.arg(type)
+   if(!attr(b, "model") %in% c("logistic", "multinomial")
+	 && type == "response")
+   {
+      stop("don't know what to do with model of type '",
+	 attr(b, "model"), "' and type='response'")
+   }
+
+   if(is.null(subset))
+      subset <- rep(TRUE, nrow(x))
+
+   if(scale)
+      x <- scale(x)
+   pr <- cbind(1, x[subset, , drop=FALSE]) %*% b
+   if(type == "linear") {
+      pr
+   } else if(attr(b, "model") == "logistic") {
+      1 / (1 + exp(-pr))
+   } else if(attr(b, "model") == "multinomial") {
+      exp(pr) / rowSums(exp(pr))
+   }
+}
+
+predict.sgd <- function(b, x, blocksize=1, type=c("linear", "response"),
+      subset=NULL, verbose=TRUE)
+{
+   type <- match.arg(type)
+   if(is.matrix(x))
+      return(predict.gd(b, x, scale=FALSE, type=type, subset=subset))
+
+   if(nchar(x) == 0)
+      stop("filename x not supplied")
+   
+   if(!attr(b, "model") %in% c("logistic", "multinomial")
+      && type == "response")
+   {
+      stop("don't know what to do with model of type '", attr(b, "model"),
+	    "and type=response")
+   }
+
+   fname <- x
+   f <- file(fname, open="rb")
+   pr <- numeric(0)
+   p <- attr(b, "p")
+   if(is.null(subset))
+      subset <- rep(TRUE, attr(b, "nsamples"))
+
+   features <- attr(b, "features")
+
+   i <- 1
+   while(TRUE)
+   {
+      dat <- readBin(f, what="numeric", n=p)
+      if(length(dat) == 0)
+	 break
+      
+      if(subset[i]) {
+         x <- matrix(dat, nrow=blocksize, ncol=p)[, features, drop=FALSE]
+         pr <- c(pr, drop(cbind(1, x) %*% b))
+      } else if(verbose) {
+         cat("skipping", i, "\n")
+      }
+      
+      i <- i + 1
+   }
+   close(f)
+   
+   if(type == "linear") {
+      pr
+   } else if(attr(b, "model") == "logistic") {
+      1 / (1 + exp(-pr))
+   }
+}
+
+
 
 
 #gd <- function(x, y, loss, dloss, threshold=1e-4, stepsize=1 / nrow(x),
