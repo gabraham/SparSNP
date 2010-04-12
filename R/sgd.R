@@ -132,13 +132,25 @@ rfesgd <- function(x, y, p, nfeats, ...)
    UseMethod("rfesgd")
 }
 
-#setClass("gd", representation(B="matrix"), prototype(B=matrix()))
+setClass("gd",
+   representation(B="matrix", model="character",
+      lambda1="numeric", lambda2="numeric", lambdaE="numeric", alpha="numeric",
+      threshold="numeric", stepsize="numeric", anneal="numeric", subset="logical",
+      features="integer", loss="numeric"),
+   prototype(B=matrix(), model=character(), lambda1=numeric(),
+      lambda2=numeric(), lambdaE=numeric(), alpha=numeric(),
+      threshold=numeric(), stepsize=numeric(), anneal=numeric(), subset=logical(),
+      features=integer(), loss=numeric())
+)
 
-#setClass("sgd", contains="gd")
+setClass("sgd", contains="gd")
 
-#setClass("sgdMem", contains="sgd")
+setClass("sgdMem", contains="sgd")
 
-#setClass("sgdDisk", contains="sgd")
+setClass("sgdDisk", contains="sgd")
+
+setMethod("coef", signature(object="sgd"), function(object) object@B)
+setMethod("coefficients", signature(object="sgd"), function(object) object@B)
 
 ################################################################################
 # Fitting functions
@@ -146,16 +158,16 @@ rfesgd <- function(x, y, p, nfeats, ...)
 
 sgd.gmatrixMem <- function(g,
       model=c("linear", "logistic", "hinge", "multinomial"),
-      lambda1=0, lambda2=0, lambdaE=0, alpha=NULL, threshold=1e-3,
+      lambda1=0, lambda2=0, lambdaE=0, alpha=numeric(), threshold=1e-3,
       stepsize=1e-3, maxepochs=50, anneal=stepsize, blocksize=1,
-      maxiter=Inf, subset=NULL, saveloss=FALSE, mu=0, norm=1,
+      maxiter=Inf, subset=logical(), saveloss=FALSE, mu=0, norm=1,
       features=1:g@ncol,
       verbose=TRUE, ylevels=NULL)
 {
-   if(!is.null(subset) && blocksize > 1)
+   if(length(subset) > 1 && blocksize > 1)
       stop("blocksize > 1 currently not supported when subset is used")
 
-   if(is.null(subset))
+   if(length(subset) == 0)
       subset <- rep(TRUE, g@nrow)
 
    model <- match.arg(model)
@@ -260,11 +272,17 @@ sgd.gmatrixMem <- function(g,
 	 "loss:", losses[epoch.best], "\n")
    }
 
-   structure(b.best, class="sgd", model=model, lambda1=lambda1,
-	 lambda2=lambda2, features=features, subset=subset,
-	 p=g@ncol, epochs=epoch-1, nsamples=length(y), source="file",
-	 losses=if(saveloss) losses[-1][2:epoch-1] else NULL,
-	 stepsize=stepsize, anneal=anneal)
+
+#   structure(b.best, class="sgd", model=model, lambda1=lambda1,
+#	 lambda2=lambda2, features=features, subset=subset,
+#	 p=g@ncol, epochs=epoch-1, nsamples=length(y), source="file",
+#	 losses=if(saveloss) losses[-1][2:epoch-1] else NULL,
+#	 stepsize=stepsize, anneal=anneal)
+   new("sgd", B=b.best, model=model, lambda1=lambda1, lambda2=lambda2,
+	 lambdaE=lambdaE, alpha=alpha, subset=subset, features=features,
+	 stepsize=stepsize, anneal=anneal,
+	 loss=if(saveloss) losses[-1][2:epoch-1] else as.numeric(NA)
+   )
 }
 
 # Batch gradient descent
@@ -294,7 +312,7 @@ gd <- function(x, y, model=c("linear", "logistic", "hinge", "multinomial"),
    l.new <- 0
 
    # Elastic net
-   if(lambdaE > 0 && !is.null(alpha)) {
+   if(lambdaE > 0 && length(alpha) > 0) {
       lambda1 <- lambdaE * alpha
       lambda2 <- lambdaE * (1 - alpha)
    }
@@ -666,83 +684,141 @@ scaler <- function(x="", p, blocksize=1, verbose=TRUE)
 # Prediction functions
 #
 
-predict.gd <- function(b, x, scale=TRUE, type=c("linear", "response"),
-      subset=NULL)
-{
-   type <- match.arg(type)
-   if(!attr(b, "model") %in% c("logistic", "multinomial")
-	 && type == "response")
-   {
-      stop("don't know what to do with model of type '",
-	 attr(b, "model"), "' and type='response'")
-   }
+#setMethod("predict", signature(object="sgd", x="matrix"),
+#   function(object, x, scale=TRUE, type=c("linear", "response"), subset=NULL) {
+#      
+#   }
+#)
 
-   if(is.null(subset))
-      subset <- rep(TRUE, nrow(x))
+#setGeneric("predict", function(object, x, ...) standardGeneric("predict"))
 
-   if(scale)
-      x <- scale(x)
-   pr <- cbind(1, x[subset, , drop=FALSE]) %*% b
-   if(type == "linear") {
-      pr
-   } else if(attr(b, "model") == "logistic") {
-      1 / (1 + exp(-pr))
-   } else if(attr(b, "model") == "multinomial") {
-      exp(pr) / rowSums(exp(pr))
-   }
-}
+setMethod("predict", signature(object="sgd"),
+   function(object, g, scale=list(mu=0, norm=1), type=c("linear", "response"), subset=NULL) {
 
-predict.sgd <- function(b, x, blocksize=1, type=c("linear", "response"),
-      subset=NULL, verbose=TRUE)
-{
-   type <- match.arg(type)
-   if(is.matrix(x))
-      return(predict.gd(b, x, scale=FALSE, type=type, subset=subset))
+      if(!is(g, "gmatrix"))
+	 stop("can only handle x of class gmatrix")
 
-   if(nchar(x) == 0)
-      stop("filename x not supplied")
-   
-   if(!attr(b, "model") %in% c("logistic", "multinomial")
-      && type == "response")
-   {
-      stop("don't know what to do with model of type '", attr(b, "model"),
-	    "and type=response")
-   }
-
-   fname <- x
-   f <- file(fname, open="rb")
-   pr <- numeric(0)
-   p <- attr(b, "p")
-   if(is.null(subset))
-      subset <- rep(TRUE, attr(b, "nsamples"))
-
-   features <- attr(b, "features")
-
-   i <- 1
-   while(TRUE)
-   {
-      dat <- readBin(f, what="numeric", n=p)
-      if(length(dat) == 0)
-	 break
+      type <- match.arg(type)
+      model <- object@model
       
-      if(subset[i]) {
-         x <- matrix(dat, nrow=blocksize, ncol=p)[, features, drop=FALSE]
-         pr <- c(pr, drop(cbind(1, x) %*% b))
-      } else if(verbose) {
-         cat("skipping", i, "\n")
+      if(!model %in% c("logistic", "multinomial") && type == "response")
+      {
+         stop("don't know what to do with model of type '", attr(b, "model"),
+               "and type=response")
+      }
+
+      if(is.null(subset))
+         subset <- rep(TRUE, g@nrow)
+
+      features <- object@features
+      B <- coef(object)
+      pr <- matrix(0, g@nrow, ncol(B))
+
+      for(i in 1:g@nrow)
+      {
+         r <- nextRow(g, loop=FALSE)
+         if(length(r) == 0)
+            stop("Read zero-length data from gmatrix")
+         
+          if(subset[i]) {
+               x <- r[[1]]
+               y <- r[[2]]$y
+               x <- cbind(1, (x - scale$mu) / scale$norm)[, c(1, features + 1), drop=FALSE]
+               pr[i, ] <- x %*% B
+          } else if(verbose) {
+            cat("skipping", i, "\n")
+          }
       }
       
-      i <- i + 1
+      if(type == "linear") {
+         pr
+      } else if(model == "logistic") {
+         1 / (1 + exp(-pr))
+      } else if(model == "multinomial") {
+         exp(pr) / rowSums(exp(pr))
+      }
    }
-   close(f)
-   
-   if(type == "linear") {
-      pr
-   } else if(attr(b, "model") == "logistic") {
-      1 / (1 + exp(-pr))
-   }
-}
+)
 
+#predict.gd <- function(b, x, scale=TRUE, type=c("linear", "response"),
+#      subset=NULL)
+#{
+#   type <- match.arg(type)
+#   if(!attr(b, "model") %in% c("logistic", "multinomial")
+#	 && type == "response")
+#   {
+#      stop("don't know what to do with model of type '",
+#	 attr(b, "model"), "' and type='response'")
+#   }
+#
+#   if(is.null(subset))
+#      subset <- rep(TRUE, nrow(x))
+#
+#   if(scale)
+#      x <- scale(x)
+#   pr <- cbind(1, x[subset, , drop=FALSE]) %*% b
+#   if(type == "linear") {
+#      pr
+#   } else if(attr(b, "model") == "logistic") {
+#      1 / (1 + exp(-pr))
+#   } else if(attr(b, "model") == "multinomial") {
+#      exp(pr) / rowSums(exp(pr))
+#   }
+#}
+#
+#predict.sgd <- function(b, x, blocksize=1, type=c("linear", "response"),
+#      subset=NULL, verbose=TRUE)
+#{
+#   type <- match.arg(type)
+#   if(is.matrix(x))
+#      return(predict.gd(b, x, scale=FALSE, type=type, subset=subset))
+#
+#   if(nchar(x) == 0)
+#      stop("filename x not supplied")
+#   
+#   if(!attr(b, "model") %in% c("logistic", "multinomial")
+#      && type == "response")
+#   {
+#      stop("don't know what to do with model of type '", attr(b, "model"),
+#	    "and type=response")
+#   }
+#
+#   fname <- x
+#   f <- file(fname, open="rb")
+#   pr <- numeric(0)
+#   p <- attr(b, "p")
+#   if(is.null(subset))
+#      subset <- rep(TRUE, attr(b, "nsamples"))
+#
+#   features <- attr(b, "features")
+#
+#   i <- 1
+#   while(TRUE)
+#   {
+#      dat <- readBin(f, what="numeric", n=p)
+#      if(length(dat) == 0)
+#	 break
+#      
+#      if(subset[i]) {
+#         x <- matrix(dat, nrow=blocksize, ncol=p)[, features, drop=FALSE]
+#         pr <- c(pr, drop(cbind(1, x) %*% b))
+#      } else if(verbose) {
+#         cat("skipping", i, "\n")
+#      }
+#      
+#      i <- i + 1
+#   }
+#   close(f)
+#   
+#   if(type == "linear") {
+#      pr
+#   } else if(attr(b, "model") == "logistic") {
+#      1 / (1 + exp(-pr))
+#   } else if(attr(b, "model") == "multinomial") {
+#      exp(pr) / rowSums(exp(pr))
+#   }
+#}
+#
 
 
 
