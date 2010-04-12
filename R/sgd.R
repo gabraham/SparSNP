@@ -47,10 +47,13 @@ logloss <- function(x, y, b)
    sum(-y * x %*% b + log(1 + exp(x %*% b)))
 }
 
+# Note that binary logistic and multinomial logistic are parameterised here
+# differently, so a 2-class multinomial will not give you the same
+# estimated coefficients as a binary logistic!
 logdloss <- function(x, y, b)
 {
    p <- exp(x %*% b) 
-   crossprod(-x, y - p / (1 + p))
+   crossprod(x, p / (1 + p) - y)
 }
 
 # Multinomial logistic
@@ -80,43 +83,44 @@ coxdloss <- function(x, y, b)
 }
 
 
+#################################################################################
+#
+#test.multinom <- function()
+#{
+#   set.seed(10278)
+#   K <- 2
+#   N <- 1000
+#   p <- 10
+#   x <- matrix(rnorm(N * p), N, p)
+#   beta <- rnorm(p)
+#   #y <- sample(1:K, N, TRUE)
+#   y <- as.numeric(factor(sign(x %*% beta)))
+#   #g <- glmnet(x, factor(y), family="multinomial", alpha=0, lambda=0)
+#   #pr <- predict(g, x)
+#   Y <- sapply(1:K, function(i) as.numeric(y == i))
+#   stepsize <- 1e-3
+#
+#   maxepochs <- 100
+#   B <- matrix(0, p, K)
+#   loss <- numeric(N)
+#   for(epoch in 1:maxepochs)
+#   {
+#      for(i in 1:N)
+#      {
+#	 loss[i] <- mlogloss(x[i, , drop=FALSE], Y[i,,drop=FALSE], B) 
+#	 #cat("loss:", loss[i], "\n")
+#	 B <- B - stepsize * mlogdloss(x[i,,drop=FALSE], Y[i,,drop=FALSE], B)
+#      }
+#   }
+#
+#   q <- exp(x %*% B)
+#   pr1 <- q / rowSums(q)
+#   mean(apply(pr1, 1, which.max) != y)
+#   #mean(apply(pr2, 1, which.max) != y)
+#}
+
 ################################################################################
-
-test.multinom <- function()
-{
-   set.seed(10278)
-   K <- 2
-   N <- 1000
-   p <- 10
-   x <- matrix(rnorm(N * p), N, p)
-   beta <- rnorm(p)
-   #y <- sample(1:K, N, TRUE)
-   y <- as.numeric(factor(sign(x %*% beta)))
-   #g <- glmnet(x, factor(y), family="multinomial", alpha=0, lambda=0)
-   #pr <- predict(g, x)
-   Y <- sapply(1:K, function(i) as.numeric(y == i))
-   stepsize <- 1e-3
-
-   maxepochs <- 100
-   B <- matrix(0, p, K)
-   loss <- numeric(N)
-   for(epoch in 1:maxepochs)
-   {
-      for(i in 1:N)
-      {
-	 loss[i] <- mlogloss(x[i, , drop=FALSE], Y[i,,drop=FALSE], B) 
-	 #cat("loss:", loss[i], "\n")
-	 B <- B - stepsize * mlogdloss(x[i,,drop=FALSE], Y[i,,drop=FALSE], B)
-      }
-   }
-
-   q <- exp(x %*% B)
-   pr1 <- q / rowSums(q)
-   mean(apply(pr1, 1, which.max) != y)
-   #mean(apply(pr2, 1, which.max) != y)
-}
-
-################################################################################
+# Generics and definitions
 
 sgd <- function(x, y, ...)
 {
@@ -128,13 +132,13 @@ rfesgd <- function(x, y, p, nfeats, ...)
    UseMethod("rfesgd")
 }
 
-setClass("gd", representation(B="matrix"), prototype(B=matrix()))
+#setClass("gd", representation(B="matrix"), prototype(B=matrix()))
 
-setClass("sgd", contains="gd")
+#setClass("sgd", contains="gd")
 
-setClass("sgdMem", contains="sgd")
+#setClass("sgdMem", contains="sgd")
 
-setClass("sgdDisk", contains="sgd")
+#setClass("sgdDisk", contains="sgd")
 
 ################################################################################
 # Fitting functions
@@ -143,10 +147,10 @@ setClass("sgdDisk", contains="sgd")
 sgd.gmatrixMem <- function(g,
       model=c("linear", "logistic", "hinge", "multinomial"),
       lambda1=0, lambda2=0, lambdaE=0, alpha=NULL, threshold=1e-3,
-      stepsize=1e-4, maxepochs=50, anneal=stepsize, blocksize=1,
+      stepsize=1e-3, maxepochs=50, anneal=stepsize, blocksize=1,
       maxiter=Inf, subset=NULL, saveloss=FALSE, mu=0, norm=1,
       features=1:g@ncol,
-      verbose=TRUE)
+      verbose=TRUE, ylevels=NULL)
 {
    if(!is.null(subset) && blocksize > 1)
       stop("blocksize > 1 currently not supported when subset is used")
@@ -180,10 +184,11 @@ sgd.gmatrixMem <- function(g,
    lambda2 <- c(0, rep(lambda2, nf))
 
    if(model == "multinomial") {
-      K <- length(unique(y))
+      classes <- sort(unique(drop(g@companions$y)))
+      K <- length(classes)
       b <- b.best <- matrix(0, nf + 1, K)
       colnames(b) <- colnames(b.best) <- 1:ncol(b)
-      y <- sapply(1:K, function(i) as.numeric(y == i))
+      g@companions$y <- sapply(classes, function(i) as.numeric(y == i))
    } else {
       b <- b.best <- matrix(0, nf + 1, 1)
       #names(b) <- names(b.best) <- 1:length(b)
@@ -207,38 +212,44 @@ sgd.gmatrixMem <- function(g,
 	    y <- r[[2]]$y
 	    x <- cbind(1, (x - mu) / norm)
 	    l <- loss(x, y, b)
-	    l <- if(is.nan(l)) {
-	       stepsize <- stepsize / 2
-	       0
-	    } else{
-	       l
-	    }
-	    losses[epoch] <- losses[epoch] + l
-	    grad <- dloss(x, y, b) + lambda2 * b + lambda1 * sign(b)
-	    b <- b - stepsize * grad
 	    
+	    #cat("x:", x, "\n")
+	    #cat("y:", y, "\n")
+
+	    ## Ignore samples that make NaN loss (especially relevant for log
+	    ## loss) 
+	    #if(is.nan(l)) {
+	    #   stepsize <- stepsize / 2
+	    #} else {
+	    #cat(i, "loss:", l, "\n")
+	       losses[epoch] <- losses[epoch] + l
+	       grad <- dloss(x, y, b) + lambda2 * b + lambda1 * sign(b)
+	    #   cat(i, "grad:", grad, "\n")
+	       b <- b - stepsize * grad
+	    #}
 	 } else if(verbose) {
 	    cat("skipping", i, "\n")
 	 }
       }
 
-      if(losses[epoch] > losses[epoch-1]) {
-	 stepsize <- stepsize / 2 
-      } else {
-	 stepsize <- stepsize / (1 + anneal)
-	 b.best <- b
-	 epoch.best <- epoch
-      }
-	 
-      if(verbose) {
-	 cat("Epoch", epoch-1, ", loss:", losses[epoch], "diff:",
-	       abs(losses[epoch-1] - losses[epoch]), 
-	       "stepsize:", stepsize,
-	       "\n")
-      }
+      #if(epoch > 2 && losses[epoch] > losses[epoch-1]) {
+      #   stepsize <- stepsize / 2 
+      #} else {
+      #   stepsize <- stepsize / (1 + anneal)
+         b.best <- b
+         epoch.best <- epoch
+      #}
+      #   
+      #if(verbose) {
+      #   cat("Epoch", epoch-1, ", loss:", losses[epoch], "diff:",
+      #         abs(losses[epoch-1] - losses[epoch]), 
+      #         "stepsize:", stepsize,
+      #         "\n")
+      #}
 
-      if(epoch == maxepochs
-	 || abs(losses[epoch-1] - losses[epoch]) < threshold) {
+      #if(epoch >= maxepochs
+	# || abs(losses[epoch-1] - losses[epoch]) < threshold) {
+      if(epoch >= maxepochs){
 	 break
       }
       epoch <- epoch + 1
@@ -252,7 +263,8 @@ sgd.gmatrixMem <- function(g,
    structure(b.best, class="sgd", model=model, lambda1=lambda1,
 	 lambda2=lambda2, features=features, subset=subset,
 	 p=g@ncol, epochs=epoch-1, nsamples=length(y), source="file",
-	 losses=losses[-1][2:epoch-1], stepsize=stepsize, anneal=anneal)
+	 losses=if(saveloss) losses[-1][2:epoch-1] else NULL,
+	 stepsize=stepsize, anneal=anneal)
 }
 
 # Batch gradient descent
@@ -282,8 +294,7 @@ gd <- function(x, y, model=c("linear", "logistic", "hinge", "multinomial"),
    l.new <- 0
 
    # Elastic net
-   if(lambdaE > 0 && !is.null(alpha))
-   {
+   if(lambdaE > 0 && !is.null(alpha)) {
       lambda1 <- lambdaE * alpha
       lambda2 <- lambdaE * (1 - alpha)
    }
@@ -364,149 +375,149 @@ sgd.matrix <- function(x, y,
    structure(b, class="sgd", model=model, p=p, epochs=epoch, source="matrix") 
 }
 
-sgd.character <- function(x="", y, p,
-      model=c("linear", "logistic", "hinge", "multinomial"),
-      lambda1=0, lambda2=0, lambdaE=0, alpha=NULL, threshold=1e-3,
-      stepsize=1e-4, maxepochs=50, anneal=stepsize, blocksize=1,
-      maxiter=Inf, subset=NULL, saveloss=FALSE, mu=0, norm=1, features=1:p,
-      verbose=TRUE)
-{
-   if(nchar(x) == 0)
-      stop("filename x not supplied")
-
-   if(!is.null(subset) && blocksize > 1)
-      stop("blocksize > 1 currently not supported when subset is used")
-
-   if(is.null(subset))
-      subset <- rep(TRUE, length(y))
-
-   model <- match.arg(model)
-   loss <- switch(model,
-	 linear=l2loss,
-	 logistic=logloss,
-	 hinge=hingeloss,
-	 multinomial=mlogloss
-   )
-   dloss <- switch(model,
-	 linear=l2dloss,
-      	 logistic=logdloss,
-      	 hinge=hingedloss,
-      	 multinomial=mlogdloss
-   )
-
-   fname <- x
-   f <- file(fname, open="rb")
-
-   nf <- length(features)
-   if(length(mu) == p)
-      mu <- mu[features]
-
-   if(length(norm) == p)
-      norm <- norm[features] 
-
-   # Don't penalise intercept
-   lambda1 <- c(0, rep(lambda1, nf))
-   lambda2 <- c(0, rep(lambda2, nf))
-
-   if(model == "multinomial") {
-      K <- length(unique(y))
-      b <- b.best <- matrix(0, nf + 1, K)
-      colnames(b) <- colnames(b.best) <- 1:ncol(b)
-      y <- sapply(1:K, function(i) as.numeric(y == i))
-   } else {
-      b <- b.best <- rep(0, nf + 1)
-      names(b) <- names(b.best) <- 1:length(b)
-   }
-
-   #b <- b.best <- rep(0, nf + 1)
-   #names(b) <- names(b.best) <- 1:length(b)
-   losses <- rep(0, maxepochs + 1)
-   epoch <- epoch.best <- 2
-   #cat("features:", features, "\n")
-
-   # Loop over epochs
-   while(TRUE)
-   {
-      # Loop over samples
-      i <- 1
-      while(TRUE)
-      {
-	 if(verbose)
-	    cat(i, "reading data... ")
-	 dat <- readBin(f, what="numeric", n=p * blocksize)
-	 if(length(dat) == 0 || i > maxiter)
-	    break
-	 if(verbose)
-	    cat("read", length(dat), "items; ")
-
-	 if(subset[i]) {
-	    x <- matrix(dat, nrow=min(blocksize, length(dat) / p), ncol=p,
-	          byrow=TRUE)[, features, drop=FALSE]
-	    x <- cbind(1, (x - mu) / norm)
-	    k <- ((i-1) * blocksize + 1):(i * blocksize)
-	    k <- k[1:nrow(x)]
-	    yk <- if(model == "multinomial") {
-	       y[k, , drop=FALSE]
-	    } else y[k]
-	    l <- loss(x, yk, b)
-	    l <- if(is.nan(l)) {
-	       stepsize <- stepsize / 2
-	       0
-	    } else{
-	       l
-	    }
-	    losses[epoch] <- losses[epoch] + l
-	    if(verbose)
-	       cat("loss:", losses[epoch], "\n")
-	    grad <- (dloss(x[i, , drop=FALSE], y[i], b)
-		  + lambda2 * b + lambda1 * sign(b))
-	    if(verbose > 1)
-	       cat(i, grad[1:10], "\n") 
-	    b <- b - stepsize * grad
-	    
-	 } else if(verbose) {
-	    cat("skipping", i, "\n")
-	 }
-	 i <- i + 1
-      }
-
-      if(losses[epoch] > losses[epoch-1]) {
-	 stepsize <- stepsize / 2 
-      } else {
-	 stepsize <- stepsize / (1 + anneal)
-	 b.best <- b
-	 epoch.best <- epoch
-      }
-	 
-      if(verbose) {
-	 cat("Epoch", epoch-1, ", loss:", losses[epoch], "diff:",
-	       abs(losses[epoch-1] - losses[epoch]), 
-	       "stepsize:", stepsize,
-	       "\n")
-      }
-
-      if(epoch == maxepochs
-	 || abs(losses[epoch-1] - losses[epoch]) < threshold) {
-	 #cat("converged", abs(losses[epoch-1] - losses[epoch]) < threshold, "\n")
-	 break
-      }
-      epoch <- epoch + 1
-      close(f)
-      f <- file(fname, open="rb")
-   }
-
-   close(f)
-
-   if(verbose) {
-      cat("Best solution at Epoch", epoch.best - 1,
-	 "loss:", losses[epoch.best], "\n")
-   }
-
-   structure(b.best, class="sgd", model=model, lambda1=lambda1,
-	 lambda2=lambda2, features=features, subset=subset,
-	 p=p, epochs=epoch-1, nsamples=length(y), source="file",
-	 losses=losses[-1][2:epoch-1], stepsize=stepsize, anneal=anneal)
-}
+#sgd.character <- function(x="", y, p,
+#      model=c("linear", "logistic", "hinge", "multinomial"),
+#      lambda1=0, lambda2=0, lambdaE=0, alpha=NULL, threshold=1e-3,
+#      stepsize=1e-4, maxepochs=50, anneal=stepsize, blocksize=1,
+#      maxiter=Inf, subset=NULL, saveloss=FALSE, mu=0, norm=1, features=1:p,
+#      verbose=TRUE)
+#{
+#   if(nchar(x) == 0)
+#      stop("filename x not supplied")
+#
+#   if(!is.null(subset) && blocksize > 1)
+#      stop("blocksize > 1 currently not supported when subset is used")
+#
+#   if(is.null(subset))
+#      subset <- rep(TRUE, length(y))
+#
+#   model <- match.arg(model)
+#   loss <- switch(model,
+#	 linear=l2loss,
+#	 logistic=logloss,
+#	 hinge=hingeloss,
+#	 multinomial=mlogloss
+#   )
+#   dloss <- switch(model,
+#	 linear=l2dloss,
+#      	 logistic=logdloss,
+#      	 hinge=hingedloss,
+#      	 multinomial=mlogdloss
+#   )
+#
+#   fname <- x
+#   f <- file(fname, open="rb")
+#
+#   nf <- length(features)
+#   if(length(mu) == p)
+#      mu <- mu[features]
+#
+#   if(length(norm) == p)
+#      norm <- norm[features] 
+#
+#   # Don't penalise intercept
+#   lambda1 <- c(0, rep(lambda1, nf))
+#   lambda2 <- c(0, rep(lambda2, nf))
+#
+#   if(model == "multinomial") {
+#      K <- length(unique(y))
+#      b <- b.best <- matrix(0, nf + 1, K)
+#      colnames(b) <- colnames(b.best) <- 1:ncol(b)
+#      y <- sapply(1:K, function(i) as.numeric(y == i))
+#   } else {
+#      b <- b.best <- rep(0, nf + 1)
+#      names(b) <- names(b.best) <- 1:length(b)
+#   }
+#
+#   #b <- b.best <- rep(0, nf + 1)
+#   #names(b) <- names(b.best) <- 1:length(b)
+#   losses <- rep(0, maxepochs + 1)
+#   epoch <- epoch.best <- 2
+#   #cat("features:", features, "\n")
+#
+#   # Loop over epochs
+#   while(TRUE)
+#   {
+#      # Loop over samples
+#      i <- 1
+#      while(TRUE)
+#      {
+#	 if(verbose)
+#	    cat(i, "reading data... ")
+#	 dat <- readBin(f, what="numeric", n=p * blocksize)
+#	 if(length(dat) == 0 || i > maxiter)
+#	    break
+#	 if(verbose)
+#	    cat("read", length(dat), "items; ")
+#
+#	 if(subset[i]) {
+#	    x <- matrix(dat, nrow=min(blocksize, length(dat) / p), ncol=p,
+#	          byrow=TRUE)[, features, drop=FALSE]
+#	    x <- cbind(1, (x - mu) / norm)
+#	    k <- ((i-1) * blocksize + 1):(i * blocksize)
+#	    k <- k[1:nrow(x)]
+#	    yk <- if(model == "multinomial") {
+#	       y[k, , drop=FALSE]
+#	    } else y[k]
+#	    l <- loss(x, yk, b)
+#	    l <- if(is.nan(l)) {
+#	       stepsize <- stepsize / 2
+#	       0
+#	    } else{
+#	       l
+#	    }
+#	    losses[epoch] <- losses[epoch] + l
+#	    if(verbose)
+#	       cat("loss:", losses[epoch], "\n")
+#	    grad <- (dloss(x[i, , drop=FALSE], y[i], b)
+#		  + lambda2 * b + lambda1 * sign(b))
+#	    if(verbose > 1)
+#	       cat(i, grad[1:10], "\n") 
+#	    b <- b - stepsize * grad
+#	    
+#	 } else if(verbose) {
+#	    cat("skipping", i, "\n")
+#	 }
+#	 i <- i + 1
+#      }
+#
+#      if(losses[epoch] > losses[epoch-1]) {
+#	 stepsize <- stepsize / 2 
+#      } else {
+#	 stepsize <- stepsize / (1 + anneal)
+#	 b.best <- b
+#	 epoch.best <- epoch
+#      }
+#	 
+#      if(verbose) {
+#	 cat("Epoch", epoch-1, ", loss:", losses[epoch], "diff:",
+#	       abs(losses[epoch-1] - losses[epoch]), 
+#	       "stepsize:", stepsize,
+#	       "\n")
+#      }
+#
+#      if(epoch == maxepochs
+#	 || abs(losses[epoch-1] - losses[epoch]) < threshold) {
+#	 #cat("converged", abs(losses[epoch-1] - losses[epoch]) < threshold, "\n")
+#	 break
+#      }
+#      epoch <- epoch + 1
+#      close(f)
+#      f <- file(fname, open="rb")
+#   }
+#
+#   close(f)
+#
+#   if(verbose) {
+#      cat("Best solution at Epoch", epoch.best - 1,
+#	 "loss:", losses[epoch.best], "\n")
+#   }
+#
+#   structure(b.best, class="sgd", model=model, lambda1=lambda1,
+#	 lambda2=lambda2, features=features, subset=subset,
+#	 p=p, epochs=epoch-1, nsamples=length(y), source="file",
+#	 losses=losses[-1][2:epoch-1], stepsize=stepsize, anneal=anneal)
+#}
 
 rfesgd.character <- function(x, y, p,
       nfeats=sort(unique(c(2^(0:floor(log2(p))), p))), ...)
@@ -599,13 +610,13 @@ sgdsvd <- function(x, maxiter=100)
       {
          for(k in 1:m)
          {
-   	 z1 <- U[k, ,i-1] %*% t(V[k, ,i-1])
-         	 z2 <- V[k, ,i-1] %*% t(U[k, ,i-1])
-         	 U[k, ,i] <- U[k, ,i-1] - stepsize * 2 * (z1 - x) %*% V[k,,i-1] 
-         	 V[k, ,i] <- V[k, ,i-1] - stepsize * 2 * (z2 - t(x)) %*% U[k,,i-1] 
-         	 xhat <- U[k, ,i-1] %*% t(V[k, ,i-1]) 
-         	 loss[i] <- sum((xhat - x)^2)
-         	 cat("loss:", loss[i], ", cor:", cor(xhat[,1], x[,1]), "\r")
+	    z1 <- U[k, ,i-1] %*% t(V[k, ,i-1])
+	    z2 <- V[k, ,i-1] %*% t(U[k, ,i-1])
+	    U[k, ,i] <- U[k, ,i-1] - stepsize * 2 * (z1 - x) %*% V[k,,i-1] 
+            V[k, ,i] <- V[k, ,i-1] - stepsize * 2 * (z2 - t(x)) %*% U[k,,i-1] 
+            xhat <- U[k, ,i-1] %*% t(V[k, ,i-1]) 
+            loss[i] <- sum((xhat - x)^2)
+            cat("loss:", loss[i], ", cor:", cor(xhat[,1], x[,1]), "\r")
          }
       }
    }

@@ -7,11 +7,11 @@ setClass("gmatrixMem",
    prototype(x=matrix(), nrow=0L, ncol=0L),
    contains="gmatrix")
 
-setOldClass("file")
+#setOldClass("file")
 
 setClass("gmatrixDisk",
-   representation(x="character", file="file", ncol="integer"),
-   prototype(x=character(), file=file(), ncol=0L),
+   representation(x="character", nrow="integer", ncol="integer"),
+   prototype(x=character(), nrow=0L, ncol=0L),
    contains="gmatrix")
 
 # companions: a list of variabels to be indexed together with x
@@ -24,9 +24,9 @@ gmatrixMem <- function(x, nrow=nrow(x), ncol=ncol(x), companions=list())
 
 gmatrixDisk <- function(x, nrow, ncol, companions=list())
 {
-   g <- new("gmatrixDisk", x=x, nrow=nrow, ncol=ncol, file=file(x, "rb"),
-	 companions=companions)
+   g <- new("gmatrixDisk", x=x, nrow=nrow, ncol=ncol, companions=companions)
    g@env[["i"]] <- 1
+   g@env[["file"]] <- file(x, "rb")
    g
 }
 
@@ -34,11 +34,13 @@ setGeneric("nextRow", function(object, ...) standardGeneric("nextRow"))
 
 setMethod("nextRow", signature("gmatrixDisk"),
    function(object, loop=TRUE, companions=TRUE, blocksize=1) {
-      dat <- readBin(object@file, what="numeric", n=object@ncol)
+      dat <- readBin(object@env[["file"]], what="numeric", n=object@ncol)
       if(length(dat) == 0) {
 	 if(loop) {
-	    object@file <- file(object@x, "rb")
-	    dat <- readBin(object@file, what="numeric", n=object@ncol)
+	    object@env[["i"]] <- 1L
+	    close(object@env[["file"]])
+	    object@env[["file"]] <- file(object@x, "rb")
+	    dat <- readBin(object@env[["file"]], what="numeric", n=object@ncol)
 	 } else {
 	    return(numeric(0))
 	 }
@@ -73,6 +75,22 @@ setMethod("nextRow", signature("gmatrixMem"),
 	       x[object@env[["i"]] - 1L, , drop=FALSE]
 	    }))
       } else r
+   }
+)
+
+setGeneric("reset", function(object) standardGeneric("reset"))
+
+setMethod("reset", signature("gmatrixMem"),
+   function(object) {
+      object@env[["i"]] <- 1
+   }
+)
+
+setMethod("reset", signature("gmatrixDisk"),
+   function(object) {
+      object@env[["i"]] <- 1
+      close(object@env[["file"]])
+      object@env[["file"]] <- file(object@x, "rb")
    }
 )
 
