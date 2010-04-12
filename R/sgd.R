@@ -156,11 +156,11 @@ setMethod("coefficients", signature(object="sgd"), function(object) object@B)
 # Fitting functions
 #
 
-sgd.gmatrixMem <- function(g,
+sgd.gmatrix <- function(g,
       model=c("linear", "logistic", "hinge", "multinomial"),
       lambda1=0, lambda2=0, lambdaE=0, alpha=numeric(), threshold=1e-3,
       stepsize=1e-3, maxepochs=50, anneal=stepsize, blocksize=1,
-      maxiter=Inf, subset=logical(), saveloss=FALSE, mu=0, norm=1,
+      maxiter=Inf, subset=logical(), saveloss=FALSE, scale=list(mean=0, norm=1),
       features=1:g@ncol,
       verbose=TRUE, ylevels=NULL)
 {
@@ -185,11 +185,13 @@ sgd.gmatrixMem <- function(g,
    )
 
    nf <- length(features)
-   if(length(mu) == g@ncol)
-      mu <- mu[features]
+   scale$mean <- if(length(scale$mean) == g@ncol) {
+      scale$mean[features]
+   } else scale$mean
 
-   if(length(norm) == g@ncol)
-      norm <- norm[features] 
+   scale$norm <- if(length(scale$norm) == g@ncol) {
+      scale$norm[features] 
+   } else scale$norm
 
    # Don't penalise intercept
    lambda1 <- c(0, rep(lambda1, nf))
@@ -222,21 +224,17 @@ sgd.gmatrixMem <- function(g,
 	 if(subset[i]) {
 	    x <- r[[1]]
 	    y <- r[[2]]$y
-	    x <- cbind(1, (x - mu) / norm)
+	    x <- cbind(1, (x - scale$mean) / scale$norm)
 	    l <- loss(x, y, b)
 	    
-	    #cat("x:", x, "\n")
-	    #cat("y:", y, "\n")
-
 	    ## Ignore samples that make NaN loss (especially relevant for log
 	    ## loss) 
 	    #if(is.nan(l)) {
 	    #   stepsize <- stepsize / 2
 	    #} else {
-	    #cat(i, "loss:", l, "\n")
+	    cat(i, "loss:", l, "\n")
 	       losses[epoch] <- losses[epoch] + l
 	       grad <- dloss(x, y, b) + lambda2 * b + lambda1 * sign(b)
-	    #   cat(i, "grad:", grad, "\n")
 	       b <- b - stepsize * grad
 	    #}
 	 } else if(verbose) {
@@ -252,12 +250,12 @@ sgd.gmatrixMem <- function(g,
          epoch.best <- epoch
       #}
       #   
-      #if(verbose) {
-      #   cat("Epoch", epoch-1, ", loss:", losses[epoch], "diff:",
-      #         abs(losses[epoch-1] - losses[epoch]), 
-      #         "stepsize:", stepsize,
-      #         "\n")
-      #}
+      if(verbose) {
+         cat("Epoch", epoch-1, ", loss:", losses[epoch], "diff:",
+               abs(losses[epoch-1] - losses[epoch]), 
+               "stepsize:", stepsize,
+               "\n")
+      }
 
       #if(epoch >= maxepochs
 	# || abs(losses[epoch-1] - losses[epoch]) < threshold) {
@@ -649,13 +647,15 @@ sgdsvd <- function(x, maxiter=100)
 #
 
 # Get scale and L2 norm from disk file, for each column
-scaler <- function(x="", p, blocksize=1, verbose=TRUE)
+scaler <- function(x="", nrow=NULL, p, blocksize=1, verbose=TRUE)
 {
+   if(is.null(nrow))
+      nrow <- Inf
    musum <- rep(0, p)
    sumsq <- rep(0, p)
    f <- file(x, "rb")
    n <- 0
-   while(TRUE)
+   while(n < nrow)
    {
       dat <- readBin(f, what="numeric", blocksize * p)
       m <- min(blocksize, length(dat) / p) 
@@ -693,7 +693,7 @@ scaler <- function(x="", p, blocksize=1, verbose=TRUE)
 #setGeneric("predict", function(object, x, ...) standardGeneric("predict"))
 
 setMethod("predict", signature(object="sgd"),
-   function(object, g, scale=list(mu=0, norm=1), type=c("linear", "response"), subset=NULL) {
+   function(object, g, scale=list(mean=0, norm=1), type=c("linear", "response"), subset=NULL) {
 
       if(!is(g, "gmatrix"))
 	 stop("can only handle x of class gmatrix")
@@ -716,14 +716,16 @@ setMethod("predict", signature(object="sgd"),
 
       for(i in 1:g@nrow)
       {
+	 cat("reading sample", i, "")
          r <- nextRow(g, loop=FALSE)
          if(length(r) == 0)
             stop("Read zero-length data from gmatrix")
+	 cat("\n")
          
           if(subset[i]) {
                x <- r[[1]]
                y <- r[[2]]$y
-               x <- cbind(1, (x - scale$mu) / scale$norm)[, c(1, features + 1), drop=FALSE]
+               x <- cbind(1, (x - scale$mean) / scale$norm)[, c(1, features + 1), drop=FALSE]
                pr[i, ] <- x %*% B
           } else if(verbose) {
             cat("skipping", i, "\n")

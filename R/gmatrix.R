@@ -34,17 +34,20 @@ setGeneric("nextRow", function(object, ...) standardGeneric("nextRow"))
 
 setMethod("nextRow", signature("gmatrixDisk"),
    function(object, loop=TRUE, companions=TRUE, blocksize=1) {
-      dat <- readBin(object@env[["file"]], what="numeric", n=object@ncol)
-      if(length(dat) == 0) {
+      #dat <- readBin(object@env[["file"]], what="numeric", n=object@ncol)
+      #if(length(dat) == 0 || object@env[["i"]] == object@nrow) {
+      if(object@env[["i"]] > object@nrow)
+      {
 	 if(loop) {
 	    object@env[["i"]] <- 1L
 	    close(object@env[["file"]])
 	    object@env[["file"]] <- file(object@x, "rb")
-	    dat <- readBin(object@env[["file"]], what="numeric", n=object@ncol)
+	    #dat <- readBin(object@env[["file"]], what="numeric", n=object@ncol)
 	 } else {
 	    return(numeric(0))
 	 }
       }
+      dat <- readBin(object@env[["file"]], what="numeric", n=object@ncol)
       object@env[["i"]] <- object@env[["i"]] + 1L
       m <- matrix(dat, nrow=min(blocksize, length(dat) / object@ncol),
 	 ncol=object@ncol, byrow=TRUE)
