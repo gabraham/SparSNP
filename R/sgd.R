@@ -253,6 +253,8 @@ sgd.gmatrix <- function(g, B=NULL,
       if(epoch > 2 && losses[epoch] > losses[epoch-1]) {
          stepsize <- stepsize / 2 
 	 B <- B.best
+	 if(verbose)
+	    cat("Reduced step size\n")
       } else {
          stepsize <- stepsize / (1 + anneal)
          B.best <- B
