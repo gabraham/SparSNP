@@ -664,7 +664,6 @@ setMethod("scale",
       while(n < g@nrow)
       {
          x <- nextRow(g, loop=FALSE)[[1]]
-	 cat(class(x), dim(x), "\n")
          m <- length(x) / g@ncol
          if(verbose)
 	    cat("Read", n, "row/s\r")
