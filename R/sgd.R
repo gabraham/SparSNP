@@ -160,7 +160,7 @@ sgd.gmatrix <- function(g, B=NULL,
       model=c("linear", "logistic", "hinge", "multinomial"),
       lambda1=0, lambda2=0, lambdaE=0, alpha=numeric(), threshold=1e-3,
       stepsize=1e-3, maxepochs=50, anneal=stepsize, blocksize=1,
-      maxiter=Inf, subset=logical(), saveloss=FALSE, scale=list(mean=0, norm=1),
+      maxiter=Inf, subset=logical(), saveloss=FALSE, scale=list(mean=0, sd=1),
       features=1:g@ncol,
       verbose=TRUE, ylevels=NULL)
 {
@@ -189,9 +189,9 @@ sgd.gmatrix <- function(g, B=NULL,
       scale$mean[features]
    } else scale$mean
 
-   scale$norm <- if(length(scale$norm) == g@ncol) {
-      scale$norm[features] 
-   } else scale$norm
+   scale$sd <- if(length(scale$sd) == g@ncol) {
+      scale$sd[features] 
+   } else scale$sd
 
    # Don't penalise intercept
    lambda1 <- c(0, rep(lambda1, nf))
@@ -230,7 +230,7 @@ sgd.gmatrix <- function(g, B=NULL,
 	 if(subset[i]) {
 	    x <- r[[1]]
 	    y <- r[[2]]$y
-	    x <- cbind(1, (x - scale$mean) / scale$norm)
+	    x <- cbind(1, (x - scale$mean) / scale$sd)
 	    l <- loss(x, y, B)
 	    
 	    ## Ignore samples that make NaN loss (especially relevant for log
@@ -653,7 +653,7 @@ sgdsvd <- function(x, maxiter=100)
 
 setGeneric("scale", function(object, center, scale, ...) standardGeneric("scale"))
 
-# Get scale and L2 norm from disk file, for each column
+# Get mean and sd from disk file, for each column
 # http://en.wikipedia.org/wiki/Algorithms_for_calculating_variance
 setMethod("scale",
    signature(object="gmatrix", center="ANY", scale="ANY"),
@@ -684,7 +684,7 @@ setMethod("scale",
       #close(f)
       if(verbose)
          cat("Read", n, "rows in total\n")
-      list(mean=mean, norm=sqrt(sumsq / n))
+      list(mean=mean, sd=sqrt(sumsq / (n - 1)))
    }
 )
 
