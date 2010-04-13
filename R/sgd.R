@@ -658,30 +658,22 @@ setGeneric("scale", function(object, center, scale, ...) standardGeneric("scale"
 setMethod("scale",
    signature(object="gmatrix", center="ANY", scale="ANY"),
    function(object, center=TRUE, scale=TRUE, verbose=TRUE) {
-
       mean <- numeric(g@ncol)
       sumsq <- numeric(g@ncol)
-      #f <- file(x, "rb")
       n <- 0
       while(n < g@nrow)
       {
-         #dat <- readBin(f, what="numeric", p)
-         #if(length(dat) == 0)
-         #	 break
-
          x <- nextRow(g, loop=FALSE)[[1]]
 	 cat(class(x), dim(x), "\n")
          m <- length(x) / g@ncol
-         #if(verbose)
-	    cat("Read", n, "row/s\n")
+         if(verbose)
+	    cat("Read", n, "row/s\r")
          n <- n + m
-         #x <- matrix(dat, nrow=m, ncol=p, byrow=TRUE)
          delta <- x - mean
          mean <- mean + delta / n
          sumsq <- sumsq + delta * (x - mean)
       }
       cat("\n")
-      #close(f)
       if(verbose)
          cat("Read", n, "rows in total\n")
       list(mean=mean, sd=sqrt(sumsq / (n - 1)))
@@ -691,18 +683,17 @@ setMethod("scale",
 test.scale <- function()
 {
    set.seed(487134919)
-   x <- matrix(rnorm(100 * 10), 100, 10)
-   #fname <- "foo.dat"
-   #f <- open(fname, "wb")
-   #writeBin(as.numeric(t(x)), f, "numeric")
-   #close(f)
+   n <- 100L
+   p <- 10L
+   x <- matrix(rnorm(n * p), n, p)
 
-   g <- gmatrixMem(x, nrow=100, ncol=10)
-   s1 <- mean(x[,1])
-   s2 <- scaler(g)
-   
+   g <- gmatrixMem(x, nrow=n, ncol=p)
+   mean <- colMeans(x)
+   sd <- apply(x, 2, sd)
+   s <- scale(g)
 
-
+   mean((drop(s$mean) - mean)^2)
+   mean((drop(s$sd) - sd)^2)
 }
 
 #crossval <- function(nfolds=3, nreps=1, ...)
