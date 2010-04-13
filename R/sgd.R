@@ -156,7 +156,7 @@ setMethod("coefficients", signature(object="sgd"), function(object) object@B)
 # Fitting functions
 #
 
-sgd.gmatrix <- function(g,
+sgd.gmatrix <- function(g, B=null,
       model=c("linear", "logistic", "hinge", "multinomial"),
       lambda1=0, lambda2=0, lambdaE=0, alpha=numeric(), threshold=1e-3,
       stepsize=1e-3, maxepochs=50, anneal=stepsize, blocksize=1,
@@ -200,13 +200,19 @@ sgd.gmatrix <- function(g,
    if(model == "multinomial") {
       classes <- sort(unique(drop(g@companions$y)))
       K <- length(classes)
-      b <- b.best <- matrix(0, nf + 1, K)
-      colnames(b) <- colnames(b.best) <- 1:ncol(b)
-      g@companions$y <- sapply(classes, function(i) as.numeric(y == i))
+      if(is.null(B)) {
+	 B <- matrix(0, nf + 1, K)
+	 colnames(B) <- 1:ncol(B)
+      }
+      g@companions$y <- sapply(classes, function(i) {
+	 as.numeric(g@companions$y == i)
+      })
    } else {
-      b <- b.best <- matrix(0, nf + 1, 1)
+      if(is.null(B))
+	 B <- matrix(0, nf + 1, 1)
       #names(b) <- names(b.best) <- 1:length(b)
    }
+   B.best <- B
 
    losses <- rep(0, maxepochs + 1)
    epoch <- epoch.best <- 2
@@ -225,41 +231,43 @@ sgd.gmatrix <- function(g,
 	    x <- r[[1]]
 	    y <- r[[2]]$y
 	    x <- cbind(1, (x - scale$mean) / scale$norm)
-	    l <- loss(x, y, b)
+	    l <- loss(x, y, B)
 	    
 	    ## Ignore samples that make NaN loss (especially relevant for log
 	    ## loss) 
 	    #if(is.nan(l)) {
 	    #   stepsize <- stepsize / 2
 	    #} else {
-	    cat(i, "loss:", l, "\n")
+	    cat(i, "loss:", l, "\r")
 	       losses[epoch] <- losses[epoch] + l
-	       grad <- dloss(x, y, b) + lambda2 * b + lambda1 * sign(b)
-	       b <- b - stepsize * grad
+	       grad <- dloss(x, y, B) + lambda2 * B + lambda1 * sign(B)
+	       B <- B - stepsize * grad
 	    #}
 	 } else if(verbose) {
 	    cat("skipping", i, "\n")
 	 }
       }
+      cat("\n")
 
-      #if(epoch > 2 && losses[epoch] > losses[epoch-1]) {
-      #   stepsize <- stepsize / 2 
-      #} else {
-      #   stepsize <- stepsize / (1 + anneal)
-         b.best <- b
+      # Step halving
+      if(epoch > 2 && losses[epoch] > losses[epoch-1]) {
+         stepsize <- stepsize / 2 
+      } else {
+         stepsize <- stepsize / (1 + anneal)
+         B.best <- B
          epoch.best <- epoch
-      #}
-      #   
+      }
+         
       if(verbose) {
          cat("Epoch", epoch-1, ", loss:", losses[epoch], "diff:",
-               abs(losses[epoch-1] - losses[epoch]), 
+               losses[epoch-1] - losses[epoch], 
                "stepsize:", stepsize,
                "\n")
       }
 
-      #if(epoch >= maxepochs
-	# || abs(losses[epoch-1] - losses[epoch]) < threshold) {
-      if(epoch >= maxepochs){
+      # Check for convergence
+      if(epoch >= maxepochs
+	 || abs(losses[epoch-1] - losses[epoch]) < threshold) {
 	 break
       }
       epoch <- epoch + 1
@@ -270,13 +278,7 @@ sgd.gmatrix <- function(g,
 	 "loss:", losses[epoch.best], "\n")
    }
 
-
-#   structure(b.best, class="sgd", model=model, lambda1=lambda1,
-#	 lambda2=lambda2, features=features, subset=subset,
-#	 p=g@ncol, epochs=epoch-1, nsamples=length(y), source="file",
-#	 losses=if(saveloss) losses[-1][2:epoch-1] else NULL,
-#	 stepsize=stepsize, anneal=anneal)
-   new("sgd", B=b.best, model=model, lambda1=lambda1, lambda2=lambda2,
+   new("sgd", B=B.best, model=model, lambda1=lambda1, lambda2=lambda2,
 	 lambdaE=lambdaE, alpha=alpha, subset=subset, features=features,
 	 stepsize=stepsize, anneal=anneal,
 	 loss=if(saveloss) losses[-1][2:epoch-1] else as.numeric(NA)
@@ -335,61 +337,61 @@ gd <- function(x, y, model=c("linear", "logistic", "hinge", "multinomial"),
    structure(b, class="gd", model=model, iter=i)
 }
 
-sgd.matrix <- function(x, y,
-      model=c("linear", "logistic", "hinge", "multinomial"),
-      lambda1=0, lambda2=0, lambdaE=0,
-      alpha=NULL, threshold=1e-3, stepsize=1 / nrow(x),
-      maxepochs=1, anneal=stepsize, maxiter=Inf, scale=TRUE)
-{
-   model <- match.arg(model)
-   loss <- switch(model, linear=l2loss, logistic=logloss, hinge=hingeloss,
-	 multinomial=mlogloss)
-   dloss <- switch(model, linear=l2dloss, logistic=logdloss, hinge=hingedloss,
-	 multinomial=mlogdloss)
-
-   x <- if(scale) {
-      cbind(1, scale(x))
-   } else {
-      cbind(1, x)
-   }
-   p <- ncol(x)
-   n <- nrow(x)
-   n <- min(maxiter, n)
-
-   # Don't penalise intercept
-   lambda1 <- c(0, rep(lambda1, p - 1))
-   lambda2 <- c(0, rep(lambda2, p - 1))
-   
-   if(model == "multinomial") {
-      K <- length(unique(y))
-      b <- b.best <- matrix(0, nf + 1, K)
-      colnames(b) <- colnames(b.best) <- 1:ncol(b)
-      y <- sapply(1:K, function(i) as.numeric(y == i))
-   } else {
-      b <- b.best <- rep(0, nf + 1)
-      names(b) <- names(b.best) <- 1:length(b)
-   }
-
-   l.old <- Inf
-   l.new <- 0
-   epoch <- 1
-   while(epoch <= maxepochs && max(abs(l.old - l.new)) >= threshold)
-   {
-      l.new <- l.old <- 0
-      for(i in 1:n)
-      {
-	 grad <- (dloss(x[i, , drop=FALSE], y[i], b)
-	       + lambda2 * b + lambda1 * sign(b))
-	 l <- loss(x[i, , drop=FALSE], y[i], b) 
-	 l.new <- l.new + l
-	 b <- b - stepsize * grad
-      }
-      stepsize <- stepsize / (1 + anneal)
-      cat("Epoch", epoch, ", loss:", l.new, "\n")
-      epoch <- epoch + 1
-   }
-   structure(b, class="sgd", model=model, p=p, epochs=epoch, source="matrix") 
-}
+#sgd.matrix <- function(x, y,
+#      model=c("linear", "logistic", "hinge", "multinomial"),
+#      lambda1=0, lambda2=0, lambdaE=0,
+#      alpha=NULL, threshold=1e-3, stepsize=1 / nrow(x),
+#      maxepochs=1, anneal=stepsize, maxiter=Inf, scale=TRUE)
+#{
+#   model <- match.arg(model)
+#   loss <- switch(model, linear=l2loss, logistic=logloss, hinge=hingeloss,
+#	 multinomial=mlogloss)
+#   dloss <- switch(model, linear=l2dloss, logistic=logdloss, hinge=hingedloss,
+#	 multinomial=mlogdloss)
+#
+#   x <- if(scale) {
+#      cbind(1, scale(x))
+#   } else {
+#      cbind(1, x)
+#   }
+#   p <- ncol(x)
+#   n <- nrow(x)
+#   n <- min(maxiter, n)
+#
+#   # Don't penalise intercept
+#   lambda1 <- c(0, rep(lambda1, p - 1))
+#   lambda2 <- c(0, rep(lambda2, p - 1))
+#   
+#   if(model == "multinomial") {
+#      K <- length(unique(y))
+#      b <- b.best <- matrix(0, nf + 1, K)
+#      colnames(b) <- colnames(b.best) <- 1:ncol(b)
+#      y <- sapply(1:K, function(i) as.numeric(y == i))
+#   } else {
+#      b <- b.best <- rep(0, nf + 1)
+#      names(b) <- names(b.best) <- 1:length(b)
+#   }
+#
+#   l.old <- Inf
+#   l.new <- 0
+#   epoch <- 1
+#   while(epoch <= maxepochs && max(abs(l.old - l.new)) >= threshold)
+#   {
+#      l.new <- l.old <- 0
+#      for(i in 1:n)
+#      {
+#	 grad <- (dloss(x[i, , drop=FALSE], y[i], b)
+#	       + lambda2 * b + lambda1 * sign(b))
+#	 l <- loss(x[i, , drop=FALSE], y[i], b) 
+#	 l.new <- l.new + l
+#	 b <- b - stepsize * grad
+#      }
+#      stepsize <- stepsize / (1 + anneal)
+#      cat("Epoch", epoch, ", loss:", l.new, "\n")
+#      epoch <- epoch + 1
+#   }
+#   structure(b, class="sgd", model=model, p=p, epochs=epoch, source="matrix") 
+#}
 
 #sgd.character <- function(x="", y, p,
 #      model=c("linear", "logistic", "hinge", "multinomial"),
@@ -658,16 +660,18 @@ scaler <- function(x="", nrow=NULL, p, blocksize=1, verbose=TRUE)
    while(n < nrow)
    {
       dat <- readBin(f, what="numeric", blocksize * p)
-      m <- min(blocksize, length(dat) / p) 
       if(length(dat) == 0)
 	 break
       if(verbose)
-	 cat("Read", m, "row/s\n")
+	 cat("Read", n, "row/s\r")
+
+      m <- min(blocksize, length(dat) / p) 
       x <- matrix(dat, nrow=m, ncol=p, byrow=TRUE)
       musum <- musum + colSums(x)
       sumsq <- sumsq + colSums(x^2)
       n <- n + m
    }
+   cat("\n")
    close(f)
    if(verbose)
       cat("Read", n, "rows in total\n")
@@ -716,11 +720,10 @@ setMethod("predict", signature(object="sgd"),
 
       for(i in 1:g@nrow)
       {
-	 cat("reading sample", i, "")
+	 cat("reading sample", i, "\r")
          r <- nextRow(g, loop=FALSE)
          if(length(r) == 0)
             stop("Read zero-length data from gmatrix")
-	 cat("\n")
          
           if(subset[i]) {
                x <- r[[1]]
@@ -731,6 +734,7 @@ setMethod("predict", signature(object="sgd"),
             cat("skipping", i, "\n")
           }
       }
+      cat("\n")
       
       if(type == "linear") {
          pr
