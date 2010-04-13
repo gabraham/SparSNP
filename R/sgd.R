@@ -238,7 +238,7 @@ sgd.gmatrix <- function(g, B=NULL,
 	    #if(is.nan(l)) {
 	    #   stepsize <- stepsize / 2
 	    #} else {
-	    cat(i, "loss:", l, "\r")
+	    cat(i, "sample loss:", l, "\r")
 	       losses[epoch] <- losses[epoch] + l
 	       grad <- dloss(x, y, B) + lambda2 * B + lambda1 * sign(B)
 	       B <- B - stepsize * grad
@@ -249,9 +249,10 @@ sgd.gmatrix <- function(g, B=NULL,
       }
       cat("\n")
 
-      # Step halving
+      # Step halving and greedy choice of best parameters
       if(epoch > 2 && losses[epoch] > losses[epoch-1]) {
          stepsize <- stepsize / 2 
+	 B <- B.best
       } else {
          stepsize <- stepsize / (1 + anneal)
          B.best <- B
