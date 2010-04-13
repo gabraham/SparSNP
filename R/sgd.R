@@ -687,7 +687,6 @@ setMethod("scale",
       list(mean=mean, norm=sqrt(sumsq / n))
    }
 )
-reset(g); scale(g)
 
 test.scale <- function()
 {
