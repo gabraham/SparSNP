@@ -245,7 +245,7 @@ sgd.gmatrix <- function(g, B=NULL,
 	       losses[epoch] <- losses[epoch] + l
 	       cat(B[1:3, 1:3], "\n")
 	       grad <- dloss(x, y, B) + lambda2 * B + lambda1 * sign(B)
-	       B <- B - stepsize * grad
+	       #B <- B - stepsize * grad
 	    #}
 	 } else if(verbose) {
 	    cat("skipping", i, "\n")
