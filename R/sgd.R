@@ -243,6 +243,7 @@ sgd.gmatrix <- function(g, B=NULL,
 	    #} else {
 	    cat(i, "sample loss:", l, "\r")
 	       losses[epoch] <- losses[epoch] + l
+	       cat(B[1:3, 1:3], "\n")
 	       grad <- dloss(x, y, B) + lambda2 * B + lambda1 * sign(B)
 	       B <- B - stepsize * grad
 	    #}
