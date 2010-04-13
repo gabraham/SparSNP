@@ -56,7 +56,7 @@ setMethod("nextRow", signature("gmatrixDisk"),
 	    companions=lapply(object@companions, function(x) {
 	       x[object@env[["i"]] - 1L, , drop=FALSE]
 	    }))
-      } else m
+      } else list(x=m)
    }
 )
 
@@ -77,7 +77,7 @@ setMethod("nextRow", signature("gmatrixMem"),
 	    companions=lapply(object@companions, function(x) {
 	       x[object@env[["i"]] - 1L, , drop=FALSE]
 	    }))
-      } else r
+      } else list(x=r)
    }
 )
 

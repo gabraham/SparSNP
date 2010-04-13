@@ -651,34 +651,59 @@ sgdsvd <- function(x, maxiter=100)
 # Utility functions
 #
 
-# Get scale and L2 norm from disk file, for each column
-scaler <- function(x="", nrow=NULL, p, blocksize=1, verbose=TRUE)
-{
-   if(is.null(nrow))
-      nrow <- Inf
-   musum <- rep(0, p)
-   sumsq <- rep(0, p)
-   f <- file(x, "rb")
-   n <- 0
-   while(n < nrow)
-   {
-      dat <- readBin(f, what="numeric", blocksize * p)
-      if(length(dat) == 0)
-	 break
-      if(verbose)
-	 cat("Read", n, "row/s\r")
+setGeneric("scale", function(object, center, scale, ...) standardGeneric("scale"))
 
-      m <- min(blocksize, length(dat) / p) 
-      x <- matrix(dat, nrow=m, ncol=p, byrow=TRUE)
-      musum <- musum + colSums(x)
-      sumsq <- sumsq + colSums(x^2)
-      n <- n + m
+# Get scale and L2 norm from disk file, for each column
+# http://en.wikipedia.org/wiki/Algorithms_for_calculating_variance
+setMethod("scale",
+   signature(object="gmatrix", center="ANY", scale="ANY"),
+   function(object, center=TRUE, scale=TRUE, verbose=TRUE) {
+
+      mean <- numeric(g@ncol)
+      sumsq <- numeric(g@ncol)
+      #f <- file(x, "rb")
+      n <- 0
+      while(n < g@nrow)
+      {
+         #dat <- readBin(f, what="numeric", p)
+         #if(length(dat) == 0)
+         #	 break
+
+         x <- nextRow(g, loop=FALSE)[[1]]
+	 cat(class(x), dim(x), "\n")
+         m <- length(x) / g@ncol
+         #if(verbose)
+	    cat("Read", n, "row/s\n")
+         n <- n + m
+         #x <- matrix(dat, nrow=m, ncol=p, byrow=TRUE)
+         delta <- x - mean
+         mean <- mean + delta / n
+         sumsq <- sumsq + delta * (x - mean)
+      }
+      cat("\n")
+      #close(f)
+      if(verbose)
+         cat("Read", n, "rows in total\n")
+      list(mean=mean, norm=sqrt(sumsq / n))
    }
-   cat("\n")
-   close(f)
-   if(verbose)
-      cat("Read", n, "rows in total\n")
-   list(mean=musum / n, norm=sqrt(sumsq) / n)
+)
+reset(g); scale(g)
+
+test.scale <- function()
+{
+   set.seed(487134919)
+   x <- matrix(rnorm(100 * 10), 100, 10)
+   #fname <- "foo.dat"
+   #f <- open(fname, "wb")
+   #writeBin(as.numeric(t(x)), f, "numeric")
+   #close(f)
+
+   g <- gmatrixMem(x, nrow=100, ncol=10)
+   s1 <- mean(x[,1])
+   s2 <- scaler(g)
+   
+
+
 }
 
 #crossval <- function(nfolds=3, nreps=1, ...)
