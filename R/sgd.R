@@ -203,6 +203,7 @@ sgd.gmatrix <- function(g, B=NULL,
       if(is.null(B)) {
 	 B <- matrix(0, nf + 1, K)
 	 colnames(B) <- 1:ncol(B)
+      } else {
 	 if(verbose)
 	    cat("assigning old coefficients\n")
       }
