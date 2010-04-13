@@ -203,6 +203,8 @@ sgd.gmatrix <- function(g, B=NULL,
       if(is.null(B)) {
 	 B <- matrix(0, nf + 1, K)
 	 colnames(B) <- 1:ncol(B)
+	 if(verbose)
+	    cat("assigning old coefficients\n")
       }
       g@companions$y <- sapply(classes, function(i) {
 	 as.numeric(g@companions$y == i)
@@ -654,7 +656,11 @@ sgdsvd <- function(x, maxiter=100)
 setGeneric("scale", function(object, center, scale, ...) standardGeneric("scale"))
 
 # Get mean and sd from disk file, for each column
-# http://en.wikipedia.org/wiki/Algorithms_for_calculating_variance
+#
+# http://en.wikipedia.org/wiki/Algorithms_for_calculating_variance, citing
+# Donald E. Knuth (1998). The Art of Computer Programming, volume 2: Seminumerical
+# Algorithms, 3rd edn., p. 232. Boston: Addison-Wesley.
+#
 setMethod("scale",
    signature(object="gmatrix", center="ANY", scale="ANY"),
    function(object, center=TRUE, scale=TRUE, verbose=TRUE) {
