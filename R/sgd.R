@@ -156,7 +156,7 @@ setMethod("coefficients", signature(object="sgd"), function(object) object@B)
 # Fitting functions
 #
 
-sgd.gmatrix <- function(g, B=null,
+sgd.gmatrix <- function(g, B=NULL,
       model=c("linear", "logistic", "hinge", "multinomial"),
       lambda1=0, lambda2=0, lambdaE=0, alpha=numeric(), threshold=1e-3,
       stepsize=1e-3, maxepochs=50, anneal=stepsize, blocksize=1,
