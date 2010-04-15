@@ -136,11 +136,11 @@ setClass("gd",
    representation(B="matrix", model="character",
       lambda1="numeric", lambda2="numeric", lambdaE="numeric", alpha="numeric",
       threshold="numeric", stepsize="numeric", anneal="numeric", subset="logical",
-      features="integer", loss="numeric"),
+      features="integer", loss="numeric", losses="numeric"),
    prototype(B=matrix(), model=character(), lambda1=numeric(),
       lambda2=numeric(), lambdaE=numeric(), alpha=numeric(),
       threshold=numeric(), stepsize=numeric(), anneal=numeric(), subset=logical(),
-      features=integer(), loss=numeric())
+      features=integer(), loss=numeric(), losses=numeric())
 )
 
 setClass("sgd", contains="gd")
@@ -156,7 +156,7 @@ setMethod("coefficients", signature(object="sgd"), function(object) object@B)
 # Fitting functions
 #
 
-sgd.gmatrix <- function(g, B=NULL,
+sgd.gmatrix <- function(g, B=NULL, loss=0,
       model=c("linear", "logistic", "hinge", "multinomial"),
       lambda1=0, lambda2=0, lambdaE=0, alpha=numeric(), threshold=1e-3,
       stepsize=1e-3, maxepochs=50, anneal=stepsize, blocksize=1,
@@ -171,13 +171,13 @@ sgd.gmatrix <- function(g, B=NULL,
       subset <- rep(TRUE, g@nrow)
 
    model <- match.arg(model)
-   loss <- switch(model,
+   lossfunc <- switch(model,
 	 linear=l2loss,
 	 logistic=logloss,
 	 hinge=hingeloss,
 	 multinomial=mlogloss
    )
-   dloss <- switch(model,
+   dlossfunc <- switch(model,
 	 linear=l2dloss,
       	 logistic=logdloss,
       	 hinge=hingedloss,
@@ -217,8 +217,8 @@ sgd.gmatrix <- function(g, B=NULL,
    }
    B.best <- B
 
-   losses <- rep(0, maxepochs + 1)
-   epoch <- epoch.best <- 2
+   losses <- rep(loss, maxepochs + 1)
+   epoch <- epoch.best <- 1
 
    # Loop over epochs
    while(TRUE)
@@ -234,18 +234,18 @@ sgd.gmatrix <- function(g, B=NULL,
 	    x <- r[[1]]
 	    y <- r[[2]]$y
 	    x <- cbind(1, (x - scale$mean) / scale$sd)
-	    l <- loss(x, y, B)
+	    l <- lossfunc(x, y, B)
 	    
 	    ## Ignore samples that make NaN loss (especially relevant for log
 	    ## loss) 
 	    #if(is.nan(l)) {
 	    #   stepsize <- stepsize / 2
 	    #} else {
-	    cat(i, "sample loss:", l, "\r")
+	    #cat(i, "sample loss:", l, "\r")
 	       losses[epoch] <- losses[epoch] + l
-	       cat(B[1:3, 1:3], "\n")
-	       grad <- dloss(x, y, B) + lambda2 * B + lambda1 * sign(B)
-	       #B <- B - stepsize * grad
+	    cat(i, "sample loss:", l, "\r")
+	       grad <- dlossfunc(x, y, B) + lambda2 * B + lambda1 * sign(B)
+	       B <- B - stepsize * grad
 	    #}
 	 } else if(verbose) {
 	    cat("skipping", i, "\n")
@@ -254,7 +254,7 @@ sgd.gmatrix <- function(g, B=NULL,
       cat("\n")
 
       # Step halving and greedy choice of best parameters
-      if(epoch > 2 && losses[epoch] > losses[epoch-1]) {
+      if(epoch > 1 && losses[epoch] > losses[epoch-1]) {
          stepsize <- stepsize / 2 
 	 B <- B.best
 	 if(verbose)
@@ -266,7 +266,7 @@ sgd.gmatrix <- function(g, B=NULL,
       }
          
       if(verbose) {
-         cat("Epoch", epoch-1, ", loss:", losses[epoch], "diff:",
+         cat("Epoch", epoch, ", loss:", losses[epoch], "diff:",
                losses[epoch-1] - losses[epoch], 
                "stepsize:", stepsize,
                "\n")
@@ -274,21 +274,21 @@ sgd.gmatrix <- function(g, B=NULL,
 
       # Check for convergence
       if(epoch >= maxepochs
-	 || abs(losses[epoch-1] - losses[epoch]) < threshold) {
+	 || epoch > 1 && abs(losses[epoch-1] - losses[epoch]) < threshold) {
 	 break
       }
       epoch <- epoch + 1
    }
 
    if(verbose) {
-      cat("Best solution at Epoch", epoch.best - 1,
+      cat("Best solution at Epoch", epoch.best,
 	 "loss:", losses[epoch.best], "\n")
    }
 
    new("sgd", B=B.best, model=model, lambda1=lambda1, lambda2=lambda2,
 	 lambdaE=lambdaE, alpha=alpha, subset=subset, features=features,
-	 stepsize=stepsize, anneal=anneal,
-	 loss=if(saveloss) losses[-1][2:epoch-1] else as.numeric(NA)
+	 stepsize=stepsize, anneal=anneal, loss=losses[epoch.best],
+	 losses=if(saveloss) losses[2:epoch-1] else as.numeric(NA)
    )
 }
 
@@ -732,7 +732,7 @@ setMethod("predict", signature(object="sgd"),
       
       if(!model %in% c("logistic", "multinomial") && type == "response")
       {
-         stop("don't know what to do with model of type '", attr(b, "model"),
+         stop("don't know what to do with model of type '", model,
                "and type=response")
       }
 
@@ -753,7 +753,7 @@ setMethod("predict", signature(object="sgd"),
           if(subset[i]) {
                x <- r[[1]]
                y <- r[[2]]$y
-               x <- cbind(1, (x - scale$mean) / scale$norm)[, c(1, features + 1), drop=FALSE]
+               x <- cbind(1, (x - scale$mean) / scale$sd)[, c(1, features + 1), drop=FALSE]
                pr[i, ] <- x %*% B
           } else if(verbose) {
             cat("skipping", i, "\n")
