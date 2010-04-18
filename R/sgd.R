@@ -158,8 +158,8 @@ setMethod("coefficients", signature(object="sgd"), function(object) object@B)
 
 sgd.gmatrix <- function(g, B=NULL, loss=0,
       model=c("linear", "logistic", "hinge", "multinomial"),
-      lambda1=0, lambda2=0, lambdaE=0, alpha=numeric(), threshold=1e-3,
-      stepsize=1e-3, maxepochs=50, anneal=stepsize, blocksize=1,
+      lambda1=0, lambda2=1e-3, lambdaE=0, alpha=numeric(), threshold=1e-3,
+      stepsize=1e-5, maxepochs=50, anneal=stepsize, blocksize=1,
       maxiter=Inf, subset=logical(), saveloss=FALSE, scale=list(mean=0, sd=1),
       features=1:g@ncol,
       verbose=TRUE, ylevels=NULL)
@@ -215,11 +215,31 @@ sgd.gmatrix <- function(g, B=NULL, loss=0,
 	 B <- matrix(0, nf + 1, 1)
       #names(b) <- names(b.best) <- 1:length(b)
    }
-   B.best <- B
+   #B.best <- B
 
    losses <- rep(loss, maxepochs + 1)
-   epoch <- epoch.best <- 1
+   #epoch <- epoch.best <- 1
+   epoch <- 1
 
+   #w <- sapply(t0s, function(t0) {
+   #   reset(g)
+   #   Btmp <- B
+   #   loss <- sapply(1:20, function(i) {
+   #      r <- nextRow(g)
+   #   	 x <- r[[1]]
+   #   	 y <- r[[2]]$y
+   #   	 x <- cbind(1, (x - scale$mean) / scale$sd)
+   #   	 grad <- dlossfunc(x, y, Btmp) + lambda2 * Btmp + lambda1 * sign(Btmp)
+   #   	 Btmp <- Btmp - t0 * grad
+   #      lossfunc(x, y, Btmp) 
+   #   })
+   #   cat("t0:", t0, "loss:", sum(loss), "\n")
+   #   sum(loss)
+   #})
+   #t0 <- t0s[which.min(w)]
+   #cat("best t0:", t0, "\n")
+
+   iter <- 1
    # Loop over epochs
    while(TRUE)
    {
@@ -235,34 +255,27 @@ sgd.gmatrix <- function(g, B=NULL, loss=0,
 	    y <- r[[2]]$y
 	    x <- cbind(1, (x - scale$mean) / scale$sd)
 	    l <- lossfunc(x, y, B)
-	    
-	    ## Ignore samples that make NaN loss (especially relevant for log
-	    ## loss) 
-	    #if(is.nan(l)) {
-	    #   stepsize <- stepsize / 2
-	    #} else {
-	    #cat(i, "sample loss:", l, "\r")
-	       losses[epoch] <- losses[epoch] + l
-	    cat(i, "sample loss:", l, "\r")
-	       grad <- dlossfunc(x, y, B) + lambda2 * B + lambda1 * sign(B)
-	       B <- B - stepsize * grad
-	    #}
-	 } else if(verbose) {
+	    losses[epoch] <- losses[epoch] + l
+	    grad <- dlossfunc(x, y, B) + lambda2 * B + lambda1 * sign(B)
+	    #stepsize <- 1 / (lambda2[2] * (t0 + iter))
+	    B <- B - stepsize * grad
+	    if(verbose > 1)
+	       cat(i, "sample loss:", l, "stepsize:", stepsize, "\n")
+	    iter <- iter + 1
+	 } else if(verbose > 1) {
 	    cat("skipping", i, "\n")
 	 }
       }
-      cat("\n")
+      if(verbose)
+	 cat("\n")
 
       # Step halving and greedy choice of best parameters
       if(epoch > 1 && losses[epoch] > losses[epoch-1]) {
          stepsize <- stepsize / 2 
-	 B <- B.best
 	 if(verbose)
 	    cat("Reduced step size\n")
       } else {
-         stepsize <- stepsize / (1 + anneal)
-         B.best <- B
-         epoch.best <- epoch
+        stepsize <- stepsize / (1 + anneal)
       }
          
       if(verbose) {
@@ -280,14 +293,9 @@ sgd.gmatrix <- function(g, B=NULL, loss=0,
       epoch <- epoch + 1
    }
 
-   if(verbose) {
-      cat("Best solution at Epoch", epoch.best,
-	 "loss:", losses[epoch.best], "\n")
-   }
-
-   new("sgd", B=B.best, model=model, lambda1=lambda1, lambda2=lambda2,
+   new("sgd", B=B, model=model, lambda1=lambda1, lambda2=lambda2,
 	 lambdaE=lambdaE, alpha=alpha, subset=subset, features=features,
-	 stepsize=stepsize, anneal=anneal, loss=losses[epoch.best],
+	 stepsize=stepsize, anneal=anneal, loss=losses[epoch],
 	 losses=if(saveloss) losses[2:epoch-1] else as.numeric(NA)
    )
 }
@@ -703,10 +711,24 @@ test.scale <- function()
    mean((drop(s$sd) - sd)^2)
 }
 
-#crossval <- function(nfolds=3, nreps=1, ...)
-#{
-#
-#}
+crossval <- function(g, nsamples, nfolds=3, nreps=1, eval=auc, ...)
+{
+   lapply(1:nreps, function(rep) {
+      folds <- sample(nfolds, size=nsamples, replace=TRUE)
+      lapply(1:nfolds, function(fold) {
+	 reset(g)
+	 m <- sgd.gmatrix(g, subset=folds != fold, ...)
+	 reset(g)
+	 pr.train <- predict(m, g, subset=folds != fold, ...)
+	 reset(g)
+	 pr.test <- predict(m, g, subset=folds == fold, ...)
+	 res.train <- eval(pr.train, g@companions$y[folds != fold])
+	 res.test <- eval(pr.test, g@companions$y[folds == fold])
+	 cat("train:", res.train, "test:", res.test, "\n")
+	 list(model=m, results=c(train=res.train, test=res.test))
+      })
+   })
+}
 
 ################################################################################
 # 
@@ -722,7 +744,8 @@ test.scale <- function()
 #setGeneric("predict", function(object, x, ...) standardGeneric("predict"))
 
 setMethod("predict", signature(object="sgd"),
-   function(object, g, scale=list(mean=0, norm=1), type=c("linear", "response"), subset=NULL) {
+   function(object, g, scale=list(mean=0, sd=1),
+      type=c("linear", "response"), subset=NULL, verbose=TRUE, ...) {
 
       if(!is(g, "gmatrix"))
 	 stop("can only handle x of class gmatrix")
@@ -745,7 +768,6 @@ setMethod("predict", signature(object="sgd"),
 
       for(i in 1:g@nrow)
       {
-	 cat("reading sample", i, "\r")
          r <- nextRow(g, loop=FALSE)
          if(length(r) == 0)
             stop("Read zero-length data from gmatrix")
@@ -753,21 +775,25 @@ setMethod("predict", signature(object="sgd"),
           if(subset[i]) {
                x <- r[[1]]
                y <- r[[2]]$y
-               x <- cbind(1, (x - scale$mean) / scale$sd)[, c(1, features + 1), drop=FALSE]
+               x <- cbind(1, (x - scale$mean) / scale$sd)
+	       x <- x[, c(1, features + 1), drop=FALSE]
                pr[i, ] <- x %*% B
-          } else if(verbose) {
+          } else if(verbose > 1) {
             cat("skipping", i, "\n")
           }
       }
-      cat("\n")
+      if(verbose)
+	 cat("\n")
       
-      if(type == "linear") {
+      res <- if(type == "linear") {
          pr
       } else if(model == "logistic") {
          1 / (1 + exp(-pr))
       } else if(model == "multinomial") {
          exp(pr) / rowSums(exp(pr))
       }
+
+      res[subset,,drop=FALSE]
    }
 )
 

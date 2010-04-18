@@ -34,15 +34,12 @@ setGeneric("nextRow", function(object, ...) standardGeneric("nextRow"))
 
 setMethod("nextRow", signature("gmatrixDisk"),
    function(object, loop=TRUE, companions=TRUE, blocksize=1) {
-      #dat <- readBin(object@env[["file"]], what="numeric", n=object@ncol)
-      #if(length(dat) == 0 || object@env[["i"]] == object@nrow) {
       if(object@env[["i"]] > object@nrow)
       {
 	 if(loop) {
 	    object@env[["i"]] <- 1L
 	    close(object@env[["file"]])
 	    object@env[["file"]] <- file(object@x, "rb")
-	    #dat <- readBin(object@env[["file"]], what="numeric", n=object@ncol)
 	 } else {
 	    return(numeric(0))
 	 }
@@ -53,8 +50,8 @@ setMethod("nextRow", signature("gmatrixDisk"),
 	 ncol=object@ncol, byrow=TRUE)
       if(companions && length(object@companions) > 0) {
 	 list(x=m,
-	    companions=lapply(object@companions, function(x) {
-	       x[object@env[["i"]] - 1L, , drop=FALSE]
+	    companions=lapply(object@companions, function(z) {
+	       z[object@env[["i"]] - 1L, , drop=FALSE]
 	    }))
       } else list(x=m)
    }
@@ -74,8 +71,8 @@ setMethod("nextRow", signature("gmatrixMem"),
       object@env[["i"]] <- object@env[["i"]] + 1L
       if(companions && length(object@companions) > 0) {
 	 list(x=r,
-	    companions=lapply(object@companions, function(x) {
-	       x[object@env[["i"]] - 1L, , drop=FALSE]
+	    companions=lapply(object@companions, function(z) {
+	       z[object@env[["i"]] - 1L, , drop=FALSE]
 	    }))
       } else list(x=r)
    }
@@ -94,6 +91,14 @@ setMethod("reset", signature("gmatrixDisk"),
       object@env[["i"]] <- 1
       close(object@env[["file"]])
       object@env[["file"]] <- file(object@x, "rb")
+   }
+)
+
+setMethod("as.matrix", signature("gmatrix"),
+   function(x) {
+      t(sapply(1:x@nrow, function(i) {
+	 nextRow(x, loop=FALSE)$x
+      }))
    }
 )
 
