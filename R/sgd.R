@@ -156,10 +156,16 @@ setMethod("coefficients", signature(object="sgd"), function(object) object@B)
 # Fitting functions
 #
 
+truncate <- function(x, epsilon=0)
+{
+   x[abs(x) <= epsilon] <- 0
+   x
+}
+
 sgd.gmatrix <- function(g, B=NULL, loss=0,
       model=c("linear", "logistic", "hinge", "multinomial"),
       lambda1=0, lambda2=1e-3, lambdaE=0, alpha=numeric(), threshold=1e-3,
-      stepsize=1e-5, maxepochs=50, anneal=stepsize, blocksize=1,
+      stepsize=1e-5, maxepochs=50, anneal=stepsize, trunc=1e-6, blocksize=1,
       maxiter=Inf, subset=logical(), saveloss=FALSE, scale=list(mean=0, sd=1),
       features=1:g@ncol,
       verbose=TRUE, ylevels=NULL)
@@ -277,6 +283,9 @@ sgd.gmatrix <- function(g, B=NULL, loss=0,
       } else {
         stepsize <- stepsize / (1 + anneal)
       }
+
+      if(!is.null(trunc))
+	 B <- truncate(B, trunc)
          
       if(verbose) {
          cat("Epoch", epoch, ", loss:", losses[epoch], "diff:",
