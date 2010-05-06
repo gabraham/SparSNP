@@ -41,11 +41,16 @@ void gmatrix_nextrow(gmatrix *g, sample *s, int loop)
    }
    else if(loop)
    {
-      fclose(g->file);
-      g->file = fopen(g->filename, "rb");
-      g->i = 0;
+      gmatrix_reset(g);
       fread(s->x, sizeof(double), g->p, g->file);
       s->y = g->y[g->i];
    }
+}
+
+void gmatrix_reset(gmatrix *g)
+{
+   fclose(g->file);
+   g->file = fopen(g->filename, "rb");
+   g->i = 0;
 }
 
