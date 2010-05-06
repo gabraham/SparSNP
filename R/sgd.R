@@ -52,8 +52,8 @@ logloss <- function(x, y, b)
 # estimated coefficients as a binary logistic!
 logdloss <- function(x, y, b)
 {
-   p <- exp(x %*% b) 
-   crossprod(x, p / (1 + p) - y)
+   pr <- exp(x %*% b) 
+   crossprod(x, pr / (1 + pr) - y)
 }
 
 # Multinomial logistic
@@ -268,18 +268,21 @@ sgd.gmatrix <- function(g, B=NULL, loss=0,
 	    x <- cbind(1, (x - scale$mean) / scale$sd)
 	    l <- lossfunc(x, y, B)
 	    losses[epoch] <- losses[epoch] + l
+	    cat("loss:", l, "\n")
 	    grad <- dlossfunc(x, y, B) + lambda2 * B + lambda1 * sign(B)
+	    cat(grad, "\n") 
 	    #stepsize <- 1 / (lambda2[2] * (t0 + iter))
 	    B <- B - stepsize * grad
 	    if(verbose > 1)
 	       cat(i, "sample loss:", l, "stepsize:", stepsize, "\n")
 	    iter <- iter + 1
+	    cat("B:", B, "\n")
 	 } else if(verbose > 1) {
 	    cat("skipping", i, "\n")
 	 }
       }
-      if(verbose)
-	 cat("\n")
+      #if(verbose)
+      #	 cat("\n")
 
       # Step halving and greedy choice of best parameters
       if(epoch > 1 && losses[epoch] > losses[epoch-1]) {
@@ -311,7 +314,8 @@ sgd.gmatrix <- function(g, B=NULL, loss=0,
    new("sgd", B=B, model=model, lambda1=lambda1, lambda2=lambda2,
 	 lambdaE=lambdaE, alpha=alpha, subset=subset, features=features,
 	 stepsize=stepsize, anneal=anneal, loss=losses[epoch],
-	 losses=if(saveloss) losses[2:epoch-1] else as.numeric(NA)
+	 #losses=if(saveloss) losses[2:epoch-1] else as.numeric(NA)
+	 losses=losses
    )
 }
 

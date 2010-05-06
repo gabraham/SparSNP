@@ -50,12 +50,8 @@ double auc(double *p, int *y, int n)
    }
 
    for(i = 0 ; i < m1 ; i++)
-   {
       for(j = 0 ; j < m2 ; j++)
-      {
 	 s += y1[i] > y2[j] + 0.5 * (y1[i] == y2[k]);
-      }
-   }
 
    return s / (m1 * m2);
 }
@@ -74,13 +70,17 @@ double dotprod(double *a, double *b, int m)
    return s;
 }
 
+double logloss_pt(double *x, double *beta, int y, int p)
+{
+   return -(double)y * dotprod(x, beta, p) + log(1 + exp(dotprod(x, beta, p)));
+}
+
 double logloss(double **x, double *beta, int *y, int n, int p)
 {
    int i;
    double loss = 0;
    for(i = 0 ; i < n ; i++)
-      loss += -(double)y[i] * dotprod(x[i], beta, p) 
-	    + log(1 + exp(dotprod(x[i], beta, p)));
+      loss += logloss_pt(x[i], beta, y[i], p);
    return loss;
 }
 
@@ -89,7 +89,7 @@ void logdloss(double *x, double *beta, int y, int p, double* grad)
    int i;
    double pr = exp(dotprod(x, beta, p));
    for(i = 0 ; i < p ; i++)
-      grad[i] = x[i] * pr / (1 + pr) - (double)y;
+      grad[i] = x[i] * (pr / (1 + pr) - (double)y);
 }
 
 void sgd(double **x, int *y, int n, int p, double maxstepsize,
@@ -97,26 +97,37 @@ void sgd(double **x, int *y, int n, int p, double maxstepsize,
 {
    int epoch,
        i, j;
-   double *grad = malloc((p + 1)* sizeof(double));
-   double loss = 0.0;
+   double *grad = malloc(p * sizeof(double));
+   double loss;
    double stepsize = maxstepsize;
+   double l;
 
    for(epoch = 1 ; epoch <= maxepoch ; epoch++)
    {
+      loss = 0;
       for(i = 0 ; i < n ; i++)
       { 
 	 logdloss(x[i], beta, y[i], p, grad);
+	 l = logloss_pt(x[i], beta, y[i], p);
+	 loss += l;
+	 printf("loss: %.20f\n", l);
 	 for(j = 0 ; j < p ; j++)
 	 {
 	    beta[j] -= stepsize * (grad[j] 
 	       + lambda1 * sign(grad[j]) 
 	       + lambda2 * grad[j] * grad[j]);
+
+	    printf("%.20f ", grad[j]);
 	 }
+	 printf("\nB:");
+	 for(j = 0 ; j < p ; j++)
+	    printf("%.20f ", beta[j]);
+	 printf("\n");
+
       }
-      /*stepsize = maxstepsize / (1 + epoch); */
-      stepsize = stepsize / (1 + maxstepsize); 
-      loss = logloss(x, beta, y, n, p);
-      printf("Epoch %d Loss: %.4f stepsize: %.15f\n", epoch, loss, stepsize);
+      /* stepsize = maxstepsize / (1 + epoch); */
+      /*stepsize = stepsize / (1 + maxstepsize);*/
+      printf("Epoch %d Loss: %.5f stepsize: %.15f\n", epoch, loss, stepsize);
    }
 
    free(grad);
@@ -126,7 +137,7 @@ void predict_logloss(double **x, double *beta, int n, int p, double *yhat)
 {
     int i;
     for(i = 0 ; i < n ; i++)
-      yhat[i] = 1 / (1 + exp(-dotprod(x[i], beta, p)));
+       yhat[i] = 1 / (1 + exp(-dotprod(x[i], beta, p)));
 }
 
 void writeout(char* file, double **x, int *y, double n, double p)
@@ -140,9 +151,9 @@ void writeout(char* file, double **x, int *y, double n, double p)
       for(j = 0 ; j < p ; j++)
       {
 	 if(j < p - 1)
-	    fprintf(out, "%.9f,", x[i][j]);
+	    fprintf(out, "%.20f,", x[i][j]);
 	 else
-	    fprintf(out, "%.9f\n", x[i][j]);
+	    fprintf(out, "%.20f\n", x[i][j]);
       }
    }
 
@@ -165,12 +176,10 @@ void scale(double **x, int n, int p, double **s)
 	 mean[j] = mean[j] + delta / (i + 1);
 	 sumsq[j] = sumsq[j] + delta * (x[i][j] - mean[j]);
       }
-      printf("%.5f ", mean[j]);
 
       for(i = 0 ; i < n ; i++)
 	 s[i][j] = (x[i][j] - mean[j]) / sqrt(sumsq[j] / (n - 1));
    }
-   printf("\n");
 
    free(mean);
    free(sumsq);
@@ -210,8 +219,8 @@ void scale_test()
 
 int main()
 {
-   int n = 1e1,
-       p = 3; /* not including intercept */
+   int n = 1e2,
+       p = 5; /* not including intercept */
    int i, j;
    double **xtmp = malloc(n * sizeof(double*));
    double **x = malloc(n * sizeof(double*));
@@ -223,6 +232,14 @@ int main()
    double s;
    int epoch;
    double a;
+   double beta[6] = {
+      0.02868122934529422630,
+      0.00589510962641765467,
+      0.01292440317403653616,
+      0.01379179813873407726,
+      -0.00277741472501956063,
+      0.00460259943833483346
+   }; 
 
    srand48(12345);
 
@@ -249,6 +266,10 @@ int main()
    }
    free(tmp);
 
+
+
+
+
    y = malloc(n * sizeof(int));
    yhat = malloc(n * sizeof(double));
    for(i = 0 ; i < n ; i++)
@@ -259,14 +280,17 @@ int main()
       y[i] = drand48() <= plogis(s) ? 1 : 0;
    }
 
+   s = logloss(x, beta, y, n, p + 1);
+   printf("loss: %.20f\n", s);
+
    writeout("out.csv", x, y, n, p + 1);
 
    /*for(epoch = 1 ; epoch <= 5 ; epoch++) */
-   epoch = 10;
+   epoch = 1;
    {
       for(j = 0 ; j < p + 1; j++)
          betahat[j] = 0.0;
-      sgd(x, y, n, p + 1, 1e-4, epoch, betahat, 0, 0);
+      sgd(x, y, n, p + 1, 1e-3, epoch, betahat, 0, 0);
       predict_logloss(x, betahat, n, p + 1, yhat);
       /* for(i = 0 ; i < n ; i++)
 	 printf("%d %.5f %d\n", i, yhat[i], y[i]);  */
@@ -275,8 +299,9 @@ int main()
       printf("Accuracy: %.3f AUC: %.3f\n\n", acc, a);
    }
 
+   printf("betahat: ");
    for(i = 0 ; i < p + 1 ; i++)
-      printf("%.4f ", betahat[i]);
+      printf("%.7f ", betahat[i]);
    printf("\n");
    
    for(i = 0 ; i < n ; i++)
