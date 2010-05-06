@@ -102,3 +102,9 @@ setMethod("as.matrix", signature("gmatrix"),
    }
 )
 
+setMethod("dim", signature("gmatrix"),
+   function(x) {
+      c(x@nrow, x@ncol)
+   }
+)
+

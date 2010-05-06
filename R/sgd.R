@@ -82,6 +82,17 @@ coxdloss <- function(x, y, b)
 {
 }
 
+# AdaBoost aka exponential loss
+exploss <- function(x, y, b)
+{ 
+   sum(exp(-y * x %*% b))
+}
+
+expdloss <- function(x, y, b)
+{
+   y <- drop(y)
+   crossprod(drop(exp(-y * x %*% b)) * x, -y)
+}
 
 #################################################################################
 #
@@ -163,7 +174,7 @@ truncate <- function(x, epsilon=0)
 }
 
 sgd.gmatrix <- function(g, B=NULL, loss=0,
-      model=c("linear", "logistic", "hinge", "multinomial"),
+      model=c("linear", "logistic", "hinge", "multinomial", "boosting"),
       lambda1=0, lambda2=1e-3, lambdaE=0, alpha=numeric(), threshold=1e-3,
       stepsize=1e-5, maxepochs=50, anneal=stepsize, trunc=1e-6, blocksize=1,
       maxiter=Inf, subset=logical(), saveloss=FALSE, scale=list(mean=0, sd=1),
@@ -181,13 +192,15 @@ sgd.gmatrix <- function(g, B=NULL, loss=0,
 	 linear=l2loss,
 	 logistic=logloss,
 	 hinge=hingeloss,
-	 multinomial=mlogloss
+	 multinomial=mlogloss,
+	 boosting=exploss
    )
    dlossfunc <- switch(model,
 	 linear=l2dloss,
       	 logistic=logdloss,
       	 hinge=hingedloss,
-      	 multinomial=mlogdloss
+      	 multinomial=mlogdloss,
+	 boosting=expdloss
    )
 
    nf <- length(features)
@@ -206,20 +219,13 @@ sgd.gmatrix <- function(g, B=NULL, loss=0,
    if(model == "multinomial") {
       classes <- sort(unique(drop(g@companions$y)))
       K <- length(classes)
-      if(is.null(B)) {
-	 B <- matrix(0, nf + 1, K)
-	 colnames(B) <- 1:ncol(B)
-      } else {
-	 if(verbose)
-	    cat("assigning old coefficients\n")
-      }
+      B <- matrix(0, nf + 1, K)
+      colnames(B) <- 1:ncol(B)
       g@companions$y <- sapply(classes, function(i) {
 	 as.numeric(g@companions$y == i)
       })
    } else {
-      if(is.null(B))
-	 B <- matrix(0, nf + 1, 1)
-      #names(b) <- names(b.best) <- 1:length(b)
+      B <- matrix(0, nf + 1, 1)
    }
    #B.best <- B
 
@@ -310,16 +316,17 @@ sgd.gmatrix <- function(g, B=NULL, loss=0,
 }
 
 # Batch gradient descent
-gd <- function(x, y, model=c("linear", "logistic", "hinge", "multinomial"),
+gd <- function(x, y,
+      model=c("linear", "logistic", "hinge", "multinomial", "boosting"),
       lambda1=0, lambda2=0, lambdaE=0, alpha=NULL,
       threshold=1e-3, stepsize=1 / nrow(x), anneal=stepsize, maxiter=100,
       scale=TRUE)
 {
    model <- match.arg(model)
    loss <- switch(model, linear=l2loss, logistic=logloss, hinge=hingeloss,
-	 multinomial=mlogloss)
+	 multinomial=mlogloss, boosting=exploss)
    dloss <- switch(model, linear=l2dloss, logistic=logdloss, hinge=hingedloss,
-	 multinomial=mlogdloss)
+	 multinomial=mlogdloss, boosting=expdloss)
 
    K <- length(unique(y))
    x <- if(scale) {
@@ -772,6 +779,8 @@ setMethod("predict", signature(object="sgd"),
          subset <- rep(TRUE, g@nrow)
 
       features <- object@features
+      if(length(features) == 0)
+	 features <- 1:g@ncol
       B <- coef(object)
       pr <- matrix(0, g@nrow, ncol(B))
 
