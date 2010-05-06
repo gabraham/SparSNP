@@ -268,15 +268,15 @@ sgd.gmatrix <- function(g, B=NULL, loss=0,
 	    x <- cbind(1, (x - scale$mean) / scale$sd)
 	    l <- lossfunc(x, y, B)
 	    losses[epoch] <- losses[epoch] + l
-	    cat("loss:", l, "\n")
+	    #cat("loss:", l, "\n")
 	    grad <- dlossfunc(x, y, B) + lambda2 * B + lambda1 * sign(B)
-	    cat(grad, "\n") 
+	    #cat(grad, "\n") 
 	    #stepsize <- 1 / (lambda2[2] * (t0 + iter))
 	    B <- B - stepsize * grad
 	    if(verbose > 1)
 	       cat(i, "sample loss:", l, "stepsize:", stepsize, "\n")
 	    iter <- iter + 1
-	    cat("B:", B, "\n")
+	    #cat("B:", B, "\n")
 	 } else if(verbose > 1) {
 	    cat("skipping", i, "\n")
 	 }
