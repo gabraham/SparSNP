@@ -1,57 +1,51 @@
 #include <stdio.h>
+#include <stdlib.h>
 
 #include "gmatrix.h"
+
+void sample_init(sample *s, int p)
+{
+   s->p = p;
+   s->x = malloc(sizeof(double) * p);
+}
+
+void sample_free(sample *s)
+{
+   free(s->x);
+}
 
 void gmatrix_init(gmatrix *g, char *filename, int n, int p, int *y)
 {
    g->file = fopen(filename, "rb");
-   g->i = 1;
+   g->filename = filename;
+   g->i = 0;
    g->n = n;
    g->p = p;
    g->y = y;
 }
 
-void gmatrix_nextrow(gmatrix *g, double *x)
+void gmatrix_free(gmatrix *g)
 {
-   if(g->i < g->n)
+   /*free(g->y);*/
+   fclose(g->file);
+   /*free(g->filename); */
+}
+
+void gmatrix_nextrow(gmatrix *g, sample *s, int loop)
+{
+   if(g->i < g->n - 1)
    {
-      fread(x, sizeof(double), g->p, g->file);
+      fread(s->x, sizeof(double), g->p, g->file);
+      s->y = g->y[g->i];
       g->i ++;
    }
-   else
+   else if(loop)
    {
       fclose(g->file);
       g->file = fopen(g->filename, "rb");
-      g->i = 1;
+      g->i = 0;
+      fread(s->x, sizeof(double), g->p, g->file);
+      s->y = g->y[g->i];
    }
-}
-
-void gmatrix_test()
-{
-   int n = 1e2,
-       p = 5;
-   int i, j;
-   double **x = malloc(n * sizeof(double*));
-   double s;
-   int *y;
-   
-   srand48(12345);
-
-   y = malloc(n * sizeof(int));
-   
-
-   for(i = 0 ; i < n ; i++)
-   {
-      x[i] = malloc(p * sizeof(double));
-      s = 1;
-      for(j = 0 ; j < p ; j++)
-      {
-	 x[i][j] = drand48() - 0.5;
-	 s += x[i][j];
-      }
-      y[i] = drand48() <= plogis(s) ? 1 : 0;
-      
-   }
-
 }
 
