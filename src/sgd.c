@@ -9,6 +9,12 @@
 #include "loss.h"
 #include "evaluation.h"
 
+void writebeta(char*, double*, int);
+double sgd_gmatrix(gmatrix *, double,
+      int, double *, double, double,
+      double, int);
+void predict_logloss(gmatrix *, double *, double *);
+void scale(gmatrix *, double *, double *);
 
 double sgd_gmatrix(gmatrix *g, double maxstepsize,
       int maxepoch, double *beta, double lambda1, double lambda2,
@@ -17,9 +23,8 @@ double sgd_gmatrix(gmatrix *g, double maxstepsize,
    int epoch = 1, i, j;
    double *grad = malloc((g->p + 1) * sizeof(double));
    double *x = malloc((g->p + 1) * sizeof(double));
-   double prevloss, loss;
+   double prevloss = 0, loss;
    double stepsize = maxstepsize;
-   double l;
    sample sm;
 
    sample_init(&sm, g->p);
@@ -39,8 +44,7 @@ double sgd_gmatrix(gmatrix *g, double maxstepsize,
 	    x[j+1] = (sm.x[j] - g->mean[j]) / g->sd[j];
 
 	 logdloss(x, beta, sm.y, g->p + 1, grad);
-	 l = logloss_pt(x, beta, sm.y, g->p + 1);
-	 loss += l;
+	 loss += logloss_pt(x, beta, sm.y, g->p + 1);
 
 	 /* Update weights */
 	 for(j = 0 ; j < g->p + 1; j++)
@@ -51,8 +55,12 @@ double sgd_gmatrix(gmatrix *g, double maxstepsize,
 	 }
       }
       stepsize = stepsize / (1 + maxstepsize);
+
       if(verbose)
-	 printf("Epoch %d Loss: %.5f stepsize: %.15f\n", epoch, loss, stepsize);
+      {
+	 printf("Epoch %d Loss: %.5f stepsize: %.15f\n",
+	       epoch, loss, stepsize);
+      }
 
       if(fabs(prevloss - loss) <= threshold)
       {
@@ -76,16 +84,17 @@ void predict_logloss(gmatrix *g, double *beta, double *yhat)
 {
    int i, j;
    sample sm;
-   double *x = malloc(sizeof(double) * g->p);
+   double *x = malloc(sizeof(double) * (g->p + 1));
 
    sample_init(&sm, g->p);
 
    for(i = 0 ; i < g->n ; i++)
    {
       gmatrix_nextrow(g, &sm);
+      x[0] = 1;
       for(j = 0 ; j < g->p ; j++)
-	 x[j] = (sm.x[j] - g->mean[j]) / g->sd[j];
-      yhat[i] = 1 / (1 + exp(-dotprod(x, beta, g->p)));
+	 x[j+1] = (sm.x[j] - g->mean[j]) / g->sd[j];
+      yhat[i] = 1 / (1 + exp(-dotprod(x, beta, g->p + 1)));
    } 
 
    sample_free(&sm);
@@ -123,8 +132,8 @@ void scale(gmatrix *g, double *mean, double *sd)
 
    sample_init(&sm, p);
  
-   /* sd is really the sum of squares, not the SD, but we use the same
-    * variable to save memory */
+   /* sd is really the sum of squares, not the SD, but we
+    * use the same variable to save memory */
 
    for(i = 0 ; i < n ; i++)
    {
@@ -231,6 +240,16 @@ void scale(gmatrix *g, double *mean, double *sd)
    return err;
 }*/
 
+void writebeta(char* file, double* beta, int p)
+{
+   int i;
+   FILE* out = fopen(file, "w");
+   for(i = 0 ; i < p ; i++)
+      fprintf(out, "%.20f\n", beta[i]);
+   fflush(out);
+   fclose(out);
+}
+
 int main(int argc, char* argv[])
 {
    int i;
@@ -239,6 +258,8 @@ int main(int argc, char* argv[])
    gmatrix g;
    char *filename = NULL;
    char *model = NULL;
+   char *betafile = "beta.csv";
+   char *predfile = "pred.csv";
    int n = 0, p = 0;
    int verbose = FALSE;
 
@@ -301,13 +322,27 @@ int main(int argc, char* argv[])
       {
 	 verbose = TRUE;
       }
+      else if(strcmp(argv[i], "-vv") == 0)
+      {
+	 verbose = 2;
+      }
+      else if(strcmp(argv[i], "-b") == 0)
+      {
+	 i++;
+	 betafile = argv[i];
+      }
+      else if(strcmp(argv[i], "-p") == 0)
+      {
+	 i++;
+	 predfile = argv[i];
+      }
    }
 
    if(filename == NULL || model == NULL || n == 0 || p == 0)
    {
       printf("usage: sgd -m <model> -f <filename> -n <#samples> -p \
-<#variables> | -e <maxepochs> -s <stepsize> -l1 <lambda1> -l2 <lambda2> \
--t <threshold> \n");
+<#variables> | -b <beta filename> -p <pred filename> -e <maxepochs> \
+-s <stepsize> -l1 <lambda1> -l2 <lambda2> -t <threshold> -v -vv\n");
       return EXIT_FAILURE;
    }
 
@@ -324,21 +359,18 @@ int main(int argc, char* argv[])
 
    if(verbose)
       printf("Starting SGD ...\n");
-   sgd_gmatrix(&g, stepsize, maxepochs, betahat, lambda1, lambda2, threshold,
-	 verbose);
+   sgd_gmatrix(&g, stepsize, maxepochs, betahat,
+	 lambda1, lambda2, threshold, verbose);
 
    gmatrix_reset(&g);
    yhat = malloc(n * sizeof(double));
    predict_logloss(&g, betahat, yhat);
 
-   if(verbose)
-   {
-      printf("betahat: ");
-      for(i = 0 ; i < p + 1 ; i++)
-         printf("%.7f ", betahat[i]);
-      printf("\n");
-   }
-   
+   writebeta(betafile, betahat, p + 1);
+   writebeta(predfile, yhat, n);
+
+   printf("AUC: %.5f\n", gmatrix_auc(yhat, &g));
+
    gmatrix_free(&g);
    free(betahat);
    free(yhat);

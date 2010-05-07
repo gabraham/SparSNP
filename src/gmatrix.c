@@ -54,7 +54,21 @@ void gmatrix_nextrow(gmatrix *g, sample *s)
    s->y = s->x[0];
    /*printf("%.2f\n", s->y);*/
    s->x++;
-   g->i ++;
+   g->i++;
+}
+
+double gmatrix_next_y(gmatrix *g)
+{
+   double y;
+   if(g->i == g->n)
+      gmatrix_reset(g);
+
+   fread(&y, sizeof(double), 1, g->file);
+   g->i++;
+
+   /* ignore the x vector*/
+   fseek(g->file, sizeof(double) * g->p, SEEK_CUR);
+   return y;
 }
 
 void gmatrix_reset(gmatrix *g)
