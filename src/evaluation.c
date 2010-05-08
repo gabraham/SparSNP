@@ -70,6 +70,8 @@ double gmatrix_auc(double *yhat, gmatrix *g)
    y1 = malloc(m1 * sizeof(double));
    y2 = malloc(m2 * sizeof(double));
 
+   printf("%d %d\n", m1, m2);
+
    gmatrix_reset(g);
 
    i = j = k = 0;

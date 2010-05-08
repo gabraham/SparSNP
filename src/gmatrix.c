@@ -67,7 +67,7 @@ double gmatrix_next_y(gmatrix *g)
    g->i++;
 
    /* ignore the x vector*/
-   fseek(g->file, sizeof(double) * g->p, SEEK_CUR);
+   fseek(g->file, sizeof(double) * (g->p + 1), SEEK_CUR);
    return y;
 }
 
