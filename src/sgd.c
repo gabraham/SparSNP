@@ -370,6 +370,7 @@ int main(int argc, char* argv[])
    writebeta(predfile, yhat, n);
 
    printf("AUC: %.5f\n", gmatrix_auc(yhat, &g));
+   printf("Accuracy: %.5f\n", gmatrix_accuracy(yhat, &g, 0.5));
 
    gmatrix_free(&g);
    free(betahat);

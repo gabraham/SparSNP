@@ -108,4 +108,15 @@ double gmatrix_auc(double *yhat, gmatrix *g)
    return s / (m1 * m2);
 }
 
+double gmatrix_accuracy(double *yhat, gmatrix *g, double threshold)
+{
+   int i;
+   double s;
+   for(i = 0 ; i < g->n ; i++)
+   {
+      s += (yhat[i] >= threshold) == (int)gmatrix_next_y(g);
+   }
+   return s / g->n;
+}
+
 
