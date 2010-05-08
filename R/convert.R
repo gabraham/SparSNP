@@ -1,6 +1,6 @@
 
 n <- 1000
-p <- 100
+p <- 1e2
 beta <- rnorm(p + 1)
 y <- numeric(n)
 
@@ -8,8 +8,8 @@ f <- file("out.bin", "wb")
 for(i in 1:n)
 {
    cat(i, "\r")
-   x <- c(1, rnorm(p))
-   y[i] <- ifelse(runif(1) <= drop(plogis(x %*% beta)), 1, 0)
+   x <- rnorm(p)
+   y[i] <- ifelse(runif(1) <= drop(plogis(c(1, x) %*% beta)), 1, 0)
    writeBin(y[i], f)
    writeBin(x, f)
 }

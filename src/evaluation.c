@@ -61,9 +61,15 @@ double gmatrix_auc(double *yhat, gmatrix *g)
    int m1 = 0, m2;
    double *y1, *y2;
    double y;
+   double z;
 
    for(i = 0 ; i < g->n ; i++)
-      m1 += gmatrix_next_y(g);
+   {
+      z = gmatrix_next_y(g);
+      /*printf("%d %.5f\n", i, z);*/
+      m1 += (int)z;
+   }
+   printf("\n");
 
    m2 = g->n - m1;
 
