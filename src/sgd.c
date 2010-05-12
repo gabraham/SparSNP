@@ -14,7 +14,6 @@ double sgd_gmatrix(gmatrix *, double,
       int, double *, double, double,
       double, int);
 void predict_logloss(gmatrix *, double *, double *);
-void scale(gmatrix *, double *, double *);
 
 double sgd_gmatrix(gmatrix *g, double maxstepsize,
       int maxepoch, double *beta, double lambda1, double lambda2,
@@ -23,7 +22,7 @@ double sgd_gmatrix(gmatrix *g, double maxstepsize,
    int epoch = 1, i, j;
    double *grad = malloc((g->p + 1) * sizeof(double));
    double *x = malloc((g->p + 1) * sizeof(double));
-   double prevloss = 0, loss;
+   double prevloss = 0, loss = 0;
    double stepsize = maxstepsize;
    sample sm;
 
@@ -120,40 +119,6 @@ void writeout(char* file, double **x, int *y, double n, double p)
 
    fflush(out);
    fclose(out);
-}
-
-void scale(gmatrix *g, double *mean, double *sd)
-{
-   int i, j;
-   int n = g->n;
-   int p = g->p;
-   double delta;
-   sample sm;
-
-   sample_init(&sm, p);
- 
-   /* sd is really the sum of squares, not the SD, but we
-    * use the same variable to save memory */
-
-   for(i = 0 ; i < n ; i++)
-   {
-      gmatrix_nextrow(g, &sm);
-
-     for(j = 0 ; j < p ; j++)
-     {
-         if(i == 0)
-            mean[j] = sd[j] = 0;
-
-         delta = sm.x[j] - mean[j];
-         mean[j] += delta / (i + 1);
-         sd[j] += delta * (sm.x[j] - mean[j]);
-      }
-   }
-
-   for(j = 0 ; j < p ; j++)
-      sd[j] = sqrt(sd[j] / (n - 1));
-
-   sample_free(&sm);
 }
 
 /* void scale_test()
@@ -273,65 +238,65 @@ int main(int argc, char* argv[])
 
    for(i = 1 ; i < argc ; i++)
    {
-      if(strcmp(argv[i], "-f") == 0)
+      if(strcmp2(argv[i], "-f"))
       {
 	 i++;
 	 filename = argv[i];
       }
-      else if(strcmp(argv[i], "-m") == 0)
+      else if(strcmp2(argv[i], "-m"))
       {
 	 i++;
 	 model = argv[i];
       }
-      else if(strcmp(argv[i], "-n") == 0)
+      else if(strcmp2(argv[i], "-n"))
       {
 	 i++;
-	 n = atoi(argv[i]);
+	 n = (int)atof(argv[i]);
       }
-      else if(strcmp(argv[i], "-p") == 0)
+      else if(strcmp2(argv[i], "-p"))
       {
 	 i++;
-	 p = atoi(argv[i]);
+	 p = (int)atof(argv[i]);
       }
-      else if(strcmp(argv[i], "-e") == 0)
+      else if(strcmp2(argv[i], "-e"))
       {
 	 i++;
-	 maxepochs = atoi(argv[i]);
+	 maxepochs = (int)atof(argv[i]);
       }
-      else if(strcmp(argv[i], "-s") == 0)
+      else if(strcmp2(argv[i], "-s"))
       {
 	 i++;
 	 stepsize = atof(argv[i]);
       }
-      else if(strcmp(argv[i], "-l1") == 0)
+      else if(strcmp2(argv[i], "-l1"))
       {
 	 i++;
 	 lambda1 = atof(argv[i]);
       }
-      else if(strcmp(argv[i], "-l2") == 0)
+      else if(strcmp2(argv[i], "-l2"))
       {
 	 i++;
 	 lambda2 = atof(argv[i]);
       }
-      else if(strcmp(argv[i], "-t") == 0)
+      else if(strcmp2(argv[i], "-t"))
       {
 	 i++;
 	 threshold = atof(argv[i]);
       }
-      else if(strcmp(argv[i], "-v") == 0)
+      else if(strcmp2(argv[i], "-v"))
       {
 	 verbose = TRUE;
       }
-      else if(strcmp(argv[i], "-vv") == 0)
+      else if(strcmp2(argv[i], "-vv"))
       {
 	 verbose = 2;
       }
-      else if(strcmp(argv[i], "-b") == 0)
+      else if(strcmp2(argv[i], "-b"))
       {
 	 i++;
 	 betafile = argv[i];
       }
-      else if(strcmp(argv[i], "-p") == 0)
+      else if(strcmp2(argv[i], "-pr"))
       {
 	 i++;
 	 predfile = argv[i];
@@ -341,19 +306,20 @@ int main(int argc, char* argv[])
    if(filename == NULL || model == NULL || n == 0 || p == 0)
    {
       printf("usage: sgd -m <model> -f <filename> -n <#samples> -p \
-<#variables> | -b <beta filename> -p <pred filename> -e <maxepochs> \
--s <stepsize> -l1 <lambda1> -l2 <lambda2> -t <threshold> -v -vv\n");
+<#variables> | -b <beta filename> -pr <pred filename> -e <maxepochs> \
+-s <stepsize> -l1 <lambda1> -l2 <lambda2> -t <threshold> \
+-pr <prediction file> -v -vv\n");
       return EXIT_FAILURE;
    }
 
    betahat = calloc(p + 1, sizeof(double));
    gmatrix_init(&g, filename, n, p);
 
-   if(verbose)
+   /*if(verbose)
       printf("Scaling ... ");
    scale(&g, g.mean, g.sd);
    if(verbose)
-      printf("done\n");
+      printf("done\n");*/
 
    gmatrix_reset(&g);
 

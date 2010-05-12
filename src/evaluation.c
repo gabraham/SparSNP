@@ -111,7 +111,7 @@ double gmatrix_auc(double *yhat, gmatrix *g)
 double gmatrix_accuracy(double *yhat, gmatrix *g, double threshold)
 {
    int i;
-   double s;
+   double s = 0;
    for(i = 0 ; i < g->n ; i++)
    {
       s += (yhat[i] >= threshold) == (int)gmatrix_next_y(g);
