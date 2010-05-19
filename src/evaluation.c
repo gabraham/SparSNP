@@ -54,48 +54,44 @@ double auc(double *yhat, int *y, int n)
    return s / (m1 * m2);
 }
 
-double gmatrix_auc(double *yhat, gmatrix *g)
+double gmatrix_auc(double *yhat, gmatrix *g, int *trainf, int ntrain)
 {
-   int i, j, k;
+   int i, j, k, l;
    double s = 0;
    int m1 = 0, m2;
    double *y1, *y2;
-   double y;
-   double z;
+   dtype z = 0;
 
    for(i = 0 ; i < g->n ; i++)
-   {
-      z = gmatrix_next_y(g);
-      /*printf("%d %.5f\n", i, z);*/
-      m1 += (int)z;
-   }
-   printf("\n");
+      if(gmatrix_next_y(g) && trainf[i])
+	 m1++;
 
-   m2 = g->n - m1;
-
+   m2 = ntrain - m1;
    y1 = malloc(m1 * sizeof(double));
    y2 = malloc(m2 * sizeof(double));
 
-   printf("%d %d\n", m1, m2);
+   printf("Positives: %d  Negatives: %d\n", m1, m2);
 
    gmatrix_reset(g);
 
-   i = j = k = 0;
-   while(i < g->n)
+   j = k = l = 0;
+   for(i = 0 ; i < g->n ; i++)
    {
-      y = gmatrix_next_y(g); 
-      if(y == 1)
+      z = gmatrix_next_y(g);
+      if(trainf[i])
       {
-	 y1[j] = yhat[i];
-	 j++;
+	 if(z == ONE)
+      	 {
+      	    y1[j] = yhat[l];
+      	    j++;
+      	 }
+      	 else
+      	 {
+      	    y2[k] = yhat[l];
+      	    k++;
+      	 }
+	 l++;
       }
-      else
-      {
-	 y2[k] = yhat[i];
-	 k++;
-      }
-
-      i++;
    }
 
    for(i = 0 ; i < m1 ; i++)
@@ -108,15 +104,24 @@ double gmatrix_auc(double *yhat, gmatrix *g)
    return s / (m1 * m2);
 }
 
-double gmatrix_accuracy(double *yhat, gmatrix *g, double threshold)
+double gmatrix_accuracy(double *yhat, gmatrix *g, double threshold,
+      int *trainf, int ntrain)
 {
-   int i;
+   int i, k = 0;
    double s = 0;
+   dtype z;
+
    for(i = 0 ; i < g->n ; i++)
    {
-      s += (yhat[i] >= threshold) == (int)gmatrix_next_y(g);
+      z = gmatrix_next_y(g);
+
+      if(trainf[i])
+      {
+	 s += (yhat[k] >= threshold) && (z == ONE);
+	 k++;
+      }
    }
-   return s / g->n;
+   return s / ntrain;
 }
 
 

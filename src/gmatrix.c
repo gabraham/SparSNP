@@ -57,17 +57,17 @@ void gmatrix_nextrow(gmatrix *g, sample *s)
    g->i++;
 }
 
-double gmatrix_next_y(gmatrix *g)
+dtype gmatrix_next_y(gmatrix *g)
 {
-   double y;
+   dtype y;
    if(g->i == g->n)
       gmatrix_reset(g);
 
-   fread(&y, sizeof(double), 1, g->file);
+   fread(&y, sizeof(dtype), 1, g->file);
    g->i++;
 
    /* ignore the x vector*/
-   fseek(g->file, sizeof(double) * (g->p ), SEEK_CUR);
+   fseek(g->file, sizeof(dtype) * (g->p), SEEK_CUR);
    return y;
 }
 

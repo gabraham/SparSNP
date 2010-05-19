@@ -4,20 +4,22 @@
 #include <string.h>
 #include <assert.h>
 
-#include "common.h"
+/* #include "common.h" */
 #include "gmatrix.h"
+#include "sgd.h"
 #include "loss.h"
 #include "evaluation.h"
 
-void writebeta(char*, double*, int);
-double sgd_gmatrix(gmatrix *, double,
-      int, double *, double, double,
-      double, int);
-void predict_logloss(gmatrix *, double *, double *);
+/* Coordinate descent */
+/*double cd_gmatrix(gmatrix *g)
+{
+   
+}*/
 
+/* Stochastic gradient descent */
 double sgd_gmatrix(gmatrix *g, double maxstepsize,
       int maxepoch, double *beta, double lambda1, double lambda2,
-      double threshold, int verbose)
+      double threshold, int verbose, int *trainf, double trunc)
 {
    int epoch = 1, i, j;
    double *grad = malloc((g->p + 1) * sizeof(double));
@@ -25,43 +27,80 @@ double sgd_gmatrix(gmatrix *g, double maxstepsize,
    double prevloss = 0, loss = 0;
    double stepsize = maxstepsize;
    sample sm;
+   double yhat;
+   double testerr = 0;
+   double e = 0;
+   double testloss = 0;
+   double testauc = 0;
+   int ntests = 0;
 
    sample_init(&sm, g->p);
 
    while(epoch <= maxepoch)
    {
       loss = 0;
+      testloss = 0;
+      testerr = 0;
+
       for(i = 0 ; i < g->n ; i++)
       { 
 	 gmatrix_nextrow(g, &sm);
 
 	 /* Intercept */
-	 x[0] = 1;
+	 x[0] = 1.0;
 
 	 /* Scale parameters except the intercept */
 	 for(j = 0 ; j < g->p ; j++)
 	    x[j+1] = (sm.x[j] - g->mean[j]) / g->sd[j];
 
-	 logdloss(x, beta, sm.y, g->p + 1, grad);
-	 loss += logloss_pt(x, beta, sm.y, g->p + 1);
-
-	 /* Update weights */
-	 for(j = 0 ; j < g->p + 1; j++)
+	 /* train */
+	 if(trainf[i])
 	 {
-	    beta[j] -= stepsize * (grad[j] 
-	       + lambda1 * sign(grad[j]) 
-	       + lambda2 * grad[j] * grad[j]);
+	    logdloss(x, beta, sm.y, g->p + 1, grad);
+	    /* loss += logloss_pt(x, beta, sm.y, g->p + 1); */
+	    loss += logloss_pt(x, beta, sm.y, g->p + 1);
+
+	    /* Update weights */
+	    for(j = 0 ; j < g->p + 1; j++)
+	    {
+	       beta[j] -= stepsize * (grad[j] 
+	          + lambda1 * sign(grad[j]) 
+	          + lambda2 * grad[j] * grad[j]);
+	    }
+	 }
+	 /* test */
+	 else
+	 {
+	    testloss += logloss_pt(x, beta, sm.y, g->p + 1);
+	    yhat = 1 / (1 + exp(-dotprod(x, beta, g->p + 1)));
+	    testerr += (double)((yhat >= 0.5) & (int)sm.y);
+	    ntests++;
 	 }
       }
+
+      if(ntests > 0)
+      {
+	 testerr = testerr / ntests;
+	 testloss = testloss / ntests;
+      }
+      loss = loss / (g->n - ntests);
+
+      /* truncate small weights when lasso is active */
+      if(lambda1 > 0)
+         for(j = 0 ; j < g->p + 1; j++)
+	    if(fabs(beta[j]) <= trunc)
+	       beta[j] = 0;
+
       stepsize = stepsize / (1 + maxstepsize);
 
       if(verbose)
       {
-	 printf("Epoch %d Loss: %.5f stepsize: %.15f\n",
-	       epoch, loss, stepsize);
+	 printf("Epoch %d Loss: %.5f stepsize: %.15f test error: %.8f\
+ test loss: %.8f\n",
+	       epoch, loss, stepsize, testerr, testloss);
       }
 
-      if(fabs(prevloss - loss) <= threshold)
+      if(fabs(prevloss - loss) <= threshold || loss <= threshold)
       {
 	 if(verbose)
 	    printf("Termination condition met\n");
@@ -79,21 +118,26 @@ double sgd_gmatrix(gmatrix *g, double maxstepsize,
    return loss;
 }
 
-void predict_logloss(gmatrix *g, double *beta, double *yhat)
+void predict_logloss(gmatrix *g, double *beta, double *yhat, int *trainf)
 {
-   int i, j;
+   int i, j, k;
    sample sm;
    double *x = malloc(sizeof(double) * (g->p + 1));
 
    sample_init(&sm, g->p);
 
+   k = 0;
    for(i = 0 ; i < g->n ; i++)
    {
       gmatrix_nextrow(g, &sm);
-      x[0] = 1;
-      for(j = 0 ; j < g->p ; j++)
-	 x[j+1] = (sm.x[j] - g->mean[j]) / g->sd[j];
-      yhat[i] = 1 / (1 + exp(-dotprod(x, beta, g->p + 1)));
+      if(trainf[i])
+      {
+	 x[0] = 1;
+	 for(j = 0 ; j < g->p ; j++)
+	    x[j+1] = (sm.x[j] - g->mean[j]) / g->sd[j];
+	 yhat[k] = 1 / (1 + exp(-dotprod(x, beta, g->p + 1)));
+	 k++;
+      }
    } 
 
    sample_free(&sm);
@@ -205,7 +249,7 @@ void writeout(char* file, double **x, int *y, double n, double p)
    return err;
 }*/
 
-void writebeta(char* file, double* beta, int p)
+void writevector(char* file, double* beta, int p)
 {
    int i;
    FILE* out = fopen(file, "w");
@@ -219,7 +263,7 @@ int main(int argc, char* argv[])
 {
    int i;
    double *betahat;
-   double *yhat;
+   double *yhat_train, *yhat_test;
    gmatrix g;
    char *filename = NULL;
    char *model = NULL;
@@ -227,14 +271,20 @@ int main(int argc, char* argv[])
    char *predfile = "pred.csv";
    int n = 0, p = 0;
    int verbose = FALSE;
+   int *trainf, *testf;
+   int ntrain = 0, ntest = 0;
+   int cv = 1;
 
    /* Parameters */
    int maxepochs = 20;
    double stepsize = 1e-4;
    double lambda1 = 0;
    double lambda2 = 0;
-   double threshold = 1e-6;
+   double threshold = 1e-3;
+   double trunc = 1e-6;
    /* double alpha = 0; */
+
+   srand48(1234);
 
    for(i = 1 ; i < argc ; i++)
    {
@@ -301,6 +351,11 @@ int main(int argc, char* argv[])
 	 i++;
 	 predfile = argv[i];
       }
+      else if(strcmp2(argv[i], "-cv"))
+      {
+	 i++;
+	 cv = atoi(argv[i]);
+      }
    }
 
    if(filename == NULL || model == NULL || n == 0 || p == 0)
@@ -308,7 +363,7 @@ int main(int argc, char* argv[])
       printf("usage: sgd -m <model> -f <filename> -n <#samples> -p \
 <#variables> | -b <beta filename> -pr <pred filename> -e <maxepochs> \
 -s <stepsize> -l1 <lambda1> -l2 <lambda2> -t <threshold> \
--pr <prediction file> -v -vv\n");
+-pr <prediction file> -cv <cvfolds> -v -vv\n");
       return EXIT_FAILURE;
    }
 
@@ -323,24 +378,64 @@ int main(int argc, char* argv[])
 
    gmatrix_reset(&g);
 
+   trainf = malloc(sizeof(int) * g.n);
+   testf = malloc(sizeof(int) * g.n);
+
+   for(i = 0 ; i < g.n ; i++)
+   {
+      if(cv > 1)
+	 trainf[i] = drand48() >= 1.0 / cv;
+      else
+	 trainf[i] = TRUE;
+      ntrain += trainf[i];
+      testf[i] = 1 - trainf[i];
+   }
+   ntest = g.n - ntrain;
+
+   if(verbose)
+   {
+      printf("Parameters: dtype=%s maxepochs=%d stepsize=%.9f \
+lambda1=%.9f lambda2=%.9f \n",
+	    type, maxepochs, stepsize, lambda1, lambda2);
+      printf("%d training samples, %d test samples\n", ntrain, g.n - ntrain);
+   }
+
    if(verbose)
       printf("Starting SGD ...\n");
    sgd_gmatrix(&g, stepsize, maxepochs, betahat,
-	 lambda1, lambda2, threshold, verbose);
+	 lambda1, lambda2, threshold, verbose, trainf, trunc);
 
    gmatrix_reset(&g);
-   yhat = malloc(n * sizeof(double));
-   predict_logloss(&g, betahat, yhat);
+   yhat_train = malloc(ntrain * sizeof(double));
+   predict_logloss(&g, betahat, yhat_train, trainf);
 
-   writebeta(betafile, betahat, p + 1);
-   writebeta(predfile, yhat, n);
+   gmatrix_reset(&g);
+   yhat_test = malloc(ntest * sizeof(double));
+   predict_logloss(&g, betahat, yhat_test, testf);
 
-   printf("AUC: %.5f\n", gmatrix_auc(yhat, &g));
-   printf("Accuracy: %.5f\n", gmatrix_accuracy(yhat, &g, 0.5));
+   writevector(betafile, betahat, p + 1);
+   writevector(predfile, yhat_train, ntrain);
+
+   gmatrix_reset(&g);
+   printf("Training AUC: %.5f\n",
+	 gmatrix_auc(yhat_train, &g, trainf, ntrain));
+
+   
+   gmatrix_reset(&g);
+   printf("Training Error: %.5f\n", 1 - gmatrix_accuracy(yhat_train, &g, 0.5,
+	    trainf, ntrain));
+
+   gmatrix_reset(&g);
+   printf("Test AUC: %.5f\n", gmatrix_auc(yhat_test, &g, testf, ntest));
+
+   gmatrix_reset(&g);
+   printf("Test Error: %.5f\n", 1 - gmatrix_accuracy(yhat_test, &g, 0.5,
+	    testf, ntest));
 
    gmatrix_free(&g);
    free(betahat);
-   free(yhat);
+   free(yhat_train);
+   free(yhat_test);
    
    return EXIT_SUCCESS;
 }

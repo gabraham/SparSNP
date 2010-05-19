@@ -1,5 +1,8 @@
 #include <math.h>
 
+/* Used to truncate exp before infinity, which occurs at ~709 */ 
+#define MAXPROD 700
+
 double plogis(double x)
 {
    return 1 / (1 + exp(-x));
@@ -16,7 +19,8 @@ double dotprod(double *a, double *b, int m)
 
 double logloss_pt(double *x, double *beta, int y, int p)
 {
-   return -(double)y * dotprod(x, beta, p) + log(1 + exp(dotprod(x, beta, p)));
+   double d = fmin(dotprod(x, beta, p), MAXPROD);
+   return -(double)y * d + log(1 + exp(d));
 }
 
 double logloss(double **x, double *beta, int *y, int n, int p)
@@ -31,7 +35,7 @@ double logloss(double **x, double *beta, int *y, int n, int p)
 void logdloss(double *x, double *beta, int y, int p, double* grad)
 {
    int i;
-   double pr = exp(dotprod(x, beta, p));
+   double pr = exp(fmin(dotprod(x, beta, p), MAXPROD));
    for(i = 0 ; i < p ; i++)
       grad[i] = x[i] * (pr / (1 + pr) - (double)y);
 }

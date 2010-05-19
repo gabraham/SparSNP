@@ -1,25 +1,5 @@
 
 
-simulate <- function(n=5000, p=1e5, beta=rnorm(p + 1),
-      xfile="out.bin", yfile="y.csv")
-{
-   y <- numeric(n)
-   
-   f <- file(xfile, "wb")
-   for(i in 1:n)
-   {
-      cat(i, "\r")
-      x <- rnorm(p)
-      y[i] <- ifelse(runif(1) <= drop(plogis(c(1, x) %*% beta)), 1, 0)
-      writeBin(y[i], f)
-      writeBin(x, f)
-   }
-   close(f)
-   cat("\n")
-   
-   write.table(y, file=yfile, sep=",", row.names=FALSE, col.names=FALSE)
-}
-
 # Create a design matrix for discrete inputs
 design.matrix <- function(xfile.in, xfile.out, n, p)
 {
@@ -56,6 +36,23 @@ ped2bin <- function(pedfile, xfile, yfile, levl=c("A", "G", "C", "T"))
    }
 }
 
+simulate <- function(n=1000, p=100, noise=rnorm(n), outfile="sim.bin", center=TRUE, scale=TRUE)
+{
+   x <- scale(matrix(rnorm(n * p), n, p), center=center, scale=scale)
+   beta <- rnorm(p + 1)
+   y <- ifelse(runif(n) <= plogis(cbind(1, x) %*% beta + noise), 1, 0)
+
+   out <- file(outfile, "wb")
+   for(i in 1:n)
+   {
+      writeBin(object=c(y[i], as.numeric(x[i,])), con=out)
+   }
+
+   close(out)
+
+   invisible(list(x=x, y=y, beta=beta))
+}
+
 hapgen2bin <- function(hgfile, hgyfile, outfile, alleles=c(0, 1, 2), sep=" ")
 {
    fin <- file(hgfile, "rt")
@@ -67,17 +64,23 @@ hapgen2bin <- function(hgfile, hgyfile, outfile, alleles=c(0, 1, 2), sep=" ")
    i <- 1
    while(TRUE)
    {
-      y <- as.numeric(readLines(yin, n=1))
+      y <- as.integer(readLines(yin, n=1))
       if(length(y) == 0)
 	 break
       r <- readLines(fin, n=1)
       r <- strsplit(r, split=sep)[[1]]
-      x <- c(y, as.numeric(t(cont[r,])))
+      f <- factor(r, levels=alleles)
+
+      # Equivalent to calling model.matrix on the entire matrix, except for
+      # the intercept that we don't include here but is added later in SGD.
+      x <- c(y, as.integer(t(cont[r,])))
       cat(i, "y=", y, "x[1:10]:", x[1:10], "\n")
       writeBin(x, con=out)
       i <- i + 1
    }
    cat("\n")
+
+   cat("Number of variables:", length(x) - 1, "\n")
 
    close(out)
    close(fin)

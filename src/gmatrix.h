@@ -1,9 +1,10 @@
 #include <stdio.h>
+#include "common.h"
 
 typedef struct {
    char* filename;
    FILE* file;
-   double *y;
+   dtype *y;
    int n;
    int p;
    int i;
@@ -12,10 +13,10 @@ typedef struct {
 } gmatrix;
 
 typedef struct {
-   double *x;
-   double *x1; /* keep the old pointer so that we can reset x to it after
+   dtype *x;
+   dtype *x1; /* keep the old pointer so that we can reset x to it after
 	        * incrementing x, to avoid copying data */
-   double y;
+   dtype y;
    int p;
 } sample;
 
@@ -23,7 +24,7 @@ typedef struct {
 void gmatrix_init(gmatrix *, char *, int, int);
 void gmatrix_nextrow(gmatrix *, sample *);
 void gmatrix_free(gmatrix *);
-double gmatrix_next_y(gmatrix *);
+dtype gmatrix_next_y(gmatrix *);
 void gmatrix_reset(gmatrix *);
 void sample_init(sample *, int);
 void sample_free(sample *);
