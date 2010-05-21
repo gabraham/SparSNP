@@ -1,7 +1,6 @@
 #include <math.h>
 
-/* Used to truncate exp before infinity, which occurs at ~709 */ 
-#define MAXPROD 700
+#include "loss.h"
 
 double plogis(double x)
 {

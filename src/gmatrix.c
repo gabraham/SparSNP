@@ -52,7 +52,6 @@ void gmatrix_nextrow(gmatrix *g, sample *s)
    s->x = s->x1;
    fread(s->x, sizeof(double), g->p + 1, g->file);
    s->y = s->x[0];
-   /*printf("%.2f\n", s->y);*/
    s->x++;
    g->i++;
 }

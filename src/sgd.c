@@ -3,18 +3,27 @@
 #include <math.h>
 #include <string.h>
 #include <assert.h>
+#include <time.h>
 
-/* #include "common.h" */
 #include "gmatrix.h"
 #include "sgd.h"
 #include "loss.h"
 #include "evaluation.h"
 
-/* Coordinate descent */
-/*double cd_gmatrix(gmatrix *g)
+
+double softthreshold(double beta, double step)
 {
-   
-}*/
+   double d = beta - step;
+   int s = sign(beta);
+
+   if(!s)
+      return d;
+
+   if(s == sign(d))
+      return d;
+
+   return 0.0;
+}
 
 /* Stochastic gradient descent */
 double sgd_gmatrix(gmatrix *g, double maxstepsize,
@@ -24,15 +33,15 @@ double sgd_gmatrix(gmatrix *g, double maxstepsize,
    int epoch = 1, i, j;
    double *grad = malloc((g->p + 1) * sizeof(double));
    double *x = malloc((g->p + 1) * sizeof(double));
-   double prevloss = 0, loss = 0;
+   double prevloss = 0, loss = 0, bestloss = 1e9;
    double stepsize = maxstepsize;
    sample sm;
    double yhat;
    double testerr = 0;
-   double e = 0;
    double testloss = 0;
-   double testauc = 0;
+   double diff = 1e9;
    int ntests = 0;
+   double ptloss = 0;
 
    sample_init(&sm, g->p);
 
@@ -41,6 +50,7 @@ double sgd_gmatrix(gmatrix *g, double maxstepsize,
       loss = 0;
       testloss = 0;
       testerr = 0;
+      ntests = 0;
 
       for(i = 0 ; i < g->n ; i++)
       { 
@@ -53,25 +63,26 @@ double sgd_gmatrix(gmatrix *g, double maxstepsize,
 	 for(j = 0 ; j < g->p ; j++)
 	    x[j+1] = (sm.x[j] - g->mean[j]) / g->sd[j];
 
+	 ptloss = logloss_pt(x, beta, sm.y, g->p + 1); 
+
 	 /* train */
 	 if(trainf[i])
 	 {
 	    logdloss(x, beta, sm.y, g->p + 1, grad);
-	    /* loss += logloss_pt(x, beta, sm.y, g->p + 1); */
-	    loss += logloss_pt(x, beta, sm.y, g->p + 1);
+	    loss += ptloss;
 
 	    /* Update weights */
 	    for(j = 0 ; j < g->p + 1; j++)
 	    {
 	       beta[j] -= stepsize * (grad[j] 
-	          + lambda1 * sign(grad[j]) 
-	          + lambda2 * grad[j] * grad[j]);
+	          + lambda1 * sign(beta[j]) 
+	          + lambda2 * beta[j] * beta[j]);
 	    }
 	 }
 	 /* test */
 	 else
 	 {
-	    testloss += logloss_pt(x, beta, sm.y, g->p + 1);
+	    testloss += ptloss;
 	    yhat = 1 / (1 + exp(-dotprod(x, beta, g->p + 1)));
 	    testerr += (double)((yhat >= 0.5) & (int)sm.y);
 	    ntests++;
@@ -83,7 +94,10 @@ double sgd_gmatrix(gmatrix *g, double maxstepsize,
 	 testerr = testerr / ntests;
 	 testloss = testloss / ntests;
       }
+      /*printf("total loss: %.10f over %d samples\n", loss, g->n - ntests);*/
       loss = loss / (g->n - ntests);
+      if(bestloss > loss)
+	 bestloss = loss;
 
       /* truncate small weights when lasso is active */
       if(lambda1 > 0)
@@ -91,21 +105,36 @@ double sgd_gmatrix(gmatrix *g, double maxstepsize,
 	    if(fabs(beta[j]) <= trunc)
 	       beta[j] = 0;
 
-      stepsize = stepsize / (1 + maxstepsize);
+      diff = prevloss - loss;
 
       if(verbose)
       {
-	 printf("Epoch %d Loss: %.5f stepsize: %.15f test error: %.8f\
- test loss: %.8f\n",
-	       epoch, loss, stepsize, testerr, testloss);
+	 printf("Epoch %d  training loss: %.5f diff: %.5f stepsize: %.15f",
+	       epoch, loss, diff, stepsize);
+	 if(ntests > 0)
+	    printf(" test error: %.8f test loss: %.8f", testerr, testloss);
+	 printf("\n");
       }
-
-      if(fabs(prevloss - loss) <= threshold || loss <= threshold)
+ 
+      if(epoch > 1 && diff < -threshold)
+	 stepsize = fmax(stepsize / 2, 1e-20);
+      else if(fabs(diff) <= threshold)
       {
 	 if(verbose)
 	    printf("Termination condition met\n");
 	 break;
       }
+
+      /*if(epoch > 1 && fabs(bestloss - loss) > threshold || diff < -threshold)
+	 stepsize = fmax(stepsize / 2, 1e-20);
+      else if(fabs(bestloss - loss) <= threshold && fabs(diff) <= threshold)
+      {
+	 if(verbose)
+	    printf("Termination condition met, best loss %.5f\n", bestloss);
+	 break;
+      }*/
+
+      /* stepsize = maxstepsize + (bestloss - loss) / 1e6;*/
 
       prevloss = loss;
 
@@ -123,6 +152,7 @@ void predict_logloss(gmatrix *g, double *beta, double *yhat, int *trainf)
    int i, j, k;
    sample sm;
    double *x = malloc(sizeof(double) * (g->p + 1));
+   double d;
 
    sample_init(&sm, g->p);
 
@@ -135,7 +165,8 @@ void predict_logloss(gmatrix *g, double *beta, double *yhat, int *trainf)
 	 x[0] = 1;
 	 for(j = 0 ; j < g->p ; j++)
 	    x[j+1] = (sm.x[j] - g->mean[j]) / g->sd[j];
-	 yhat[k] = 1 / (1 + exp(-dotprod(x, beta, g->p + 1)));
+	 d = fmin(dotprod(x, beta, g->p + 1), MAXPROD);
+	 yhat[k] = 1 / (1 + exp(-d));
 	 k++;
       }
    } 
@@ -274,6 +305,7 @@ int main(int argc, char* argv[])
    int *trainf, *testf;
    int ntrain = 0, ntest = 0;
    int cv = 1;
+   long seed = time(NULL);
 
    /* Parameters */
    int maxepochs = 20;
@@ -281,10 +313,8 @@ int main(int argc, char* argv[])
    double lambda1 = 0;
    double lambda2 = 0;
    double threshold = 1e-3;
-   double trunc = 1e-6;
+   double trunc = 1e-9;
    /* double alpha = 0; */
-
-   srand48(1234);
 
    for(i = 1 ; i < argc ; i++)
    {
@@ -356,6 +386,11 @@ int main(int argc, char* argv[])
 	 i++;
 	 cv = atoi(argv[i]);
       }
+      else if(strcmp2(argv[i], "-seed"))
+      {
+	 i++;
+	 seed = atol(argv[i]);
+      }
    }
 
    if(filename == NULL || model == NULL || n == 0 || p == 0)
@@ -367,6 +402,7 @@ int main(int argc, char* argv[])
       return EXIT_FAILURE;
    }
 
+   srand48(seed);
    betahat = calloc(p + 1, sizeof(double));
    gmatrix_init(&g, filename, n, p);
 
@@ -416,21 +452,31 @@ lambda1=%.9f lambda2=%.9f \n",
    writevector(betafile, betahat, p + 1);
    writevector(predfile, yhat_train, ntrain);
 
+   printf("###############################\n");
+
    gmatrix_reset(&g);
    printf("Training AUC: %.5f\n",
 	 gmatrix_auc(yhat_train, &g, trainf, ntrain));
 
-   
    gmatrix_reset(&g);
-   printf("Training Error: %.5f\n", 1 - gmatrix_accuracy(yhat_train, &g, 0.5,
+   printf("Training Accuracy: %.5f\n", gmatrix_accuracy(yhat_train, &g, 0.5,
 	    trainf, ntrain));
 
-   gmatrix_reset(&g);
-   printf("Test AUC: %.5f\n", gmatrix_auc(yhat_test, &g, testf, ntest));
+   printf("\n");
 
-   gmatrix_reset(&g);
-   printf("Test Error: %.5f\n", 1 - gmatrix_accuracy(yhat_test, &g, 0.5,
-	    testf, ntest));
+   printf("###############################\n");
+
+   if(ntest > 0)
+   {
+      gmatrix_reset(&g);
+      printf("Test AUC: %.5f\n", gmatrix_auc(yhat_test, &g, testf, ntest));
+   
+      gmatrix_reset(&g);
+      printf("Test Accuracy: %.5f\n", gmatrix_accuracy(yhat_test, &g, 0.5,
+   	    testf, ntest));
+   }
+
+   printf("\n");
 
    gmatrix_free(&g);
    free(betahat);

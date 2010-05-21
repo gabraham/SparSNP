@@ -108,7 +108,7 @@ double gmatrix_accuracy(double *yhat, gmatrix *g, double threshold,
       int *trainf, int ntrain)
 {
    int i, k = 0;
-   double s = 0;
+   long s = 0;
    dtype z;
 
    for(i = 0 ; i < g->n ; i++)
@@ -117,11 +117,11 @@ double gmatrix_accuracy(double *yhat, gmatrix *g, double threshold,
 
       if(trainf[i])
       {
-	 s += (yhat[k] >= threshold) && (z == ONE);
+	 s += (yhat[k] >= threshold) == (z == ONE);
 	 k++;
       }
    }
-   return s / ntrain;
+   return (double)s / ntrain;
 }
 
 

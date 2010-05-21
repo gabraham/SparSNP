@@ -227,29 +227,9 @@ sgd.gmatrix <- function(g, B=NULL, loss=0,
    } else {
       B <- matrix(0, nf + 1, 1)
    }
-   #B.best <- B
 
    losses <- rep(loss, maxepochs + 1)
-   #epoch <- epoch.best <- 1
    epoch <- 1
-
-   #w <- sapply(t0s, function(t0) {
-   #   reset(g)
-   #   Btmp <- B
-   #   loss <- sapply(1:20, function(i) {
-   #      r <- nextRow(g)
-   #   	 x <- r[[1]]
-   #   	 y <- r[[2]]$y
-   #   	 x <- cbind(1, (x - scale$mean) / scale$sd)
-   #   	 grad <- dlossfunc(x, y, Btmp) + lambda2 * Btmp + lambda1 * sign(Btmp)
-   #   	 Btmp <- Btmp - t0 * grad
-   #      lossfunc(x, y, Btmp) 
-   #   })
-   #   cat("t0:", t0, "loss:", sum(loss), "\n")
-   #   sum(loss)
-   #})
-   #t0 <- t0s[which.min(w)]
-   #cat("best t0:", t0, "\n")
 
    iter <- 1
    # Loop over epochs
@@ -268,29 +248,23 @@ sgd.gmatrix <- function(g, B=NULL, loss=0,
 	    x <- cbind(1, (x - scale$mean) / scale$sd)
 	    l <- lossfunc(x, y, B)
 	    losses[epoch] <- losses[epoch] + l
-	    #cat("loss:", l, "\n")
 	    grad <- dlossfunc(x, y, B) + lambda2 * B + lambda1 * sign(B)
-	    #cat(grad, "\n") 
-	    #stepsize <- 1 / (lambda2[2] * (t0 + iter))
 	    B <- B - stepsize * grad
 	    if(verbose > 1)
 	       cat(i, "sample loss:", l, "stepsize:", stepsize, "\n")
 	    iter <- iter + 1
-	    #cat("B:", B, "\n")
 	 } else if(verbose > 1) {
 	    cat("skipping", i, "\n")
 	 }
       }
-      #if(verbose)
-      #	 cat("\n")
 
-      # Step halving and greedy choice of best parameters
+      # Step halving 
       if(epoch > 1 && losses[epoch] > losses[epoch-1]) {
          stepsize <- stepsize / 2 
 	 if(verbose)
 	    cat("Reduced step size\n")
       } else {
-        stepsize <- stepsize / (1 + anneal)
+	 stepsize <- stepsize / (1 + anneal)
       }
 
       if(!is.null(trunc))
@@ -314,7 +288,6 @@ sgd.gmatrix <- function(g, B=NULL, loss=0,
    new("sgd", B=B, model=model, lambda1=lambda1, lambda2=lambda2,
 	 lambdaE=lambdaE, alpha=alpha, subset=subset, features=features,
 	 stepsize=stepsize, anneal=anneal, loss=losses[epoch],
-	 #losses=if(saveloss) losses[2:epoch-1] else as.numeric(NA)
 	 losses=losses
    )
 }

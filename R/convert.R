@@ -14,32 +14,30 @@ design.matrix <- function(xfile.in, xfile.out, n, p)
 
 # Convert plink PED files to binary format
 # Creates a design matrix
-ped2bin <- function(pedfile, xfile, yfile, levl=c("A", "G", "C", "T"))
-{
-   l <- factor(levl)
-   m <- contr.treatment(l)
+#ped2bin <- function(pedfile, xfile, yfile, levl=c("A", "G", "C", "T"))
+#{
+#   l <- factor(levl)
+#   m <- contr.treatment(l)
+#
+#   fin <- file(pedfile, "rt")
+#   outx <- file(xfile, "wb")
+#   #outy <- file("
+#   y <- ""
+#
+#   while(TRUE)
+#   {
+#      r <- readLines(fin, n=1)
+#      r <- strsplit(r, split=" ")[[1]]
+#      y <- c(y, r[6])
+#      seq <- r[-(1:6)]
+#      table(seq)
+#   }
+#}
 
-   fin <- file(pedfile, "rt")
-   outx <- file(xfile, "wb")
-   #outy <- file("
-   y <- ""
-
-   while(TRUE)
-   {
-      r <- readLines(fin, n=1)
-      r <- strsplit(r, split=" ")[[1]]
-      y <- c(y, r[6])
-      seq <- r[-(1:6)]
-      table(seq)
-
-      
-   }
-}
-
-simulate <- function(n=1000, p=100, noise=rnorm(n), outfile="sim.bin", center=TRUE, scale=TRUE)
+simulate <- function(n=1000, p=100, beta=rnorm(p + 1),
+      noise=rnorm(n), outfile="sim.bin", center=TRUE, scale=TRUE)
 {
    x <- scale(matrix(rnorm(n * p), n, p), center=center, scale=scale)
-   beta <- rnorm(p + 1)
    y <- ifelse(runif(n) <= plogis(cbind(1, x) %*% beta + noise), 1, 0)
 
    out <- file(outfile, "wb")
@@ -53,7 +51,48 @@ simulate <- function(n=1000, p=100, noise=rnorm(n), outfile="sim.bin", center=TR
    invisible(list(x=x, y=y, beta=beta))
 }
 
-hapgen2bin <- function(hgfile, hgyfile, outfile, alleles=c(0, 1, 2), sep=" ")
+# Only makes sense for text files
+rowcount <- function(fname, blocksize=512)
+{
+   f <- file(fname, "rt")
+
+   s <- 0
+   # Count number of newlines
+   while(length(l <- readLines(f, n=blocksize)) > 0)
+      s <- s + length(l)
+
+   close(f)
+   s
+}
+
+shufflefile <- function(filein, fileout=sprintf("%s.shuffled", filein))
+{
+   n <- rowcount(fin)
+   read <- logical(n)
+   
+   fin <- file(filein, "rt")
+   fout <- file(fileout, "wt")
+
+   i <- 1
+   while(any(!read))
+   {
+      if(runif(1) < 1/n)
+      {
+	 r <- readLines(fin, n=1)
+	 writeLines(fout, r)
+	 read[i] <- TRUE
+      }
+      i <- i + 1
+      if(i > n)
+	 i <- 1
+   }
+
+   close(fin)
+   close(fout)
+}
+
+hapgen2bin <- function(hgfile, hgyfile, outfile, alleles=c(0, 1, 2), sep=" ",
+      shuffle=TRUE)
 {
    fin <- file(hgfile, "rt")
    out <- file(outfile, "wb")
@@ -85,5 +124,26 @@ hapgen2bin <- function(hgfile, hgyfile, outfile, alleles=c(0, 1, 2), sep=" ")
    close(out)
    close(fin)
    close(yin)
+}
+
+bin2smidas <- function(infile, outfile="smidas", n, p,
+      type=c("numeric", "integer"))
+{
+   type <- match.arg(type)
+
+   fin <- file(infile, "rb")
+   fout.x <- sprintf("%s.x", outfile)
+   fout.y <- sprintf("%s.y", outfile)
+
+   cat(sprintf("%d %d\n", n, p), file=fout.x)
+
+   for(i in 1:n)
+   {
+      x <- readBin(fin, what=type, n=p + 1)
+      cat(p, paste(1:p - 1, x[-1]), "\n", file=fout.x, append=TRUE)
+      cat(x[1], "\n", file=fout.y, append=TRUE)
+   }
+
+   close(fin)
 }
 
