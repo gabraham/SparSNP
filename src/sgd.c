@@ -32,7 +32,7 @@ double sgd_gmatrix(gmatrix *g, double maxstepsize,
 {
    int epoch = 1, i, j;
    double *grad = malloc((g->p + 1) * sizeof(double));
-   double *x = malloc((g->p + 1) * sizeof(double));
+   dtype *x = malloc((g->p + 1) * sizeof(dtype));
    double prevloss = 0, loss = 0, bestloss = 1e9;
    double stepsize = maxstepsize;
    sample sm;
@@ -151,7 +151,7 @@ void predict_logloss(gmatrix *g, double *beta, double *yhat, int *trainf)
 {
    int i, j, k;
    sample sm;
-   double *x = malloc(sizeof(double) * (g->p + 1));
+   dtype *x = malloc(sizeof(dtype) * (g->p + 1));
    double d;
 
    sample_init(&sm, g->p);
@@ -165,7 +165,7 @@ void predict_logloss(gmatrix *g, double *beta, double *yhat, int *trainf)
 	 x[0] = 1;
 	 for(j = 0 ; j < g->p ; j++)
 	    x[j+1] = (sm.x[j] - g->mean[j]) / g->sd[j];
-	 d = fmin(dotprod(x, beta, g->p + 1), MAXPROD);
+	 d = dotprod(x, beta, g->p + 1);
 	 yhat[k] = 1 / (1 + exp(-d));
 	 k++;
       }
@@ -280,7 +280,7 @@ void writeout(char* file, double **x, int *y, double n, double p)
    return err;
 }*/
 
-void writevector(char* file, double* beta, int p)
+void writevectorf(char* file, double* beta, int p)
 {
    int i;
    FILE* out = fopen(file, "w");
@@ -290,16 +290,27 @@ void writevector(char* file, double* beta, int p)
    fclose(out);
 }
 
+void writevectorl(char* file, int* beta, int p)
+{
+   int i;
+   FILE* out = fopen(file, "w");
+   for(i = 0 ; i < p ; i++)
+      fprintf(out, "%d\n", beta[i]);
+   fflush(out);
+   fclose(out);
+}
+
 int main(int argc, char* argv[])
 {
    int i;
    double *betahat;
-   double *yhat_train, *yhat_test;
+   double *yhat_train = NULL, *yhat_test = NULL;
    gmatrix g;
    char *filename = NULL;
    char *model = NULL;
    char *betafile = "beta.csv";
    char *predfile = "pred.csv";
+   char *subsetfile = "subset.csv";
    int n = 0, p = 0;
    int verbose = FALSE;
    int *trainf, *testf;
@@ -445,22 +456,27 @@ lambda1=%.9f lambda2=%.9f \n",
    yhat_train = malloc(ntrain * sizeof(double));
    predict_logloss(&g, betahat, yhat_train, trainf);
 
-   gmatrix_reset(&g);
-   yhat_test = malloc(ntest * sizeof(double));
-   predict_logloss(&g, betahat, yhat_test, testf);
+   if(ntest > 0)
+   {
+      gmatrix_reset(&g);
+      yhat_test = malloc(ntest * sizeof(double));
+      predict_logloss(&g, betahat, yhat_test, testf);
+   }
 
-   writevector(betafile, betahat, p + 1);
-   writevector(predfile, yhat_train, ntrain);
+   writevectorf(betafile, betahat, p + 1);
+   writevectorf(predfile, yhat_train, ntrain);
+   writevectorl(subsetfile, trainf, g.n);
 
    printf("###############################\n");
 
+   printf("ntrain: %d %d\n", ntrain, g.n);
    gmatrix_reset(&g);
    printf("Training AUC: %.5f\n",
 	 gmatrix_auc(yhat_train, &g, trainf, ntrain));
 
    gmatrix_reset(&g);
-   printf("Training Accuracy: %.5f\n", gmatrix_accuracy(yhat_train, &g, 0.5,
-	    trainf, ntrain));
+   printf("Training Accuracy: %.5f\n",
+	 gmatrix_accuracy(yhat_train, &g, 0.5, trainf, ntrain));
 
    printf("\n");
 
@@ -472,8 +488,8 @@ lambda1=%.9f lambda2=%.9f \n",
       printf("Test AUC: %.5f\n", gmatrix_auc(yhat_test, &g, testf, ntest));
    
       gmatrix_reset(&g);
-      printf("Test Accuracy: %.5f\n", gmatrix_accuracy(yhat_test, &g, 0.5,
-   	    testf, ntest));
+      printf("Test Accuracy: %.5f\n",
+	    gmatrix_accuracy(yhat_test, &g, 0.5, testf, ntest));
    }
 
    printf("\n");

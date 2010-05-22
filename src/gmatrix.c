@@ -34,10 +34,15 @@ void gmatrix_init(gmatrix *g, char *filename, int n, int p)
 void gmatrix_free(gmatrix *g)
 {
    /*free(g->y);*/
-   fclose(g->file);
+   if(g->file)
+   {
+      fclose(g->file);
+      g->file = NULL;
+   }
    /*free(g->filename); */
    free(g->mean);
    free(g->sd);
+   g->mean = g->sd = NULL;
 }
 
 /* Expects the binary data row to be y, x_1, x_2, x_3, ..., x_p */
@@ -50,7 +55,7 @@ void gmatrix_nextrow(gmatrix *g, sample *s)
     * the allocated vector later
     */
    s->x = s->x1;
-   fread(s->x, sizeof(double), g->p + 1, g->file);
+   fread(s->x, sizeof(dtype), g->p + 1, g->file);
    s->y = s->x[0];
    s->x++;
    g->i++;
@@ -72,7 +77,11 @@ dtype gmatrix_next_y(gmatrix *g)
 
 void gmatrix_reset(gmatrix *g)
 {
-   fclose(g->file);
+   if(g->file)
+   {
+      fclose(g->file);
+      g->file = NULL;
+   }
    g->file = fopen(g->filename, "rb");
    g->i = 0;
 }

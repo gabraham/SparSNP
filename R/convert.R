@@ -65,34 +65,7 @@ rowcount <- function(fname, blocksize=512)
    s
 }
 
-shufflefile <- function(filein, fileout=sprintf("%s.shuffled", filein))
-{
-   n <- rowcount(fin)
-   read <- logical(n)
-   
-   fin <- file(filein, "rt")
-   fout <- file(fileout, "wt")
-
-   i <- 1
-   while(any(!read))
-   {
-      if(runif(1) < 1/n)
-      {
-	 r <- readLines(fin, n=1)
-	 writeLines(fout, r)
-	 read[i] <- TRUE
-      }
-      i <- i + 1
-      if(i > n)
-	 i <- 1
-   }
-
-   close(fin)
-   close(fout)
-}
-
-hapgen2bin <- function(hgfile, hgyfile, outfile, alleles=c(0, 1, 2), sep=" ",
-      shuffle=TRUE)
+hapgen2bin <- function(hgfile, hgyfile, outfile, alleles=c(0, 1, 2), sep=" ")
 {
    fin <- file(hgfile, "rt")
    out <- file(outfile, "wb")
