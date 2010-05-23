@@ -5,7 +5,7 @@
 
 double plogis(double);
 double dotprod(dtype *, double *, int);
-double logloss_pt(dtype *, double *, int , int);
-double logloss(dtype **, double *, int *, int, int);
-void logdloss(dtype *, double *, int, int, double*);
+double logloss_pt(dtype *, double *, dtype , int);
+double logloss(dtype **, double *, dtype *, int, int);
+void logdloss(dtype *, double *, dtype, int, double*);
 

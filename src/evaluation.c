@@ -109,15 +109,15 @@ double gmatrix_accuracy(double *yhat, gmatrix *g, double threshold,
 {
    int i, k = 0;
    long s = 0;
-   dtype z;
+   int y;
 
    for(i = 0 ; i < g->n ; i++)
    {
-      z = gmatrix_next_y(g);
+      y = (int)gmatrix_next_y(g);
 
       if(trainf[i])
       {
-	 s += (yhat[k] >= threshold) == (z == ONE);
+	 s += (yhat[k] >= threshold) == y;
 	 k++;
       }
    }

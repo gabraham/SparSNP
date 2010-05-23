@@ -4,8 +4,8 @@
 
 #ifdef DISCRETE
 #define type "discrete"
-#define dtype int
-#define ONE 1L
+#define dtype char
+#define ONE 1
 #else
 #define dtype double
 #define type "continuous"

@@ -6,7 +6,7 @@
 void sample_init(sample *s, int p)
 {
    s->p = p;
-   s->x1 = malloc(sizeof(double) * (p + 1));
+   s->x1 = malloc(sizeof(dtype) * (p + 1));
    s->x = s->x1;
 }
 

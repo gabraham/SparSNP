@@ -16,13 +16,13 @@ double dotprod(dtype *a, double *b, int m)
    return fmin(fmax(s, -MAXPROD), MAXPROD);
 }
 
-double logloss_pt(dtype *x, double *beta, int y, int p)
+double logloss_pt(dtype *x, double *beta, dtype y, int p)
 {
    double d = dotprod(x, beta, p);
    return -(double)y * d + log(1 + exp(d));
 }
 
-double logloss(dtype **x, double *beta, int *y, int n, int p)
+double logloss(dtype **x, double *beta, dtype *y, int n, int p)
 {
    int i;
    double loss = 0;
@@ -31,7 +31,7 @@ double logloss(dtype **x, double *beta, int *y, int n, int p)
    return loss;
 }
 
-void logdloss(dtype *x, double *beta, int y, int p, double* grad)
+void logdloss(dtype *x, double *beta, dtype y, int p, double* grad)
 {
    int i;
    double pr = exp(dotprod(x, beta, p));

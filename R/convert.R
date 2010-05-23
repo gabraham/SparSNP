@@ -65,6 +65,37 @@ rowcount <- function(fname, blocksize=512)
    s
 }
 
+# Packs the binary design matrix into an int
+pack <- function(x, k=32)
+{
+   n <- ceiling(length(x) / k)
+   p <- integer(n)
+   for(i in 1:n)
+      p[i] <- as.integer(sum(x[1:k + (i-1) * k] * 2^(1:k-1), na.rm=TRUE))
+
+   p
+}
+
+char2binary <- function(x)
+{
+   x[x == "0"] <- "\u0000"
+   x[x == "1"] <- "\u0001"
+   x
+}
+
+# Read the ASCII HapGen format and convert to a binary format.
+#
+# Our format is: y_1 x_11 x_12 ... x_1p
+#                y_i x_i1 x_i2 ... x_ip
+#                y_n x_n1 x_n2 ... x_np
+# 
+# The genotype calls 0,1,2 are encoded in a binary design matrix. Each SNP
+# uses 2 bits. The data is saved as a character type to save space (only one
+# byte per characterr), and the binary SNP is encoded so that its machine
+# binary representation (not the same as the binary representation in R which
+# is a vector of ints) is correctly read by C code as 0 and 1. Otherwise,
+# writing a character "0" would be interpreted as 48 in decimal instead of 0,
+# and same for "1" which would be interpreted as 49.
 hapgen2bin <- function(hgfile, hgyfile, outfile, alleles=c(0, 1, 2), sep=" ")
 {
    fin <- file(hgfile, "rt")
@@ -85,14 +116,17 @@ hapgen2bin <- function(hgfile, hgyfile, outfile, alleles=c(0, 1, 2), sep=" ")
 
       # Equivalent to calling model.matrix on the entire matrix, except for
       # the intercept that we don't include here but is added later in SGD.
-      x <- c(y, as.integer(t(cont[r,])))
-      cat(i, "y=", y, "x[1:10]:", x[1:10], "\n")
+      bin <- as.integer(t(cont[r,])) 
+      x <- as.character(c(y, bin))
+      x <- char2binary(x)
+      m <- min(length(x), 10) # only show the first few values
+      cat(i, "y=", y, "x:", x[1:m], "...\n")
       writeBin(x, con=out)
       i <- i + 1
    }
    cat("\n")
 
-   cat("Number of variables:", length(x) - 1, "\n")
+   #cat("Number of variables:", length(x) - 1, "\n")
 
    close(out)
    close(fin)

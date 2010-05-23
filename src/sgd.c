@@ -37,11 +37,13 @@ double sgd_gmatrix(gmatrix *g, double maxstepsize,
    double stepsize = maxstepsize;
    sample sm;
    double yhat;
-   double testerr = 0;
+   double trainacc = 0;
+   double testacc = 0;
    double testloss = 0;
    double diff = 1e9;
    int ntests = 0;
    double ptloss = 0;
+   double err;
 
    sample_init(&sm, g->p);
 
@@ -49,7 +51,8 @@ double sgd_gmatrix(gmatrix *g, double maxstepsize,
    {
       loss = 0;
       testloss = 0;
-      testerr = 0;
+      testacc = 0;
+      trainacc = 0;
       ntests = 0;
 
       for(i = 0 ; i < g->n ; i++)
@@ -57,19 +60,21 @@ double sgd_gmatrix(gmatrix *g, double maxstepsize,
 	 gmatrix_nextrow(g, &sm);
 
 	 /* Intercept */
-	 x[0] = 1.0;
+	 x[0] = 1;
 
 	 /* Scale parameters except the intercept */
 	 for(j = 0 ; j < g->p ; j++)
 	    x[j+1] = (sm.x[j] - g->mean[j]) / g->sd[j];
 
 	 ptloss = logloss_pt(x, beta, sm.y, g->p + 1); 
+	 yhat = predict_logloss_pt(&sm, beta, g->mean, g->sd, g->p + 1);
 
 	 /* train */
 	 if(trainf[i])
 	 {
 	    logdloss(x, beta, sm.y, g->p + 1, grad);
 	    loss += ptloss;
+	    trainacc += (double)((yhat >= 0.5) == (int)sm.y);
 
 	    /* Update weights */
 	    for(j = 0 ; j < g->p + 1; j++)
@@ -83,15 +88,16 @@ double sgd_gmatrix(gmatrix *g, double maxstepsize,
 	 else
 	 {
 	    testloss += ptloss;
-	    yhat = 1 / (1 + exp(-dotprod(x, beta, g->p + 1)));
-	    testerr += (double)((yhat >= 0.5) & (int)sm.y);
+	    testacc += (double)((yhat >= 0.5) == (int)sm.y);
 	    ntests++;
 	 }
       }
 
+      trainacc = trainacc / (g->n - ntests);
+
       if(ntests > 0)
       {
-	 testerr = testerr / ntests;
+	 testacc = testacc / ntests;
 	 testloss = testloss / ntests;
       }
       /*printf("total loss: %.10f over %d samples\n", loss, g->n - ntests);*/
@@ -109,10 +115,10 @@ double sgd_gmatrix(gmatrix *g, double maxstepsize,
 
       if(verbose)
       {
-	 printf("Epoch %d  training loss: %.5f diff: %.5f stepsize: %.15f",
-	       epoch, loss, diff, stepsize);
+	 printf("Epoch %d  training loss: %.5f diff: %.5f stepsize: %.15f\
+ training accuracy: %.8f", epoch, loss, diff, stepsize, trainacc);
 	 if(ntests > 0)
-	    printf(" test error: %.8f test loss: %.8f", testerr, testloss);
+	    printf(" test accuracy: %.8f test loss: %.8f", testacc, testloss);
 	 printf("\n");
       }
  
@@ -125,19 +131,7 @@ double sgd_gmatrix(gmatrix *g, double maxstepsize,
 	 break;
       }
 
-      /*if(epoch > 1 && fabs(bestloss - loss) > threshold || diff < -threshold)
-	 stepsize = fmax(stepsize / 2, 1e-20);
-      else if(fabs(bestloss - loss) <= threshold && fabs(diff) <= threshold)
-      {
-	 if(verbose)
-	    printf("Termination condition met, best loss %.5f\n", bestloss);
-	 break;
-      }*/
-
-      /* stepsize = maxstepsize + (bestloss - loss) / 1e6;*/
-
       prevloss = loss;
-
       epoch++;
    }
 
@@ -147,11 +141,25 @@ double sgd_gmatrix(gmatrix *g, double maxstepsize,
    return loss;
 }
 
+double predict_logloss_pt(sample *s, double *beta, double *mean, double *sd, int p)
+{
+   int i = 0;
+   dtype *x = malloc(sizeof(dtype) * p);
+   double yhat = 0;
+
+   x[0] = 1;
+   for(i = 0 ; i < p - 1 ; i++)
+      x[i+1] = (s->x[i] - mean[i]) / sd[i];
+   yhat = 1 / (1 + exp(-dotprod(x, beta, p)));
+
+   free(x);
+   return yhat;
+}
+
 void predict_logloss(gmatrix *g, double *beta, double *yhat, int *trainf)
 {
    int i, j, k;
    sample sm;
-   dtype *x = malloc(sizeof(dtype) * (g->p + 1));
    double d;
 
    sample_init(&sm, g->p);
@@ -162,17 +170,12 @@ void predict_logloss(gmatrix *g, double *beta, double *yhat, int *trainf)
       gmatrix_nextrow(g, &sm);
       if(trainf[i])
       {
-	 x[0] = 1;
-	 for(j = 0 ; j < g->p ; j++)
-	    x[j+1] = (sm.x[j] - g->mean[j]) / g->sd[j];
-	 d = dotprod(x, beta, g->p + 1);
-	 yhat[k] = 1 / (1 + exp(-d));
+	 yhat[k] = predict_logloss_pt(&sm, beta, g->mean, g->sd, g->p + 1);
 	 k++;
       }
    } 
 
    sample_free(&sm);
-   free(x);
 }
 
 void writeout(char* file, double **x, int *y, double n, double p)
@@ -469,13 +472,12 @@ lambda1=%.9f lambda2=%.9f \n",
 
    printf("###############################\n");
 
-   printf("ntrain: %d %d\n", ntrain, g.n);
    gmatrix_reset(&g);
-   printf("Training AUC: %.5f\n",
+   printf("Training AUC (fixed beta): %.5f\n",
 	 gmatrix_auc(yhat_train, &g, trainf, ntrain));
 
    gmatrix_reset(&g);
-   printf("Training Accuracy: %.5f\n",
+   printf("Training Accuracy (fixed beta): %.8f\n",
 	 gmatrix_accuracy(yhat_train, &g, 0.5, trainf, ntrain));
 
    printf("\n");
@@ -485,10 +487,10 @@ lambda1=%.9f lambda2=%.9f \n",
    if(ntest > 0)
    {
       gmatrix_reset(&g);
-      printf("Test AUC: %.5f\n", gmatrix_auc(yhat_test, &g, testf, ntest));
+      printf("Test AUC (fixed beta): %.5f\n", gmatrix_auc(yhat_test, &g, testf, ntest));
    
       gmatrix_reset(&g);
-      printf("Test Accuracy: %.5f\n",
+      printf("Test Accuracy (fixed beta): %.8f\n",
 	    gmatrix_accuracy(yhat_test, &g, 0.5, testf, ntest));
    }
 
