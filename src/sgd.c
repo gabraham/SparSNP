@@ -43,7 +43,6 @@ double sgd_gmatrix(gmatrix *g, double maxstepsize,
    double diff = 1e9;
    int ntests = 0;
    double ptloss = 0;
-   double err;
 
    sample_init(&sm, g->p);
 
@@ -158,9 +157,8 @@ double predict_logloss_pt(sample *s, double *beta, double *mean, double *sd, int
 
 void predict_logloss(gmatrix *g, double *beta, double *yhat, int *trainf)
 {
-   int i, j, k;
+   int i, k;
    sample sm;
-   double d;
 
    sample_init(&sm, g->p);
 
@@ -320,6 +318,7 @@ int main(int argc, char* argv[])
    int ntrain = 0, ntest = 0;
    int cv = 1;
    long seed = time(NULL);
+   sample sm;
 
    /* Parameters */
    int maxepochs = 20;
@@ -419,7 +418,7 @@ int main(int argc, char* argv[])
    srand48(seed);
    betahat = calloc(p + 1, sizeof(double));
    gmatrix_init(&g, filename, n, p);
-
+ 
    /*if(verbose)
       printf("Scaling ... ");
    scale(&g, g.mean, g.sd);
@@ -434,7 +433,7 @@ int main(int argc, char* argv[])
    for(i = 0 ; i < g.n ; i++)
    {
       if(cv > 1)
-	 trainf[i] = drand48() >= 1.0 / cv;
+	 trainf[i] = drand48() >= (1.0 / cv);
       else
 	 trainf[i] = TRUE;
       ntrain += trainf[i];
@@ -472,7 +471,18 @@ lambda1=%.9f lambda2=%.9f \n",
 
    printf("###############################\n");
 
+   /*gmatrix_reset(&g);
+   for(i = 0 ; i < g.n ; i++)
+      printf("Y1=%d\n", gmatrix_next_y(&g));
+
    gmatrix_reset(&g);
+   sample_init(&sm, p);
+   for(i = 0 ; i < g.n ; i++)
+   {
+      gmatrix_nextrow(&g, &sm);
+      printf("Y2=%d\n", sm.y);
+   }*/
+
    printf("Training AUC (fixed beta): %.5f\n",
 	 gmatrix_auc(yhat_train, &g, trainf, ntrain));
 
@@ -487,7 +497,8 @@ lambda1=%.9f lambda2=%.9f \n",
    if(ntest > 0)
    {
       gmatrix_reset(&g);
-      printf("Test AUC (fixed beta): %.5f\n", gmatrix_auc(yhat_test, &g, testf, ntest));
+      printf("Test AUC (fixed beta): %.5f\n",
+	    gmatrix_auc(yhat_test, &g, testf, ntest));
    
       gmatrix_reset(&g);
       printf("Test Accuracy (fixed beta): %.8f\n",

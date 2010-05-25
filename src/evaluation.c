@@ -67,6 +67,14 @@ double gmatrix_auc(double *yhat, gmatrix *g, int *trainf, int ntrain)
 	 m1++;
 
    m2 = ntrain - m1;
+
+   if(!m1 || !m2)
+   {
+      printf("cannot evaluate AUC, too few observations: positives=%d\
+ negatives=%d\n", m1, m2);
+      return -1;
+   }
+
    y1 = malloc(m1 * sizeof(double));
    y2 = malloc(m2 * sizeof(double));
 

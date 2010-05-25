@@ -76,13 +76,6 @@ pack <- function(x, k=32)
    p
 }
 
-char2binary <- function(x)
-{
-   x[x == "0"] <- "\u0000"
-   x[x == "1"] <- "\u0001"
-   x
-}
-
 # Read the ASCII HapGen format and convert to a binary format.
 #
 # Our format is: y_1 x_11 x_12 ... x_1p
@@ -90,12 +83,18 @@ char2binary <- function(x)
 #                y_n x_n1 x_n2 ... x_np
 # 
 # The genotype calls 0,1,2 are encoded in a binary design matrix. Each SNP
-# uses 2 bits. The data is saved as a character type to save space (only one
-# byte per characterr), and the binary SNP is encoded so that its machine
-# binary representation (not the same as the binary representation in R which
-# is a vector of ints) is correctly read by C code as 0 and 1. Otherwise,
-# writing a character "0" would be interpreted as 48 in decimal instead of 0,
-# and same for "1" which would be interpreted as 49.
+# uses 2 bits, but to avoid byte packing the data is saved as a character type
+# at one byte per character (i.e. per bit). The binary SNP is encoded so that
+# its machine  binary representation (not the same as the binary representation
+# in R which is a vector of ints) is correctly read by C code as 0 and 1.
+# Otherwise, writing a character "0" would be interpreted as 48 in decimal
+# instead of 0, and same for "1" which would be interpreted as 49.
+# 
+# The y values are NOT encoded in the design matrix, so a "0" is really a
+# zero and a "1" is really a one.
+#
+# The final data is a matrix of size N times (2p + 1) where N is number of
+# samples and p is number of alleles.
 hapgen2bin <- function(hgfile, hgyfile, outfile, alleles=c(0, 1, 2), sep=" ")
 {
    fin <- file(hgfile, "rt")
@@ -103,6 +102,9 @@ hapgen2bin <- function(hgfile, hgyfile, outfile, alleles=c(0, 1, 2), sep=" ")
    yin <- file(hgyfile, "rt")
 
    cont <- contr.treatment(factor(alleles))
+
+   cat("Using conversion table:\n")
+   print(cont)
 
    i <- 1
    while(TRUE)
@@ -112,16 +114,17 @@ hapgen2bin <- function(hgfile, hgyfile, outfile, alleles=c(0, 1, 2), sep=" ")
 	 break
       r <- readLines(fin, n=1)
       r <- strsplit(r, split=sep)[[1]]
-      f <- factor(r, levels=alleles)
+
+      cat("read", length(r), "fields\n")
 
       # Equivalent to calling model.matrix on the entire matrix, except for
       # the intercept that we don't include here but is added later in SGD.
       bin <- as.integer(t(cont[r,])) 
-      x <- as.character(c(y, bin))
-      x <- char2binary(x)
-      m <- min(length(x), 10) # only show the first few values
-      cat(i, "y=", y, "x:", x[1:m], "...\n")
+      v <- as.character(c(y, bin))
+      x <- as.raw(v)
+      cat(i, "y=", y, length(x), "following: x:", x[1:21], "...\n")
       writeBin(x, con=out)
+      flush(out)
       i <- i + 1
    }
    cat("\n")

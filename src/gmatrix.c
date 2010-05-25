@@ -24,6 +24,9 @@ void gmatrix_init(gmatrix *g, char *filename, int n, int p)
    g->i = 0;
    g->n = n;
    g->p = p;
+
+   /* TODO: this code isn't needed for discrete inputs, but sgd_gmatrix will
+    * need to be fixed too  */
    g->mean = calloc(p, sizeof(double));
    g->sd = malloc(sizeof(double) * p);
 
@@ -48,6 +51,8 @@ void gmatrix_free(gmatrix *g)
 /* Expects the binary data row to be y, x_1, x_2, x_3, ..., x_p */
 void gmatrix_nextrow(gmatrix *g, sample *s)
 {
+   int i;
+
    if(g->i == g->n)
       gmatrix_reset(g);
 
@@ -55,7 +60,8 @@ void gmatrix_nextrow(gmatrix *g, sample *s)
     * the allocated vector later
     */
    s->x = s->x1;
-   fread(s->x, sizeof(dtype), g->p + 1, g->file);
+
+   fread(s->x, sizeof(dtype),  g->p + 1, g->file);
    s->y = s->x[0];
    s->x++;
    g->i++;
@@ -71,7 +77,8 @@ dtype gmatrix_next_y(gmatrix *g)
    g->i++;
 
    /* ignore the x vector*/
-   fseek(g->file, sizeof(dtype) * (g->p), SEEK_CUR);
+   fseek(g->file, sizeof(dtype) * g->p, SEEK_CUR);
+
    return y;
 }
 
