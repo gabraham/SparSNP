@@ -51,6 +51,28 @@ simulate <- function(n=1000, p=100, beta=rnorm(p + 1),
    invisible(list(x=x, y=y, beta=beta))
 }
 
+simulate.disc <- function(n=1000, p=100, beta=rnorm(2 * p + 1),
+      outfile="sim.bin")
+{
+   x <- matrix(sample(c("0", "1", "2"), n * p, replace=TRUE), nrow=n)
+   d <- data.frame(x)
+   noise <- rnorm(n, 0, 0.1)
+   m <- model.matrix(~ ., d)
+   y <- ifelse(runif(n) <= plogis(m %*% beta + noise), 1, 0)
+   d$y <- factor(y)
+
+   out <- file(outfile, "wb")
+   for(i in 1:n)
+   {
+      r <- as.raw(c(y[i], m[i, -1]))
+      writeBin(object=r, con=out)
+   }
+
+   close(out)
+
+   invisible(list(x=x, y=y, beta=beta, m=m))
+}
+
 # Only makes sense for text files
 rowcount <- function(fname, blocksize=512)
 {
