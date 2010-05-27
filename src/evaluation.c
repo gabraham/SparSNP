@@ -63,7 +63,7 @@ double gmatrix_auc(double *yhat, gmatrix *g, int *trainf, int ntrain)
    dtype z = 0;
 
    for(i = 0 ; i < g->n ; i++)
-      if(gmatrix_next_y(g) && trainf[i])
+      if(g->next_y(g) && trainf[i])
 	 m1++;
 
    m2 = ntrain - m1;
@@ -85,7 +85,7 @@ double gmatrix_auc(double *yhat, gmatrix *g, int *trainf, int ntrain)
    j = k = l = 0;
    for(i = 0 ; i < g->n ; i++)
    {
-      z = gmatrix_next_y(g);
+      z = g->next_y(g);
       if(trainf[i])
       {
 	 if(z == ONE)
@@ -121,7 +121,7 @@ double gmatrix_accuracy(double *yhat, gmatrix *g, double threshold,
 
    for(i = 0 ; i < g->n ; i++)
    {
-      y = (int)gmatrix_next_y(g);
+      y = (int)(g->next_y(g));
 
       if(trainf[i])
       {

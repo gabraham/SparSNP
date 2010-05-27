@@ -58,7 +58,7 @@ double sgd_gmatrix(gmatrix *g,
 
       for(i = 0 ; i < g->n ; i++)
       { 
-	 gmatrix_nextrow(g, &sm);
+	 g->nextrow(g, &sm);
 
 	 /* Intercept */
 	 x[0] = 1;
@@ -167,7 +167,7 @@ void predict_logloss(gmatrix *g, double *beta, double *yhat, int *trainf)
    k = 0;
    for(i = 0 ; i < g->n ; i++)
    {
-      gmatrix_nextrow(g, &sm);
+      g->nextrow(g, &sm);
       if(trainf[i])
       {
 	 yhat[k] = predict_logloss_pt(&sm, beta, g->mean, g->sd, g->p + 1);
@@ -203,7 +203,7 @@ void predict_l2loss(gmatrix *g, double *beta, double *yhat, int *trainf)
    k = 0;
    for(i = 0 ; i < g->n ; i++)
    {
-      gmatrix_nextrow(g, &sm);
+      g->nextrow(g, &sm);
       if(trainf[i])
       {
 	 yhat[k] = predict_l2loss_pt(&sm, beta, g->mean, g->sd, g->p + 1);

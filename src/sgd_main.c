@@ -147,7 +147,7 @@ int main(int argc, char* argv[])
 
    srand48(seed);
    betahat = calloc(p + 1, sizeof(double));
-   gmatrix_init(&g, filename, n, p);
+   gmatrix_init(&g, FALSE, FALSE, filename, NULL, NULL, n, p);
  
    /*if(verbose)
       printf("Scaling ... ");

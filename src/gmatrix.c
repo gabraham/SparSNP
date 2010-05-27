@@ -15,15 +15,23 @@ void sample_free(sample *s)
    free(s->x1);
 }
 
-void gmatrix_init(gmatrix *g, char *filename, int n, int p)
+void gmatrix_init(gmatrix *g, short inmemory, short pcor,
+      char *filename, dtype **x, dtype *y, int n, int p)
 {
    int i;
 
-   g->file = fopen(filename, "rb");
+   if(filename && !inmemory)
+      g->file = fopen(filename, "rb");
+
    g->filename = filename;
    g->i = 0;
    g->n = n;
    g->p = p;
+   g->inmemory = inmemory;
+   g->pcor = pcor;
+   g->x = x;
+   g->y = y;
+
 
    /* TODO: this code isn't needed for discrete inputs, but sgd_gmatrix will
     * need to be fixed too  */
@@ -32,31 +40,38 @@ void gmatrix_init(gmatrix *g, char *filename, int n, int p)
 
    for(i = 0 ; i < g->p ; i++)
       g->sd[i] = 1;
+
+   g->nextrow = gmatrix_disk_nextrow;
+   g->next_y = gmatrix_disk_next_y;
+
+   if(inmemory)
+   {
+      g->nextrow = gmatrix_mem_nextrow;
+      g->next_y = gmatrix_mem_next_y;
+   }
+   
 }
 
 void gmatrix_free(gmatrix *g)
 {
-   /*free(g->y);*/
-   if(g->file)
+   if(!g->inmemory && g->file)
    {
       fclose(g->file);
       g->file = NULL;
    }
-   /*free(g->filename); */
    free(g->mean);
    free(g->sd);
    g->mean = g->sd = NULL;
 }
 
 /* Expects the binary data row to be y, x_1, x_2, x_3, ..., x_p */
-void gmatrix_nextrow(gmatrix *g, sample *s)
+void gmatrix_disk_nextrow(gmatrix *g, sample *s)
 {
    if(g->i == g->n)
       gmatrix_reset(g);
 
    /* reset to old pointer so we don't increment beyond
-    * the allocated vector later
-    */
+    * the allocated vector later */
    s->x = s->x1;
 
    fread(s->x, sizeof(dtype),  g->p + 1, g->file);
@@ -65,7 +80,18 @@ void gmatrix_nextrow(gmatrix *g, sample *s)
    g->i++;
 }
 
-dtype gmatrix_next_y(gmatrix *g)
+void gmatrix_mem_nextrow(gmatrix *g, sample *s)
+{
+   if(g->i == g->n)
+      gmatrix_reset(g);
+
+   s->x = g->x[g->i];
+   s->y = g->y[g->i];
+   g->i++;
+}
+
+
+dtype gmatrix_disk_next_y(gmatrix *g)
 {
    dtype y;
    if(g->i == g->n)
@@ -80,14 +106,26 @@ dtype gmatrix_next_y(gmatrix *g)
    return y;
 }
 
+dtype gmatrix_mem_next_y(gmatrix *g)
+{
+   if(g->i == g->n)
+      gmatrix_reset(g);
+
+   return g->y[g->i++];
+}
+
+
 void gmatrix_reset(gmatrix *g)
 {
-   if(g->file)
+   if(!g->inmemory)
    {
-      fclose(g->file);
-      g->file = NULL;
+      if(g->file)
+      {
+         fclose(g->file);
+         g->file = NULL;
+      }
+      g->file = fopen(g->filename, "rb");
    }
-   g->file = fopen(g->filename, "rb");
    g->i = 0;
 }
 

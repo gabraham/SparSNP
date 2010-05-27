@@ -27,6 +27,8 @@ int main()
 	 x[i][j] = drand48();
       }
    }
+
+
    
    return EXIT_SUCCESS;
 }
