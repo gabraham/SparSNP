@@ -51,8 +51,6 @@ void gmatrix_free(gmatrix *g)
 /* Expects the binary data row to be y, x_1, x_2, x_3, ..., x_p */
 void gmatrix_nextrow(gmatrix *g, sample *s)
 {
-   int i;
-
    if(g->i == g->n)
       gmatrix_reset(g);
 

@@ -39,3 +39,27 @@ void logdloss(dtype *x, double *beta, dtype y, int p, double* grad)
       grad[i] = x[i] * (pr / (1 + pr) - (double)y);
 }
 
+double l2loss_pt(dtype *x, double *beta, dtype y, int p)
+{
+   double d = dotprod(x, beta, p);
+   return pow(y - d, 2);
+}
+
+double l2loss(dtype **x, double *beta, dtype *y, int n, int p)
+{
+   int i;
+   double loss = 0;
+   for(i = 0 ; i < n ; i++)
+      loss += l2loss_pt(x[i], beta, y[i], p);
+   return loss;
+}
+
+void l2dloss(dtype *x, double *beta, dtype y, int p, double* grad)
+{
+   int i;
+   double pr = dotprod(x, beta, p);
+   for(i = 0 ; i < p ; i++)
+      grad[i] = x[i] * (pr - (double)y);
+}
+
+

@@ -5,7 +5,11 @@
 
 double plogis(double);
 double dotprod(dtype *, double *, int);
+
 double logloss_pt(dtype *, double *, dtype , int);
 double logloss(dtype **, double *, dtype *, int, int);
 void logdloss(dtype *, double *, dtype, int, double*);
 
+double l2loss_pt(dtype *, double *, dtype , int);
+double l2loss(dtype **, double *, dtype *, int, int);
+void l2dloss(dtype *, double *, dtype, int, double*);

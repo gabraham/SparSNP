@@ -10,7 +10,6 @@
 #include "loss.h"
 #include "evaluation.h"
 
-
 double softthreshold(double beta, double step)
 {
    double d = beta - step;
@@ -26,9 +25,13 @@ double softthreshold(double beta, double step)
 }
 
 /* Stochastic gradient descent */
-double sgd_gmatrix(gmatrix *g, double maxstepsize,
-      int maxepoch, double *beta, double lambda1, double lambda2,
-      double threshold, int verbose, int *trainf, double trunc)
+double sgd_gmatrix(gmatrix *g,
+   dloss dloss_func,        /* gradient */
+   loss_pt loss_pt_func,    /* loss for one sample */
+   predict_pt predict_pt_func, /* prediction for one sample */
+   double maxstepsize,
+   int maxepoch, double *beta, double lambda1, double lambda2,
+   double threshold, int verbose, int *trainf, double trunc)
 {
    int epoch = 1, i, j;
    double *grad = malloc((g->p + 1) * sizeof(double));
@@ -65,13 +68,13 @@ double sgd_gmatrix(gmatrix *g, double maxstepsize,
 	 for(j = 0 ; j < g->p ; j++)
 	    x[j+1] = (sm.x[j] - g->mean[j]) / g->sd[j];
 
-	 ptloss = logloss_pt(x, beta, sm.y, g->p + 1); 
-	 yhat = predict_logloss_pt(&sm, beta, g->mean, g->sd, g->p + 1);
+	 ptloss = loss_pt_func(x, beta, sm.y, g->p + 1); 
+	 yhat = predict_pt_func(&sm, beta, g->mean, g->sd, g->p + 1);
 
 	 /* train */
 	 if(trainf[i])
 	 {
-	    logdloss(x, beta, sm.y, g->p + 1, grad);
+	    dloss_func(x, beta, sm.y, g->p + 1, grad);
 	    loss += ptloss;
 	    trainacc += (double)((yhat >= 0.5) == (int)sm.y);
 
@@ -169,6 +172,42 @@ void predict_logloss(gmatrix *g, double *beta, double *yhat, int *trainf)
       if(trainf[i])
       {
 	 yhat[k] = predict_logloss_pt(&sm, beta, g->mean, g->sd, g->p + 1);
+	 k++;
+      }
+   } 
+
+   sample_free(&sm);
+}
+
+double predict_l2loss_pt(sample *s, double *beta, double *mean, double *sd, int p)
+{
+   int i = 0;
+   dtype *x = malloc(sizeof(dtype) * p);
+   double yhat = 0;
+
+   x[0] = 1;
+   for(i = 0 ; i < p - 1 ; i++)
+      x[i+1] = (s->x[i] - mean[i]) / sd[i];
+   yhat = dotprod(x, beta, p);
+
+   free(x);
+   return yhat;
+}
+
+void predict_l2loss(gmatrix *g, double *beta, double *yhat, int *trainf)
+{
+   int i, k;
+   sample sm;
+
+   sample_init(&sm, g->p);
+
+   k = 0;
+   for(i = 0 ; i < g->n ; i++)
+   {
+      gmatrix_nextrow(g, &sm);
+      if(trainf[i])
+      {
+	 yhat[k] = predict_l2loss_pt(&sm, beta, g->mean, g->sd, g->p + 1);
 	 k++;
       }
    } 
@@ -318,7 +357,9 @@ int main(int argc, char* argv[])
    int ntrain = 0, ntest = 0;
    int cv = 1;
    long seed = time(NULL);
-   sample sm;
+   loss_pt loss_pt_func = NULL;
+   predict_pt predict_pt_func = NULL;
+   dloss dloss_func = NULL;
 
    /* Parameters */
    int maxepochs = 20;
@@ -340,6 +381,18 @@ int main(int argc, char* argv[])
       {
 	 i++;
 	 model = argv[i];
+	 if(strcmp2(model, "logistic"))
+	 {
+	    loss_pt_func = &logloss_pt;
+	    predict_pt_func = &predict_logloss_pt;
+	    dloss_func = &logdloss;
+	 }
+	 else if(strcmp2(model, "linear"))
+	 {
+	    loss_pt_func = &l2loss_pt;
+	    predict_pt_func = &predict_l2loss_pt;
+	    dloss_func = &l2dloss;
+	 }
       }
       else if(strcmp2(argv[i], "-n"))
       {
@@ -451,7 +504,8 @@ lambda1=%.9f lambda2=%.9f \n",
 
    if(verbose)
       printf("Starting SGD ...\n");
-   sgd_gmatrix(&g, stepsize, maxepochs, betahat,
+   sgd_gmatrix(&g, dloss_func, loss_pt_func, predict_pt_func,
+	 stepsize, maxepochs, betahat,
 	 lambda1, lambda2, threshold, verbose, trainf, trunc);
 
    gmatrix_reset(&g);
