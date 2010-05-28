@@ -24,6 +24,7 @@ typedef struct gmatrix {
    short inmemory;
    short pcor;
    dtype **x;
+   int skip;
 
    /*void (*init)(gmatrix*, short, short, char*, int, int);
    void (*reset)(gmatrix*);*/

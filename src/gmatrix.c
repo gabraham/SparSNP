@@ -31,6 +31,7 @@ void gmatrix_init(gmatrix *g, short inmemory, short pcor,
    g->pcor = pcor;
    g->x = x;
    g->y = y;
+   g->skip = -1;
 
 
    /* TODO: this code isn't needed for discrete inputs, but sgd_gmatrix will
@@ -48,8 +49,13 @@ void gmatrix_init(gmatrix *g, short inmemory, short pcor,
    {
       g->nextrow = gmatrix_mem_nextrow;
       g->next_y = gmatrix_mem_next_y;
+
+      /*if(pcor)
+      {
+	 g->nextrow = gmatrix_mem_pcor_nextrow;
+	 g->next_y = gmatrix_mem_pcor_next_y;
+      }*/
    }
-   
 }
 
 void gmatrix_free(gmatrix *g)
@@ -90,6 +96,22 @@ void gmatrix_mem_nextrow(gmatrix *g, sample *s)
    g->i++;
 }
 
+/*void gmatrix_mem_pcor_nextrow(gmatrix *g, sample *s)
+{
+   if(g->i == g->n)
+      gmatrix_reset(g);
+
+   if(!g->skip)
+   {
+      fprintf(stderr,
+	 "skip undefined in gmatrix_mem_pcor_nextrow(), aborting");
+      return FAILURE;
+   }
+
+   s->x = g->x[g->i];
+   s->y = g->x[g->i];
+   g->i++;
+}*/
 
 dtype gmatrix_disk_next_y(gmatrix *g)
 {
