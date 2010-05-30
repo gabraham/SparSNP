@@ -1,4 +1,5 @@
 #include <string.h>
+#include "common.h"
 
 int strcmp2(const char* s1, const char* s2)
 {

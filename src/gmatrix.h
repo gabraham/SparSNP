@@ -1,8 +1,6 @@
 #include <stdio.h>
 #include "common.h"
 
-/*typedef struct gmatrix_struct* gmatrix_ptr;*/
-
 typedef struct sample {
    dtype *x;
    dtype *x1; /* keep the old pointer so that we can reset x to it after

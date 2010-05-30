@@ -1,13 +1,4 @@
-#include <stdlib.h>
-#include <stdio.h>
-#include <math.h>
-#include <string.h>
-#include <time.h>
-
-#include "gmatrix.h"
 #include "sgd.h"
-#include "loss.h"
-#include "evaluation.h"
 
 int main(int argc, char* argv[])
 {
