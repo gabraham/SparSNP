@@ -61,11 +61,12 @@ double sgd_gmatrix(gmatrix *g,
 	 g->nextrow(g, &sm);
 
 	 /* Intercept */
-	 x[0] = 1;
+	 /*x[0] = 1;*/
 
 	 /* Scale parameters except the intercept */
-	 for(j = 0 ; j < g->p ; j++)
-	    x[j+1] = (sm.x[j] - g->mean[j]) / g->sd[j];
+	 /*for(j = 0 ; j < g->p ; j++)
+	    x[j+1] = (sm.x[j] - g->mean[j]) / g->sd[j];*/
+	 x = sm.x;
 
 	 ptloss = loss_pt_func(x, beta, sm.y, g->p + 1); 
 	 yhat = predict_pt_func(&sm, beta, g->mean, g->sd, g->p + 1);
@@ -138,7 +139,7 @@ double sgd_gmatrix(gmatrix *g,
 
    sample_free(&sm);
    free(grad);
-   free(x);
+   /*free(x);*/
    return loss;
 }
 

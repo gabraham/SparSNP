@@ -43,6 +43,8 @@ dtype gmatrix_disk_next_y(gmatrix *);
 void gmatrix_mem_nextrow(gmatrix *, sample *);
 dtype gmatrix_mem_next_y(gmatrix *);
 
+void gmatrix_load(gmatrix *, char *, int, int);
+
 void sample_init(sample *, int);
 void sample_free(sample *);
 

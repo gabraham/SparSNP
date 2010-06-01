@@ -49,7 +49,9 @@ void gmatrix_init(gmatrix *g, short inmemory, short pcor,
    {
       g->nextrow = gmatrix_mem_nextrow;
       g->next_y = gmatrix_mem_next_y;
-
+      
+      if(filename != NULL && x == NULL)
+	 gmatrix_load(g, filename, n, p);
       /*if(pcor)
       {
 	 g->nextrow = gmatrix_mem_pcor_nextrow;
@@ -84,6 +86,24 @@ void gmatrix_disk_nextrow(gmatrix *g, sample *s)
    s->y = s->x[0];
    s->x++;
    g->i++;
+}
+
+void gmatrix_load(gmatrix *g, char *filename, int n, int p)
+{
+   int i;
+   FILE* fin = fopen(filename, "rb");
+   g->x = malloc(sizeof(dtype*) * n);
+   g->y = malloc(sizeof(dtype) * n);
+
+   for(i = 0 ; i < n ; i++)
+   {
+      g->x[i] = malloc(sizeof(dtype) * (p + 1));
+      fread(g->x[i], sizeof(dtype),  g->p + 1, fin);
+      g->y[i] = g->x[i][0];
+      g->x[i]++;
+   }
+
+   fclose(fin);
 }
 
 void gmatrix_mem_nextrow(gmatrix *g, sample *s)

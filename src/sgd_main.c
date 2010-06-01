@@ -29,6 +29,7 @@ int main(int argc, char* argv[])
    loss_pt loss_pt_func = NULL;
    predict_pt predict_pt_func = NULL;
    dloss dloss_func = NULL;
+   short inmemory = FALSE;
 
    /* Parameters */
    int maxepochs = 20;
@@ -134,6 +135,10 @@ int main(int argc, char* argv[])
 	 i++;
 	 seed = atol(argv[i]);
       }
+      else if(strcmp2(argv[i], "-inmemory"))
+      {
+	 inmemory = TRUE;
+      }
    }
 
    if(filename == NULL || model == NULL || n == 0 || p == 0)
@@ -147,7 +152,7 @@ int main(int argc, char* argv[])
 
    srand48(seed);
    betahat = calloc(p + 1, sizeof(double));
-   gmatrix_init(&g, FALSE, FALSE, filename, NULL, NULL, n, p);
+   gmatrix_init(&g, inmemory, FALSE, filename, NULL, NULL, n, p);
  
    /*if(verbose)
       printf("Scaling ... ");
@@ -173,9 +178,9 @@ int main(int argc, char* argv[])
 
    if(verbose)
    {
-      printf("Parameters: model=%s, dtype=%s maxepochs=%d stepsize=%.9f \
+      printf("Parameters: model=%s, dtype=%s inmemory=%d, maxepochs=%d stepsize=%.9f \
 lambda1=%.9f lambda2=%.9f \n",
-      model, type, maxepochs, stepsize, lambda1, lambda2);
+      model, type, inmemory, maxepochs, stepsize, lambda1, lambda2);
       printf("%d training samples, %d test samples\n", ntrain, g.n - ntrain);
    }
 
