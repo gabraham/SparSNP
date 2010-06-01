@@ -1,7 +1,17 @@
+#include <math.h>
+#include <stdlib.h>
+#include "common.h"
+#include "gmatrix.h"
+
 /* Used to truncate exp before infinity, which occurs at ~709 */ 
 #define MAXPROD 700
 
-#include "common.h"
+
+void predict_logloss(gmatrix *, double *, double *, int *);
+double predict_logloss_pt(sample *, double *, double *, double *, int);
+
+void predict_l2loss(gmatrix *, double *, double *, int *);
+double predict_l2loss_pt(sample *, double *, double *, double *, int);
 
 double plogis(double);
 double dotprod(dtype *, double *, int);

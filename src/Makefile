@@ -1,21 +1,22 @@
 
 .PHONY: all
 
-all: sgd_cont sgd_disc pcor
+all: sgd_disc sgd_cont pcor
 
 # what about *.h?
 #
 CCFLAGS = -Wall -g -std=gnu99 -pg
 LIBRARIES = -lm
 
-sgd_cont: sgd_main.c sgd.c gmatrix.c loss.c evaluation.c common.c
+sgd_cont: common.c gmatrix.c loss.c evaluation.c sgd.c sgd_main.c
 	gcc $(CCFLAGS) $(LIBRARIES) $^ -o sgd_cont
 
-sgd_disc: sgd_main.c sgd.c gmatrix.c loss.c evaluation.c common.c
+sgd_disc: common.c gmatrix.c loss.c evaluation.c sgd.c sgd_main.c
 	gcc $(CCFLAGS) $(LIBRARIES) $^ -o sgd_disc -DDISCRETE
 
-pcor: pcor.c sgd.c gmatrix.c loss.c evaluation.c common.c
+pcor: common.c gmatrix.c loss.c evaluation.c sgd.c pcor.c
 	gcc $(CCFLAGS) $(LIBRARIES) $^ -o pcor
 
 clean:
 	/bin/rm sgd_cont sgd_disc
+# DO NOT DELETE
