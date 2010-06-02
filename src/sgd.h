@@ -4,6 +4,7 @@
 
 #include "common.h"
 #include "loss.h"
+#include "scale.h"
 #include "evaluation.h"
 
 typedef double (*loss_pt)(dtype *, double *, dtype, int);

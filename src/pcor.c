@@ -78,13 +78,13 @@ double sgd_matrix(double *beta, double *mean, double *sd,
    return 0;
 }
 
-void scale(double **x, double *mean, double *sd, int n, int p)
+/*void scale(double **x, double *mean, double *sd, int n, int p)
 {
    int i, j;
    double delta;
  
-   /* sd is really the sum of squares, not the SD, but we
-    * use the same variable to save memory */
+   / sd is really the sum of squares, not the SD, but we
+     use the same variable to save memory /
 
    for(i = 0 ; i < n ; i++)
    {
@@ -101,7 +101,7 @@ void scale(double **x, double *mean, double *sd, int n, int p)
 
    for(j = 0 ; j < p ; j++)
       sd[j] = sqrt(sd[j] / (n - 1));
-}
+}*/
 
 
 /*

@@ -145,11 +145,11 @@ int main(int argc, char* argv[])
    betahat = calloc(p + 1, sizeof(double));
    gmatrix_init(&g, inmemory, FALSE, filename, NULL, NULL, n, p);
  
-   /*if(verbose)
+   if(verbose)
       printf("Scaling ... ");
    scale(&g, g.mean, g.sd);
    if(verbose)
-      printf("done\n");*/
+      printf("done\n");
 
    gmatrix_reset(&g);
 
@@ -181,6 +181,7 @@ lambda1=%.9f lambda2=%.9f \n",
 	 stepsize, maxepochs, betahat, lambda1, lambda2, threshold,
 	 verbose, trainf, trunc);
 
+
    gmatrix_reset(&g);
    yhat_train = malloc(ntrain * sizeof(double));
    predict_logloss(&g, betahat, yhat_train, trainf);
@@ -210,7 +211,7 @@ lambda1=%.9f lambda2=%.9f \n",
       printf("Y2=%d\n", sm.y);
    }*/
 
-   printf("Training AUC (fixed beta): %.5f\n",
+   /*printf("Training AUC (fixed beta): %.5f\n",
 	 gmatrix_auc(yhat_train, &g, trainf, ntrain));
 
    gmatrix_reset(&g);
@@ -230,7 +231,7 @@ lambda1=%.9f lambda2=%.9f \n",
       gmatrix_reset(&g);
       printf("Test Accuracy (fixed beta): %.8f\n",
 	    gmatrix_accuracy(yhat_test, &g, 0.5, testf, ntest));
-   }
+   }*/
 
    printf("\n");
 

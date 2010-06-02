@@ -36,6 +36,7 @@ double sgd_gmatrix(gmatrix *g,
    double diff = 1e9;
    int ntests = 0;
    double ptloss = 0;
+   double s, d;
 
    sample_init(&sm, g->p);
 
@@ -52,12 +53,12 @@ double sgd_gmatrix(gmatrix *g,
 	 g->nextrow(g, &sm);
 
 	 /* Intercept */
-	 /*x[0] = 1;*/
+	 x[0] = 1;
 
 	 /* Scale parameters except the intercept */
-	 /*for(j = 0 ; j < g->p ; j++)
-	    x[j+1] = (sm.x[j] - g->mean[j]) / g->sd[j];*/
-	 x = sm.x;
+	 for(j = 0 ; j < g->p ; j++)
+	    x[j+1] = (sm.x[j] - g->mean[j]) / g->sd[j];
+	 /*x = sm.x;*/
 
 	 ptloss = loss_pt_func(x, beta, sm.y, g->p + 1); 
 	 yhat = predict_pt_func(&sm, beta, g->mean, g->sd, g->p + 1);
@@ -72,9 +73,12 @@ double sgd_gmatrix(gmatrix *g,
 	    /* Update weights */
 	    for(j = 0 ; j < g->p + 1; j++)
 	    {
-	       beta[j] -= stepsize * (grad[j] 
-	          + lambda1 * sign(beta[j]) 
-	          + lambda2 * beta[j] * beta[j]);
+	       s = stepsize;
+	       d = grad[j] + lambda1 * sign(beta[j]) 
+		     + lambda2 * beta[j] * beta[j];
+	       if(sign(beta[j]) != sign(d))
+		  s = stepsize / 2.0;
+	       beta[j] -= s * d;
 	    }
 	 }
 	 /* test */
@@ -130,7 +134,7 @@ double sgd_gmatrix(gmatrix *g,
 
    sample_free(&sm);
    free(grad);
-   /*free(x);*/
+   free(x);
    return loss;
 }
 

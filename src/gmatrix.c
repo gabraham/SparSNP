@@ -98,7 +98,7 @@ void gmatrix_load(gmatrix *g, char *filename, int n, int p)
    for(i = 0 ; i < n ; i++)
    {
       g->x[i] = malloc(sizeof(dtype) * (p + 1));
-      fread(g->x[i], sizeof(dtype),  g->p + 1, fin);
+      fread(g->x[i], sizeof(dtype), g->p + 1, fin);
       g->y[i] = g->x[i][0];
       g->x[i]++;
    }
