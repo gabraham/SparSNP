@@ -7,19 +7,21 @@
 #define MAXPROD 700
 
 
-void predict_logloss(gmatrix *, double *, double *, int *);
-double predict_logloss_pt(sample *, double *, double *, double *, int);
+void predict_logloss_gmatrix(gmatrix *, double *, double *, int *);
+double predict_logloss_pt_gmatrix(sample *, double *, double *, double *, int);
+double predict_logloss_pt(double);
 
-void predict_l2loss(gmatrix *, double *, double *, int *);
-double predict_l2loss_pt(sample *, double *, double *, double *, int);
+void predict_l2loss_gmatrix(gmatrix *, double *, double *, int *);
+double predict_l2loss_pt_gmatrix(sample *, double *, double *, double *, int);
+double predict_l2loss_pt(double);
 
 double plogis(double);
 double dotprod(dtype *, double *, int);
 
-double logloss_pt(dtype *, double *, dtype , int);
-double logloss(dtype **, double *, dtype *, int, int);
-void logdloss(dtype *, double *, dtype, int, double*);
+double logloss_pt(double, dtype);
+double logloss(double *, dtype *, int);
+void logdloss_pt(dtype *, double, dtype, int, double*);
 
-double l2loss_pt(dtype *, double *, dtype , int);
-double l2loss(dtype **, double *, dtype *, int, int);
-void l2dloss(dtype *, double *, dtype, int, double*);
+double l2loss_pt(double, dtype);
+double l2loss(double *, dtype *, int);
+void l2dloss_pt(dtype *, double, dtype, int, double*);

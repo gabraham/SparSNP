@@ -7,12 +7,14 @@
 #include "scale.h"
 #include "evaluation.h"
 
-typedef double (*loss_pt)(dtype *, double *, dtype, int);
-typedef double (*predict_pt)(sample *, double *, double *, double *, int);
-typedef void (*dloss)(dtype *, double *, dtype, int, double *);
+typedef double (*loss_pt)(double, dtype);
+typedef double (*predict_pt)(double);
+typedef void (*dloss_pt)(dtype *, double, dtype, int, double *);
+typedef void (*predict_gmatrix)(gmatrix *, double *, double *, int *);
+
 
 double sgd_gmatrix(gmatrix *g,
-   dloss, loss_pt, predict_pt,
+   dloss_pt, loss_pt, predict_pt,
    double maxstepsize,
    int maxepoch, double *beta, double lambda1, double lambda2,
    double threshold, int verbose, int *trainf, double trunc);

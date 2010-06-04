@@ -19,8 +19,10 @@ int main(int argc, char* argv[])
    long seed = time(NULL);
    loss_pt loss_pt_func = NULL;
    predict_pt predict_pt_func = NULL;
-   dloss dloss_func = NULL;
+   dloss_pt dloss_pt_func = NULL;
+   predict_gmatrix predict_gmatrix_func = NULL;
    short inmemory = FALSE;
+   short scaleflag = FALSE;
 
    /* Parameters */
    int maxepochs = 20;
@@ -46,13 +48,15 @@ int main(int argc, char* argv[])
 	 {
 	    loss_pt_func = &logloss_pt;
 	    predict_pt_func = &predict_logloss_pt;
-	    dloss_func = &logdloss;
+	    dloss_pt_func = &logdloss_pt;
+	    predict_gmatrix_func = &predict_logloss_gmatrix;
 	 }
 	 else if(strcmp2(model, "linear"))
 	 {
 	    loss_pt_func = &l2loss_pt;
 	    predict_pt_func = &predict_l2loss_pt;
-	    dloss_func = &l2dloss;
+	    dloss_pt_func = &l2dloss_pt;
+	    predict_gmatrix_func = &predict_l2loss_gmatrix;
 	 }
 	 else
 	 {
@@ -130,6 +134,10 @@ int main(int argc, char* argv[])
       {
 	 inmemory = TRUE;
       }
+      else if(strcmp2(argv[i], "-scale"))
+      {
+	 scaleflag = TRUE;
+      }
    }
 
    if(filename == NULL || model == NULL || n == 0 || p == 0)
@@ -145,11 +153,12 @@ int main(int argc, char* argv[])
    betahat = calloc(p + 1, sizeof(double));
    gmatrix_init(&g, inmemory, FALSE, filename, NULL, NULL, n, p);
  
-   if(verbose)
+   if(scaleflag && verbose)
+   {
       printf("Scaling ... ");
-   scale(&g, g.mean, g.sd);
-   if(verbose)
+      scale(&g, g.mean, g.sd);
       printf("done\n");
+   }
 
    gmatrix_reset(&g);
 
@@ -177,20 +186,19 @@ lambda1=%.9f lambda2=%.9f \n",
 
    if(verbose)
       printf("Starting SGD ...\n");
-   sgd_gmatrix(&g, dloss_func, loss_pt_func, predict_pt_func,
+   sgd_gmatrix(&g, dloss_pt_func, loss_pt_func, predict_pt_func,
 	 stepsize, maxepochs, betahat, lambda1, lambda2, threshold,
 	 verbose, trainf, trunc);
 
-
    gmatrix_reset(&g);
    yhat_train = malloc(ntrain * sizeof(double));
-   predict_logloss(&g, betahat, yhat_train, trainf);
+   predict_gmatrix_func(&g, betahat, yhat_train, trainf);
 
    if(ntest > 0)
    {
       gmatrix_reset(&g);
       yhat_test = malloc(ntest * sizeof(double));
-      predict_logloss(&g, betahat, yhat_test, testf);
+      predict_gmatrix_func(&g, betahat, yhat_test, testf);
    }
 
    writevectorf(betafile, betahat, p + 1);
@@ -199,19 +207,8 @@ lambda1=%.9f lambda2=%.9f \n",
 
    printf("###############################\n");
 
-   /*gmatrix_reset(&g);
-   for(i = 0 ; i < g.n ; i++)
-      printf("Y1=%d\n", gmatrix_next_y(&g));
-
    gmatrix_reset(&g);
-   sample_init(&sm, p);
-   for(i = 0 ; i < g.n ; i++)
-   {
-      gmatrix_nextrow(&g, &sm);
-      printf("Y2=%d\n", sm.y);
-   }*/
-
-   /*printf("Training AUC (fixed beta): %.5f\n",
+   printf("Training AUC (fixed beta): %.5f\n",
 	 gmatrix_auc(yhat_train, &g, trainf, ntrain));
 
    gmatrix_reset(&g);
@@ -231,7 +228,7 @@ lambda1=%.9f lambda2=%.9f \n",
       gmatrix_reset(&g);
       printf("Test Accuracy (fixed beta): %.8f\n",
 	    gmatrix_accuracy(yhat_test, &g, 0.5, testf, ntest));
-   }*/
+   }
 
    printf("\n");
 

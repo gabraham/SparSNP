@@ -116,6 +116,10 @@ void gmatrix_mem_nextrow(gmatrix *g, sample *s)
    g->i++;
 }
 
+/*void gmatrix_mem_nextcol(gmatrix *g, var *v)
+{
+}*/
+
 /*void gmatrix_mem_pcor_nextrow(gmatrix *g, sample *s)
 {
    if(g->i == g->n)

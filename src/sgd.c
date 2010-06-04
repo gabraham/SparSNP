@@ -16,7 +16,7 @@
 
 /* Stochastic gradient descent */
 double sgd_gmatrix(gmatrix *g,
-   dloss dloss_func,        /* gradient */
+   dloss_pt dloss_pt_func,        /* gradient */
    loss_pt loss_pt_func,    /* loss for one sample */
    predict_pt predict_pt_func, /* prediction for one sample */
    double maxstepsize,
@@ -36,7 +36,7 @@ double sgd_gmatrix(gmatrix *g,
    double diff = 1e9;
    int ntests = 0;
    double ptloss = 0;
-   double s, d;
+   double s, d, dp = 0;
 
    sample_init(&sm, g->p);
 
@@ -60,13 +60,15 @@ double sgd_gmatrix(gmatrix *g,
 	    x[j+1] = (sm.x[j] - g->mean[j]) / g->sd[j];
 	 /*x = sm.x;*/
 
-	 ptloss = loss_pt_func(x, beta, sm.y, g->p + 1); 
-	 yhat = predict_pt_func(&sm, beta, g->mean, g->sd, g->p + 1);
+	 dp = dotprod(x, beta, g->p + 1);
+
+	 ptloss = loss_pt_func(dp, sm.y); 
+	 yhat = predict_pt_func(dp);
 
 	 /* train */
 	 if(trainf[i])
 	 {
-	    dloss_func(x, beta, sm.y, g->p + 1, grad);
+	    dloss_pt_func(x, dp, sm.y, g->p + 1, grad);
 	    loss += ptloss;
 	    trainacc += (double)((yhat >= 0.5) == (int)sm.y);
 
@@ -76,8 +78,8 @@ double sgd_gmatrix(gmatrix *g,
 	       s = stepsize;
 	       d = grad[j] + lambda1 * sign(beta[j]) 
 		     + lambda2 * beta[j] * beta[j];
-	       if(sign(beta[j]) != sign(d))
-		  s = stepsize / 2.0;
+	       /*if(sign(beta[j]) != sign(d))
+		  s = stepsize / 2.0;*/
 	       beta[j] -= s * d;
 	    }
 	 }
