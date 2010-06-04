@@ -62,9 +62,16 @@ double gmatrix_auc(double *yhat, gmatrix *g, int *trainf, int ntrain)
    double *y1, *y2;
    dtype z = 0;
 
-   for(i = 0 ; i < g->n ; i++)
+   /*for(i = 0 ; i < g->n ; i++)
       if(g->next_y(g) && trainf[i])
+	 m1++;*/
+   for(i = 0 ; i < g->n ; i++)
+   {
+      z = g->next_y(g);
+      /*printf("%d %.3f\n", i, (double)z);*/
+      if(z && trainf[i])
 	 m1++;
+   }
 
    m2 = ntrain - m1;
 

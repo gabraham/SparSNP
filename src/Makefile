@@ -5,7 +5,7 @@ all: sgd_disc sgd_cont #pcor
 
 # what about *.h?
 #
-CCFLAGS = -Wall -g -std=gnu99
+CCFLAGS = -Wall -g -pg -std=gnu99
 LIBRARIES = -lm
 
 sgd_cont: common.c gmatrix.c scale.c loss.c evaluation.c sgd.c sgd_main.c

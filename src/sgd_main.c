@@ -153,10 +153,11 @@ int main(int argc, char* argv[])
    betahat = calloc(p + 1, sizeof(double));
    gmatrix_init(&g, inmemory, FALSE, filename, NULL, NULL, n, p);
  
-   if(scaleflag && verbose)
+   if(strcmp2(type, "discrete") && scaleflag && verbose)
    {
       printf("Scaling ... ");
       scale(&g, g.mean, g.sd);
+      gmatrix_scale(&g);
       printf("done\n");
    }
 
@@ -189,6 +190,17 @@ lambda1=%.9f lambda2=%.9f \n",
    sgd_gmatrix(&g, dloss_pt_func, loss_pt_func, predict_pt_func,
 	 stepsize, maxepochs, betahat, lambda1, lambda2, threshold,
 	 verbose, trainf, trunc);
+
+
+   
+   
+   
+   return 1;
+
+
+
+
+
 
    gmatrix_reset(&g);
    yhat_train = malloc(ntrain * sizeof(double));

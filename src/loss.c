@@ -57,7 +57,6 @@ void l2dloss_pt(dtype *x, double d, dtype y, int p, double* grad)
       grad[i] = x[i] * (d - (double)y);
 }
 
-
 double predict_logloss_pt(double d)
 {
    return 1 / (1 + exp(-d));

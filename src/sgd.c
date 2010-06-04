@@ -25,7 +25,7 @@ double sgd_gmatrix(gmatrix *g,
 {
    int epoch = 1, i, j;
    double *grad = malloc((g->p + 1) * sizeof(double));
-   dtype *x = malloc((g->p + 1) * sizeof(dtype));
+   /*dtype *x = malloc((g->p + 1) * sizeof(dtype)); */
    double prevloss = 0, loss = 0, bestloss = 1e9;
    double stepsize = maxstepsize;
    sample sm;
@@ -53,22 +53,20 @@ double sgd_gmatrix(gmatrix *g,
 	 g->nextrow(g, &sm);
 
 	 /* Intercept */
-	 x[0] = 1;
+	 /*x[0] = 1;*/
 
 	 /* Scale parameters except the intercept */
-	 for(j = 0 ; j < g->p ; j++)
-	    x[j+1] = (sm.x[j] - g->mean[j]) / g->sd[j];
-	 /*x = sm.x;*/
+	 /*for(j = 0 ; j < g->p ; j++)
+	    x[j+1] = (sm.x[j] - g->mean[j]) / g->sd[j];*/
 
-	 dp = dotprod(x, beta, g->p + 1);
-
+	 dp = dotprod(sm.x, beta, g->p + 1);
 	 ptloss = loss_pt_func(dp, sm.y); 
 	 yhat = predict_pt_func(dp);
 
 	 /* train */
 	 if(trainf[i])
 	 {
-	    dloss_pt_func(x, dp, sm.y, g->p + 1, grad);
+	    dloss_pt_func(sm.x, dp, sm.y, g->p + 1, grad);
 	    loss += ptloss;
 	    trainacc += (double)((yhat >= 0.5) == (int)sm.y);
 
@@ -78,8 +76,8 @@ double sgd_gmatrix(gmatrix *g,
 	       s = stepsize;
 	       d = grad[j] + lambda1 * sign(beta[j]) 
 		     + lambda2 * beta[j] * beta[j];
-	       /*if(sign(beta[j]) != sign(d))
-		  s = stepsize / 2.0;*/
+	       if(sign(beta[j]) != sign(d))
+		  s = stepsize / 2.0;
 	       beta[j] -= s * d;
 	    }
 	 }
@@ -136,7 +134,7 @@ double sgd_gmatrix(gmatrix *g,
 
    sample_free(&sm);
    free(grad);
-   free(x);
+   /*free(x);*/
    return loss;
 }
 
