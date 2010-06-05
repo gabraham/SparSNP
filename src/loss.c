@@ -138,7 +138,8 @@ void predict_l2loss_gmatrix(gmatrix *g, double *beta, double *yhat, int *trainf)
       g->nextrow(g, &sm);
       if(trainf[i])
       {
-	 yhat[k] = predict_l2loss_pt_gmatrix(&sm, beta, g->mean, g->sd, g->p + 1);
+	 yhat[k] = predict_l2loss_pt_gmatrix(&sm, beta,
+	       g->mean, g->sd, g->p + 1);
 	 k++;
       }
    } 

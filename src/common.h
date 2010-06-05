@@ -7,7 +7,7 @@
 #define FAILURE 0
 
 /* How to treat the x input, as discrete or continuous */
-#ifdef DISCRETE
+/*#ifdef DISCRETE
 #define type "discrete"
 #define dtype char
 #define ONE 1
@@ -15,7 +15,11 @@
 #define dtype double
 #define type "continuous"
 #define ONE 1.0
-#endif
+#endif */
+
+#define dtype double
+#define type "continuous"
+#define ONE 1.0
 
 /* The size for each datum in the binary input file */
 #define intype char
@@ -55,6 +59,7 @@ if(fread(x, size, count, stream) < count) { \
 fprintf(stderr, "read fewer bytes than expected\n"); \
 return FAILURE; \
 }
+
 int strcmp2(const char*, const char*);
 
 

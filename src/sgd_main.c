@@ -145,7 +145,7 @@ int main(int argc, char* argv[])
       printf("usage: sgd -model <model> -f <filename> -n <#samples> -p \
 <#variables> | -beta <beta filename> -pred <pred filename> -epoch <maxepochs> \
 -step <stepsize> -l1 <lambda1> -l2 <lambda2> -thresh <threshold> \
--pred <prediction file> -cv <cvfolds> -v -vv\n");
+-pred <prediction file> -cv <cvfolds> -inmemory -scale -seed <seed> -v -vv\n");
       return EXIT_FAILURE;
    }
 
@@ -157,19 +157,14 @@ int main(int argc, char* argv[])
  
    if(scaleflag)
    {
-      if(strcmp2(type, "continuous"))
-      {
-         if(verbose)
-   	 printf("Scaling ... ");
+      if(verbose)
+	 printf("Scaling ... ");
    
-         scale(&g, g.mean, g.sd);
-         gmatrix_scale(&g);
+      scale(&g, g.mean, g.sd);
+      gmatrix_scale(&g);
    
-         if(verbose)
-   	 printf("done\n");
-      }
-      else
-	 printf("won't scale if type=discrete\n");
+      if(verbose)
+	 printf("done\n");
    }
 
    gmatrix_reset(&g);
@@ -198,6 +193,7 @@ lambda1=%.9f lambda2=%.9f \n",
 
    if(verbose)
       printf("Starting SGD ...\n");
+
    sgd_gmatrix(&g, dloss_pt_func, loss_pt_func, predict_pt_func,
 	 stepsize, maxepochs, betahat, lambda1, lambda2, threshold,
 	 verbose, trainf, trunc);
