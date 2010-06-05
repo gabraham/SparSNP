@@ -68,7 +68,6 @@ double gmatrix_auc(double *yhat, gmatrix *g, int *trainf, int ntrain)
    for(i = 0 ; i < g->n ; i++)
    {
       z = g->next_y(g);
-      /*printf("%d %.3f\n", i, (double)z);*/
       if(z && trainf[i])
 	 m1++;
    }

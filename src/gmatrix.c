@@ -104,7 +104,7 @@ void gmatrix_free(gmatrix *g)
 int gmatrix_disk_nextrow(gmatrix *g, sample *s)
 {
    int i;
-   dtype *tmp;
+   intype *tmp;
    
    MALLOCTEST(tmp, sizeof(intype) * (g->p + 1))
 
@@ -118,13 +118,14 @@ int gmatrix_disk_nextrow(gmatrix *g, sample *s)
 
    FREADTEST(tmp, sizeof(intype), g->p + 1, g->file)
 
-   s->y = tmp[0];
+   s->y = (dtype)tmp[0];
    s->x[0] = 1.0; /* intercept */
    for(i = 1 ; i < g->p + 1; i++)
       s->x[i] = ((dtype)tmp[i] - g->mean[i]) / g->sd[i];
    /*s->x++;*/
    g->i++;
    free(tmp);
+
    return SUCCESS;
 }
 
@@ -208,17 +209,18 @@ int gmatrix_mem_nextrow(gmatrix *g, sample *s)
 
 dtype gmatrix_disk_next_y(gmatrix *g)
 {
-   dtype y;
+   intype tmp;
    if(g->i == g->n)
       gmatrix_reset(g);
 
-   fread(&y, sizeof(intype), 1, g->file);
+   fread(&tmp, sizeof(intype), 1, g->file);
+
    g->i++;
 
    /* ignore the x vector*/
-   fseek(g->file, sizeof(intype) * (g->p + 1), SEEK_CUR);
+   fseek(g->file, sizeof(intype) * g->p, SEEK_CUR);
 
-   return y;
+   return (dtype)tmp;
 }
 
 dtype gmatrix_mem_next_y(gmatrix *g)

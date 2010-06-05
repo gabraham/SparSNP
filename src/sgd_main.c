@@ -155,12 +155,16 @@ int main(int argc, char* argv[])
    if(!gmatrix_init(&g, inmemory, FALSE, filename, NULL, NULL, n, p))
       return EXIT_FAILURE;
  
-   if(strcmp2(type, "discrete") && scaleflag && verbose)
+   if(scaleflag)
    {
-      printf("Scaling ... ");
+      if(verbose)
+	 printf("Scaling ... ");
+
       scale(&g, g.mean, g.sd);
       gmatrix_scale(&g);
-      printf("done\n");
+
+      if(verbose)
+	 printf("done\n");
    }
 
    gmatrix_reset(&g);
