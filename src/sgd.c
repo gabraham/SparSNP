@@ -11,8 +11,8 @@ double sgd_gmatrix(gmatrix *g,
 {
    int epoch = 1, i, j;
    double *grad;
-   double prevloss = 0, loss = 0, bestloss = 1e9;
-   double stepsize = maxstepsize;
+   double prevloss = 0, loss = 0;
+   double *stepsize;
    sample sm;
    double yhat;
    double trainacc = 0;
@@ -21,9 +21,13 @@ double sgd_gmatrix(gmatrix *g,
    double diff = 1e9;
    int ntests = 0;
    double ptloss = 0;
-   double s, d, dp = 0;
+   double d, dp = 0;
 
    MALLOCTEST(grad, sizeof(double) * (g->p + 1))
+   MALLOCTEST(stepsize, sizeof(double) * (g->p + 1))
+   
+   for(i = 0 ; i < g->p + 1 ; i++)
+      stepsize[i] = maxstepsize;
 
    if(!sample_init(&sm, g->p))
       return FAILURE;
@@ -51,15 +55,28 @@ double sgd_gmatrix(gmatrix *g,
 	    loss += ptloss;
 	    trainacc += (double)((yhat >= 0.5) == (int)sm.y);
 
+	    /* don't penalise intercept */
+	    beta[0] -= stepsize[0] * grad[0];
+
 	    /* Update weights */
-	    for(j = 0 ; j < g->p + 1; j++)
+	    for(j = 1 ; j < g->p + 1; j++)
 	    {
-	       s = stepsize;
-	       d = grad[j] + lambda1 * sign(beta[j]) 
+	       
+	       d = grad[j] + lambda1 * sign(beta[j])
 		     + lambda2 * beta[j] * beta[j];
-	       if(sign(beta[j]) != sign(d))
-		  s = stepsize / 2.0;
-	       beta[j] -= s * d;
+
+
+	       /*if(j == 5) 
+		  printf("beta[j]: %.15f, beta[j]2: %.15f s: %.15f\n",
+		     beta[j], beta[j] - stepsize[j] * d, stepsize[j]);*/
+	       
+	       /*if(sign(beta[j]) != 0 
+		     && sign(beta[j]) != sign(beta[j] - stepsize[j] * d))
+	       {
+		  stepsize[j] = fmax(stepsize[j] / 2, 1e-20);
+	       }*/
+
+	       beta[j] -= stepsize[j] * d;
 	    }
 	 }
 	 /* test */
@@ -80,8 +97,6 @@ double sgd_gmatrix(gmatrix *g,
       }
       /*printf("total loss: %.10f over %d samples\n", loss, g->n - ntests);*/
       loss = loss / (g->n - ntests);
-      if(bestloss > loss)
-	 bestloss = loss;
 
       /* truncate small weights when lasso is active */
       if(lambda1 > 0)
@@ -93,16 +108,16 @@ double sgd_gmatrix(gmatrix *g,
 
       if(verbose)
       {
-	 printf("Epoch %d  training loss: %.5f diff: %.5f stepsize: %.15f\
- training accuracy: %.8f", epoch, loss, diff, stepsize, trainacc);
+	 printf("Epoch %d  training loss: %.5f diff: %.5f stepsize[0]: %.15f\
+ training accuracy: %.8f", epoch, loss, diff, stepsize[0], trainacc);
 	 if(ntests > 0)
 	    printf(" test accuracy: %.8f test loss: %.8f", testacc, testloss);
 	 printf("\n");
       }
  
-      if(epoch > 1 && diff < -threshold)
+      /*if(epoch > 1 && diff < -threshold)
 	 stepsize = fmax(stepsize / 2, 1e-20);
-      else if(fabs(diff) <= threshold)
+      else*/ if(fabs(diff) <= threshold)
       {
 	 if(verbose)
 	    printf("Termination condition met\n");
