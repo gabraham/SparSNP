@@ -157,14 +157,19 @@ int main(int argc, char* argv[])
  
    if(scaleflag)
    {
-      if(verbose)
-	 printf("Scaling ... ");
-
-      scale(&g, g.mean, g.sd);
-      gmatrix_scale(&g);
-
-      if(verbose)
-	 printf("done\n");
+      if(strcmp2(type, "continuous"))
+      {
+         if(verbose)
+   	 printf("Scaling ... ");
+   
+         scale(&g, g.mean, g.sd);
+         gmatrix_scale(&g);
+   
+         if(verbose)
+   	 printf("done\n");
+      }
+      else
+	 printf("won't scale if type=discrete\n");
    }
 
    gmatrix_reset(&g);
