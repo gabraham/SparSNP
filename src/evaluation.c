@@ -24,8 +24,8 @@ double auc(double *yhat, int *y, int n)
 
    m2 = n - m1;
 
-   y1 = malloc(m1 * sizeof(double));
-   y2 = malloc(m2 * sizeof(double));
+   MALLOCTEST(y1, m1 * sizeof(double))
+   MALLOCTEST(y2, m2 * sizeof(double))
 
    i = j = k = 0;
    while(i < n)
@@ -84,8 +84,8 @@ double gmatrix_auc(double *yhat, gmatrix *g, int *trainf, int ntrain)
 
    printf("%d %d\n", m1, m2);
 
-   y1 = malloc(m1 * sizeof(double));
-   y2 = malloc(m2 * sizeof(double));
+   MALLOCTEST(y1, m1 * sizeof(double))
+   MALLOCTEST(y2, m2 * sizeof(double))
 
    printf("Positives: %d  Negatives: %d\n", m1, m2);
 

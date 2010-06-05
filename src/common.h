@@ -20,7 +20,41 @@
 /* The size for each datum in the binary input file */
 #define intype char
 
+#define MALLOCTEST(x, size) \
+if(!(x = malloc(size))) { \
+fprintf(stderr, "can't malloc\n"); \
+return FAILURE; \
+}
 
+#define MALLOCTEST2(x, size) \
+if(!(x = malloc(size))) { \
+fprintf(stderr, "can't malloc\n"); \
+return EXIT_FAILURE; \
+}
+
+#define CALLOCTEST(x, count, size) \
+if(!(x = calloc(count, size))) { \
+fprintf(stderr, "can't calloc\n"); \
+return FAILURE; \
+}
+
+#define CALLOCTEST2(x, count, size) \
+if(!(x = calloc(count, size))) { \
+fprintf(stderr, "can't calloc\n"); \
+return EXIT_FAILURE; \
+}
+
+#define FOPENTEST(x, filename, mode) \
+if(!(x = fopen(filename, mode))) { \
+fprintf(stderr, "can't open file %s\n", filename); \
+return FAILURE; \
+}
+
+#define FREADTEST(x, size, count, stream) \
+if(fread(x, size, count, stream) < count) { \
+fprintf(stderr, "read fewer bytes than expected\n"); \
+return FAILURE; \
+}
 int strcmp2(const char*, const char*);
 
 

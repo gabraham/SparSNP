@@ -26,24 +26,24 @@ typedef struct gmatrix {
 
    /*void (*init)(gmatrix*, short, short, char*, int, int);
    void (*reset)(gmatrix*);*/
-   void (*nextrow)(struct gmatrix*, sample*);
+   int (*nextrow)(struct gmatrix*, sample*);
    dtype (*next_y)(struct gmatrix*);
 } gmatrix;
 
 
-void gmatrix_init(gmatrix *, short, short, char *, dtype **, dtype *, int, int);
-void gmatrix_reset(gmatrix *);
+int gmatrix_init(gmatrix *, short, short, char *, dtype **, dtype *, int, int);
+int gmatrix_reset(gmatrix *);
 void gmatrix_free(gmatrix *);
 
-void gmatrix_disk_nextrow(gmatrix *, sample *);
+int gmatrix_disk_nextrow(gmatrix *, sample *);
 dtype gmatrix_disk_next_y(gmatrix *);
 
-void gmatrix_mem_nextrow(gmatrix *, sample *);
+int gmatrix_mem_nextrow(gmatrix *, sample *);
 dtype gmatrix_mem_next_y(gmatrix *);
 
-void gmatrix_load(gmatrix *);
+int gmatrix_load(gmatrix *);
 void gmatrix_scale(gmatrix *);
 
-void sample_init(sample *, int);
+int sample_init(sample *, int);
 void sample_free(sample *);
 

@@ -66,8 +66,10 @@ double predict_logloss_pt_gmatrix(sample *s, double *beta,
       double *mean, double *sd, int p)
 {
    int i = 0;
-   dtype *x = malloc(sizeof(dtype) * (p + 1));
+   dtype *x;
    double yhat = 0;
+
+   MALLOCTEST(x, sizeof(dtype) * (p + 1))
 
    x[0] = 1;
    for(i = 1 ; i < p + 1; i++)
@@ -109,8 +111,10 @@ double predict_l2loss_pt_gmatrix(sample *s, double *beta,
       double *mean, double *sd, int p)
 {
    int i = 0;
-   dtype *x = malloc(sizeof(dtype) * p);
+   dtype *x;
    double yhat = 0;
+
+   MALLOCTEST(x, sizeof(dtype) * p)
 
    x[0] = 1;
    for(i = 0 ; i < p - 1 ; i++)

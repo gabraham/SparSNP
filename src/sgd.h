@@ -5,6 +5,7 @@
 #include "common.h"
 #include "loss.h"
 #include "scale.h"
+#include "util.h"
 #include "evaluation.h"
 
 typedef double (*loss_pt)(double, dtype);
@@ -18,7 +19,4 @@ double sgd_gmatrix(gmatrix *g,
    double maxstepsize,
    int maxepoch, double *beta, double lambda1, double lambda2,
    double threshold, int verbose, int *trainf, double trunc);
-
-void writevectorf(char* file, double* beta, int p);
-void writevectorl(char* file, int* beta, int p);
 

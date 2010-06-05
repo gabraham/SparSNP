@@ -8,13 +8,13 @@ all: sgd_disc sgd_cont #pcor
 CCFLAGS = -Wall -g -pg -std=gnu99
 LIBRARIES = -lm
 
-sgd_cont: common.c gmatrix.c scale.c loss.c evaluation.c sgd.c sgd_main.c
+sgd_cont: common.c gmatrix.c scale.c loss.c evaluation.c util.c sgd.c sgd_main.c
 	gcc $(CCFLAGS) $(LIBRARIES) $^ -o sgd_cont
 
-sgd_disc: common.c gmatrix.c scale.c loss.c evaluation.c sgd.c sgd_main.c
+sgd_disc: common.c gmatrix.c scale.c loss.c evaluation.c util.c sgd.c sgd_main.c
 	gcc $(CCFLAGS) $(LIBRARIES) $^ -o sgd_disc -DDISCRETE
 
-pcor: common.c gmatrix.c scale.c loss.c evaluation.c sgd.c pcor.c
+pcor: common.c gmatrix.c scale.c loss.c evaluation.c util.c sgd.c pcor.c
 	gcc $(CCFLAGS) $(LIBRARIES) $^ -o pcor
 
 clean:
