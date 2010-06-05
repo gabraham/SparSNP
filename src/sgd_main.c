@@ -13,7 +13,7 @@ int main(int argc, char* argv[])
    char *subsetfile = "subset.csv";
    int n = 0, p = 0;
    int verbose = FALSE;
-   int *trainf, *testf;
+   int *trainf = NULL, *testf = NULL;
    int ntrain = 0, ntest = 0;
    int cv = 1;
    long seed = time(NULL);
@@ -240,6 +240,9 @@ lambda1=%.9f lambda2=%.9f \n",
    free(betahat);
    free(yhat_train);
    free(yhat_test);
+   free(trainf);
+   if(testf)
+      free(testf);
    
    return EXIT_SUCCESS;
 }

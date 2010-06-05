@@ -66,14 +66,38 @@ int gmatrix_init(gmatrix *g, short inmemory, short pcor,
 
 void gmatrix_free(gmatrix *g)
 {
+   int i;
+
    if(!g->inmemory && g->file)
    {
       fclose(g->file);
       g->file = NULL;
    }
-   free(g->mean);
-   free(g->sd);
+
+   if(g->mean)
+      free(g->mean);
+
+   if(g->sd)
+      free(g->sd);
+
    g->mean = g->sd = NULL;
+
+   if(g->x)
+   {
+      for(i = 0 ; i < g->n ; i++)
+      {
+	 if(g->x[i])
+	    free(g->x[i]);
+      }
+      free(g->x);
+      g->x = NULL;
+   }
+
+   if(g->y)
+   {
+      free(g->y);
+      g->y = NULL;
+   }
 }
 
 /* Expects the binary data row to be y, x_1, x_2, x_3, ..., x_p */
@@ -121,11 +145,6 @@ int gmatrix_load(gmatrix *g)
       MALLOCTEST(g->x[i], sizeof(dtype) * (g->p + 1))
 
       FREADTEST(tmp, sizeof(intype), g->p + 1, fin)
-
-     /* g->y[i] = g->x[i][0]; */
-
-      /* intercept */
-      /* g->x[i][0] = 1.0; */
 
       g->y[i] = (dtype)tmp[0];
 
