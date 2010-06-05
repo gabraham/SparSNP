@@ -195,16 +195,17 @@ lambda1=%.9f lambda2=%.9f \n",
    
    
    
-   return 1;
 
 
 
+   writevectorf(betafile, betahat, p + 1);
 
 
 
    gmatrix_reset(&g);
    yhat_train = malloc(ntrain * sizeof(double));
    predict_gmatrix_func(&g, betahat, yhat_train, trainf);
+
 
    if(ntest > 0)
    {
@@ -213,9 +214,10 @@ lambda1=%.9f lambda2=%.9f \n",
       predict_gmatrix_func(&g, betahat, yhat_test, testf);
    }
 
-   writevectorf(betafile, betahat, p + 1);
+   /*writevectorf(betafile, betahat, p + 1);*/
    writevectorf(predfile, yhat_train, ntrain);
    writevectorl(subsetfile, trainf, g.n);
+
 
    printf("###############################\n");
 

@@ -36,10 +36,10 @@ void gmatrix_init(gmatrix *g, short inmemory, short pcor,
 
    /* TODO: this code isn't needed for discrete inputs, but sgd_gmatrix will
     * need to be fixed too  */
-   g->mean = calloc(p, sizeof(double));
+   g->mean = calloc(p + 1, sizeof(double));
    g->sd = malloc(sizeof(double) * (p + 1));
 
-   for(i = 1 ; i < g->p + 1 ; i++)
+   for(i = 0 ; i < g->p + 1 ; i++)
       g->sd[i] = 1;
 
    g->nextrow = gmatrix_disk_nextrow;

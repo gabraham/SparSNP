@@ -66,13 +66,13 @@ double predict_logloss_pt_gmatrix(sample *s, double *beta,
       double *mean, double *sd, int p)
 {
    int i = 0;
-   dtype *x = malloc(sizeof(dtype) * p);
+   dtype *x = malloc(sizeof(dtype) * (p + 1));
    double yhat = 0;
 
    x[0] = 1;
-   for(i = 0 ; i < p - 1 ; i++)
-      x[i+1] = (s->x[i] - mean[i]) / sd[i];
-   yhat = predict_logloss_pt(dotprod(x, beta, p));
+   for(i = 1 ; i < p + 1; i++)
+      x[i] = (s->x[i] - mean[i]) / sd[i];
+   yhat = predict_logloss_pt(dotprod(x, beta, p + 1));
 
    free(x);
    return yhat;
@@ -91,7 +91,8 @@ void predict_logloss_gmatrix(gmatrix *g, double *beta, double *yhat, int *trainf
       g->nextrow(g, &sm);
       if(trainf[i])
       {
-	 yhat[k] = predict_logloss_pt_gmatrix(&sm, beta, g->mean, g->sd, g->p + 1);
+	 yhat[k] = predict_logloss_pt_gmatrix(&sm, beta,
+	       g->mean, g->sd, g->p);
 	 k++;
       }
    } 
