@@ -4,7 +4,6 @@
 
 #include "common.h"
 #include "loss.h"
-#include "scale.h"
 #include "util.h"
 #include "evaluation.h"
 

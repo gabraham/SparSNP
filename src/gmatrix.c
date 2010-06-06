@@ -6,14 +6,14 @@
 int sample_init(sample *s, int p)
 {
    s->p = p;
-   MALLOCTEST(s->x1, sizeof(dtype) * (p + 1))
-   s->x = s->x1;
+   MALLOCTEST(s->x, sizeof(dtype) * (p + 1))
    return SUCCESS;
 }
 
 void sample_free(sample *s)
 {
-   free(s->x1);
+   if(!s->inmemory)
+      free(s->x);
 }
 
 int gmatrix_init(gmatrix *g, short inmemory, short pcor,
@@ -82,7 +82,8 @@ void gmatrix_free(gmatrix *g)
 
    g->mean = g->sd = NULL;
 
-   if(g->x)
+   /* if in memory, the sample struct will contain a pointer to x and be freed later */
+   if(g->x && !g->inmemory)
    {
       for(i = 0 ; i < g->n ; i++)
       {
@@ -106,24 +107,23 @@ int gmatrix_disk_nextrow(gmatrix *g, sample *s)
    int i;
    intype *tmp;
    
+   s->inmemory = g->inmemory;
+
    MALLOCTEST(tmp, sizeof(intype) * (g->p + 1))
 
    if(g->i == g->n)
       if(!gmatrix_reset(g))
 	 return FAILURE;
 
-   /* reset to old pointer so we don't increment beyond
-    * the allocated vector later */
-   /*s->x = s->x1;*/
-
    FREADTEST(tmp, sizeof(intype), g->p + 1, g->file)
 
    s->y = (dtype)tmp[0];
    s->x[0] = 1.0; /* intercept */
    for(i = 1 ; i < g->p + 1; i++)
-      s->x[i] = ((dtype)tmp[i] - g->mean[i]) / g->sd[i];
-   /*s->x++;*/
+      /*s->x[i] = ((dtype)tmp[i] - g->mean[i]) / g->sd[i];*/
+      s->x[i] = (dtype)tmp[i];
    g->i++;
+
    free(tmp);
 
    return SUCCESS;
@@ -162,15 +162,58 @@ int gmatrix_load(gmatrix *g)
 
 /* Only applicable for memory-based matrices
  */
-void gmatrix_scale(gmatrix *g)
+int gmatrix_scale(gmatrix *g)
 {
    int i, j;
-   if(g->inmemory && g->mean && g->sd)
+   double delta;
+   sample sm;
+   double *mean, *sd;
+
+   MALLOCTEST(mean, sizeof(double) * (g->p + 1))
+   MALLOCTEST(sd, sizeof(double) * (g->p + 1))
+
+   sample_init(&sm, g->p + 1);
+
+   mean[0] = 0;
+   sd[0] = 1;
+
+   /* sd is really the sum of squares, not the SD, but we
+    * use the same variable to save memory */
+
+   for(i = 0 ; i < g->n ; i++)
+   {
+      g->nextrow(g, &sm);
+
+      for(j = 1 ; j < g->p + 1; j++)
+      {
+	 if(i == 0)
+	    mean[j] = sd[j] = 0;
+
+	 delta = (double)sm.x[j] - mean[j];
+	 mean[j] += delta / (i + 1);
+	 sd[j] += delta * ((double)sm.x[j] - mean[j]);
+      }
+   }
+
+   for(j = 1 ; j < g->p + 1 ; j++)
+      sd[j] = sqrt(sd[j] / (g->n - 1));
+
+   sample_free(&sm);
+
+   free(g->mean);
+   free(g->sd);
+
+   g->mean = mean;
+   g->sd = sd;
+
+   if(g->inmemory)
    {
       for(i = 0 ; i < g->n ; i++)
 	 for(j = 1 ; j < g->p + 1; j++)
 	    g->x[i][j] = (g->x[i][j] - g->mean[j]) / g->sd[j];
    }
+
+   return SUCCESS;
 }
 
 int gmatrix_mem_nextrow(gmatrix *g, sample *s)
@@ -178,6 +221,8 @@ int gmatrix_mem_nextrow(gmatrix *g, sample *s)
    if(g->i == g->n)
       if(!gmatrix_reset(g))
 	 return FAILURE;
+
+   s->inmemory = g->inmemory;
 
    s->x = g->x[g->i];
    s->y = g->y[g->i];

@@ -160,12 +160,22 @@ int main(int argc, char* argv[])
       if(verbose)
 	 printf("Scaling ... ");
    
-      scale(&g, g.mean, g.sd);
       gmatrix_scale(&g);
-   
+
+      writevectorf("mean.csv", g.mean, p + 1);
+      writevectorf("sd.csv", g.sd, p + 1);
+
       if(verbose)
 	 printf("done\n");
    }
+
+   
+   
+   
+
+
+
+
 
    gmatrix_reset(&g);
 
