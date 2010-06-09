@@ -3,13 +3,15 @@
 int main(int argc, char* argv[])
 {
    int i;
-   double *betahat;
+   double *betahat, *betahat_unsc;
    double *yhat_train = NULL, *yhat_test = NULL;
    gmatrix g;
    char *filename = NULL;
    char *model = NULL;
    char *betafile = "beta.csv";
-   char *predfile = "pred.csv";
+   char *betaunscfile = "beta_unsc.csv";
+   char *predtrainfile = "pred_train.csv";
+   char *predtestfile = "pred_test.csv";
    char *subsetfile = "subset.csv";
    int n = 0, p = 0;
    int verbose = FALSE;
@@ -23,6 +25,7 @@ int main(int argc, char* argv[])
    predict_gmatrix predict_gmatrix_func = NULL;
    short inmemory = FALSE;
    short scaleflag = FALSE;
+   optim_gmatrix optim_gmatrix_func = sgd_gmatrix;
 
    /* Parameters */
    int maxepochs = 20;
@@ -35,7 +38,15 @@ int main(int argc, char* argv[])
 
    for(i = 1 ; i < argc ; i++)
    {
-      if(strcmp2(argv[i], "-f"))
+      if(strcmp2(argv[i], "-optim"))
+      {
+	 i++;
+	 if(strcmp2(argv[i], "sgd"))
+	    optim_gmatrix_func = sgd_gmatrix;
+	 else if(strcmp2(argv[i], "scd"))
+	    optim_gmatrix_func = scd_gmatrix;
+      }
+      else if(strcmp2(argv[i], "-f"))
       {
 	 i++;
 	 filename = argv[i];
@@ -115,10 +126,20 @@ int main(int argc, char* argv[])
 	 i++;
 	 betafile = argv[i];
       }
-      else if(strcmp2(argv[i], "-pred"))
+      else if(strcmp2(argv[i], "-betaunsc"))
       {
 	 i++;
-	 predfile = argv[i];
+	 betaunscfile = argv[i];
+      }
+      else if(strcmp2(argv[i], "-predtrain"))
+      {
+	 i++;
+	 predtrainfile = argv[i];
+      }
+      else if(strcmp2(argv[i], "-predtest"))
+      {
+	 i++;
+	 predtestfile = argv[i];
       }
       else if(strcmp2(argv[i], "-cv"))
       {
@@ -151,6 +172,7 @@ int main(int argc, char* argv[])
 
    srand48(seed);
    CALLOCTEST2(betahat, p + 1, sizeof(double))
+   CALLOCTEST2(betahat_unsc, p + 1, sizeof(double))
 
    if(!gmatrix_init(&g, inmemory, FALSE, filename, NULL, NULL, n, p))
       return EXIT_FAILURE;
@@ -170,13 +192,6 @@ int main(int argc, char* argv[])
    }
 
    
-   
-   
-
-
-
-
-
    gmatrix_reset(&g);
 
    MALLOCTEST2(trainf, sizeof(int) * g.n)
@@ -204,7 +219,7 @@ lambda1=%.9f lambda2=%.9f \n",
    if(verbose)
       printf("Starting SGD ...\n");
 
-   sgd_gmatrix(&g, dloss_pt_func, loss_pt_func, predict_pt_func,
+   optim_gmatrix_func(&g, dloss_pt_func, loss_pt_func, predict_pt_func,
 	 stepsize, maxepochs, betahat, lambda1, lambda2, threshold,
 	 verbose, trainf, trunc);
 
@@ -219,8 +234,15 @@ lambda1=%.9f lambda2=%.9f \n",
       predict_gmatrix_func(&g, betahat, yhat_test, testf);
    }
 
+   /* unscale, return beta to original scale */
+   for(i = 1 ; i < p + 1 ; i++)
+   {
+      betahat_unsc[i] = g.sd[i] * betahat[i] + g.mean[i];
+   }
+
    writevectorf(betafile, betahat, p + 1);
-   writevectorf(predfile, yhat_train, ntrain);
+   writevectorf(betaunscfile, betahat_unsc, p + 1);
+   writevectorf(predtrainfile, yhat_train, ntrain);
    writevectorl(subsetfile, trainf, g.n);
 
 
@@ -247,6 +269,8 @@ lambda1=%.9f lambda2=%.9f \n",
       gmatrix_reset(&g);
       printf("Test Accuracy (fixed beta): %.8f\n",
 	    gmatrix_accuracy(yhat_test, &g, 0.5, testf, ntest));
+   
+      writevectorf(predtestfile, yhat_test, ntest);
    }
 
    printf("\n");

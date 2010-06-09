@@ -25,6 +25,7 @@ typedef struct gmatrix {
 
    int (*nextrow)(struct gmatrix*, sample*);
    dtype (*next_y)(struct gmatrix*);
+   int (*nextcol)(struct gmatrix*, sample*);
 } gmatrix;
 
 
@@ -43,4 +44,6 @@ int gmatrix_scale(gmatrix *);
 
 int sample_init(sample *, int);
 void sample_free(sample *);
+
+int gmatrix_mem_nextcol(gmatrix *, sample *);
 

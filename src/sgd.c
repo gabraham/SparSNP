@@ -65,7 +65,6 @@ double sgd_gmatrix(gmatrix *g,
 	       d = grad[j] + lambda1 * sign(beta[j])
 		     + lambda2 * beta[j] * beta[j];
 
-
 	       /*if(j == 5) 
 		  printf("beta[j]: %.15f, beta[j]2: %.15f s: %.15f\n",
 		     beta[j], beta[j] - stepsize[j] * d, stepsize[j]);*/
@@ -76,7 +75,19 @@ double sgd_gmatrix(gmatrix *g,
 		  stepsize[j] = fmax(stepsize[j] / 2, 1e-20);
 	       }*/
 
-	       beta[j] -= stepsize[j] * d;
+	       if(epoch > 1)
+	       {
+		  if(sign(beta[j]) != 0 
+		     && sign(beta[j]) != sign(beta[j] - stepsize[j] * d))
+		     beta[j] = 0;
+		  else 
+		     beta[j] -= stepsize[j] * d;
+	       }
+	       else
+		  beta[j] -= stepsize[j] * d;
+
+	       /*if(i == g->n - 1)
+		  stepsize[j] = stepsize[j] / (maxstepsize + i);*/
 	    }
 	 }
 	 /* test */
@@ -116,11 +127,11 @@ double sgd_gmatrix(gmatrix *g,
       }
  
       /*if(epoch > 1 && diff < -threshold)
-	 stepsize = fmax(stepsize / 2, 1e-20);
+	 stepsize = fmax(stepsize / 2.0, 1e-20);
       else*/ if(fabs(diff) <= threshold)
       {
 	 if(verbose)
-	    printf("Termination condition met\n");
+	    printf("Termination condition met, diff=%.20f\n", diff);
 	 break;
       }
 

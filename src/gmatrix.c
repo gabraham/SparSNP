@@ -45,11 +45,13 @@ int gmatrix_init(gmatrix *g, short inmemory, short pcor,
 
    g->nextrow = gmatrix_disk_nextrow;
    g->next_y = gmatrix_disk_next_y;
+   g->nextcol = NULL;
 
    if(inmemory)
    {
       g->nextrow = gmatrix_mem_nextrow;
       g->next_y = gmatrix_mem_next_y;
+      g->nextcol = gmatrix_mem_nextcol;
       
       if(filename != NULL && x == NULL)
 	 if(!gmatrix_load(g))
@@ -231,9 +233,24 @@ int gmatrix_mem_nextrow(gmatrix *g, sample *s)
    return SUCCESS;
 }
 
-/*void gmatrix_mem_nextcol(gmatrix *g, var *v)
+int gmatrix_mem_nextcol(gmatrix *g, sample *s)
 {
-}*/
+   int j;
+
+   if(g->i == g->p + 1)
+      if(!gmatrix_reset(g))
+	 return FAILURE;
+
+   for(j = 0 ; j < g->n ; j++)
+   {
+      s->x[j] = g->x[j][g->i];
+      /*s->y[j] = g->y[j];*/
+   }
+
+   g->i++;
+
+   return SUCCESS;
+}
 
 /*void gmatrix_mem_pcor_nextrow(gmatrix *g, sample *s)
 {
