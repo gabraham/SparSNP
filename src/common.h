@@ -12,7 +12,7 @@
 #define dtype char
 #define ONE 1
 #else
-#define dtype double
+#define dtype float
 #define type "continuous"
 #define ONE 1.0
 #endif
