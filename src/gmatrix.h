@@ -1,14 +1,13 @@
 #include <stdio.h>
+#include <math.h>
 #include "common.h"
 
 typedef struct sample {
    dtype *x;
-   dtype *x1; /* keep the old pointer so that we can reset x to it after
-	       * incrementing x, to avoid copying data */
    dtype y;
    int p;
+   short inmemory;
 } sample;
-
 
 typedef struct gmatrix {
    char* filename;
@@ -24,26 +23,27 @@ typedef struct gmatrix {
    dtype **x;
    int skip;
 
-   /*void (*init)(gmatrix*, short, short, char*, int, int);
-   void (*reset)(gmatrix*);*/
-   void (*nextrow)(struct gmatrix*, sample*);
+   int (*nextrow)(struct gmatrix*, sample*);
    dtype (*next_y)(struct gmatrix*);
+   int (*nextcol)(struct gmatrix*, sample*);
 } gmatrix;
 
 
-void gmatrix_init(gmatrix *, short, short, char *, dtype **, dtype *, int, int);
-void gmatrix_reset(gmatrix *);
+int gmatrix_init(gmatrix *, short, short, char *, dtype **, dtype *, int, int);
+int gmatrix_reset(gmatrix *);
 void gmatrix_free(gmatrix *);
 
-void gmatrix_disk_nextrow(gmatrix *, sample *);
+int gmatrix_disk_nextrow(gmatrix *, sample *);
 dtype gmatrix_disk_next_y(gmatrix *);
 
-void gmatrix_mem_nextrow(gmatrix *, sample *);
+int gmatrix_mem_nextrow(gmatrix *, sample *);
 dtype gmatrix_mem_next_y(gmatrix *);
 
-void gmatrix_load(gmatrix *);
-void gmatrix_scale(gmatrix *);
+int gmatrix_load(gmatrix *);
+int gmatrix_scale(gmatrix *);
 
-void sample_init(sample *, int);
+int sample_init(sample *, int);
 void sample_free(sample *);
+
+int gmatrix_mem_nextcol(gmatrix *, sample *);
 

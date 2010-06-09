@@ -62,23 +62,26 @@ double predict_logloss_pt(double d)
    return 1 / (1 + exp(-d));
 }
 
-double predict_logloss_pt_gmatrix(sample *s, double *beta,
-      double *mean, double *sd, int p)
+double predict_logloss_pt_gmatrix(sample *s, double *beta, int p)
 {
-   int i = 0;
-   dtype *x = malloc(sizeof(dtype) * p);
+   /*int i = 0;
+   dtype *x;
    double yhat = 0;
 
+   MALLOCTEST(x, sizeof(dtype) * (p + 1))
+
    x[0] = 1;
-   for(i = 0 ; i < p - 1 ; i++)
-      x[i+1] = (s->x[i] - mean[i]) / sd[i];
-   yhat = predict_logloss_pt(dotprod(x, beta, p));
+   for(i = 1 ; i < p + 1; i++)
+      x[i] = (s->x[i] - mean[i]) / sd[i];
+   yhat = predict_logloss_pt(dotprod(s->x, beta, p + 1));
 
    free(x);
-   return yhat;
+   return yhat; */
+   return predict_logloss_pt(dotprod(s->x, beta, p + 1));
 }
 
-void predict_logloss_gmatrix(gmatrix *g, double *beta, double *yhat, int *trainf)
+void predict_logloss_gmatrix(gmatrix *g, double *beta,
+      double *yhat, int *trainf)
 {
    int i, k;
    sample sm;
@@ -91,7 +94,7 @@ void predict_logloss_gmatrix(gmatrix *g, double *beta, double *yhat, int *trainf
       g->nextrow(g, &sm);
       if(trainf[i])
       {
-	 yhat[k] = predict_logloss_pt_gmatrix(&sm, beta, g->mean, g->sd, g->p + 1);
+	 yhat[k] = predict_logloss_pt_gmatrix(&sm, beta, g->p);
 	 k++;
       }
    } 
@@ -104,12 +107,13 @@ double predict_l2loss_pt(double d)
    return d;
 }
 
-double predict_l2loss_pt_gmatrix(sample *s, double *beta,
-      double *mean, double *sd, int p)
+double predict_l2loss_pt_gmatrix(sample *s, double *beta, int p)
 {
-   int i = 0;
-   dtype *x = malloc(sizeof(dtype) * p);
+   /*int i = 0;
+   dtype *x;
    double yhat = 0;
+
+   MALLOCTEST(x, sizeof(dtype) * p)
 
    x[0] = 1;
    for(i = 0 ; i < p - 1 ; i++)
@@ -117,7 +121,8 @@ double predict_l2loss_pt_gmatrix(sample *s, double *beta,
    yhat = dotprod(x, beta, p);
 
    free(x);
-   return yhat;
+   return yhat;*/
+   return dotprod(s->x, beta, p + 1);
 }
 
 void predict_l2loss_gmatrix(gmatrix *g, double *beta, double *yhat, int *trainf)
@@ -133,7 +138,7 @@ void predict_l2loss_gmatrix(gmatrix *g, double *beta, double *yhat, int *trainf)
       g->nextrow(g, &sm);
       if(trainf[i])
       {
-	 yhat[k] = predict_l2loss_pt_gmatrix(&sm, beta, g->mean, g->sd, g->p + 1);
+	 yhat[k] = predict_l2loss_pt_gmatrix(&sm, beta, g->p);
 	 k++;
       }
    } 
