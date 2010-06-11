@@ -1,8 +1,8 @@
 #include "sgd.h"
 
-double soft_threshold(double beta, double step)
+double soft_threshold(double beta, double gamma)
 {
-   return sign(beta) * fmax(fabs(beta) - step, 0);
+   return sign(beta) * fmax(fabs(beta) - gamma, 0);
 }
 
 /* Stochastic coordinate descent */
@@ -20,7 +20,7 @@ double scd_gmatrix(gmatrix *g,
    double d, s;
    double loss = 0;
    double *lp;
-   double q = 0;
+   double y2 = 0;
 
    if(!g->inmemory)
    {
@@ -30,43 +30,38 @@ double scd_gmatrix(gmatrix *g,
 
    sample_init(&sm, g->n);
 
-
    while(epoch <= maxepoch)
    {
       loss = 0;
       CALLOCTEST(lp, g->n, sizeof(double));
 
-      for(i = 0 ; i < g->p + 1; i++)
+      for(j = 0 ; j < g->p + 1; j++)
       {
-	 g->nextcol(g, &sm);
-	 q = 0;
-	 for(j = 0 ; j < g->n ; j++)
-	 {
-	    for(k = 0 ; k <- g->p + 1 ; k++)
-	    {
-	       if(k != i)
-		  q += sm.x[j] * beta[k];
-	    }
+	 d = 0;
 
-	    d += sm.x[j] * (g->y[j] - q);
+	 for(i = 0 ; i < g->n ; i++)
+	 {
+	    y2 = 0;
+	    for(k = 0 ; k < g->p + 1 ; k++)
+	       y2 += g->x[i][k] * beta[k];
+
+	    d += g->x[i][j] * (g->y[i] - y2);
 	 }
 
-	 beta[i] = soft_threshold(d, lambda1) / (1 + lambda2);
+	 /*beta[j] = soft_threshold(beta[j] + d, lambda1) / (1 + lambda2);*/
+	 beta[j] += d;
+
       }
 
-      for(i = 0 ; i < g->p + 1 ; i++)
+      for(i = 0 ; i < g->n ; i++)
       {
-	 for(j = 0 ; j < g->n ; j++)
-	 {
-	    g->nextcol(g, &sm);
-	    lp[j] += beta[i] * sm.x[j];
-	 }
+	 for(j = 0 ; j < g->p + 1 ; j++)
+	    lp[i] += g->x[i][j] * beta[j];
+
+	 loss += loss_pt_func(lp[i], g->y[i]) / g->n;
       }
 
-     /* for(j = 0 ; j < g->n ; j++)
-	 loss += loss_pt_func(lp[j], g->y[j]) / g->n;
-
-      printf("Epoch %d  training loss: %.5f\n", epoch, loss); */
+      printf("Epoch %d  training loss: %.5f\n", epoch, loss);
 
       free(lp);
       epoch++;

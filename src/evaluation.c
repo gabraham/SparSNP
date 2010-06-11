@@ -74,11 +74,11 @@ double gmatrix_auc(double *yhat, gmatrix *g, int *trainf, int ntrain)
 
    m2 = ntrain - m1;
 
-   if(!m1 || !m2)
+   if(m1 == 0 || m2 == 0)
    {
       printf("cannot evaluate AUC, too few observations: positives=%d\
  negatives=%d\n", m1, m2);
-      return -1;
+      return FAILURE;
    }
 
    printf("%d %d\n", m1, m2);

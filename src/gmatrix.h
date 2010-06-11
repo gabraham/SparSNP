@@ -16,6 +16,7 @@ typedef struct gmatrix {
    int n;
    int p;
    int i;
+   int j;
    double *mean;
    double *sd;
    short inmemory;

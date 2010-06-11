@@ -26,6 +26,7 @@ int gmatrix_init(gmatrix *g, short inmemory, short pcor,
 
    g->filename = filename;
    g->i = 0;
+   g->j = 0;
    g->n = n;
    g->p = p;
    g->inmemory = inmemory;
@@ -151,7 +152,7 @@ int gmatrix_load(gmatrix *g)
 
       g->y[i] = (dtype)tmp[0];
 
-      g->x[i][0] = 1.0;
+      g->x[i][0] = 1.0; /* intercept */
       for(j = 1 ; j < g->p + 1 ; j++)
 	 g->x[i][j] = (dtype)tmp[j];
    }
@@ -235,19 +236,19 @@ int gmatrix_mem_nextrow(gmatrix *g, sample *s)
 
 int gmatrix_mem_nextcol(gmatrix *g, sample *s)
 {
-   int j;
+   int i;
 
-   if(g->i == g->p + 1)
+   if(g->j == g->p + 1)
       if(!gmatrix_reset(g))
 	 return FAILURE;
 
-   for(j = 0 ; j < g->n ; j++)
+   for(i = 0 ; i < g->n ; i++)
    {
-      s->x[j] = g->x[j][g->i];
+      s->x[i] = g->x[i][g->j];
       /*s->y[j] = g->y[j];*/
    }
 
-   g->i++;
+   g->j++;
 
    return SUCCESS;
 }
@@ -305,6 +306,7 @@ int gmatrix_reset(gmatrix *g)
       FOPENTEST(g->file, g->filename, "rb")
    }
    g->i = 0;
+   g->j = 0;
    return SUCCESS;
 }
 

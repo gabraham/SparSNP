@@ -223,6 +223,15 @@ lambda1=%.9f lambda2=%.9f \n",
 	 stepsize, maxepochs, betahat, lambda1, lambda2, threshold,
 	 verbose, trainf, trunc);
 
+   
+   
+   
+   /*return EXIT_FAILURE;*/
+
+
+
+
+
    gmatrix_reset(&g);
    MALLOCTEST2(yhat_train, ntrain * sizeof(double))
    predict_gmatrix_func(&g, betahat, yhat_train, trainf);
