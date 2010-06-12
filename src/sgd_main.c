@@ -286,6 +286,7 @@ lambda1=%.9f lambda2=%.9f \n",
 
    gmatrix_free(&g);
    free(betahat);
+   free(betahat_unsc);
    free(yhat_train);
    free(yhat_test);
    free(trainf);

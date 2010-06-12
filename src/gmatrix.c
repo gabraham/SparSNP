@@ -6,13 +6,15 @@
 int sample_init(sample *s, int p)
 {
    s->p = p;
-   MALLOCTEST(s->x, sizeof(dtype) * (p + 1))
+   /*MALLOCTEST(s->x, sizeof(dtype) * (p + 1))*/
    return SUCCESS;
 }
 
 void sample_free(sample *s)
 {
-   if(!s->inmemory)
+   /* if data is loaded into memory, s->x is just a pointer to that data
+    * and we don't want to free it */
+   if(s->x && !s->inmemory)
       free(s->x);
 }
 
@@ -33,7 +35,7 @@ int gmatrix_init(gmatrix *g, short inmemory, short pcor,
    g->pcor = pcor;
    g->x = x;
    g->y = y;
-   g->skip = -1;
+   /*g->skip = -1;*/
 
 
    /* TODO: this code isn't needed for discrete inputs, but sgd_gmatrix will
@@ -86,7 +88,7 @@ void gmatrix_free(gmatrix *g)
    g->mean = g->sd = NULL;
 
    /* if in memory, the sample struct will contain a pointer to x and be freed later */
-   if(g->x && !g->inmemory)
+   if(g->x)
    {
       for(i = 0 ; i < g->n ; i++)
       {
@@ -112,6 +114,7 @@ int gmatrix_disk_nextrow(gmatrix *g, sample *s)
    
    s->inmemory = g->inmemory;
 
+   MALLOCTEST(s->x, sizeof(dtype) * (g->p + 1))
    MALLOCTEST(tmp, sizeof(intype) * (g->p + 1))
 
    if(g->i == g->n)
