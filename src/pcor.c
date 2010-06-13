@@ -20,8 +20,9 @@ int writematrix(double **x, int n, int p, char* file)
    return SUCCESS;
 }
 
+/* variant of SGD for partial correlation */
 double sgd_matrix(double *beta, double *mean, double *sd,
-      dloss dloss_func, loss_pt loss_pt_func, predict_pt predict_pt_func,
+      dloss_pt dloss_pt_func, loss_pt loss_pt_func, predict_pt predict_pt_func,
       double **x, int whichy, int n, int p)
 {
    int i, j, k;
@@ -51,10 +52,10 @@ double sgd_matrix(double *beta, double *mean, double *sd,
 	    }
 	 }
 
-	 ptloss = loss_pt_func(x2, beta, y, p - 1); 
+	 /*ptloss = loss_pt_func(x2, beta, y, p - 1);  */
 	 /*yhat = predict_pt_func(&sm, beta, g->mean, g->sd, g->p + 1);*/
 	 
-	 dloss_func(x2, beta, y, p - 1, grad);
+	 /*dloss_func(x2, beta, y, p - 1, grad);*/
 	 loss += ptloss;
 
 	 /* Update weights */
@@ -105,13 +106,15 @@ double sgd_matrix(double *beta, double *mean, double *sd,
 
 
 /*
- * Convert a p * (p - 1) matrix of regression coefficients (including the intercept)
+ * Convert a p * p matrix of regression coefficients (including the intercept)
  * to a p * p matrix of partial correlations with 1 on the diagonal
  */
 void reg2pcor(double **beta, double **r, int p)
 {
    int i, j, k;
-   double **tmp = malloc(sizeof(double*) * p);
+   double **tmp;
+   
+   /*tmp = malloc(sizeof(double*) * p);
 
    for(i = 0 ; i < p ; i++)
    {
@@ -125,9 +128,11 @@ void reg2pcor(double **beta, double **r, int p)
 	    k++;
 	 }
       }
-   }
+   }*/
 
-   writematrix(tmp, p, p, "tmp.csv");
+   /*writematrix(tmp, p, p, "tmp.csv");*/
+
+   tmp = beta;
 
    /* convert regression coefs to partial correlation, shrink to zero if signs
     * don't agree */
@@ -139,64 +144,175 @@ void reg2pcor(double **beta, double **r, int p)
 	    sqrt(fmax(tmp[i][j] * tmp[j][i], 0));
    }
 
-   for(i = 0 ; i < p ; i++)
+   /*for(i = 0 ; i < p ; i++)
       free(tmp[i]);
-   free(tmp);
+   free(tmp);*/
 }
 
-int main()
+int main(int argc, char *argv[])
 {
    int i, j;
-   int n = 100;
-   int p = 500;
-   /* long seed = time(NULL); */
+   char *filename = NULL;
+   int n = 0;
+   int p = 0;
    long seed = 123;
-   double **x = malloc(sizeof(double*) * n);
-   double **x2 = malloc(sizeof(double*) * n);
-   double **beta = malloc(sizeof(double*) * p);
-   double *mean = malloc(sizeof(double) * p);
-   double *sd = malloc(sizeof(double) * p);
-   double **pcor = malloc(sizeof(double*) * p);
+   double stepsize = 1e-4;
+   double lambda1 = 0, lambda2 = 0;
+   double threshold = 1e-6;
+   short verbose = TRUE;
+   double trunc = 1e-9;
+   double **beta;
+   double **pcor;
+   int *trainf = NULL;
+   optim_gmatrix optim_gmatrix_func = gd_gmatrix;
+   loss_pt loss_pt_func = NULL;
+   predict_pt predict_pt_func = NULL;
+   dloss_pt dloss_pt_func = NULL;
+   predict_gmatrix predict_gmatrix_func = NULL;
    gmatrix g;
+   dtype *tmp;
+   int maxepochs = 100;
 
-   gmatrix_init(&g, TRUE, FALSE, NULL, x, NULL, n, p);
+   for(i = 1 ; i < argc ; i++)
+   {
+      if(strcmp2(argv[i], "-optim"))
+      {
+	 i++;
+	 if(strcmp2(argv[i], "sgd"))
+	    optim_gmatrix_func = sgd_gmatrix;
+	 else if(strcmp2(argv[i], "scd"))
+	    optim_gmatrix_func = scd_gmatrix;
+	 else if(strcmp2(argv[i], "gd"))
+	    optim_gmatrix_func = gd_gmatrix;
+      }
+      else if(strcmp2(argv[i], "-f"))
+      {
+	 i++;
+	 filename = argv[i];
+      }
+      else if(strcmp2(argv[i], "-n"))
+      {
+	 i++;
+	 n = (int)atof(argv[i]);
+      }
+      else if(strcmp2(argv[i], "-p"))
+      {
+	 i++;
+	 p = (int)atof(argv[i]);
+      }
+      else if(strcmp2(argv[i], "-epochs"))
+      {
+	 i++;
+	 maxepochs = (int)atof(argv[i]);
+      }
+      else if(strcmp2(argv[i], "-step"))
+      {
+	 i++;
+	 stepsize = atof(argv[i]);
+      }
+      else if(strcmp2(argv[i], "-l1"))
+      {
+	 i++;
+	 lambda1 = atof(argv[i]);
+      }
+      else if(strcmp2(argv[i], "-l2"))
+      {
+	 i++;
+	 lambda2 = atof(argv[i]);
+      }
+      else if(strcmp2(argv[i], "-thresh"))
+      {
+	 i++;
+	 threshold = atof(argv[i]);
+      }
+      else if(strcmp2(argv[i], "-v"))
+      {
+	 verbose = TRUE;
+      }
+      else if(strcmp2(argv[i], "-vv"))
+      {
+	 verbose = 2;
+      }
+   }
+
+   if(filename == NULL || n == 0 || p == 0)
+   {
+      printf("usage: pcor -f <filename> -n <#samples> -p <#variables>\n");
+      return EXIT_FAILURE;
+   }
+
+
+   if(!gmatrix_init(&g, TRUE, TRUE, filename, NULL, NULL, n, p - 1))
+      return EXIT_FAILURE;
    
+   gmatrix_scale(&g);
+   writevectorf("mean.csv", g.mean, p);
+   writevectorf("sd.csv", g.sd, p);
+
+
    srand48(seed);
 
-   for(i = 0 ; i < n ; i++)
+   MALLOCTEST2(trainf, sizeof(int) * g.n)
+   for(i = 0 ; i < g.n ; i++)
+      trainf[i] = TRUE;
+
+   loss_pt_func = &l2loss_pt;
+   dloss_pt_func = &l2dloss_pt;
+   predict_gmatrix_func = &predict_l2loss_gmatrix;
+   predict_pt_func = &predict_l2loss_pt;
+
+   MALLOCTEST2(beta, p * sizeof(double*))
+   MALLOCTEST2(pcor, p * sizeof(double*))
+   
+   for(j = 0 ; j < p ; j++)
    {
-      x[i] = malloc(sizeof(double) * p);
-      for(j = 0 ; j < p ; j++)
-	 x[i][j] = drand48();
+      CALLOCTEST2(beta[j], p, sizeof(double))
+      CALLOCTEST2(pcor[j], p, sizeof(double))
    }
 
-   /* scale so we don't have to worry about intercept */
-   scale(x, mean, sd, n, p);
-
-   for(i = 0 ; i < n ; i++)
+   MALLOCTEST2(tmp, n * sizeof(dtype))
+   
+   for(j = 0 ; j < p ; j++)
    {
-      x2[i] = malloc(sizeof(double) * p);
-      for(j = 0 ; j < p ; j++)
-	 x2[i][j] = (x[i][j] - mean[j]) / sd[j];
+      printf("%d\n", j);
+
+
+      /* set current variable to 1 (intercept) */
+      for(i = 0 ; i < n ; i++)
+      {
+	 /* remember this variable and use it as response in current round */
+	 tmp[i] = g.x[i][j];
+
+	 /* the intercept is the jth variable, ends up being the diagonal of
+	  * the beta matrix
+	  */
+	 g.x[i][j] = 1.0;
+      }
+      g.y = tmp;
+
+      optim_gmatrix_func(&g, dloss_pt_func, loss_pt_func, predict_pt_func,
+	 stepsize, maxepochs, beta[j], lambda1, lambda2, threshold,
+	 verbose, trainf, trunc);
+
+      /* put variable back */
+      for(i = 0 ; i < n ; i++)
+	 g.x[i][j] = tmp[i];
    }
 
-   for(i = 0 ; i < p ; i++)
-   {
-      beta[i] = calloc(p-1, sizeof(double));
-      pcor[i] = calloc(p, sizeof(double));
-   }
 
-   for(i = 0 ; i < p ; i++)
-   {
-      printf("%d\n", i);
-      sgd_matrix(beta[i], mean, sd,
-	    l2dloss, l2loss_pt, predict_l2loss_pt, x2, i, n, p);
-   }
-
-   writematrix(x2, n, p, "x.csv");
-   writematrix(beta, p, p-1, "beta_pcor.csv");
+   writematrix(beta, p, p, "beta_pcor.csv");
    reg2pcor(beta, pcor, p);
    writematrix(pcor, p, p, "pcor.csv");
+
+   for(i = 0 ; i < p ; i++)
+   {
+      free(beta[i]);
+      free(pcor[i]);
+   }
+
+   free(beta);
+   free(pcor);
+
 
    return EXIT_SUCCESS;
 }

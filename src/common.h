@@ -6,6 +6,8 @@
 #define SUCCESS 1
 #define FAILURE 0
 
+#define SDTHRESH 1e-20
+
 /* How to treat the x input, as discrete or continuous */
 /*#ifdef DISCRETE
 #define type "discrete"
@@ -22,7 +24,9 @@
 #define ONE 1.0
 
 /* The size for each datum in the binary input file */
+#ifndef intype
 #define intype char
+#endif
 
 #define MALLOCTEST(x, size) \
 if(!(x = malloc(size))) { \
@@ -56,7 +60,7 @@ return FAILURE; \
 
 #define FREADTEST(x, size, count, stream) \
 if(fread(x, size, count, stream) < count) { \
-fprintf(stderr, "read fewer bytes than expected\n"); \
+fprintf(stderr, "read fewer bytes than expected (%d)\n", count); \
 return FAILURE; \
 }
 

@@ -57,13 +57,11 @@ int gmatrix_init(gmatrix *g, short inmemory, short pcor,
       g->nextcol = gmatrix_mem_nextcol;
       
       if(filename != NULL && x == NULL)
-	 if(!gmatrix_load(g))
-	    return FAILURE;
-      /*if(pcor)
       {
-	 g->nextrow = gmatrix_mem_pcor_nextrow;
-	 g->next_y = gmatrix_mem_pcor_next_y;
-      }*/
+	 if(g->pcor)
+	    return gmatrix_load_pcor(g);
+	 return gmatrix_load(g);
+      }
    }
 
    return SUCCESS;
@@ -87,7 +85,8 @@ void gmatrix_free(gmatrix *g)
 
    g->mean = g->sd = NULL;
 
-   /* if in memory, the sample struct will contain a pointer to x and be freed later */
+   /* if in memory, the sample struct will contain a
+    * pointer to x and be freed later */
    if(g->x)
    {
       for(i = 0 ; i < g->n ; i++)
@@ -140,7 +139,7 @@ int gmatrix_load(gmatrix *g)
    int i, j;
    FILE* fin;
    intype *tmp;
-   
+
    MALLOCTEST(tmp, sizeof(intype) * (g->p + 1))
    MALLOCTEST(g->x, sizeof(dtype*) * g->n)
    MALLOCTEST(g->y, sizeof(dtype) * g->n)
@@ -166,6 +165,42 @@ int gmatrix_load(gmatrix *g)
    return SUCCESS;
 }
 
+/* No y variable
+ * There is a useless intercept (zero due to scaling), but necessary to avoid
+ * off-by-one problems in code that expects an intercept
+ * Only p columns
+ * The first x column is stored in g->y
+ * */
+int gmatrix_load_pcor(gmatrix *g)
+{
+   int i, j;
+   FILE* fin;
+   intype *tmp;
+   
+   MALLOCTEST(tmp, sizeof(intype) * (g->p + 1))
+   MALLOCTEST(g->x, sizeof(dtype*) * g->n)
+   MALLOCTEST(g->y, sizeof(dtype) * g->n)
+
+   FOPENTEST(fin, g->filename, "rb")
+
+   for(i = 0 ; i < g->n ; i++)
+   {
+      MALLOCTEST(g->x[i], sizeof(dtype) * (g->p + 1))
+
+      FREADTEST(tmp, sizeof(intype), g->p + 1, fin)
+
+      g->y[i] = 1.0;
+
+      for(j = 0 ; j < g->p + 1 ; j++)
+	 g->x[i][j] = (dtype)tmp[j];
+   }
+
+   fclose(fin);
+   free(tmp);
+
+   return SUCCESS;
+}
+
 /* Only applicable for memory-based matrices
  */
 int gmatrix_scale(gmatrix *g)
@@ -180,8 +215,8 @@ int gmatrix_scale(gmatrix *g)
 
    sample_init(&sm, g->p + 1);
 
-   mean[0] = 0;
-   sd[0] = 1;
+   /*mean[0] = 0;
+   sd[0] = 1;*/
 
    /* sd is really the sum of squares, not the SD, but we
     * use the same variable to save memory */
@@ -190,7 +225,7 @@ int gmatrix_scale(gmatrix *g)
    {
       g->nextrow(g, &sm);
 
-      for(j = 1 ; j < g->p + 1; j++)
+      for(j = 0 ; j < g->p + 1; j++)
       {
 	 if(i == 0)
 	    mean[j] = sd[j] = 0;
@@ -201,7 +236,7 @@ int gmatrix_scale(gmatrix *g)
       }
    }
 
-   for(j = 1 ; j < g->p + 1 ; j++)
+   for(j = 0 ; j < g->p + 1 ; j++)
       sd[j] = sqrt(sd[j] / (g->n - 1));
 
    sample_free(&sm);
@@ -215,8 +250,14 @@ int gmatrix_scale(gmatrix *g)
    if(g->inmemory)
    {
       for(i = 0 ; i < g->n ; i++)
-	 for(j = 1 ; j < g->p + 1; j++)
-	    g->x[i][j] = (g->x[i][j] - g->mean[j]) / g->sd[j];
+      {
+	 for(j = 0 ; j < g->p + 1; j++)
+	 {
+	    g->x[i][j] = g->x[i][j] - g->mean[j];
+	    if(g->sd[j] > SDTHRESH)
+	       g->x[i][j] /= g->sd[j];
+	 }
+      }
    }
 
    return SUCCESS;

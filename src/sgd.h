@@ -1,6 +1,7 @@
 #include <stdlib.h>
 #include <math.h>
 #include <time.h>
+#include <string.h>
 
 #include "common.h"
 #include "loss.h"
@@ -26,6 +27,12 @@ double sgd_gmatrix(gmatrix *g,
    double threshold, int verbose, int *trainf, double trunc);
 
 double scd_gmatrix(gmatrix *g,
+   dloss_pt, loss_pt, predict_pt,
+   double maxstepsize,
+   int maxepoch, double *beta, double lambda1, double lambda2,
+   double threshold, int verbose, int *trainf, double trunc);
+
+double gd_gmatrix(gmatrix *g,
    dloss_pt, loss_pt, predict_pt,
    double maxstepsize,
    int maxepoch, double *beta, double lambda1, double lambda2,

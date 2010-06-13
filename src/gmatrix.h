@@ -41,6 +41,7 @@ int gmatrix_mem_nextrow(gmatrix *, sample *);
 dtype gmatrix_mem_next_y(gmatrix *);
 
 int gmatrix_load(gmatrix *);
+int gmatrix_load_pcor(gmatrix *);
 int gmatrix_scale(gmatrix *);
 
 int sample_init(sample *, int);
