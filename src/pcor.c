@@ -20,133 +20,31 @@ int writematrix(double **x, int n, int p, char* file)
    return SUCCESS;
 }
 
-/* variant of SGD for partial correlation */
-double sgd_matrix(double *beta, double *mean, double *sd,
-      dloss_pt dloss_pt_func, loss_pt loss_pt_func, predict_pt predict_pt_func,
-      double **x, int whichy, int n, int p)
-{
-   int i, j, k;
-   int epoch = 0, maxepoch = 1000;
-   double *grad = malloc((p - 1) * sizeof(double));
-   double stepsize = 1e-5;
-   double lambda1 = 1e-6, lambda2 = 0;
-   double ptloss = 0;
-   double *x2 = malloc((p - 1) * sizeof(double)); /* p-1 coefs  */
-   double loss = 0, prevloss = 0;
-   double y;
-   
-   while(epoch <= maxepoch)
-   {
-      loss = 0;
-      for(i = 0 ; i < n ; i++)
-      {
-	 y = x[i][whichy];
-
-	 k = 0;
-	 for(j = 0 ; j < p ; j++)
-	 {
-	    if(j != whichy)
-	    {
-	       x2[k] = x[i][j];
-	       k++;
-	    }
-	 }
-
-	 /*ptloss = loss_pt_func(x2, beta, y, p - 1);  */
-	 /*yhat = predict_pt_func(&sm, beta, g->mean, g->sd, g->p + 1);*/
-	 
-	 /*dloss_func(x2, beta, y, p - 1, grad);*/
-	 loss += ptloss;
-
-	 /* Update weights */
-	 for(j = 0 ; j < p - 1; j++)
-	 {
-	    beta[j] -= stepsize * (grad[j] 
-	       + lambda1 * sign(beta[j]) 
-	       + lambda2 * beta[j] * beta[j]);
-	 }
-      }
-      printf("Epoch %d loss=%.6f\n", epoch, loss / n);
-      if(epoch > 1 && fabs(prevloss - loss) <= 1e-9)
-	 break;
-      prevloss = loss;
-      epoch++;
-   }
-
-
-   free(grad);
-   free(x2);
-   return 0;
-}
-
-/*void scale(double **x, double *mean, double *sd, int n, int p)
-{
-   int i, j;
-   double delta;
- 
-   / sd is really the sum of squares, not the SD, but we
-     use the same variable to save memory /
-
-   for(i = 0 ; i < n ; i++)
-   {
-      for(j = 0 ; j < p ; j++)
-      {
-         if(i == 0)
-	    mean[j] = sd[j] = 0;
-
-         delta = x[i][j] - mean[j];
-         mean[j] += delta / (i + 1);
-         sd[j] += delta * (x[i][j] - mean[j]);
-      }
-   }
-
-   for(j = 0 ; j < p ; j++)
-      sd[j] = sqrt(sd[j] / (n - 1));
-}*/
-
-
 /*
  * Convert a p * p matrix of regression coefficients (including the intercept)
  * to a p * p matrix of partial correlations with 1 on the diagonal
  */
 void reg2pcor(double **beta, double **r, int p)
 {
-   int i, j, k;
-   double **tmp;
-   
-   /*tmp = malloc(sizeof(double*) * p);
+   int i, j;
+   double f, g;
 
-   for(i = 0 ; i < p ; i++)
-   {
-      tmp[i] = calloc(p, sizeof(double));
-      k = 0;
-      for(j = 0 ; j < p ; j++)
-      {
-	 if(j != i)
-	 {
-	    tmp[i][j] = beta[i][k];
-	    k++;
-	 }
-      }
-   }*/
-
-   /*writematrix(tmp, p, p, "tmp.csv");*/
-
-   tmp = beta;
-
-   /* convert regression coefs to partial correlation, shrink to zero if signs
-    * don't agree */
+   /* convert regression coefs to partial correlation, shrink to their average
+    * if signs don't agree */
    for(i = 0 ; i < p ; i++)
    {
       r[i][i] = 1;
       for(j = 0 ; j < i ; j++)
-	 r[i][j] = r[j][i] = sign(tmp[i][j]) * 
-	    sqrt(fmax(tmp[i][j] * tmp[j][i], 0));
+      {
+	 g = beta[i][j] * beta[j][i];
+	 if(g < 0)
+	    f = (beta[i][j] + beta[j][i]) / 2;
+	 else
+	    f = sqrt(g);
+	 
+	 r[i][j] = r[j][i] = sign(beta[i][j]) * f;
+      }
    }
-
-   /*for(i = 0 ; i < p ; i++)
-      free(tmp[i]);
-   free(tmp);*/
 }
 
 int main(int argc, char *argv[])
@@ -155,11 +53,11 @@ int main(int argc, char *argv[])
    char *filename = NULL;
    int n = 0;
    int p = 0;
-   long seed = 123;
+   /*long seed = 123;*/
    double stepsize = 1e-4;
    double lambda1 = 0, lambda2 = 0;
    double threshold = 1e-6;
-   short verbose = TRUE;
+   short verbose = FALSE;
    double trunc = 1e-9;
    double **beta;
    double **pcor;
@@ -180,8 +78,8 @@ int main(int argc, char *argv[])
 	 i++;
 	 if(strcmp2(argv[i], "sgd"))
 	    optim_gmatrix_func = sgd_gmatrix;
-	 else if(strcmp2(argv[i], "scd"))
-	    optim_gmatrix_func = scd_gmatrix;
+	 else if(strcmp2(argv[i], "cd"))
+	    optim_gmatrix_func = cd_gmatrix;
 	 else if(strcmp2(argv[i], "gd"))
 	    optim_gmatrix_func = gd_gmatrix;
       }
@@ -250,7 +148,7 @@ int main(int argc, char *argv[])
    writevectorf("sd.csv", g.sd, p);
 
 
-   srand48(seed);
+   /*srand48(seed);*/
 
    MALLOCTEST2(trainf, sizeof(int) * g.n)
    for(i = 0 ; i < g.n ; i++)
@@ -276,8 +174,6 @@ int main(int argc, char *argv[])
    {
       printf("%d\n", j);
 
-
-      /* set current variable to 1 (intercept) */
       for(i = 0 ; i < n ; i++)
       {
 	 /* remember this variable and use it as response in current round */

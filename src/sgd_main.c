@@ -43,8 +43,8 @@ int main(int argc, char* argv[])
 	 i++;
 	 if(strcmp2(argv[i], "sgd"))
 	    optim_gmatrix_func = sgd_gmatrix;
-	 else if(strcmp2(argv[i], "scd"))
-	    optim_gmatrix_func = scd_gmatrix;
+	 else if(strcmp2(argv[i], "cd"))
+	    optim_gmatrix_func = cd_gmatrix;
 	 else if(strcmp2(argv[i], "gd"))
 	    optim_gmatrix_func = gd_gmatrix;
       }

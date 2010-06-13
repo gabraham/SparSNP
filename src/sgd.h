@@ -26,7 +26,7 @@ double sgd_gmatrix(gmatrix *g,
    int maxepoch, double *beta, double lambda1, double lambda2,
    double threshold, int verbose, int *trainf, double trunc);
 
-double scd_gmatrix(gmatrix *g,
+double cd_gmatrix(gmatrix *g,
    dloss_pt, loss_pt, predict_pt,
    double maxstepsize,
    int maxepoch, double *beta, double lambda1, double lambda2,

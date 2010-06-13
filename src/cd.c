@@ -6,7 +6,7 @@ double soft_threshold(double beta, double gamma)
 }
 
 /* coordinate descent */
-double scd_gmatrix(gmatrix *g,
+double cd_gmatrix(gmatrix *g,
    dloss_pt dloss_pt_func,        /* gradient */
    loss_pt loss_pt_func,    /* loss for one sample */
    predict_pt predict_pt_func, /* prediction for one sample */
@@ -16,21 +16,19 @@ double scd_gmatrix(gmatrix *g,
 {
    int i, j, k;
    int epoch = 1;
-   sample sm;
-   double d, s;
+   double d;
    double loss = 0;
-   double *lp;
+   /*double *lp;*/
    double y2 = 0;
    double d2;
    double tmp;
    short *converged = NULL;
    int numconverged = 0;
    double relerr;
-   short lastcycle = FALSE;
 
    if(!g->inmemory)
    {
-      fprintf(stderr, "scd_gmatrix doesn't support disk based gmatrix yet");
+      fprintf(stderr, "cd_gmatrix doesn't support disk based gmatrix yet");
       return FAILURE;
    }
 

@@ -10,7 +10,7 @@ typedef double (*loss_pt)(dtype *, double *, dtype, int);
 typedef double (*predict_pt)(sample *, double *, double *, double *, int);
 typedef void (*dloss)(dtype *, double *, dtype, int, double *); 
 
-double scd_gmatrix(gmatrix *g,
+double cd_gmatrix(gmatrix *g,
    dloss, loss_pt, predict_pt,
    double maxstepsize,
    int maxepoch, double *beta, double lambda1, double lambda2,
