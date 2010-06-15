@@ -23,8 +23,6 @@ double sgd_gmatrix(gmatrix *g,
    double ptloss = 0;
    double d, dp = 0;
 
-   printf("sgd_gmatrix\n");
-
    MALLOCTEST(grad, sizeof(double) * (g->p + 1))
    MALLOCTEST(stepsize, sizeof(double) * (g->p + 1))
    
@@ -33,8 +31,6 @@ double sgd_gmatrix(gmatrix *g,
 
    if(!sample_init(&sm, g->inmemory, g->p))
       return FAILURE;
-
-   printf("foo\n");
 
    while(epoch <= maxepoch)
    {
