@@ -3,10 +3,12 @@
 
 #include "gmatrix.h"
 
-int sample_init(sample *s, int p)
+int sample_init(sample *s, short inmemory, int p)
 {
    s->p = p;
-   /*MALLOCTEST(s->x, sizeof(dtype) * (p + 1))*/
+   s->inmemory = inmemory;
+   if(!inmemory)
+      MALLOCTEST(s->x, sizeof(dtype) * (p + 1))
    return SUCCESS;
 }
 
@@ -15,7 +17,10 @@ void sample_free(sample *s)
    /* if data is loaded into memory, s->x is just a pointer to that data
     * and we don't want to free it */
    if(s->x && !s->inmemory)
+   {
       free(s->x);
+      s->x = NULL;
+   }
 }
 
 int gmatrix_init(gmatrix *g, short inmemory, short pcor,
@@ -63,6 +68,8 @@ int gmatrix_init(gmatrix *g, short inmemory, short pcor,
 	 return gmatrix_load(g);
       }
    }
+
+   printf("gmatrix_init done\n");
 
    return SUCCESS;
 }
@@ -113,7 +120,7 @@ int gmatrix_disk_nextrow(gmatrix *g, sample *s)
    
    s->inmemory = g->inmemory;
 
-   MALLOCTEST(s->x, sizeof(dtype) * (g->p + 1))
+   /*MALLOCTEST(s->x, sizeof(dtype) * (g->p + 1))*/
    MALLOCTEST(tmp, sizeof(intype) * (g->p + 1))
 
    if(g->i == g->n)
@@ -139,6 +146,8 @@ int gmatrix_load(gmatrix *g)
    int i, j;
    FILE* fin;
    intype *tmp;
+
+   printf("gmatrix_load\n");
 
    MALLOCTEST(tmp, sizeof(intype) * (g->p + 1))
    MALLOCTEST(g->x, sizeof(dtype*) * g->n)
@@ -213,7 +222,7 @@ int gmatrix_scale(gmatrix *g)
    MALLOCTEST(mean, sizeof(double) * (g->p + 1))
    MALLOCTEST(sd, sizeof(double) * (g->p + 1))
 
-   sample_init(&sm, g->p + 1);
+   sample_init(&sm, g->inmemory, g->p + 1);
 
    /*mean[0] = 0;
    sd[0] = 1;*/

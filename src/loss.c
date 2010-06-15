@@ -86,7 +86,7 @@ void predict_logloss_gmatrix(gmatrix *g, double *beta,
    int i, k;
    sample sm;
 
-   sample_init(&sm, g->p);
+   sample_init(&sm, g->inmemory, g->p);
 
    k = 0;
    for(i = 0 ; i < g->n ; i++)
@@ -130,7 +130,7 @@ void predict_l2loss_gmatrix(gmatrix *g, double *beta, double *yhat, int *trainf)
    int i, k;
    sample sm;
 
-   sample_init(&sm, g->p);
+   sample_init(&sm, g->inmemory, g->p);
 
    k = 0;
    for(i = 0 ; i < g->n ; i++)

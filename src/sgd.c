@@ -23,14 +23,18 @@ double sgd_gmatrix(gmatrix *g,
    double ptloss = 0;
    double d, dp = 0;
 
+   printf("sgd_gmatrix\n");
+
    MALLOCTEST(grad, sizeof(double) * (g->p + 1))
    MALLOCTEST(stepsize, sizeof(double) * (g->p + 1))
    
    for(i = 0 ; i < g->p + 1 ; i++)
       stepsize[i] = maxstepsize;
 
-   if(!sample_init(&sm, g->p))
+   if(!sample_init(&sm, g->inmemory, g->p))
       return FAILURE;
+
+   printf("foo\n");
 
    while(epoch <= maxepoch)
    {
@@ -97,6 +101,8 @@ double sgd_gmatrix(gmatrix *g,
 	    testacc += (double)((yhat >= 0.5) == (int)sm.y);
 	    ntests++;
 	 }
+
+	 /*sample_free(&sm);*/
       }
 
       trainacc = trainacc / (g->n - ntests);
@@ -141,6 +147,7 @@ double sgd_gmatrix(gmatrix *g,
 
    sample_free(&sm);
    free(grad);
+   free(stepsize);
    return loss;
 }
 
