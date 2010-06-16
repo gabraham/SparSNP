@@ -52,6 +52,13 @@ fprintf(stderr, "can't calloc\n"); \
 return EXIT_FAILURE; \
 }
 
+#define REALLOCTEST(x, x, size) \
+if(!(x = realloc(x, size))) { \
+fprintf(stderr, "can't realloc\n"); \
+return FAILURE; \
+}
+
+
 #define FOPENTEST(x, filename, mode) \
 if(!(x = fopen(filename, mode))) { \
 fprintf(stderr, "can't open file %s\n", filename); \
