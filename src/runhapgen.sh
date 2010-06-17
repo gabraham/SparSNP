@@ -457,7 +457,7 @@ if ! [ -d "$DIR" ]; then
 fi
 
 # Number of causal SNPs
-K=3
+K=15
 
 echo
 echo "####################################"
@@ -482,7 +482,7 @@ do
    echo $SNP >> $LOCI
 
    CMD="./hapgen -h $HAPLO""_$i -l $LEGEND""_$i \
-   -o "$DIR/sim$i" -n $N $N -gen -rr 4 8 -dl $SNP"
+   -o "$DIR/sim$i" -n $N $N -gen -rr 1.5 2.25  -dl $SNP"
    echo $CMD
    set +e # hapgen returns 1 on exit
    eval $CMD
