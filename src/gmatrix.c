@@ -42,9 +42,6 @@ int gmatrix_init(gmatrix *g, short inmemory, short pcor,
    g->y = y;
    /*g->skip = -1;*/
 
-
-   /* TODO: this code isn't needed for discrete inputs, but sgd_gmatrix will
-    * need to be fixed too  */
    CALLOCTEST(g->mean, p + 1, sizeof(double))
    MALLOCTEST(g->sd, sizeof(double) * (p + 1))
 
@@ -68,8 +65,6 @@ int gmatrix_init(gmatrix *g, short inmemory, short pcor,
 	 return gmatrix_load(g);
       }
    }
-
-   printf("gmatrix_init done\n");
 
    return SUCCESS;
 }
@@ -146,8 +141,6 @@ int gmatrix_load(gmatrix *g)
    int i, j;
    FILE* fin;
    intype *tmp;
-
-   printf("gmatrix_load\n");
 
    MALLOCTEST(tmp, sizeof(intype) * (g->p + 1))
    MALLOCTEST(g->x, sizeof(dtype*) * g->n)

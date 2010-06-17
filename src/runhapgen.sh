@@ -3,6 +3,9 @@
 # Simulate SNP data
 #
 ################################################################################
+set -u
+set -e
+
 TMPDIR=.
 
 
@@ -131,7 +134,6 @@ EOF
 
 }
 
-
 function testscd {
    DIR=testscd
    RSCRIPT=testscd.R
@@ -161,8 +163,7 @@ EOF
    formatscd $DIR "$binfile" $n $p
 }
 
-
-function shuffleconv {
+function shuffle {
    DIR=$1
    prefix=$2
    N=$3
@@ -173,13 +174,12 @@ function shuffleconv {
    yfileshuf="$yfile.shuffled"
    tmp1=".tmp1"
    tmp2=".tmp2"
-   rscript="prepend.R"
-   rscript2="text2bin"
+   rscript=".shuffle.R"
    
    echo -n "Shuffling ... "
    # Shuffle samples 
    cat > $rscript <<EOF
-   n2 <- $N * 2
+   n2 <- $N
    s <- sample(n2)
    y <- read.csv("$DIR/$yfile", header=FALSE)[,1]
    write.table(y[order(s)], "$DIR/$yfileshuf", col.names=FALSE, row.names=FALSE)
@@ -202,12 +202,20 @@ EOF
    cut -f2- -d ' ' $DIR/$tmp2 > $DIR/$xfileshuf
    /bin/rm $DIR/$tmp2 $rscript
    
-   echo "done"
+}
+
+function convert {
+   DIR=$1
+   prefix=$2
+   N=$3
+   binfile="$prefix.bin"
+   xfile="$prefix.all.g"
+   xfileshuf="$xfile.shuffled"
+   yfile="$prefix.y"
+   yfileshuf="$yfile.shuffled"
+   rscript=".convert.R"
    
-   #Rscript -e "source(\"~/Code/sgd/R/convert.R\"); \
-   #   hapgen2bin(hgfile=\"$DIR/$xfileshuf\", hgyfile=\"$DIR/$yfileshuf\",\
-   #   outfile=\"$DIR/$binfile\")"
-   cat > $rscript2 <<EOF
+   cat > $rscript <<EOF
    hgfile <- "$DIR/$xfileshuf"
    hgyfile <- "$DIR/$yfileshuf"
    outfile <- "$DIR/$binfile"
@@ -237,13 +245,96 @@ EOF
 
    close(fin)
    close(yin)
+   warnings()
    
 EOF
 
-   Rscript $rscript2
+   Rscript $rscript
 
-   /bin/rm $DIR/$xfileshuf
+   #/bin/rm -f $DIR/$xfileshuf $rscript
  
+}
+
+# Cut the HapMap data into $num$ regions in different files
+function hapmapcut {
+   legend=$1
+   haplo=$2
+   num=$3
+   cutfile=$4
+   rscript=".Rscript.R"
+
+   w=`cat $1 | wc -l`
+   cat > $rscript <<EOF
+   
+   n <- $num
+   w <- $w - 1
+   leg <- "$legend"
+   hap <- "$haplo"
+
+   f.leg <- file(leg, "rt")
+   f.hap <- file(hap, "rt")
+
+   files.leg <- lapply(1:n, function(i) {
+      file(sprintf("%s_%s", leg, i), open="w+")
+   })
+
+   files.hap <- lapply(1:n, function(i) {
+      file(sprintf("%s_%s", hap, i), open="w+")
+   })
+
+   # Approximate split into n blocks
+   s <- sort(sample(n, size=w, replace=TRUE))
+   write.table(s, file="$cutfile", col.names=FALSE, row.names=FALSE)
+
+   # First do legend files
+   # ignore header
+   hd <- readLines(f.leg, n=1)
+   for(i in 1:n)
+      writeLines(hd, con=files.leg[[i]])
+
+   for(i in 1:w)
+   {
+      r <- readLines(f.leg, n=1)
+      cat(summary(files.leg[[s[i]]])\$description, "\n")
+      writeLines(r, con=files.leg[[s[i]]])
+   }
+
+   close(f.leg)
+
+   for(f in files.leg)
+      close(f)
+
+   # Now do haplo files
+   
+   i <- 1
+   while(TRUE)
+   {
+      r <- readLines(f.hap, n=1)
+      if(length(r) == 0)
+	 break
+      r2 <- strsplit(r, " ")[[1]]
+      for(k in 1:n)
+      {
+	 r3 <- paste(r2[s == k], collapse=" ")
+	 cat(summary(files.hap[[k]])\$description, "\n")
+	 writeLines(r3, con=files.hap[[k]])
+      }
+   }
+
+   for(f in files.hap)
+      close(f)
+
+   close(f.hap)
+
+EOF
+
+   Rscript $rscript
+}
+
+# http://www.perlmonks.org/?node_id=1910
+function randomline {
+   RANDLINE=`perl -e 'srand; rand($.) < 1 && ($line = $_) while <>;\
+   print $line;' $1`
 }
 
 #################################################################################
@@ -264,7 +355,8 @@ EOF
 #-r example/ex.map \
 #-o $DIR/$prefix -n $N $N -gen -rr 2 4 -dl 14431347
 #
-#shuffleconv $DIR $prefix $N
+#shuffle $DIR $prefix $((2*N))
+#convert $DIR $prefix $((2*N))
 #
 #exit 1
 
@@ -278,12 +370,36 @@ EOF
 ## Truncated HapMap data, one strong SNP
 #
 #DIR=sim1
-prefix="sim"
-p=100
-N=1000 # No. samples in each group
-HAPLO=HapMap/genotypes_chr1_JPT+CHB_r22_nr.b36_fwd.phased.100
-LEGEND=HapMap/genotypes_chr1_JPT+CHB_r22_nr.b36_fwd_legend.txt.100
+#prefix="sim"
+#p=100
+#N=1000 # No. samples in each group
+#HAPLO=HapMap/genotypes_chr1_JPT+CHB_r22_nr.b36_fwd.phased.100
+#LEGEND=HapMap/genotypes_chr1_JPT+CHB_r22_nr.b36_fwd_legend.txt.100
 #SNP=72434
+#
+#if ! [ -d "$DIR" ]; then
+#   mkdir $DIR
+#fi
+#
+#set +e
+#./hapgen -h $HAPLO -l $LEGEND \
+#-o $DIR/$prefix -n $N $N -gen -rr 4 8 -dl $SNP
+#set -e
+#
+#shuffle $DIR $prefix $((2*N))
+#convert $DIR $prefix $((2*N))
+#
+#exit 1
+
+##formatsmidas $DIR "$prefix.bin" $N $p
+##formatscd $DIR "$prefix.bin" $N $p
+#
+#
+################################################################################
+# Truncated HapMap data, one strong SNP, different SNP
+#
+#DIR=sim2
+#SNP=555296
 #
 #if ! [ -d "$DIR" ]; then
 #   mkdir $DIR
@@ -294,84 +410,125 @@ LEGEND=HapMap/genotypes_chr1_JPT+CHB_r22_nr.b36_fwd_legend.txt.100
 #
 #shuffleconv $DIR $prefix $N
 #
-##formatsmidas $DIR "$prefix.bin" $N $p
-##formatscd $DIR "$prefix.bin" $N $p
+###formatsmidas $DIR "$prefix.bin" $N $p
+###formatscd $DIR "$prefix.bin" $N $p
+##
 #
+#exit 1
 #
-################################################################################
-# Truncated HapMap data, one strong SNP, different SNP
-
-DIR=sim2
-SNP=555296
-
-if ! [ -d "$DIR" ]; then
-   mkdir $DIR
-fi
-
-./hapgen -h $HAPLO -l $LEGEND \
--o $DIR/$prefix -n $N $N -gen -rr 4 8 -dl $SNP
-
-shuffleconv $DIR $prefix $N
-
-##formatsmidas $DIR "$prefix.bin" $N $p
-##formatscd $DIR "$prefix.bin" $N $p
-#
-
-exit 1
-
-################################################################################
-# HapMap data, one strong SNP
-
-DIR=sim3
-prefix="sim"
-
-if ! [ -d "$DIR" ]; then
-   mkdir $DIR
-fi
-
-# No. samples in each group
-N=2500
-p=185805
-HAPLO=HapMap/genotypes_chr1_JPT+CHB_r22_nr.b36_fwd.phased
-LEGEND=HapMap/genotypes_chr1_JPT+CHB_r22_nr.b36_fwd_legend.txt
-
-#./hapgen -h $HAPLO -l $LEGEND \
-#-o $DIR/$prefix -n $N $N -gen -rr 4.0 8.0 -dl 555296
-
-#shuffleconv $DIR $prefix $N
-
-formatsvmlight $DIR "$prefix.bin" $N $p
-
-exit 1
-
 #################################################################################
-## HapMap data, several strong SNPs
+## HapMap data, one strong SNP
 #
-#DIR=sim2
+#DIR=sim3
 #prefix="sim"
-#N=700
-#HAPLO=HapMap/genotypes_chr1_JPT+CHB_r22_nr.b36_fwd.phased
-#LEGEND=HapMap/genotypes_chr1_JPT+CHB_r22_nr.b36_fwd_legend.txt
 #
 #if ! [ -d "$DIR" ]; then
 #   mkdir $DIR
 #fi
 #
-#./hapgen -h $HAPLO -l $LEGEND \
-#-o $DIR/sim1 -n $N $N -gen -rr 2 4 -dl 72434
+## No. samples in each group
+#N=2500
+#p=185805
+#HAPLO=HapMap/genotypes_chr1_JPT+CHB_r22_nr.b36_fwd.phased
+#LEGEND=HapMap/genotypes_chr1_JPT+CHB_r22_nr.b36_fwd_legend.txt
 #
-#./hapgen -h $HAPLO -l $LEGEND \
-#-o $DIR/sim2 -n $N $N -gen -rr 2 4 -dl 554461
+##./hapgen -h $HAPLO -l $LEGEND \
+##-o $DIR/$prefix -n $N $N -gen -rr 4.0 8.0 -dl 555296
 #
-#./hapgen -h $HAPLO -l $LEGEND \
-#-o $DIR/sim3 -n $N $N -gen -rr 2 4 -dl 554484
+##shuffleconv $DIR $prefix $N
 #
-## Concatenate the files
-#cat $DIR/sim{1,2,3}.y > $DIR/sim.y
-#cat $DIR/sim{1,2,3}.all.g > $DIR/sim.all.g
-#cat $DIR/sim{1,2,3}.aux > $DIR/sim.aux
+#formatsvmlight $DIR "$prefix.bin" $N $p
 #
-#/bin/rm $DIR/sim{1,2,3}.{all.g,y,aux}
+#exit 1
+
+#################################################################################
+# HapMap data, several strong SNPs
+
+DIR=sim5
+prefix="sim"
+N=200
+HAPLO=HapMap/genotypes_chr1_JPT+CHB_r22_nr.b36_fwd.phased
+LEGEND=HapMap/genotypes_chr1_JPT+CHB_r22_nr.b36_fwd_legend.txt
+LOCI=$DIR/loci.txt
+CUTFILE=$DIR/cut.txt
+
+if ! [ -d "$DIR" ]; then
+   mkdir $DIR
+fi
+
+# Number of causal SNPs
+K=3
+
+echo
+echo "####################################"
+echo "Cutting HapMap data"
+echo "####################################"
+
+hapmapcut $LEGEND $HAPLO $K $CUTFILE
+
+echo
+echo "####################################"
+echo "Simulating genotypes"
+echo "####################################"
+echo
+
+/bin/rm -f $LOCI
+
+# Simulate genotypes using each of the causal SNPs
+for ((i = 1 ; i <= $K ; i++));
+do
+   randomline "$LEGEND""_$i"
+   SNP=`echo $RANDLINE | cut -f 2 -d ' '`
+   echo $SNP >> $LOCI
+
+   CMD="./hapgen -h $HAPLO""_$i -l $LEGEND""_$i \
+   -o "$DIR/sim$i" -n $N $N -gen -rr 4 8 -dl $SNP"
+   echo $CMD
+   set +e # hapgen returns 1 on exit
+   eval $CMD
+   set -e
+done
+
+# Concatenate the hapgen files *column-wise*
 #
-#shuffleconv $DIR $prefix $((N*3))
+# This depends on hapgen always generating the same response classes
+# for the same samples (which it does)
 #
+RSCRIPT=".Rscript.R"
+   cat > $RSCRIPT <<EOF
+   sp <- $K
+   
+   fout <- file("$DIR/sim.all.g", "wt")
+   nrow <- 2 * $N
+
+   files <- lapply(1:sp, function(i) {
+      file(sprintf("$DIR/sim%s.all.g", i), open="r")
+   })
+
+   for(i in 1:nrow)
+   {
+      cat("row:", i, "\n")
+      r <- lapply(files, readLines, n=1)
+      r2 <- paste(r, collapse=" ")
+      r3 <- gsub("  ", " ", r2)
+      writeLines(r3, con=fout)
+   }
+
+   close(fout)
+   #for(f in files)
+   #   close(f)
+EOF
+
+Rscript $RSCRIPT
+
+# See previous comment
+/bin/cp $DIR/sim1.y $DIR/sim.y
+
+
+echo "####################################"
+echo "Postprocessing genotypes"
+echo "####################################"
+
+shuffle $DIR $prefix $((N*2))
+convert $DIR $prefix $((N*2))
+

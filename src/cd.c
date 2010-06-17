@@ -20,7 +20,7 @@ double cd_gmatrix(gmatrix *g,
    double loss = 0;
    /*double *lp;*/
    double y2 = 0;
-   double d2;
+   double d2 = 0;
    double tmp;
    short *converged = NULL;
    int numconverged = 0;
@@ -56,6 +56,11 @@ double cd_gmatrix(gmatrix *g,
 	       y2 += g->x[i][k] * beta[k];
 
 	    d += g->x[i][j] * (g->y[i] - y2);
+	    
+	    /* For linear regression, the 2nd
+	     * derivative wrt beta_j is \sum_{i=1}^n x_{ij}^2,
+	     * which is always 1 / (n - 1) for standardised inputs
+	     */
 	    d2 += pow(g->x[i][j], 2);
 	 }
 
@@ -85,6 +90,7 @@ double cd_gmatrix(gmatrix *g,
       printf("Epoch %d  training loss: %.5f\n", epoch, loss);
 
       free(lp); */
+      printf("Epoch %d done\n", epoch);
       epoch++;
    }
 

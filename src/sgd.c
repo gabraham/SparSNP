@@ -75,7 +75,7 @@ double sgd_gmatrix(gmatrix *g,
 		  stepsize[j] = fmax(stepsize[j] / 2, 1e-20);
 	       }*/
 
-	       if(epoch > 1)
+	       /*if(epoch > 1)
 	       {
 		  if(sign(beta[j]) != 0 
 		     && sign(beta[j]) != sign(beta[j] - stepsize[j] * d))
@@ -83,7 +83,7 @@ double sgd_gmatrix(gmatrix *g,
 		  else 
 		     beta[j] -= stepsize[j] * d;
 	       }
-	       else
+	       else*/
 		  beta[j] -= stepsize[j] * d;
 
 	       /*if(i == g->n - 1)
