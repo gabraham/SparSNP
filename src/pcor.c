@@ -29,8 +29,8 @@ void reg2pcor(double **beta, double **r, int p)
    int i, j;
    double f, g;
 
-   /* convert regression coefs to partial correlation, shrink to their average
-    * if signs don't agree */
+   /* convert regression coefs to partial correlation, shrink to the average
+    * of beta_{ij} and beta_{ji} if signs don't agree */
    for(i = 0 ; i < p ; i++)
    {
       r[i][i] = 1;
