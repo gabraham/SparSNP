@@ -317,7 +317,7 @@ shuffleconv $DIR $prefix $N
 ##formatscd $DIR "$prefix.bin" $N $p
 #
 
-exit 1
+#exit 1
 
 ################################################################################
 # HapMap data, one strong SNP
@@ -335,12 +335,12 @@ p=185805
 HAPLO=HapMap/genotypes_chr1_JPT+CHB_r22_nr.b36_fwd.phased
 LEGEND=HapMap/genotypes_chr1_JPT+CHB_r22_nr.b36_fwd_legend.txt
 
-#./hapgen -h $HAPLO -l $LEGEND \
-#-o $DIR/$prefix -n $N $N -gen -rr 4.0 8.0 -dl 555296
+./hapgen -h $HAPLO -l $LEGEND \
+-o $DIR/$prefix -n $N $N -gen -rr 4.0 8.0 -dl 555296
 
-#shuffleconv $DIR $prefix $N
+shuffleconv $DIR $prefix $N
 
-formatsvmlight $DIR "$prefix.bin" $N $p
+#formatsvmlight $DIR "$prefix.bin" $N $p
 
 exit 1
 

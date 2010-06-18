@@ -38,6 +38,7 @@ double cd_gmatrix(gmatrix *g,
 
    while(epoch <= maxepoch && numconverged < g->p + 1)
    {
+      printf("epoch %d\n", epoch);
       loss = 0;
       /*CALLOCTEST(lp, g->n, sizeof(double));*/
 
