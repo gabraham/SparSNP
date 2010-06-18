@@ -283,7 +283,9 @@ function hapmapcut {
    })
 
    # Approximate split into n blocks
-   s <- sort(sample(n, size=w, replace=TRUE))
+   s <- 1
+   while(length(unique(s)) < n)
+      s <- sort(sample(n, size=w, replace=TRUE))
    write.table(s, file="$cutfile", col.names=FALSE, row.names=FALSE)
 
    # First do legend files
@@ -446,9 +448,9 @@ function randomline {
 
 DIR=sim5
 prefix="sim"
-N=200
-HAPLO=HapMap/genotypes_chr1_JPT+CHB_r22_nr.b36_fwd.phased
-LEGEND=HapMap/genotypes_chr1_JPT+CHB_r22_nr.b36_fwd_legend.txt
+N=500
+HAPLO=HapMap/genotypes_chr1_JPT+CHB_r22_nr.b36_fwd.phased.50000
+LEGEND=HapMap/genotypes_chr1_JPT+CHB_r22_nr.b36_fwd_legend.txt.50000
 LOCI=$DIR/loci.txt
 CUTFILE=$DIR/cut.txt
 
@@ -457,7 +459,7 @@ if ! [ -d "$DIR" ]; then
 fi
 
 # Number of causal SNPs
-K=15
+K=10
 
 echo
 echo "####################################"
@@ -477,7 +479,10 @@ echo
 # Simulate genotypes using each of the causal SNPs
 for ((i = 1 ; i <= $K ; i++));
 do
-   randomline "$LEGEND""_$i"
+   f="$LEGEND""_$i"
+   w=$(cat $f | wc -l)
+   tail -n $((w-1)) $f > "$f"".tmp"
+   randomline "$f"".tmp"
    SNP=`echo $RANDLINE | cut -f 2 -d ' '`
    echo $SNP >> $LOCI
 
@@ -487,6 +492,8 @@ do
    set +e # hapgen returns 1 on exit
    eval $CMD
    set -e
+
+   /bin/rm -f "$f"".tmp"
 done
 
 # Concatenate the hapgen files *column-wise*
