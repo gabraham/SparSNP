@@ -1,13 +1,9 @@
 #include "sgd.h"
 
-double soft_threshold(double beta, double gamma)
-{
-   return sign(beta) * fmax(fabs(beta) - gamma, 0);
-}
-
 /* coordinate descent */
 double cd_gmatrix(gmatrix *g,
    dloss_pt dloss_pt_func,        /* gradient */
+   d2loss_pt d2loss_pt_func,        /* 2nd deriv */
    loss_pt loss_pt_func,    /* loss for one sample */
    predict_pt predict_pt_func, /* prediction for one sample */
    double maxstepsize,
@@ -44,6 +40,8 @@ double cd_gmatrix(gmatrix *g,
 
       for(j = 0 ; j < g->p + 1; j++)
       {
+	 printf("%d", j);
+	 fflush(stdout);
 	 if(converged[j])
 	    continue;
 
@@ -65,6 +63,7 @@ double cd_gmatrix(gmatrix *g,
 	    d2 += pow(g->x[i][j], 2);
 	 }
 
+	 /* TODO: don't penalise intercept */
 	 tmp = soft_threshold(beta[j] + d / d2, lambda1) / (1 + lambda2);
 	 /*tmp = beta[j] + d / d2;*/
 
@@ -78,6 +77,8 @@ double cd_gmatrix(gmatrix *g,
 	    }
 	 }
 	 beta[j] = tmp;
+
+	 printf("\r");
       }
 
       /*for(i = 0 ; i < g->n ; i++)

@@ -448,9 +448,9 @@ function randomline {
 
 DIR=sim5
 prefix="sim"
-N=500
-HAPLO=HapMap/genotypes_chr1_JPT+CHB_r22_nr.b36_fwd.phased.50000
-LEGEND=HapMap/genotypes_chr1_JPT+CHB_r22_nr.b36_fwd_legend.txt.50000
+N=1000
+HAPLO=HapMap/genotypes_chr1_JPT+CHB_r22_nr.b36_fwd.phased.10000
+LEGEND=HapMap/genotypes_chr1_JPT+CHB_r22_nr.b36_fwd_legend.txt.10000
 LOCI=$DIR/loci.txt
 CUTFILE=$DIR/cut.txt
 
@@ -459,7 +459,7 @@ if ! [ -d "$DIR" ]; then
 fi
 
 # Number of causal SNPs
-K=10
+K=50
 
 echo
 echo "####################################"
@@ -468,14 +468,10 @@ echo "####################################"
 
 hapmapcut $LEGEND $HAPLO $K $CUTFILE
 
-<<<<<<< HEAD:src/runhapgen.sh
-#exit 1
-=======
 echo
 echo "####################################"
 echo "Simulating genotypes"
 echo "####################################"
-echo
 
 /bin/rm -f $LOCI
 

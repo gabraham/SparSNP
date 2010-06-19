@@ -1,5 +1,6 @@
 library(glmnet)
 library(GeneSets)
+library(ROCR)
 
 dir <- "sim5"
 
@@ -8,8 +9,8 @@ legend <- "~/Software/hapgen_1.3/HapMap/genotypes_chr1_JPT+CHB_r22_nr.b36_fwd_le
 b.sgd <- read.csv("~/Code/sgd/src/beta_sgd_sim5.csv", header=FALSE)[,1]
 b.gd <- read.csv("~/Code/sgd/src/beta_gd_sim5.csv", header=FALSE)[,1]
 #b.cd <- read.csv("~/Code/sgd/src/beta_cd_sim5.csv", header=FALSE)[,1]
-n <- 1000
-p <- 5e4
+n <- 2000
+p <- 1e4
 x <- matrix(as.numeric(readBin("sim5/sim.bin", what="raw", n=n*(p+1))),
       nrow=n, byrow=TRUE)
 y <- x[,1]
@@ -18,19 +19,23 @@ x <- x[,-1]
 # Get indices of causal SNPs
 snps <- as.character(read.csv(sprintf("%s/loci.txt", dir), header=FALSE)[,1])
 snplist <- read.csv(legend, sep="\t")
-pos <- sapply(snps, grep, x=as.character(snplist$position))
+pos <- sapply(paste("^", snps, "$", sep=""), grep, x=as.character(snplist$position))
 ysnp <- as.numeric((1:ncol(x)) %in% pos)
 
 
-g <- glmnet(x, factor(y), family="binomial")
-b.glmnet1 <- as.matrix(coef(g))[,11]
-b.glmnet2 <- as.matrix(coef(g))[,length(g$lambda)]
+g1 <- glmnet(x, factor(y), family="binomial")
+g2 <- glmnet(x, factor(y), family="binomial", alpha=0.5)
+b.glmnet1 <- as.matrix(coef(g1))[,11]
+b.glmnet2 <- as.matrix(coef(g1))[,length(g$lambda)]
 
-auc.glmnet <- apply(as.matrix(coef(g)), 2, function(p) {
+auc.glmnet1 <- apply(as.matrix(coef(g1)), 2, function(p) {
    auc(abs(p[-1]), ysnp, 1, 0)
 })
-auprc.glmnet <- apply(as.matrix(coef(g)), 2, function(p) {
-   auprc(abs(p[-1]), ysnp)
+auprc.glmnet1 <- apply(as.matrix(coef(g1)), 2, function(p) {
+   auprc(abs(p[-1]), ysnp, k=n)
+})
+auprc.glmnet4 <- apply(as.matrix(coef(g4)), 2, function(p) {
+   auprc(abs(p[-1]), ysnp, k=500)
 })
 
 p <- lapply(1:ncol(x), function(j) {
@@ -54,9 +59,19 @@ auc(abs(b.sgd[-1]), ysnp, 1, 0)
 auc(abs(b.glmnet1[-1]), ysnp, 1, 0)
 auc(abs(b.glmnet2[-1]), ysnp, 1, 0)
 
-auprc(p3, ysnp)
-auprc(abs(b.gd[-1]), ysnp)
-auprc(abs(b.sgd[-1]), ysnp)
-auprc(abs(b.glmnet1[-1]), ysnp)
-auprc(abs(b.glmnet2[-1]), ysnp)
+auprc(p3, ysnp, k=500)
+auprc(abs(b.gd[-1]), ysnp, k=500)
+auprc(abs(b.sgd[-1]), ysnp, k=500)
+auprc(abs(b.glmnet1[-1]), ysnp, k=500)
+auprc(abs(b.glmnet2[-1]), ysnp, k=500)
+
+
+par(mfrow=c(2, 3))
+l <- list(GD=b.gd[-1], SGD=b.sgd[-1], Univ=p3,
+   glmnet1=b.glmnet1[-1], glmnet2=b.glmnet2[-1])
+for(i in seq(along=l))
+{
+   plot(performance(prediction(l[[i]], ysnp), "prec", "rec"), ylim=c(0, 1),
+      main=names(l)[i])
+}
 

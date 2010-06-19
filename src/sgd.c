@@ -3,6 +3,7 @@
 /* Stochastic gradient descent */
 double sgd_gmatrix(gmatrix *g,
    dloss_pt dloss_pt_func,        /* gradient */
+   d2loss_pt d2loss_pt_func,
    loss_pt loss_pt_func,    /* loss for one sample */
    predict_pt predict_pt_func, /* prediction for one sample */
    double maxstepsize,
@@ -84,6 +85,7 @@ double sgd_gmatrix(gmatrix *g,
 		     beta[j] -= stepsize[j] * d;
 	       }
 	       else*/
+	       /* TODO: don't penalise intercept */
 		  beta[j] -= stepsize[j] * d;
 
 	       /*if(i == g->n - 1)

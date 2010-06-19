@@ -73,4 +73,5 @@ return FAILURE; \
 
 int strcmp2(const char*, const char*);
 
+double soft_threshold(double beta, double gamma);
 
