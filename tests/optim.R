@@ -2,7 +2,7 @@
 
 l2loss <- function(x, y, b)
 {
-   sum((y - x %*% b)^2)
+   mean((y - x %*% b)^2)
 }
 
 l2dloss <- function(x, y, b, j=NULL)
@@ -27,7 +27,7 @@ logloss <- function(x, y, b)
    s <- sapply(1:n, function(i) {
       log(1 + exp(x[i,] %*% b)) - y[i] * b %*% x[i,]
    })
-   sum(s)
+   mean(s)
 }
 
 logdloss <- function(x, y, b, j=NULL)
@@ -105,4 +105,7 @@ b.l2.gd <- gd(x, y1, l2loss, l2dloss, l2d2loss)
 b.l2.cd <- cd(x, y1, l2loss, l2dloss, l2d2loss)
 b.log.gd <- gd(x, y2, logloss, logdloss, logd2loss)
 b.log.cd <- cd(x, y2, logloss, logdloss, logd2loss)
+
+z <- cbind(y2, x)
+writeBin(as.numeric(t(z)), con="x.bin")
 

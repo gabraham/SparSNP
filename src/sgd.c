@@ -4,6 +4,7 @@
 double sgd_gmatrix(gmatrix *g,
    dloss_pt dloss_pt_func,        /* gradient */
    d2loss_pt d2loss_pt_func,
+   d2loss_pt_j d2loss_pt_j_func,
    loss_pt loss_pt_func,    /* loss for one sample */
    predict_pt predict_pt_func, /* prediction for one sample */
    double maxstepsize,

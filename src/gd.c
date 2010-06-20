@@ -1,9 +1,11 @@
 #include "sgd.h"
 
 /* gradient descent */
-double gd_gmatrix(gmatrix *g,
+double gd_gmatrix(
+   gmatrix *g,
    dloss_pt dloss_pt_func,        /* gradient */
    d2loss_pt d2loss_pt_func,      /* 2nd deriv */
+   d2loss_pt_j d2loss_pt_j_func,      /* 2nd deriv wrt beta_j */
    loss_pt loss_pt_func,    /* loss for one sample */
    predict_pt predict_pt_func, /* prediction for one sample */
    double maxstepsize,
@@ -12,7 +14,7 @@ double gd_gmatrix(gmatrix *g,
 {
    int epoch = 1, i, j;
    double *grad;
-   double stepsize = maxstepsize;
+   /*double stepsize = maxstepsize;*/
    double dp = 0;
    double *gradsum = NULL;
    double *d2 = NULL;
@@ -31,7 +33,7 @@ double gd_gmatrix(gmatrix *g,
       { 
 	 dp = dotprod(g->x[i], beta, g->p + 1);
 	 dloss_pt_func(g->x[i], dp, g->y[i], g->p + 1, grad);
-	 d2loss_pt_func(g->x[i], dp, g->y[i], g->p + 1, d2);
+	 d2loss_pt_func(g->x[i], dp, g->p + 1, d2);
 
 	 for(j = 0 ; j < g->p + 1 ; j++)
 	 {
@@ -44,10 +46,11 @@ double gd_gmatrix(gmatrix *g,
       /* TODO: don't penalise intercept */
       for(j = 0 ; j < g->p + 1 ; j++)
       {
-	 /*beta[j] -= stepsize * gradsum[j];*/
-	 beta[j] = soft_threshold(
-	       beta[j] - gradsum[j] / d2sum[j], lambda1) / (1 + lambda2);
+	 beta[j] = beta[j] - gradsum[j] / d2sum[j];
+	 /*beta[j] = soft_threshold(
+	       beta[j] - gradsum[j] / d2sum[j], lambda1) / (1 + lambda2);*/
 	 gradsum[j] = 0;
+	 d2sum[j] = 0;
       }
 
       if(verbose)

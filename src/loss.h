@@ -21,9 +21,11 @@ double dotprod(dtype *, double *, int);
 double logloss_pt(double, dtype);
 double logloss(double *, dtype *, int);
 void logdloss_pt(dtype *, double, dtype, int, double*);
-void logd2loss_pt(dtype *, double, dtype, int, double*);
+void logd2loss_pt(dtype *, double, int, double*);
+double logd2loss_pt_j(dtype, double);
 
 double l2loss_pt(double, dtype);
 double l2loss(double *, dtype *, int);
 void l2dloss_pt(dtype *, double, dtype, int, double*);
-void l2d2loss_pt(dtype *, double, dtype, int, double*);
+void l2d2loss_pt(dtype *, double, int, double*);
+double l2d2loss_pt_j(dtype, double);

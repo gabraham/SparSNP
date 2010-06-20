@@ -4,6 +4,7 @@
 double cd_gmatrix(gmatrix *g,
    dloss_pt dloss_pt_func,        /* gradient */
    d2loss_pt d2loss_pt_func,        /* 2nd deriv */
+   d2loss_pt_j d2loss_pt_j_func,        /* 2nd deriv wrt beta_j */
    loss_pt loss_pt_func,    /* loss for one sample */
    predict_pt predict_pt_func, /* prediction for one sample */
    double maxstepsize,
@@ -50,17 +51,18 @@ double cd_gmatrix(gmatrix *g,
 
 	 for(i = 0 ; i < g->n ; i++)
 	 {
-	    y2 = 0;
+	    /*y2 = 0;
 	    for(k = 0 ; k < g->p + 1 ; k++)
 	       y2 += g->x[i][k] * beta[k];
 
-	    d += g->x[i][j] * (g->y[i] - y2);
+	    d += g->x[i][j] * (g->y[i] - y2);*/
 	    
 	    /* For linear regression, the 2nd
 	     * derivative wrt beta_j is \sum_{i=1}^n x_{ij}^2,
 	     * which is always 1 / (n - 1) for standardised inputs
 	     */
-	    d2 += pow(g->x[i][j], 2);
+	    /*d2 += pow(g->x[i][j], 2);*/
+
 	 }
 
 	 /* TODO: don't penalise intercept */

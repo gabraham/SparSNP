@@ -30,18 +30,23 @@ double logloss(double *d, dtype *y, int n)
 
 void logdloss_pt(dtype *x, double d, dtype y, int p, double* grad)
 {
-   int i;
+   int j;
    double pr = exp(d);
-   for(i = 0 ; i < p ; i++)
-      grad[i] = x[i] * (pr / (1 + pr) - (double)y);
+   for(j = 0 ; j < p ; j++)
+      grad[j] = x[j] * (pr / (1 + pr) - (double)y);
 }
 
-void logd2loss_pt(dtype *x, double d, dtype y, int p, double* grad)
+void logd2loss_pt(dtype *x, double d, int p, double* d2)
 {
-   int i;
+   int j;
    double pr = exp(d);
-   for(i = 0 ; i < p ; i++)
-      grad[i] = x[i] * x[i] * (pr / (1 + pr) - (double)y);
+   for(j = 0 ; j < p ; j++)
+      d2[j] = logd2loss_pt_j(x[j], pr);
+}
+
+double logd2loss_pt_j(dtype x, double pr)
+{
+   return pow(x * pr / (1 + pr), 2);
 }
 
 double l2loss_pt(double d, dtype y)
@@ -60,16 +65,21 @@ double l2loss(double *d, dtype *y, int n)
 
 void l2dloss_pt(dtype *x, double d, dtype y, int p, double* grad)
 {
-   int i;
-   for(i = 0 ; i < p ; i++)
-      grad[i] = x[i] * (d - (double)y);
+   int j;
+   for(j = 0 ; j < p ; j++)
+      grad[j] = x[j] * (d - (double)y);
 }
 
-void l2d2loss_pt(dtype *x, double d, dtype y, int p, double* grad)
+void l2d2loss_pt(dtype *x, double d, int p, double* d2)
 {
-   int i;
-   for(i = 0 ; i < p ; i++)
-      grad[i] = x[i] * x[i] * (d - (double)y);
+   int j;
+   for(j = 0 ; j < p ; j++)
+      d2[j] = l2d2loss_pt_j(x[j], 0);
+}
+
+double l2d2loss_pt_j(dtype x, double pr)
+{
+   return x * x;
 }
 
 double predict_logloss_pt(double d)

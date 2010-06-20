@@ -23,6 +23,7 @@ int main(int argc, char* argv[])
    predict_pt predict_pt_func = NULL;
    dloss_pt dloss_pt_func = NULL;
    d2loss_pt d2loss_pt_func = NULL;
+   d2loss_pt_j d2loss_pt_j_func = NULL;
    predict_gmatrix predict_gmatrix_func = NULL;
    short inmemory = FALSE;
    short scaleflag = FALSE;
@@ -64,6 +65,7 @@ int main(int argc, char* argv[])
 	    predict_pt_func = &predict_logloss_pt;
 	    dloss_pt_func = &logdloss_pt;
 	    d2loss_pt_func = &logd2loss_pt;
+	    d2loss_pt_j_func = &logd2loss_pt_j;
 	    predict_gmatrix_func = &predict_logloss_gmatrix;
 	 }
 	 else if(strcmp2(model, "linear"))
@@ -72,6 +74,7 @@ int main(int argc, char* argv[])
 	    predict_pt_func = &predict_l2loss_pt;
 	    dloss_pt_func = &l2dloss_pt;
 	    d2loss_pt_func = &l2d2loss_pt;
+	    d2loss_pt_j_func = &l2d2loss_pt_j;
 	    predict_gmatrix_func = &predict_l2loss_gmatrix;
 	 }
 	 else
@@ -224,7 +227,7 @@ lambda1=%.9f lambda2=%.9f \n",
    if(verbose)
       printf("Starting SGD ...\n");
 
-   optim_gmatrix_func(&g, dloss_pt_func, d2loss_pt_func,
+   optim_gmatrix_func(&g, dloss_pt_func, d2loss_pt_func, d2loss_pt_j_func,
 	 loss_pt_func, predict_pt_func, stepsize, maxepochs,
 	 betahat, lambda1, lambda2, threshold, verbose, trainf, trunc);
 

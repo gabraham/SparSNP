@@ -449,8 +449,8 @@ function randomline {
 DIR=sim5
 prefix="sim"
 N=1000
-HAPLO=HapMap/genotypes_chr1_JPT+CHB_r22_nr.b36_fwd.phased.10000
-LEGEND=HapMap/genotypes_chr1_JPT+CHB_r22_nr.b36_fwd_legend.txt.10000
+HAPLO=HapMap/genotypes_chr1_JPT+CHB_r22_nr.b36_fwd.phased.100
+LEGEND=HapMap/genotypes_chr1_JPT+CHB_r22_nr.b36_fwd_legend.txt.100
 LOCI=$DIR/loci.txt
 CUTFILE=$DIR/cut.txt
 
@@ -459,7 +459,7 @@ if ! [ -d "$DIR" ]; then
 fi
 
 # Number of causal SNPs
-K=50
+K=5
 
 echo
 echo "####################################"
