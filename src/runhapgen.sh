@@ -448,9 +448,9 @@ function randomline {
 
 DIR=sim5
 prefix="sim"
-N=1000
-HAPLO=HapMap/genotypes_chr1_JPT+CHB_r22_nr.b36_fwd.phased.100
-LEGEND=HapMap/genotypes_chr1_JPT+CHB_r22_nr.b36_fwd_legend.txt.100
+N=500
+HAPLO=HapMap/genotypes_chr1_JPT+CHB_r22_nr.b36_fwd.phased.1000
+LEGEND=HapMap/genotypes_chr1_JPT+CHB_r22_nr.b36_fwd_legend.txt.1000
 LOCI=$DIR/loci.txt
 CUTFILE=$DIR/cut.txt
 

@@ -70,42 +70,112 @@ gd <- function(x, y, lossfunc, dfunc, d2func, maxiter=10)
       grad <- dfunc(x, y, beta)
       d2 <- d2func(x, y, beta)
       beta <- beta - grad / d2
+      #beta <- beta - 1e-2 * drop(ginv(cov(x)) %*% grad)
+      #beta <- beta - crossprod(x, x %*% beta - y) * 1e-6
       cat(i, "loss:", lossfunc(x, y, beta), "\n")
    }
    beta
 }
 
+# naive coordinate descent
 cd <- function(x, y, lossfunc, dfunc, d2func, maxiter=10)
 {
    x <- cbind(1, x)
+   n <- nrow(x)
    p <- ncol(x)
    beta <- numeric(p)
+
    for(i in 1:maxiter)
    {
       for(j in 1:p)
       {
          grad <- dfunc(x, y, beta, j)
          d2 <- d2func(x, y, beta, j)
-         beta[j] <- beta[j] - grad / d2
+	 beta[j] <- beta[j] - grad / d2
       }
       cat(i, "loss:", lossfunc(x, y, beta), "\n")
    }
    beta
 }
 
-set.seed(32431431)
-n <- 1000
-p <- 50
-x <- matrix(rnorm(n * p), n, p)
-beta <- rnorm(p + 1)
-y1 <- cbind(1, x) %*% beta + rnorm(n)
-y2 <- ifelse(runif(n) <= plogis(cbind(1, x) %*% beta), 1, 0)
+# coordinate descent
+cd2 <- function(x, y, lossfunc, dfunc, d2func, maxiter=10)
+{
+   x <- cbind(1, x)
+   n <- nrow(x)
+   p <- ncol(x)
+   beta <- numeric(p)
+   lp <- x %*% beta
 
-b.l2.gd <- gd(x, y1, l2loss, l2dloss, l2d2loss)
-b.l2.cd <- cd(x, y1, l2loss, l2dloss, l2d2loss)
-b.log.gd <- gd(x, y2, logloss, logdloss, logd2loss)
-b.log.cd <- cd(x, y2, logloss, logdloss, logd2loss)
+   d2 <- diag(crossprod(x))
 
-z <- cbind(y2, x)
-writeBin(as.numeric(t(z)), con="x.bin")
+   for(i in 1:maxiter)
+   {
+      for(j in 1:p)
+      {
+	 grad <- crossprod(x[, j, drop=FALSE], lp - y)
+	 #d2 <- sum(x[, j] ^ 2)
+	 
+	 beta.old <- beta[j]
+         beta[j] <- if(d2[j] > 0) {
+	    beta.old - grad / d2[j]
+	 } else beta.old
+	 lp <- lp + x[, j] * (beta[j] - beta.old)
+      }
+      cat(i, "loss:", lossfunc(x, y, beta), "\n")
+   }
+   beta
+}
+
+
+#set.seed(32431431)
+#n <- 1000
+#p <- 50
+#x <- matrix(rnorm(n * p), n, p)
+#beta <- rnorm(p + 1)
+#y1 <- cbind(1, x) %*% beta + rnorm(n)
+#y2 <- ifelse(runif(n) <= plogis(cbind(1, x) %*% beta), 1, 0)
+
+n <- 1e3
+p <- 1e3
+x <- matrix(as.numeric(readBin("sim5/sim.bin", n=n*(p+1), what="raw")),
+      nrow=n, byrow=TRUE)
+y <- x[,1]
+x <- x[,-1]
+
+system.time({b.l2.cd <- cd(x, y, l2loss, l2dloss, l2d2loss)})
+system.time({b.l2.cd2 <- cd2(x, y, l2loss, l2dloss, l2d2loss)})
+system.time({b.l2.gd <- gd(x, y, l2loss, l2dloss, l2d2loss)})
+#b.log.gd <- gd(x, y, logloss, logdloss, logd2loss)
+#b.log.cd <- cd(x, y, logloss, logdloss, logd2loss)
+
+stop()
+
+#b.svd <- ginv(cbind(1, x)) %*% y 
+#l2loss(cbind(1, x), y, b.svd)
+
+#z <- cbind(y2, x)
+#writeBin(as.numeric(t(z)), con="x.bin")
+#
+
+f1 <- function(b)
+{
+   l2loss(cbind(1, x), y, b)
+}
+
+g1 <- function(b)
+{
+   l2dloss(cbind(1, x), y, b)
+}
+
+cx <- cov(x)
+
+h1 <- function(b)
+{
+   cx
+}
+
+#system.time({opt1 <- optim(numeric(ncol(x) + 1), f1, g1, method="BFGS")})
+
+#system.time({opt2 <- nlminb(numeric(ncol(x) + 1), f1, g1, h1) })
 

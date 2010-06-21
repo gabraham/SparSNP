@@ -13,15 +13,14 @@ double cd_gmatrix(gmatrix *g,
 {
    int i, j, k;
    int epoch = 1;
-   double d;
    double loss = 0;
-   /*double *lp;*/
-   double y2 = 0;
-   double d2 = 0;
-   double tmp;
+   double beta_new;
    short *converged = NULL;
    int numconverged = 0;
    double relerr;
+   double grad = 0;
+   double d2 = 0;
+   double *lp = NULL;
 
    if(!g->inmemory)
    {
@@ -32,73 +31,66 @@ double cd_gmatrix(gmatrix *g,
    /*sample_init(&sm, g->n);*/
 
    CALLOCTEST(converged, g->p + 1, sizeof(short));
+   /*CALLOCTEST(grad, g->p + 1, sizeof(double));*/
+   CALLOCTEST(lp, g->n, sizeof(double));
 
    while(epoch <= maxepoch && numconverged < g->p + 1)
    {
-      printf("epoch %d\n", epoch);
-      loss = 0;
-      /*CALLOCTEST(lp, g->n, sizeof(double));*/
-
       for(j = 0 ; j < g->p + 1; j++)
       {
-	 printf("%d", j);
-	 fflush(stdout);
 	 if(converged[j])
 	    continue;
 
-	 d = 0;
+	 grad = 0;
 	 d2 = 0;
 
+	 /* compute gradient */
 	 for(i = 0 ; i < g->n ; i++)
 	 {
-	    /*y2 = 0;
-	    for(k = 0 ; k < g->p + 1 ; k++)
-	       y2 += g->x[i][k] * beta[k];
-
-	    d += g->x[i][j] * (g->y[i] - y2);*/
-	    
-	    /* For linear regression, the 2nd
-	     * derivative wrt beta_j is \sum_{i=1}^n x_{ij}^2,
-	     * which is always 1 / (n - 1) for standardised inputs
-	     */
-	    /*d2 += pow(g->x[i][j], 2);*/
-
+	    grad += g->x[i][j] * (lp[i] - g->y[i]);
+	    d2 += pow(g->x[i][j], 2.0);
 	 }
 
 	 /* TODO: don't penalise intercept */
-	 tmp = soft_threshold(beta[j] + d / d2, lambda1) / (1 + lambda2);
-	 /*tmp = beta[j] + d / d2;*/
+	 /*beta_new = soft_threshold(beta[j] + grad / d2, lambda1) / (1 +
+	  * lambda2);*/
 
+	 if(d2 != 0)
+	    beta_new = beta[j] - grad / d2;
+	 else
+	    beta_new = beta[j];
+
+	 /* check for convergence */
 	 if(epoch > 1)
 	 {
-	    relerr = fabs(beta[j] - tmp) / (fabs(beta[j]) + fabs(tmp));
+	    relerr = fabs(beta[j] - beta_new) / (fabs(beta[j]) + fabs(beta_new));
 	    if(relerr < threshold)
 	    {
 	       converged[j] = TRUE;
 	       numconverged++;
 	    }
 	 }
-	 beta[j] = tmp;
 
-	 printf("\r");
+	 /* update linear predictor */
+	 for(i = 0 ; i < g->n ; i++)
+	    lp[i] += g->x[i][j] * (beta_new - beta[j]);
+
+	 beta[j] = beta_new;
       }
 
-      /*for(i = 0 ; i < g->n ; i++)
+      if(verbose)
       {
-	 for(j = 0 ; j < g->p + 1 ; j++)
-	    lp[i] += g->x[i][j] * beta[j];
-
-	 loss += loss_pt_func(lp[i], g->y[i]) / g->n;
+	 loss = 0;
+      	 for(i = 0 ; i < g->n ; i++)
+      	    loss += loss_pt_func(lp[i], g->y[i]) / g->n;
+      	 printf("Epoch %d  training loss: %.5f\n", epoch, loss);
       }
 
-      printf("Epoch %d  training loss: %.5f\n", epoch, loss);
-
-      free(lp); */
-      printf("Epoch %d done\n", epoch);
       epoch++;
    }
 
    free(converged);
+   free(lp);
 
    return SUCCESS;
 }

@@ -33,20 +33,22 @@ double gd_gmatrix(
       { 
 	 dp = dotprod(g->x[i], beta, g->p + 1);
 	 dloss_pt_func(g->x[i], dp, g->y[i], g->p + 1, grad);
-	 d2loss_pt_func(g->x[i], dp, g->p + 1, d2);
+	 /*d2loss_pt_func(g->x[i], dp, g->p + 1, d2);*/
 
 	 for(j = 0 ; j < g->p + 1 ; j++)
 	 {
 	    gradsum[j] += grad[j];
-	    d2sum[j] += d2[j];
+	    /*d2sum[j] += d2[j];*/
 	 }
       }
+
+      printf("%.5f\n", gradsum[1]);
 
       /* do step */
       /* TODO: don't penalise intercept */
       for(j = 0 ; j < g->p + 1 ; j++)
       {
-	 beta[j] = beta[j] - gradsum[j] / d2sum[j];
+	 beta[j] = beta[j] - gradsum[j] / 1e4; /*d2sum[j];*/
 	 /*beta[j] = soft_threshold(
 	       beta[j] - gradsum[j] / d2sum[j], lambda1) / (1 + lambda2);*/
 	 gradsum[j] = 0;

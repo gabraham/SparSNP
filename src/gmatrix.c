@@ -253,7 +253,8 @@ int gmatrix_scale(gmatrix *g)
    {
       for(i = 0 ; i < g->n ; i++)
       {
-	 for(j = 0 ; j < g->p + 1; j++)
+	 g->x[i][0] = 1;
+	 for(j = 1 ; j < g->p + 1; j++)
 	 {
 	    g->x[i][j] = g->x[i][j] - g->mean[j];
 	    if(g->sd[j] > SDTHRESH)

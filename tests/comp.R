@@ -9,7 +9,6 @@ beta <- numeric(p)
 k <- 25
 beta[sample(p, k)] <- rnorm(k)
 betai <- as.numeric(beta != 0)
-
 y <- ifelse(runif(n) <= plogis(x %*% beta), 1, 0)
 
 p.glm <- lapply(1:p, function(j) {
