@@ -14,13 +14,13 @@ TMPDIR=.
 #Line 2: i1 v1 i2 v2 ...
 #Line d+1: i1 v1 i2 v2 ...
 function formatsmidas {
-   DIR=$1
-   binfile=$2
-   N=$3
-   P=$4
-   RSCRIPT=formatsmidas.R
-   FILEX=smidas_x.dat
-   FILEY=smidas_y.dat
+   local DIR=$1
+   local binfile=$2
+   local N=$3
+   local P=$4
+   local RSCRIPT=formatsmidas.R
+   local FILEX=smidas_x.dat
+   local FILEY=smidas_y.dat
    echo "formatsmidas: $DIR $binfile $N $P"
 
    cat > $DIR/$RSCRIPT <<EOF
@@ -49,13 +49,13 @@ EOF
 
 # Column-major ordering
 function formatscd {
-   DIR=$1
-   binfile=$2
-   N=$3
-   P=$4
-   RSCRIPT=formatscd.R
-   FILEX=scd_x.dat
-   FILEY=scd_y.dat
+   local DIR=$1
+   local binfile=$2
+   local N=$3
+   local P=$4
+   local RSCRIPT=formatscd.R
+   local FILEX=scd_x.dat
+   local FILEY=scd_y.dat
    echo "formatscd: $DIR $binfile $N $P"
 
    cat > $DIR/$RSCRIPT <<EOF
@@ -100,12 +100,12 @@ EOF
 }
 
 function formatsvmlight {
-   DIR=$1
-   binfile=$2
-   N=$3
-   P=$4
-   RSCRIPT=formatsvmlight.R
-   FILEX=svmlight_x.dat
+   local DIR=$1
+   local binfile=$2
+   local N=$3
+   local P=$4
+   local RSCRIPT=formatsvmlight.R
+   local FILEX=svmlight_x.dat
    echo "formatsvmlight: $DIR $binfile $N $P"
 
    cat > $DIR/$RSCRIPT <<EOF
@@ -135,11 +135,11 @@ EOF
 }
 
 function testscd {
-   DIR=testscd
-   RSCRIPT=testscd.R
-   binfile=test.bin
-   n=6
-   p=$((2*6))
+   local DIR=testscd
+   local RSCRIPT=testscd.R
+   local binfile=test.bin
+   local n=6
+   local p=$((2*6))
    
    if ! [ -d "$DIR" ]; then
       mkdir $DIR
@@ -164,17 +164,17 @@ EOF
 }
 
 function shuffle {
-   DIR=$1
-   prefix=$2
-   N=$3
-   binfile="$prefix.bin"
-   xfile="$prefix.all.g"
-   xfileshuf="$xfile.shuffled"
-   yfile="$prefix.y"
-   yfileshuf="$yfile.shuffled"
-   tmp1=".tmp1"
-   tmp2=".tmp2"
-   rscript=".shuffle.R"
+   local DIR=$1
+   local prefix=$2
+   local N=$3
+   local binfile="$prefix.bin"
+   local xfile="$prefix.all.g"
+   local xfileshuf="$xfile.shuffled"
+   local yfile="$prefix.y"
+   local yfileshuf="$yfile.shuffled"
+   local tmp1=".tmp1"
+   local tmp2=".tmp2"
+   local rscript=".shuffle.R"
    
    echo -n "Shuffling ... "
    # Shuffle samples 
@@ -205,15 +205,15 @@ EOF
 }
 
 function convert {
-   DIR=$1
-   prefix=$2
-   N=$3
-   binfile="$prefix.bin"
-   xfile="$prefix.all.g"
-   xfileshuf="$xfile.shuffled"
-   yfile="$prefix.y"
-   yfileshuf="$yfile.shuffled"
-   rscript=".convert.R"
+   local DIR=$1
+   local prefix=$2
+   local N=$3
+   local binfile="$prefix.bin"
+   local xfile="$prefix.all.g"
+   local xfileshuf="$xfile.shuffled"
+   local yfile="$prefix.y"
+   local yfileshuf="$yfile.shuffled"
+   local rscript=".convert.R"
    
    cat > $rscript <<EOF
    hgfile <- "$DIR/$xfileshuf"
@@ -257,13 +257,13 @@ EOF
 
 # Cut the HapMap data into $num$ regions in different files
 function hapmapcut {
-   legend=$1
-   haplo=$2
-   num=$3
-   cutfile=$4
-   rscript=".Rscript.R"
+   local legend=$1
+   local haplo=$2
+   local num=$3
+   local cutfile=$4
+   local rscript=".Rscript.R"
+   local w=`cat $1 | wc -l`
 
-   w=`cat $1 | wc -l`
    cat > $rscript <<EOF
    
    n <- $num
@@ -337,6 +337,22 @@ EOF
 function randomline {
    RANDLINE=`perl -e 'srand; rand($.) < 1 && ($line = $_) while <>;\
    print $line;' $1`
+}
+
+function transpose {
+   local infile="$1"
+   local outfile="$infile.t"
+   local n=$2
+   local p=$3
+   local rscript=.transpose.R
+
+   cat > $rscript <<EOF
+   x <- matrix(as.numeric(readBin("$infile", what="raw",
+	 n=$n * ($p + 1))), nrow=$n, byrow=TRUE)
+   writeBin(as.raw(x), con="$outfile")
+EOF
+   Rscript $rscript
+   /bin/rm $rscript
 }
 
 #################################################################################
@@ -449,10 +465,12 @@ function randomline {
 DIR=sim5
 prefix="sim"
 N=500
-HAPLO=HapMap/genotypes_chr1_JPT+CHB_r22_nr.b36_fwd.phased.1000
-LEGEND=HapMap/genotypes_chr1_JPT+CHB_r22_nr.b36_fwd_legend.txt.1000
+HAPLO=HapMap/genotypes_chr1_JPT+CHB_r22_nr.b36_fwd.phased.100
+LEGEND=HapMap/genotypes_chr1_JPT+CHB_r22_nr.b36_fwd_legend.txt.100
 LOCI=$DIR/loci.txt
 CUTFILE=$DIR/cut.txt
+
+P=$(($(head -1 $HAPLO | sed 's/ //g' | wc -c) - 1))
 
 if ! [ -d "$DIR" ]; then
    mkdir $DIR
@@ -537,4 +555,5 @@ echo "####################################"
 
 shuffle $DIR $prefix $((N*2))
 convert $DIR $prefix $((N*2))
+transpose $DIR/sim.bin $((N*2)) $P 
 

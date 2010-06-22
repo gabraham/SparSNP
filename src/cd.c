@@ -21,6 +21,7 @@ double cd_gmatrix(gmatrix *g,
    double grad = 0;
    double d2 = 0;
    double *lp = NULL;
+   sample sm;
 
    if(!g->inmemory)
    {
@@ -28,7 +29,9 @@ double cd_gmatrix(gmatrix *g,
       return FAILURE;
    }
 
-   /*sample_init(&sm, g->n);*/
+   sample_init(&sm, g->inmemory, g->n);
+   MALLOCTEST(sm.x, sizeof(dtype) * g->n)
+   
 
    CALLOCTEST(converged, g->p + 1, sizeof(short));
    /*CALLOCTEST(grad, g->p + 1, sizeof(double));*/
@@ -38,6 +41,8 @@ double cd_gmatrix(gmatrix *g,
    {
       for(j = 0 ; j < g->p + 1; j++)
       {
+	 g->nextcol(g, &sm);
+	 
 	 if(converged[j])
 	    continue;
 
@@ -47,8 +52,10 @@ double cd_gmatrix(gmatrix *g,
 	 /* compute gradient */
 	 for(i = 0 ; i < g->n ; i++)
 	 {
-	    grad += g->x[i][j] * (lp[i] - g->y[i]);
-	    d2 += pow(g->x[i][j], 2.0);
+	    /*grad += g->x[i][j] * (lp[i] - g->y[i]);
+	    d2 += pow(g->x[i][j], 2.0); */
+	    grad += sm.x[i] * (lp[i] - g->y[i]);
+	    d2 += pow(sm.x[i], 2.0);
 	 }
 
 	 /* TODO: don't penalise intercept */
@@ -73,7 +80,7 @@ double cd_gmatrix(gmatrix *g,
 
 	 /* update linear predictor */
 	 for(i = 0 ; i < g->n ; i++)
-	    lp[i] += g->x[i][j] * (beta_new - beta[j]);
+	    lp[i] += sm.x[i] * (beta_new - beta[j]);
 
 	 beta[j] = beta_new;
       }
@@ -91,6 +98,8 @@ double cd_gmatrix(gmatrix *g,
 
    free(converged);
    free(lp);
+   sample_free(&sm);
+   free(sm.x);
 
    return SUCCESS;
 }

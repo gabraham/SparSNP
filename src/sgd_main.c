@@ -27,6 +27,7 @@ int main(int argc, char* argv[])
    predict_gmatrix predict_gmatrix_func = NULL;
    short inmemory = FALSE;
    short scaleflag = FALSE;
+   short rowmajor = TRUE;
    optim_gmatrix optim_gmatrix_func = sgd_gmatrix;
 
    /* Parameters */
@@ -121,6 +122,10 @@ int main(int argc, char* argv[])
 	 i++;
 	 threshold = atof(argv[i]);
       }
+      else if(strcmp2(argv[i], "-colmajor"))
+      {
+	 rowmajor = FALSE;
+      }
       else if(strcmp2(argv[i], "-v"))
       {
 	 verbose = TRUE;
@@ -182,7 +187,7 @@ int main(int argc, char* argv[])
    CALLOCTEST2(betahat, p + 1, sizeof(double))
    CALLOCTEST2(betahat_unsc, p + 1, sizeof(double))
 
-   if(!gmatrix_init(&g, inmemory, FALSE, filename, NULL, NULL, n, p))
+   if(!gmatrix_init(&g, inmemory, FALSE, rowmajor, filename, NULL, NULL, n, p))
       return EXIT_FAILURE;
  
    if(scaleflag)
@@ -257,7 +262,7 @@ lambda1=%.9f lambda2=%.9f \n",
 
    printf("###############################\n");
 
-   gmatrix_reset(&g);
+   /*gmatrix_reset(&g);
    printf("Training AUC (fixed beta): %.5f\n",
 	 gmatrix_auc(yhat_train, &g, trainf, ntrain));
 
@@ -266,6 +271,7 @@ lambda1=%.9f lambda2=%.9f \n",
 	 gmatrix_accuracy(yhat_train, &g, 0.5, trainf, ntrain));
 
    printf("\n");
+   
 
    printf("###############################\n");
 
@@ -283,6 +289,8 @@ lambda1=%.9f lambda2=%.9f \n",
    }
 
    printf("\n");
+
+   */
 
    gmatrix_free(&g);
    free(betahat);

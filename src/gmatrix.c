@@ -3,12 +3,12 @@
 
 #include "gmatrix.h"
 
-int sample_init(sample *s, short inmemory, int p)
+int sample_init(sample *s, short inmemory, int k)
 {
-   s->p = p;
+   s->p = k;
    s->inmemory = inmemory;
    if(!inmemory)
-      MALLOCTEST(s->x, sizeof(dtype) * (p + 1))
+      MALLOCTEST(s->x, sizeof(dtype) * k)
    return SUCCESS;
 }
 
@@ -24,7 +24,8 @@ void sample_free(sample *s)
 }
 
 int gmatrix_init(gmatrix *g, short inmemory, short pcor,
-      char *filename, dtype **x, dtype *y, int n, int p)
+      short rowmajor, char *filename,
+      dtype **x, dtype *y, int n, int p)
 {
    int i;
 
@@ -38,6 +39,7 @@ int gmatrix_init(gmatrix *g, short inmemory, short pcor,
    g->p = p;
    g->inmemory = inmemory;
    g->pcor = pcor;
+   g->rowmajor = rowmajor;
    g->x = x;
    g->y = y;
    /*g->skip = -1;*/
@@ -50,7 +52,9 @@ int gmatrix_init(gmatrix *g, short inmemory, short pcor,
 
    g->nextrow = gmatrix_disk_nextrow;
    g->next_y = gmatrix_disk_next_y;
-   g->nextcol = NULL;
+   g->nextcol = gmatrix_disk_nextcol;
+
+   MALLOCTEST(g->y, sizeof(dtype) * g->n)
 
    if(inmemory)
    {
@@ -62,9 +66,13 @@ int gmatrix_init(gmatrix *g, short inmemory, short pcor,
       {
 	 if(g->pcor)
 	    return gmatrix_load_pcor(g);
-	 return gmatrix_load(g);
+	 else if(g->rowmajor)
+	    return gmatrix_load_rowmajor(g);
+	 else
+	    return gmatrix_load_colmajor(g);
       }
    }
+   
 
    return SUCCESS;
 }
@@ -110,7 +118,7 @@ void gmatrix_free(gmatrix *g)
 /* Expects the binary data row to be y, x_1, x_2, x_3, ..., x_p */
 int gmatrix_disk_nextrow(gmatrix *g, sample *s)
 {
-   int i;
+   int j;
    intype *tmp;
    
    s->inmemory = g->inmemory;
@@ -126,9 +134,9 @@ int gmatrix_disk_nextrow(gmatrix *g, sample *s)
 
    s->y = (dtype)tmp[0];
    s->x[0] = 1.0; /* intercept */
-   for(i = 1 ; i < g->p + 1; i++)
-      /*s->x[i] = ((dtype)tmp[i] - g->mean[i]) / g->sd[i];*/
-      s->x[i] = (dtype)tmp[i];
+   for(j = 1 ; j < g->p + 1; j++)
+      s->x[j] = ((dtype)tmp[j] - g->mean[j]) / g->sd[j];
+      /*s->x[i] = (dtype)tmp[i];*/
    g->i++;
 
    free(tmp);
@@ -136,7 +144,7 @@ int gmatrix_disk_nextrow(gmatrix *g, sample *s)
    return SUCCESS;
 }
 
-int gmatrix_load(gmatrix *g)
+int gmatrix_load_rowmajor(gmatrix *g)
 {
    int i, j;
    FILE* fin;
@@ -144,7 +152,7 @@ int gmatrix_load(gmatrix *g)
 
    MALLOCTEST(tmp, sizeof(intype) * (g->p + 1))
    MALLOCTEST(g->x, sizeof(dtype*) * g->n)
-   MALLOCTEST(g->y, sizeof(dtype) * g->n)
+  /* MALLOCTEST(g->y, sizeof(dtype) * g->n) */
 
    FOPENTEST(fin, g->filename, "rb")
 
@@ -167,11 +175,54 @@ int gmatrix_load(gmatrix *g)
    return SUCCESS;
 }
 
+int gmatrix_load_colmajor(gmatrix *g)
+{
+   int i, j;
+   FILE* fin;
+   intype *tmp;
+
+   MALLOCTEST(tmp, sizeof(intype) * g->n)
+   MALLOCTEST(g->x, sizeof(dtype*) * g->n)
+  /* MALLOCTEST(g->y, sizeof(dtype) * g->n) */
+
+   FOPENTEST(fin, g->filename, "rb")
+
+   /* read y and intercept */
+   FREADTEST(tmp, sizeof(intype), g->n, fin)
+   for(i = 0 ; i < g->n ; i++)
+   {
+      MALLOCTEST(g->x[i], sizeof(dtype) * (g->p + 1))
+      g->y[i] = (dtype)tmp[i];
+      g->x[i][0] = 1.0;
+   }
+
+   /* read the rows as columns */
+   for(j = 1 ; j < g->p + 1 ; j++)
+   {
+      FREADTEST(tmp, sizeof(intype), g->n, fin)
+
+      for(i = 0 ; i < g->n ; i++)
+	 g->x[i][j] = (dtype)tmp[i];
+   }
+
+   fclose(fin);
+   free(tmp);
+
+   return SUCCESS;
+}
+
+
 /* No y variable
+ * 
  * There is a useless intercept (zero due to scaling), but necessary to avoid
  * off-by-one problems in code that expects an intercept
+ * 
  * Only p columns
+ * 
  * The first x column is stored in g->y
+ *
+ * Expects row-major data
+ *
  * */
 int gmatrix_load_pcor(gmatrix *g)
 {
@@ -299,6 +350,50 @@ int gmatrix_mem_nextcol(gmatrix *g, sample *s)
 
    return SUCCESS;
 }
+
+/* Expects the binary data column to be y, x_1, x_2, x_3, ..., x_p */
+int gmatrix_disk_nextcol(gmatrix *g, sample *s)
+{
+   int i;
+   intype *tmp;
+   
+   s->inmemory = g->inmemory;
+
+   /*MALLOCTEST(s->x, sizeof(dtype) * (g->p + 1))*/
+   MALLOCTEST(tmp, sizeof(intype) * g->n)
+
+   if(g->j == g->p + 1)
+      if(!gmatrix_reset(g))
+	 return FAILURE;
+
+   FREADTEST(tmp, sizeof(intype), g->n, g->file)
+
+   /* intercept */
+   if(g->j == 0)
+   {
+      /* Read y only once */
+      for(i = 0 ; i < g->n ; i++)
+      {
+	 s->x[i] = 1.0;
+
+	 /* store y in the gmatrix so it stays in memory */
+	 g->y[i] = (dtype)tmp[i];
+      }
+   }
+   else
+   {
+      for(i = 0 ; i < g->n ; i++)
+	 s->x[i] = ((dtype)tmp[i] - g->mean[g->j]) / g->sd[g->j];
+   }
+
+   g->j++;
+
+   free(tmp);
+
+   return SUCCESS;
+}
+
+
 
 /*void gmatrix_mem_pcor_nextrow(gmatrix *g, sample *s)
 {
