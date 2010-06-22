@@ -14,45 +14,53 @@ double gd_gmatrix(
 {
    int epoch = 1, i, j;
    double *grad;
-   /*double stepsize = maxstepsize;*/
+   double stepsize = maxstepsize;
    double dp = 0;
    double *gradsum = NULL;
    double *d2 = NULL;
    double *d2sum = NULL;
    double loss;
+   double s;
+   sample sm;
 
    MALLOCTEST(grad, sizeof(double) * (g->p + 1))
-   MALLOCTEST(d2, sizeof(double) * (g->p + 1))
    CALLOCTEST(gradsum, g->p + 1, sizeof(double))
-   CALLOCTEST(d2sum, g->p + 1, sizeof(double))
+   /*MALLOCTEST(d2, sizeof(double) * (g->p + 1))*/
+   /*CALLOCTEST(d2sum, g->p + 1, sizeof(double))*/
    
+   if(!sample_init(&sm, g->inmemory, g->p + 1))
+      return FAILURE;
+
    while(epoch <= maxepoch)
    {
       /* compute gradient */
       for(i = 0 ; i < g->n ; i++)
       { 
-	 dp = dotprod(g->x[i], beta, g->p + 1);
-	 dloss_pt_func(g->x[i], dp, g->y[i], g->p + 1, grad);
-	 /*d2loss_pt_func(g->x[i], dp, g->p + 1, d2);*/
+	 g->nextrow(g, &sm);
+	 
+	 dp = dotprod(sm.x, beta, g->p + 1);
+	 dloss_pt_func(sm.x, dp, sm.y, g->p + 1, grad);
+	 /*d2loss_pt_func(sm.x, dp, g->p + 1, d2);*/
 
 	 for(j = 0 ; j < g->p + 1 ; j++)
 	 {
 	    gradsum[j] += grad[j];
-	    /*d2sum[j] += d2[j];*/
+	    /* d2sum[j] += d2[j]; */
 	 }
       }
-
-      printf("%.5f\n", gradsum[1]);
 
       /* do step */
       /* TODO: don't penalise intercept */
       for(j = 0 ; j < g->p + 1 ; j++)
       {
-	 beta[j] = beta[j] - gradsum[j] / 1e4; /*d2sum[j];*/
-	 /*beta[j] = soft_threshold(
-	       beta[j] - gradsum[j] / d2sum[j], lambda1) / (1 + lambda2);*/
+	 /*s = 0;
+	 if(d2sum[j] > 0)
+	    s = gradsum[j] / d2sum[j];
+	 beta[j] = soft_threshold(beta[j] - s, lambda1) / (1 + lambda2);*/
+	 beta[j] = soft_threshold(beta[j] - stepsize * gradsum[j], lambda1) 
+	       / (1 + lambda2);
 	 gradsum[j] = 0;
-	 d2sum[j] = 0;
+	 /*d2sum[j] = 0;*/
       }
 
       if(verbose)
@@ -60,8 +68,9 @@ double gd_gmatrix(
 	 loss = 0;
       	 for(i = 0 ; i < g->n ; i++)
       	 {
-      	    dp = dotprod(g->x[i], beta, g->p + 1);
-      	    loss += loss_pt_func(dp, g->p + 1) / g->n;
+	    g->nextrow(g, &sm);
+      	    dp = dotprod(sm.x, beta, g->p + 1);
+      	    loss += loss_pt_func(dp, sm.y) / g->n;
       	 }
       	 printf("Epoch %d loss=%.5f\n", epoch, loss);
       }
@@ -71,8 +80,8 @@ double gd_gmatrix(
 
    free(grad);
    free(gradsum);
-   free(d2);
-   free(d2sum);
+   /*free(d2);
+   free(d2sum);*/
    return SUCCESS;
 }
 
