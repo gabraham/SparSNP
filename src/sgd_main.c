@@ -47,7 +47,10 @@ int main(int argc, char* argv[])
 	 if(strcmp2(argv[i], "sgd"))
 	    optim_gmatrix_func = sgd_gmatrix;
 	 else if(strcmp2(argv[i], "cd"))
+	 {
 	    optim_gmatrix_func = cd_gmatrix;
+	    rowmajor = FALSE;
+	 }
 	 else if(strcmp2(argv[i], "gd"))
 	    optim_gmatrix_func = gd_gmatrix;
       }
@@ -122,10 +125,10 @@ int main(int argc, char* argv[])
 	 i++;
 	 threshold = atof(argv[i]);
       }
-      else if(strcmp2(argv[i], "-colmajor"))
+      /*else if(strcmp2(argv[i], "-colmajor"))
       {
 	 rowmajor = FALSE;
-      }
+      }*/
       else if(strcmp2(argv[i], "-v"))
       {
 	 verbose = TRUE;
@@ -181,6 +184,11 @@ int main(int argc, char* argv[])
 -step <stepsize> -l1 <lambda1> -l2 <lambda2> -thresh <threshold> \
 -pred <prediction file> -cv <cvfolds> -inmemory -scale -seed <seed> -v -vv\n");
       return EXIT_FAILURE;
+   }
+
+   if(inmemory)
+   {
+      printf("warning: using -inmemory, make sure -colmajor is correct\n"); 
    }
 
    srand48(seed);
@@ -239,24 +247,22 @@ lambda1=%.9f lambda2=%.9f \n",
    
    gmatrix_reset(&g);
    MALLOCTEST2(yhat_train, ntrain * sizeof(double))
-   predict_gmatrix_func(&g, betahat, yhat_train, trainf);
+   /*predict_gmatrix_func(&g, betahat, yhat_train, trainf);
 
    if(ntest > 0)
    {
       gmatrix_reset(&g);
       MALLOCTEST2(yhat_test, ntest * sizeof(double))
       predict_gmatrix_func(&g, betahat, yhat_test, testf);
-   }
+   }*/
 
    /* unscale, return beta to original scale */
    for(i = 1 ; i < p + 1 ; i++)
-   {
       betahat_unsc[i] = g.sd[i] * betahat[i] + g.mean[i];
-   }
 
    writevectorf(betafile, betahat, p + 1);
    writevectorf(betaunscfile, betahat_unsc, p + 1);
-   writevectorf(predtrainfile, yhat_train, ntrain);
+   /*writevectorf(predtrainfile, yhat_train, ntrain);*/
    writevectorl(subsetfile, trainf, g.n);
 
 

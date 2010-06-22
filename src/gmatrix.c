@@ -64,6 +64,7 @@ int gmatrix_init(gmatrix *g, short inmemory, short pcor,
       
       if(filename != NULL && x == NULL)
       {
+	 printf("Loading data...\n");
 	 if(g->pcor)
 	    return gmatrix_load_pcor(g);
 	 else if(g->rowmajor)
@@ -72,7 +73,6 @@ int gmatrix_init(gmatrix *g, short inmemory, short pcor,
 	    return gmatrix_load_colmajor(g);
       }
    }
-   
 
    return SUCCESS;
 }
@@ -136,7 +136,6 @@ int gmatrix_disk_nextrow(gmatrix *g, sample *s)
    s->x[0] = 1.0; /* intercept */
    for(j = 1 ; j < g->p + 1; j++)
       s->x[j] = ((dtype)tmp[j] - g->mean[j]) / g->sd[j];
-      /*s->x[i] = (dtype)tmp[i];*/
    g->i++;
 
    free(tmp);
@@ -368,12 +367,11 @@ int gmatrix_disk_nextcol(gmatrix *g, sample *s)
 
    FREADTEST(tmp, sizeof(intype), g->n, g->file)
 
-   /* intercept */
    if(g->j == 0)
    {
-      /* Read y only once */
       for(i = 0 ; i < g->n ; i++)
       {
+	 /* intercept */
 	 s->x[i] = 1.0;
 
 	 /* store y in the gmatrix so it stays in memory */
@@ -383,7 +381,8 @@ int gmatrix_disk_nextcol(gmatrix *g, sample *s)
    else
    {
       for(i = 0 ; i < g->n ; i++)
-	 s->x[i] = ((dtype)tmp[i] - g->mean[g->j]) / g->sd[g->j];
+	 /*s->x[i] = ((dtype)tmp[i] - g->mean[g->j]) / g->sd[g->j];*/
+	 s->x[i] = (dtype)tmp[i];
    }
 
    g->j++;

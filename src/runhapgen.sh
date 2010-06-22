@@ -464,7 +464,7 @@ EOF
 
 DIR=sim5
 prefix="sim"
-N=500
+N=15
 HAPLO=HapMap/genotypes_chr1_JPT+CHB_r22_nr.b36_fwd.phased.100
 LEGEND=HapMap/genotypes_chr1_JPT+CHB_r22_nr.b36_fwd_legend.txt.100
 LOCI=$DIR/loci.txt

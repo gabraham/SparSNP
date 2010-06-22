@@ -23,15 +23,14 @@ double cd_gmatrix(gmatrix *g,
    double *lp = NULL;
    sample sm;
 
-   if(!g->inmemory)
+   /*if(!g->inmemory)
    {
-      fprintf(stderr, "cd_gmatrix doesn't support disk based gmatrix yet");
+      fprintf(stderr, "cd_gmatrix doesn't support disk based gmatrix yet\n");
       return FAILURE;
-   }
+   }*/
 
    sample_init(&sm, g->inmemory, g->n);
    MALLOCTEST(sm.x, sizeof(dtype) * g->n)
-   
 
    CALLOCTEST(converged, g->p + 1, sizeof(short));
    /*CALLOCTEST(grad, g->p + 1, sizeof(double));*/
