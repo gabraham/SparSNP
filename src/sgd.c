@@ -31,7 +31,7 @@ double sgd_gmatrix(gmatrix *g,
    for(i = 0 ; i < g->p + 1 ; i++)
       stepsize[i] = maxstepsize;
 
-   if(!sample_init(&sm, g->inmemory, g->p))
+   if(!sample_init(&sm, g->inmemory, g->p + 1))
       return FAILURE;
 
    while(epoch <= maxepoch)
