@@ -343,7 +343,7 @@ int gmatrix_scale_rowmajor(gmatrix *g)
       j++;
    }
    for( ; j < g->p + 1 ; j++)
-      sd[j] = sqrt(sd[j] / (g->n - 1));
+      sd[j] = fmax(sqrt(sd[j] / (g->n - 1)), SDTHRESH);
 
    sample_free(&sm);
 
@@ -401,7 +401,7 @@ int gmatrix_scale_colmajor(gmatrix *g)
       j++;
    }
    for( ; j < g->p + 1 ; j++)
-      sd[j] = sqrt(sd[j] / (g->n - 1));
+      sd[j] = fmax(sqrt(sd[j] / (g->n - 1)), SDTHRESH);
 
    sample_free(&sm);
 
