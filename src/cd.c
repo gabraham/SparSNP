@@ -33,6 +33,7 @@ double cd_gmatrix(gmatrix *g,
    double s;
    sample sm;
    double truncl = log((1 - trunc) / trunc);
+   double lambda1max = 0;
 
    sample_init(&sm, g->inmemory, g->n);
    MALLOCTEST(sm.x, sizeof(dtype) * g->n)
@@ -77,6 +78,10 @@ double cd_gmatrix(gmatrix *g,
 	 else
 	    beta_new = soft_threshold(beta[j] - s, lambda1) / (1 + lambda2);
 
+	 /* find smallest lambda1 that makes all coefficients zero */
+	 if(lambda1max < beta[j] - s)
+	    lambda1max = beta[j] - s;
+
 	 /* check for convergence */
 	 if(epoch > 1)
 	 {
@@ -98,6 +103,8 @@ double cd_gmatrix(gmatrix *g,
 	 /* clip very large coefs to prevent divergence */
 	 beta[j] = fmin(fmax(beta_new, -truncl), truncl);
       }
+
+      printf("lambda1max: %.5f\n", lambda1max);
 
       if(verbose)
       {

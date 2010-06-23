@@ -30,6 +30,7 @@ typedef struct gmatrix {
    short rowmajor;
    dtype **x;
    int skip;
+   short intercept;
 
    int (*nextrow)(struct gmatrix*, sample*);
    dtype (*next_y)(struct gmatrix*);
@@ -54,6 +55,8 @@ int gmatrix_load_rowmajor(gmatrix *);
 int gmatrix_load_colmajor(gmatrix *);
 int gmatrix_load_pcor(gmatrix *);
 int gmatrix_scale(gmatrix *);
+int gmatrix_scale_rowmajor(gmatrix *);
+int gmatrix_scale_colmajor(gmatrix *);
 
 int sample_init(sample *, short, int);
 void sample_free(sample *);

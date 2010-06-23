@@ -44,6 +44,9 @@ int gmatrix_init(gmatrix *g, short inmemory, short pcor,
    g->y = y;
    /*g->skip = -1;*/
 
+   /* intercept by default!!! */
+   g->intercept = TRUE;
+
    CALLOCTEST(g->mean, p + 1, sizeof(double))
    MALLOCTEST(g->sd, sizeof(double) * (p + 1))
 
@@ -253,9 +256,49 @@ int gmatrix_load_pcor(gmatrix *g)
    return SUCCESS;
 }
 
-/* Only applicable for memory-based matrices
- */
 int gmatrix_scale(gmatrix *g)
+{
+   int i, j;
+
+   if(g->rowmajor)
+   {
+      if(!gmatrix_scale_rowmajor(g))
+	 return FAILURE;
+   }
+   else
+   {
+      if(!gmatrix_scale_colmajor(g))
+	 return FAILURE;
+   }
+
+    if(g->inmemory)
+   {
+      for(i = 0 ; i < g->n ; i++)
+      {
+	 j = 0;
+	 /* intercept, does this break pcor? */
+	 if(g->intercept)
+	 {
+	    g->x[i][j] = 1;
+	    j++;
+	 }
+	 for( ; j < g->p + 1; j++)
+	 {
+	    g->x[i][j] = g->x[i][j] - g->mean[j];
+	    if(g->sd[j] > SDTHRESH)
+	       g->x[i][j] /= g->sd[j];
+	 }
+      }
+   }
+
+   return SUCCESS;
+}
+
+/* Scale the data. We are also looping over the intercept because when pcor
+ * calls this function there is no intercept and we need to loop over all
+ * variables
+ */
+int gmatrix_scale_rowmajor(gmatrix *g)
 {
    int i, j;
    double delta;
@@ -267,9 +310,6 @@ int gmatrix_scale(gmatrix *g)
 
    sample_init(&sm, g->inmemory, g->p + 1);
 
-   /*mean[0] = 0;
-   sd[0] = 1;*/
-
    /* sd is really the sum of squares, not the SD, but we
     * use the same variable to save memory */
 
@@ -277,7 +317,15 @@ int gmatrix_scale(gmatrix *g)
    {
       g->nextrow(g, &sm);
 
-      for(j = 0 ; j < g->p + 1; j++)
+      j = 0;
+      if(g->intercept)
+      {
+	 mean[j] = 0;
+	 sd[j] = 1;
+	 j++;
+      }
+
+      for( ; j < g->p + 1; j++)
       {
 	 if(i == 0)
 	    mean[j] = sd[j] = 0;
@@ -288,7 +336,13 @@ int gmatrix_scale(gmatrix *g)
       }
    }
 
-   for(j = 0 ; j < g->p + 1 ; j++)
+   j = 0;
+   if(g->intercept)
+   {
+      sd[j] = 1;
+      j++;
+   }
+   for( ; j < g->p + 1 ; j++)
       sd[j] = sqrt(sd[j] / (g->n - 1));
 
    sample_free(&sm);
@@ -299,22 +353,67 @@ int gmatrix_scale(gmatrix *g)
    g->mean = mean;
    g->sd = sd;
 
-   if(g->inmemory)
+   return SUCCESS;
+}
+
+
+int gmatrix_scale_colmajor(gmatrix *g)
+{
+   int i, j;
+   double delta;
+   sample sm;
+   double *mean, *sd;
+
+   MALLOCTEST(mean, sizeof(double) * (g->p + 1))
+   MALLOCTEST(sd, sizeof(double) * (g->p + 1))
+
+   sample_init(&sm, g->inmemory, g->n);
+
+   /* sd is really the sum of squares, not the std dev, but we
+    * use the same variable to save memory */
+
+   j = 0;
+   if(g->intercept)
    {
-      for(i = 0 ; i < g->n ; i++)
+      mean[j] = 0;
+      sd[j] = 1;
+      j++;
+   }
+
+   for( ; j < g->p + 1 ; j++)
+   {
+      g->nextcol(g, &sm);
+
+      mean[j] = sd[j] = 0;
+
+      for(i = 0 ; i < g->n; i++)
       {
-	 g->x[i][0] = 1;
-	 for(j = 1 ; j < g->p + 1; j++)
-	 {
-	    g->x[i][j] = g->x[i][j] - g->mean[j];
-	    if(g->sd[j] > SDTHRESH)
-	       g->x[i][j] /= g->sd[j];
-	 }
+	 delta = (double)sm.x[i] - mean[j];
+	 mean[j] += delta / (i + 1);
+	 sd[j] += delta * ((double)sm.x[i] - mean[j]);
       }
    }
 
+   j = 0;
+   if(g->intercept)
+   {
+      sd[j] = 1;
+      j++;
+   }
+   for( ; j < g->p + 1 ; j++)
+      sd[j] = sqrt(sd[j] / (g->n - 1));
+
+   sample_free(&sm);
+
+   free(g->mean);
+   free(g->sd);
+
+   g->mean = mean;
+   g->sd = sd;
+
    return SUCCESS;
 }
+
 
 int gmatrix_mem_nextrow(gmatrix *g, sample *s)
 {
