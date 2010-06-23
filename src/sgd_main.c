@@ -35,7 +35,7 @@ int main(int argc, char* argv[])
    double stepsize = 1e-4;
    double lambda1 = 0;
    double lambda2 = 0;
-   double threshold = 1e-3;
+   double threshold = 1e-9;
    double trunc = 1e-9;
    /* double alpha = 0; */
 
@@ -53,6 +53,11 @@ int main(int argc, char* argv[])
 	 }
 	 else if(strcmp2(argv[i], "gd"))
 	    optim_gmatrix_func = gd_gmatrix;
+	 else
+	 {
+	    fprintf(stderr, "unrecognised option -optim '%s'\n", argv[i]);
+	    return EXIT_FAILURE;
+	 }
       }
       else if(strcmp2(argv[i], "-f"))
       {
@@ -186,11 +191,7 @@ int main(int argc, char* argv[])
       return EXIT_FAILURE;
    }
 
-   if(inmemory)
-   {
-      printf("warning: using -inmemory, make sure -colmajor is correct\n"); 
-   }
-
+  
    srand48(seed);
    CALLOCTEST2(betahat, p + 1, sizeof(double))
    CALLOCTEST2(betahat_unsc, p + 1, sizeof(double))

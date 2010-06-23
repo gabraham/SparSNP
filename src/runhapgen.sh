@@ -460,65 +460,64 @@ EOF
 #exit 1
 
 #################################################################################
-# HapMap data, several strong SNPs
 
-DIR=sim5
-prefix="sim"
-N=15
-HAPLO=HapMap/genotypes_chr1_JPT+CHB_r22_nr.b36_fwd.phased.100
-LEGEND=HapMap/genotypes_chr1_JPT+CHB_r22_nr.b36_fwd_legend.txt.100
-LOCI=$DIR/loci.txt
-CUTFILE=$DIR/cut.txt
+function simulate {
+   local DIR=$1
+   local prefix=$2
+   local N=$3
+   local K=$4
+   local HAPLO=$5
+   local LEGEND=$6
 
-P=$(($(head -1 $HAPLO | sed 's/ //g' | wc -c) - 1))
-
-if ! [ -d "$DIR" ]; then
-   mkdir $DIR
-fi
-
-# Number of causal SNPs
-K=5
-
-echo
-echo "####################################"
-echo "Cutting HapMap data"
-echo "####################################"
-
-hapmapcut $LEGEND $HAPLO $K $CUTFILE
-
-echo
-echo "####################################"
-echo "Simulating genotypes"
-echo "####################################"
-
-/bin/rm -f $LOCI
-
-# Simulate genotypes using each of the causal SNPs
-for ((i = 1 ; i <= $K ; i++));
-do
-   f="$LEGEND""_$i"
-   w=$(cat $f | wc -l)
-   tail -n $((w-1)) $f > "$f"".tmp"
-   randomline "$f"".tmp"
-   SNP=`echo $RANDLINE | cut -f 2 -d ' '`
-   echo $SNP >> $LOCI
-
-   CMD="./hapgen -h $HAPLO""_$i -l $LEGEND""_$i \
-   -o "$DIR/sim$i" -n $N $N -gen -rr 1.5 2.25  -dl $SNP"
-   echo $CMD
-   set +e # hapgen returns 1 on exit
-   eval $CMD
-   set -e
-
-   /bin/rm -f "$f"".tmp"
-done
-
-# Concatenate the hapgen files *column-wise*
-#
-# This depends on hapgen always generating the same response classes
-# for the same samples (which it does)
-#
-RSCRIPT=".Rscript.R"
+   local LOCI=$DIR/loci.txt
+   local CUTFILE=$DIR/cut.txt
+   
+   local P=$(($(head -1 $HAPLO | sed 's/ //g' | wc -c) - 1))
+   
+   if ! [ -d "$DIR" ]; then
+      mkdir $DIR
+   fi
+   
+   echo
+   echo "####################################"
+   echo "Cutting HapMap data"
+   echo "####################################"
+   
+   hapmapcut $LEGEND $HAPLO $K $CUTFILE
+   
+   echo
+   echo "####################################"
+   echo "Simulating genotypes"
+   echo "####################################"
+   
+   /bin/rm -f $LOCI
+   
+   # Simulate genotypes using each of the causal SNPs
+   for ((i = 1 ; i <= $K ; i++));
+   do
+      local f="$LEGEND""_$i"
+      local w=$(cat $f | wc -l)
+      tail -n $((w-1)) $f > "$f"".tmp"
+      randomline "$f"".tmp"
+      SNP=`echo $RANDLINE | cut -f 2 -d ' '`
+      echo $SNP >> $LOCI
+   
+      CMD="./hapgen -h $HAPLO""_$i -l $LEGEND""_$i \
+      -o "$DIR/sim$i" -n $N $N -gen -rr 1.5 2.25  -dl $SNP"
+      echo $CMD
+      set +e # hapgen returns 1 on exit
+      eval $CMD
+      set -e
+   
+      /bin/rm -f "$f"".tmp"
+   done
+   
+   # Concatenate the hapgen files *column-wise*
+   #
+   # This depends on hapgen always generating the same response classes
+   # for the same samples (which it does)
+   #
+   RSCRIPT=".Rscript.R"
    cat > $RSCRIPT <<EOF
    sp <- $K
    
@@ -543,17 +542,39 @@ RSCRIPT=".Rscript.R"
    #   close(f)
 EOF
 
-Rscript $RSCRIPT
+   Rscript $RSCRIPT
+   
+   # See previous comment
+   /bin/cp $DIR/sim1.y $DIR/sim.y
+   
+   
+   echo "####################################"
+   echo "Postprocessing genotypes"
+   echo "####################################"
+   
+   shuffle $DIR $prefix $((N*2))
+   convert $DIR $prefix $((N*2))
+   transpose $DIR/sim.bin $((N*2)) $P 
+}
 
-# See previous comment
-/bin/cp $DIR/sim1.y $DIR/sim.y
 
+## Small HapMap data, several strong SNPs
+#DIR=sim5
+#prefix="sim"
+#N=500
+#K=5
+#HAPLO=HapMap/genotypes_chr1_JPT+CHB_r22_nr.b36_fwd.phased.1000
+#LEGEND=HapMap/genotypes_chr1_JPT+CHB_r22_nr.b36_fwd_legend.txt.1000
+#simulate $DIR $prefix $N $K $HAPLO $LEGEND
 
-echo "####################################"
-echo "Postprocessing genotypes"
-echo "####################################"
+# HapMap data, several strong SNPs
+DIR=sim6
+prefix="sim"
+N=1000
+K=10
+HAPLO=HapMap/genotypes_chr1_JPT+CHB_r22_nr.b36_fwd.phased.10000
+LEGEND=HapMap/genotypes_chr1_JPT+CHB_r22_nr.b36_fwd_legend.txt.10000
+simulate $DIR $prefix $N $K $HAPLO $LEGEND
 
-shuffle $DIR $prefix $((N*2))
-convert $DIR $prefix $((N*2))
-transpose $DIR/sim.bin $((N*2)) $P 
-
+# Several strong SNPs, lots of weak SNPs
+#

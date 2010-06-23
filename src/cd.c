@@ -1,5 +1,13 @@
 #include "sgd.h"
 
+short convergetest(double a, double b, double threshold)
+{
+   if(a == 0 && b == 0)
+      return TRUE;
+
+   return (fabs(a - b) / (fabs(a) + fabs(b))) < threshold;
+}
+
 /* coordinate descent */
 double cd_gmatrix(gmatrix *g,
    dloss_pt dloss_pt_func,        /* gradient */
@@ -21,13 +29,10 @@ double cd_gmatrix(gmatrix *g,
    double grad = 0;
    double d2 = 0;
    double *lp = NULL;
+   double pr;
+   double s;
    sample sm;
-
-   /*if(!g->inmemory)
-   {
-      fprintf(stderr, "cd_gmatrix doesn't support disk based gmatrix yet\n");
-      return FAILURE;
-   }*/
+   double truncl = log((1 - trunc) / trunc);
 
    sample_init(&sm, g->inmemory, g->n);
    MALLOCTEST(sm.x, sizeof(dtype) * g->n)
@@ -45,32 +50,37 @@ double cd_gmatrix(gmatrix *g,
 	 if(converged[j])
 	    continue;
 
+
+
 	 grad = 0;
 	 d2 = 0;
 
 	 /* compute gradient */
 	 for(i = 0 ; i < g->n ; i++)
 	 {
-	    /*grad += g->x[i][j] * (lp[i] - g->y[i]);
-	    d2 += pow(g->x[i][j], 2.0); */
-	    grad += sm.x[i] * (lp[i] - g->y[i]);
-	    d2 += pow(sm.x[i], 2.0);
+	    if(sm.x[i] == 0)
+	       continue;
+
+	    pr = predict_pt_func(lp[i]);
+	    grad += sm.x[i] * (pr - g->y[i]);
+	    d2 += d2loss_pt_j_func(sm.x[i], pr);
 	 }
 
-	 /* TODO: don't penalise intercept */
-	 /*beta_new = soft_threshold(beta[j] + grad / d2, lambda1) / (1 +
-	  * lambda2);*/
-
+	 /* don't move if 2nd derivative is zero */
+	 s = 0;
 	 if(d2 != 0)
-	    beta_new = beta[j] - grad / d2;
+	    s = grad / d2;
+
+	 /* don't penalise intercept */
+	 if(j == 0)
+	    beta_new = beta[j] - s;
 	 else
-	    beta_new = beta[j];
+	    beta_new = soft_threshold(beta[j] - s, lambda1) / (1 + lambda2);
 
 	 /* check for convergence */
 	 if(epoch > 1)
 	 {
-	    relerr = fabs(beta[j] - beta_new) / (fabs(beta[j]) + fabs(beta_new));
-	    if(relerr < threshold)
+	    if(convergetest(beta[j], beta_new, threshold))
 	    {
 	       converged[j] = TRUE;
 	       numconverged++;
@@ -79,9 +89,14 @@ double cd_gmatrix(gmatrix *g,
 
 	 /* update linear predictor */
 	 for(i = 0 ; i < g->n ; i++)
+	 {
+	    if(sm.x[i] == 0)
+	       continue;
 	    lp[i] += sm.x[i] * (beta_new - beta[j]);
+	 }
 
-	 beta[j] = beta_new;
+	 /* clip very large coefs to prevent divergence */
+	 beta[j] = fmin(fmax(beta_new, -truncl), truncl);
       }
 
       if(verbose)
@@ -89,7 +104,8 @@ double cd_gmatrix(gmatrix *g,
 	 loss = 0;
       	 for(i = 0 ; i < g->n ; i++)
       	    loss += loss_pt_func(lp[i], g->y[i]) / g->n;
-      	 printf("Epoch %d  training loss: %.5f\n", epoch, loss);
+      	 printf("Epoch %d  training loss: %.5f  converged: %d\n", epoch, loss,
+	 numconverged);
       }
 
       epoch++;
