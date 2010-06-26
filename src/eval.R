@@ -2,22 +2,47 @@ library(glmnet)
 library(GeneSets)
 library(ROCR)
 
-exper <- "sim6"
+exper <- "sim5"
 
 #b.sgd <- read.csv("~/Code/sgd/src/beta_sgd_sim5.csv", header=FALSE)[,1]
 #b.gd <- read.csv("~/Code/sgd/src/beta_gd_sim5.csv", header=FALSE)[,1]
-b.cd <- read.csv(sprintf("~/Code/sgd/src/beta_%s_cd.csv", exper), header=FALSE)[,1]
-n <- 2e3
-p <- 1e4
-legend <- sprintf(
-"~/Software/hapgen_1.3/HapMap/genotypes_chr1_JPT+CHB_r22_nr.b36_fwd_legend.txt.%s",
-p)
+#b.cd <- read.csv(sprintf("~/Code/sgd/src/beta_%s_cd.csv", exper), header=FALSE)[,1]
+#n <- 20000
+#p <- 100
+#legend <- sprintf(
+#"~/Software/hapgen_1.3/HapMap/genotypes_chr1_JPT+CHB_r22_nr.b36_fwd_legend.txt.%s",
+#p)
+#
+#x <- matrix(as.numeric(
+#	 readBin(sprintf("%s/sim.bin", exper), what="raw", n=n*(p+1))),
+#      nrow=n, byrow=TRUE)
+#y <- x[,1]
+#x <- x[,-1]
 
-x <- matrix(as.numeric(
-	 readBin(sprintf("%s/sim.bin", exper), what="raw", n=n*(p+1))),
-      nrow=n, byrow=TRUE)
-y <- x[,1]
-x <- x[,-1]
+################################################################################
+# Compare coordinate descent with glm() on small data p << N
+
+logloss <- function(x, y, beta)
+{
+   lp <- x %*% beta
+   log(1 + exp(lp)) - y * lp
+}
+
+system.time({
+   g1 <- glm(y ~ x, family=binomial())
+})
+
+dir <- sprintf("~/Software/hapgen_1.3/%s", exper)
+system(sprintf("~/Code/sgd/src/sgd -model logistic -f \\
+%s/sim.bin.t -n %s -p %s -epochs 100 \\
+-optim cd -v -thresh -1 -beta %s/beta_%s_cd.csv", dir, n, p, dir, exper))
+b.cd <- read.csv(
+      sprintf("%s/beta_%s_cd.csv", dir, exper), header=FALSE)[,1]
+
+
+
+stop()
+
 
 # Get indices of causal SNPs
 snps <- as.character(read.csv(sprintf("%s/loci.txt", exper), header=FALSE)[,1])
@@ -81,3 +106,7 @@ auprc(abs(b.cd[-1]), ysnp, k=500)
 #      main=names(l)[i])
 #}
 #
+
+plot(g1$df[-1], auprc.glmnet1[-1], type="b", log="x",
+      xlab="Nonzero variables", ylab="AUPRC")
+

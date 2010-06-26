@@ -24,6 +24,7 @@ double cd_gmatrix(gmatrix *g,
    double loss = 0;
    double beta_new;
    short *converged = NULL;
+   short *converged2 = NULL;
    int numconverged = 0;
    double relerr;
    double grad = 0;
@@ -34,24 +35,25 @@ double cd_gmatrix(gmatrix *g,
    sample sm;
    double truncl = log((1 - trunc) / trunc);
    double lambda1max = 0;
+   short done = FALSE;
 
    sample_init(&sm, g->inmemory, g->n);
    MALLOCTEST(sm.x, sizeof(dtype) * g->n)
 
    CALLOCTEST(converged, g->p + 1, sizeof(short));
+   CALLOCTEST(converged2, g->p + 1, sizeof(short));
    /*CALLOCTEST(grad, g->p + 1, sizeof(double));*/
    CALLOCTEST(lp, g->n, sizeof(double));
 
-   while(epoch <= maxepoch && numconverged < g->p + 1)
+   while(epoch <= maxepoch) /* && numconverged < g->p + 1) */
+   /*while(TRUE)*/
    {
       for(j = 0 ; j < g->p + 1; j++)
       {
 	 g->nextcol(g, &sm);
 	 
-	 if(converged[j])
-	    continue;
-
-
+	 /*if(converged[j])
+	    continue;*/
 
 	 grad = 0;
 	 d2 = 0;
@@ -59,13 +61,15 @@ double cd_gmatrix(gmatrix *g,
 	 /* compute gradient */
 	 for(i = 0 ; i < g->n ; i++)
 	 {
-	    if(sm.x[i] == 0)
-	       continue;
+	    /* if(sm.x[i] == 0)
+	       continue; */
 
 	    pr = predict_pt_func(lp[i]);
 	    grad += sm.x[i] * (pr - g->y[i]);
+	    /*printf("%.2f ", pr);*/
 	    d2 += d2loss_pt_j_func(sm.x[i], pr);
 	 }
+	 /*printf("\n");*/
 
 	 /* don't move if 2nd derivative is zero */
 	 s = 0;
@@ -79,32 +83,26 @@ double cd_gmatrix(gmatrix *g,
 	    beta_new = soft_threshold(beta[j] - s, lambda1) / (1 + lambda2);
 
 	 /* find smallest lambda1 that makes all coefficients zero */
-	 if(lambda1max < beta[j] - s)
-	    lambda1max = beta[j] - s;
+	 /*if(lambda1max < beta[j] - s)
+	    lambda1max = beta[j] - s;*/
 
 	 /* check for convergence */
-	 if(epoch > 1)
+	 if(epoch > 1 && convergetest(beta[j], beta_new, threshold))
 	 {
-	    if(convergetest(beta[j], beta_new, threshold))
-	    {
-	       converged[j] = TRUE;
-	       numconverged++;
-	    }
+	    converged[j] = TRUE;
+	    numconverged++;
 	 }
 
 	 /* update linear predictor */
 	 for(i = 0 ; i < g->n ; i++)
-	 {
-	    if(sm.x[i] == 0)
-	       continue;
-	    lp[i] += sm.x[i] * (beta_new - beta[j]);
-	 }
+	    if(sm.x[i] != 0)
+	       lp[i] += sm.x[i] * (beta_new - beta[j]);
 
 	 /* clip very large coefs to prevent divergence */
 	 beta[j] = fmin(fmax(beta_new, -truncl), truncl);
       }
 
-      printf("lambda1max: %.5f\n", lambda1max);
+      /*printf("lambda1max: %.5f\n", lambda1max);*/
 
       if(verbose)
       {
@@ -115,10 +113,12 @@ double cd_gmatrix(gmatrix *g,
 	 numconverged);
       }
 
+
       epoch++;
    }
 
    free(converged);
+   free(converged2);
    free(lp);
    sample_free(&sm);
    free(sm.x);

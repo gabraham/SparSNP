@@ -367,7 +367,10 @@ int gmatrix_scale_colmajor(gmatrix *g)
    MALLOCTEST(mean, sizeof(double) * (g->p + 1))
    MALLOCTEST(sd, sizeof(double) * (g->p + 1))
 
-   sample_init(&sm, g->inmemory, g->n);
+   /* always allocate memory to sm.x since we can't just return a pointer to a
+    * column
+    */
+   sample_init(&sm, FALSE, g->n);
 
    /* sd is really the sum of squares, not the std dev, but we
     * use the same variable to save memory */
@@ -433,15 +436,18 @@ int gmatrix_mem_nextrow(gmatrix *g, sample *s)
 int gmatrix_mem_nextcol(gmatrix *g, sample *s)
 {
    int i;
+   double k;
 
    if(g->j == g->p + 1)
       if(!gmatrix_reset(g))
 	 return FAILURE;
 
+   /* x is always stored in memory in row-major format, so we can't just
+    * return a pointer to it to return a column
+    */
    for(i = 0 ; i < g->n ; i++)
    {
       s->x[i] = g->x[i][g->j];
-      /*s->y[j] = g->y[j];*/
    }
 
    g->j++;
