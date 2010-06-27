@@ -29,13 +29,14 @@ int main(int argc, char* argv[])
    short scaleflag = FALSE;
    short rowmajor = TRUE;
    optim_gmatrix optim_gmatrix_func = sgd_gmatrix;
+   double lambda1max = 1;
 
    /* Parameters */
    int maxepochs = 20;
    double stepsize = 1e-4;
    double lambda1 = 0;
    double lambda2 = 0;
-   double threshold = 1e-9;
+   double threshold = 1e-4;
    double trunc = 1e-9;
    /* double alpha = 0; */
 
@@ -240,6 +241,15 @@ lambda1=%.9f lambda2=%.9f \n",
 
    if(verbose)
       printf("Starting SGD ...\n");
+
+   if(optim_gmatrix_func == cd_gmatrix)
+   {
+      lambda1max = optim_gmatrix_func(&g, dloss_pt_func,
+	 d2loss_pt_func, d2loss_pt_j_func,
+	 loss_pt_func, predict_pt_func, stepsize, 1,
+	 betahat, 0, 0, threshold, FALSE, trainf, trunc);
+      printf("lambda1max: %.5f\n", lambda1max);
+   }
 
    optim_gmatrix_func(&g, dloss_pt_func, d2loss_pt_func, d2loss_pt_j_func,
 	 loss_pt_func, predict_pt_func, stepsize, maxepochs,

@@ -36,12 +36,13 @@ double cd_gmatrix(gmatrix *g,
    double truncl = log((1 - trunc) / trunc);
    double lambda1max = 0;
    short done = FALSE;
+   int allconverged = 0;
 
    sample_init(&sm, g->inmemory, g->n);
    MALLOCTEST(sm.x, sizeof(dtype) * g->n)
 
    CALLOCTEST(converged, g->p + 1, sizeof(short));
-   CALLOCTEST(converged2, g->p + 1, sizeof(short));
+   /*CALLOCTEST(converged2, g->p + 1, sizeof(short));*/
    /*CALLOCTEST(grad, g->p + 1, sizeof(double));*/
    CALLOCTEST(lp, g->n, sizeof(double));
 
@@ -52,8 +53,8 @@ double cd_gmatrix(gmatrix *g,
       {
 	 g->nextcol(g, &sm);
 	 
-	 /*if(converged[j])
-	    continue;*/
+	 if(converged[j])
+	    continue;
 
 	 grad = 0;
 	 d2 = 0;
@@ -61,15 +62,13 @@ double cd_gmatrix(gmatrix *g,
 	 /* compute gradient */
 	 for(i = 0 ; i < g->n ; i++)
 	 {
-	    /* if(sm.x[i] == 0)
-	       continue; */
+	    if(sm.x[i] == 0)
+	       continue;
 
 	    pr = predict_pt_func(lp[i]);
 	    grad += sm.x[i] * (pr - g->y[i]);
-	    /*printf("%.2f ", pr);*/
 	    d2 += d2loss_pt_j_func(sm.x[i], pr);
 	 }
-	 /*printf("\n");*/
 
 	 /* don't move if 2nd derivative is zero */
 	 s = 0;
@@ -82,9 +81,10 @@ double cd_gmatrix(gmatrix *g,
 	 else
 	    beta_new = soft_threshold(beta[j] - s, lambda1) / (1 + lambda2);
 
-	 /* find smallest lambda1 that makes all coefficients zero */
-	 /*if(lambda1max < beta[j] - s)
-	    lambda1max = beta[j] - s;*/
+	 /* find smallest lambda1 that makes all coefficients zero, by finding
+	  * the largest beta[j] - s */
+	 if(lambda1max < fabs(beta[j] - s))
+	    lambda1max = fabs(beta[j] - s);
 
 	 /* check for convergence */
 	 if(epoch > 1 && convergetest(beta[j], beta_new, threshold))
@@ -102,8 +102,6 @@ double cd_gmatrix(gmatrix *g,
 	 beta[j] = fmin(fmax(beta_new, -truncl), truncl);
       }
 
-      /*printf("lambda1max: %.5f\n", lambda1max);*/
-
       if(verbose)
       {
 	 loss = 0;
@@ -113,16 +111,30 @@ double cd_gmatrix(gmatrix *g,
 	 numconverged);
       }
 
+      if(numconverged == g->p + 1)
+      {
+	 /*if(allconverged == 1)
+	    allconverged = 0;*/
+	 printf("all converged\n");
+	 for(j = 0 ; j < g->p + 1 ; j++)
+	    converged[j] = FALSE;
+	 numconverged = 0;
+      }
+
+
+      /*printf("lambda1max: %.5f\n", lambda1max);*/
+
+      
 
       epoch++;
    }
 
    free(converged);
-   free(converged2);
+   /*free(converged2);*/
    free(lp);
    sample_free(&sm);
    free(sm.x);
 
-   return SUCCESS;
+   return lambda1max;
 }
 
