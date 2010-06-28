@@ -8,6 +8,7 @@ int main(int argc, char* argv[])
    gmatrix g;
    char *filename = NULL;
    char *model = NULL;
+   char tmp[100];
    char *betafile = "beta.csv";
    char *betaunscfile = "beta_unsc.csv";
    char *predtrainfile = "pred_train.csv";
@@ -29,7 +30,10 @@ int main(int argc, char* argv[])
    short scaleflag = FALSE;
    short rowmajor = TRUE;
    optim_gmatrix optim_gmatrix_func = sgd_gmatrix;
-   double lambda1max = 1;
+   double lambda1max = 1, lambda1min = 1;
+   double *lambda1path = NULL;
+   int nlambda1 = 100;
+   double s;
 
    /* Parameters */
    int maxepochs = 20;
@@ -40,27 +44,12 @@ int main(int argc, char* argv[])
    double trunc = 1e-9;
    /* double alpha = 0; */
 
+   optim_gmatrix_func = cd_gmatrix;
+   rowmajor = FALSE;
+
    for(i = 1 ; i < argc ; i++)
    {
-      if(strcmp2(argv[i], "-optim"))
-      {
-	 i++;
-	 if(strcmp2(argv[i], "sgd"))
-	    optim_gmatrix_func = sgd_gmatrix;
-	 else if(strcmp2(argv[i], "cd"))
-	 {
-	    optim_gmatrix_func = cd_gmatrix;
-	    rowmajor = FALSE;
-	 }
-	 else if(strcmp2(argv[i], "gd"))
-	    optim_gmatrix_func = gd_gmatrix;
-	 else
-	 {
-	    fprintf(stderr, "unrecognised option -optim '%s'\n", argv[i]);
-	    return EXIT_FAILURE;
-	 }
-      }
-      else if(strcmp2(argv[i], "-f"))
+      if(strcmp2(argv[i], "-f"))
       {
 	 i++;
 	 filename = argv[i];
@@ -131,6 +120,11 @@ int main(int argc, char* argv[])
 	 i++;
 	 threshold = atof(argv[i]);
       }
+      else if(strcmp2(argv[i], "-nl1"))
+      {
+	 i++;
+	 nlambda1 = atoi(argv[i]);
+      }
       /*else if(strcmp2(argv[i], "-colmajor"))
       {
 	 rowmajor = FALSE;
@@ -197,6 +191,8 @@ int main(int argc, char* argv[])
    CALLOCTEST2(betahat, p + 1, sizeof(double))
    CALLOCTEST2(betahat_unsc, p + 1, sizeof(double))
 
+   CALLOCTEST2(lambda1path, nlambda1, sizeof(double))
+
    if(!gmatrix_init(&g, inmemory, FALSE, rowmajor, filename, NULL, NULL, n, p))
       return EXIT_FAILURE;
  
@@ -230,6 +226,7 @@ int main(int argc, char* argv[])
       testf[i] = 1 - trainf[i];
    }
    ntest = g.n - ntrain;
+   writevectorl(subsetfile, trainf, g.n);
 
    if(verbose)
    {
@@ -239,21 +236,32 @@ lambda1=%.9f lambda2=%.9f \n",
       printf("%d training samples, %d test samples\n", ntrain, g.n - ntrain);
    }
 
-   if(verbose)
-      printf("Starting SGD ...\n");
-
-   if(optim_gmatrix_func == cd_gmatrix)
-   {
-      lambda1max = optim_gmatrix_func(&g, dloss_pt_func,
+   /* get lambda1 max */
+   lambda1max = get_lambda1max_gmatrix(&g, dloss_pt_func,
 	 d2loss_pt_func, d2loss_pt_j_func,
-	 loss_pt_func, predict_pt_func, stepsize, 1,
-	 betahat, 0, 0, threshold, FALSE, trainf, trunc);
-      printf("lambda1max: %.5f\n", lambda1max);
-   }
+	 loss_pt_func, predict_pt_func, betahat);
+   printf("lambda1max: %.5f\n", lambda1max);
 
-   optim_gmatrix_func(&g, dloss_pt_func, d2loss_pt_func, d2loss_pt_j_func,
+   /* create lambda1 path */
+   lambda1path[0] = lambda1max;
+   lambda1min = lambda1max / 1000;
+   lambda1path[nlambda1 - 1] = lambda1min;
+   s = log((lambda1max - lambda1min + 1)) / (nlambda1 - 1);
+   for(i = 1 ; i < nlambda1 ; i++)
+      lambda1path[i] = lambda1max - exp(s * i) + 1;
+
+   writevectorf("lambda1path.csv", lambda1path, nlambda1);
+
+   for(i = 0 ; i < nlambda1 ; i++)
+   {
+      if(verbose)
+	 printf("\nFitting with lambda1=%.5f\n", lambda1path[i]);
+      cd_gmatrix(&g, dloss_pt_func, d2loss_pt_func, d2loss_pt_j_func,
 	 loss_pt_func, predict_pt_func, stepsize, maxepochs,
-	 betahat, lambda1, lambda2, threshold, verbose, trainf, trunc);
+	 betahat, lambda1path[i], lambda2, threshold, verbose, trainf, trunc);
+      snprintf(tmp, 100, "%s.%d", betafile, i);
+      writevectorf(tmp, betahat, p + 1);
+   }
 
    
    gmatrix_reset(&g);
@@ -271,10 +279,9 @@ lambda1=%.9f lambda2=%.9f \n",
    for(i = 1 ; i < p + 1 ; i++)
       betahat_unsc[i] = g.sd[i] * betahat[i] + g.mean[i];
 
-   writevectorf(betafile, betahat, p + 1);
-   writevectorf(betaunscfile, betahat_unsc, p + 1);
+   /*writevectorf(betafile, betahat, p + 1);
+   writevectorf(betaunscfile, betahat_unsc, p + 1);*/
    /*writevectorf(predtrainfile, yhat_train, ntrain);*/
-   writevectorl(subsetfile, trainf, g.n);
 
 
    printf("###############################\n");

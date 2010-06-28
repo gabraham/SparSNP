@@ -40,4 +40,11 @@ double gd_gmatrix(gmatrix *g,
    int maxepoch, double *beta, double lambda1, double lambda2,
    double threshold, int verbose, int *trainf, double trunc);
 
+double get_lambda1max_gmatrix(gmatrix *g,
+      dloss_pt dloss_pt_func,        /* gradient */
+      d2loss_pt d2loss_pt_func,        /* 2nd deriv */
+      d2loss_pt_j d2loss_pt_j_func,        /* 2nd deriv wrt beta_j */
+      loss_pt loss_pt_func,    /* loss for one sample */
+      predict_pt predict_pt_func, /* prediction for one sample */
+      double *beta);
 

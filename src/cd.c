@@ -8,23 +8,81 @@ short convergetest(double a, double b, double threshold)
    return (fabs(a - b) / (fabs(a) + fabs(b))) < threshold;
 }
 
+/* Find smallest lambda1 that makes all coefficients zero (except the intercept)
+ */
+double get_lambda1max_gmatrix(gmatrix *g,
+      dloss_pt dloss_pt_func,        /* gradient */
+      d2loss_pt d2loss_pt_func,        /* 2nd deriv */
+      d2loss_pt_j d2loss_pt_j_func,        /* 2nd deriv wrt beta_j */
+      loss_pt loss_pt_func,    /* loss for one sample */
+      predict_pt predict_pt_func, /* prediction for one sample */
+      double *beta)
+{
+   int i, j;
+   double *lp = NULL;
+   double grad, d2, s, pr, z, zmax = 0;
+   sample sm;
+
+   CALLOCTEST(lp, g->n, sizeof(double))
+   sample_init(&sm, g->inmemory, g->n);
+   MALLOCTEST(sm.x, sizeof(dtype) * g->n)
+
+   for(j = 0 ; j < g->p + 1; j++)
+   {
+      g->nextcol(g, &sm);
+
+      grad = 0;
+      d2 = 0;
+
+      /* compute gradient */
+      for(i = 0 ; i < g->n ; i++)
+      {
+	 if(sm.x[i] == 0)
+	    continue;
+
+	 pr = predict_pt_func(lp[i]);
+	 grad += sm.x[i] * (pr - g->y[i]);
+	 d2 += d2loss_pt_j_func(sm.x[i], pr);
+      }
+
+      /* don't move if 2nd derivative is zero */
+      s = 0;
+      if(d2 != 0)
+	 s = grad / d2;
+
+      /* find smallest lambda1 that makes all coefficients zero, by finding
+       * the largest z, but evaluate the intercept first because
+       * it's not penalised.
+       */
+      z = beta[j] - s;
+      if(j == 0)
+	 beta[j] = z;
+      else if(zmax < fabs(z))
+	 zmax = fabs(z);
+   } 
+
+   free(lp);
+   free(sm.x);
+
+   return zmax;
+}
+
 /* coordinate descent */
 double cd_gmatrix(gmatrix *g,
-   dloss_pt dloss_pt_func,        /* gradient */
-   d2loss_pt d2loss_pt_func,        /* 2nd deriv */
-   d2loss_pt_j d2loss_pt_j_func,        /* 2nd deriv wrt beta_j */
-   loss_pt loss_pt_func,    /* loss for one sample */
-   predict_pt predict_pt_func, /* prediction for one sample */
-   double maxstepsize,
-   int maxepoch, double *beta, double lambda1, double lambda2,
-   double threshold, int verbose, int *trainf, double trunc)
+      dloss_pt dloss_pt_func,        /* gradient */
+      d2loss_pt d2loss_pt_func,        /* 2nd deriv */
+      d2loss_pt_j d2loss_pt_j_func,        /* 2nd deriv wrt beta_j */
+      loss_pt loss_pt_func,    /* loss for one sample */
+      predict_pt predict_pt_func, /* prediction for one sample */
+      double maxstepsize,
+      int maxepoch, double *beta, double lambda1, double lambda2,
+      double threshold, int verbose, int *trainf, double trunc)
 {
    int i, j, k;
    int epoch = 1;
    double loss = 0;
    double beta_new;
    short *converged = NULL;
-   short *converged2 = NULL;
    int numconverged = 0;
    double relerr;
    double grad = 0;
@@ -34,7 +92,6 @@ double cd_gmatrix(gmatrix *g,
    double s;
    sample sm;
    double truncl = log((1 - trunc) / trunc);
-   double lambda1max = 0;
    short done = FALSE;
    int allconverged = 0;
 
@@ -42,19 +99,16 @@ double cd_gmatrix(gmatrix *g,
    MALLOCTEST(sm.x, sizeof(dtype) * g->n)
 
    CALLOCTEST(converged, g->p + 1, sizeof(short));
-   /*CALLOCTEST(converged2, g->p + 1, sizeof(short));*/
-   /*CALLOCTEST(grad, g->p + 1, sizeof(double));*/
    CALLOCTEST(lp, g->n, sizeof(double));
 
-   while(epoch <= maxepoch) /* && numconverged < g->p + 1) */
-   /*while(TRUE)*/
+   while(epoch <= maxepoch)
    {
       for(j = 0 ; j < g->p + 1; j++)
       {
 	 g->nextcol(g, &sm);
-	 
+
 	 if(converged[j])
-	    continue;
+	   continue;
 
 	 grad = 0;
 	 d2 = 0;
@@ -62,6 +116,7 @@ double cd_gmatrix(gmatrix *g,
 	 /* compute gradient */
 	 for(i = 0 ; i < g->n ; i++)
 	 {
+	    /* skip zeros, they don't change linear predictor */
 	    if(sm.x[i] == 0)
 	       continue;
 
@@ -80,11 +135,6 @@ double cd_gmatrix(gmatrix *g,
 	    beta_new = beta[j] - s;
 	 else
 	    beta_new = soft_threshold(beta[j] - s, lambda1) / (1 + lambda2);
-
-	 /* find smallest lambda1 that makes all coefficients zero, by finding
-	  * the largest beta[j] - s */
-	 if(lambda1max < fabs(beta[j] - s))
-	    lambda1max = fabs(beta[j] - s);
 
 	 /* check for convergence */
 	 if(epoch > 1 && convergetest(beta[j], beta_new, threshold))
@@ -105,36 +155,35 @@ double cd_gmatrix(gmatrix *g,
       if(verbose)
       {
 	 loss = 0;
-      	 for(i = 0 ; i < g->n ; i++)
-      	    loss += loss_pt_func(lp[i], g->y[i]) / g->n;
-      	 printf("Epoch %d  training loss: %.5f  converged: %d\n", epoch, loss,
-	 numconverged);
+	 for(i = 0 ; i < g->n ; i++)
+	    loss += loss_pt_func(lp[i], g->y[i]) / g->n;
+	 printf("Epoch %d  training loss: %.5f  converged: %d\n", epoch, loss,
+	       numconverged);
       }
 
       if(numconverged == g->p + 1)
       {
-	 /*if(allconverged == 1)
-	    allconverged = 0;*/
-	 printf("all converged\n");
+	 allconverged++;
+
+	 /* converged twice in a row, no need to continue */
+	 if(allconverged == 2)
+	 {
+	    printf("all converged\n");
+	    break;
+	 }
 	 for(j = 0 ; j < g->p + 1 ; j++)
 	    converged[j] = FALSE;
 	 numconverged = 0;
       }
 
-
-      /*printf("lambda1max: %.5f\n", lambda1max);*/
-
-      
-
       epoch++;
    }
 
    free(converged);
-   /*free(converged2);*/
    free(lp);
    sample_free(&sm);
    free(sm.x);
 
-   return lambda1max;
+   return SUCCESS;
 }
 

@@ -8,10 +8,10 @@ all: sgd sgd_double #pcor
 CCFLAGS = -Wall -g -pg -std=gnu99
 LIBRARIES = -lm
 
-sgd: common.c gmatrix.c loss.c evaluation.c util.c sgd.c cd.c gd.c sgd_main.c
+sgd: common.c gmatrix.c loss.c evaluation.c util.c sgd.c cd.c gd.c main.c
 	gcc $(CCFLAGS) $(LIBRARIES) $^ -o sgd
 
-sgd_double: common.c gmatrix.c loss.c evaluation.c util.c sgd.c cd.c gd.c sgd_main.c
+sgd_double: common.c gmatrix.c loss.c evaluation.c util.c sgd.c cd.c gd.c main.c
 	gcc -Dintype=double $(CCFLAGS) $(LIBRARIES) $^ -o sgd_double
 
 pcor: common.c gmatrix.c loss.c evaluation.c util.c sgd.c cd.c gd.c pcor.c
