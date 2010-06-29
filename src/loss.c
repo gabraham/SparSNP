@@ -41,12 +41,12 @@ void logd2loss_pt(dtype *x, double d, int p, double* d2)
    int j;
    double pr = exp(d);
    for(j = 0 ; j < p ; j++)
-      d2[j] = logd2loss_pt_j(x[j], pr);
+      d2[j] = logd2loss_pt_j(x[j], pr / (1 + pr));
 }
 
-double logd2loss_pt_j(dtype x, double pr)
+double logd2loss_pt_j(dtype x, double P)
 {
-   double P = pr / (1 + pr);
+/*   double P = pr / (1 + pr);*/
    return x * x * P * (1 - P);
 }
 

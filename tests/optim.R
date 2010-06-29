@@ -1,5 +1,10 @@
 # gradient descent and coordinate descent
 
+softthresh <- function(a, b)
+{
+   sign(a) * pmax(abs(a) - b, 0)
+}
+
 l2loss <- function(x, y, b)
 {
    mean((y - x %*% b)^2)
@@ -78,26 +83,31 @@ gd <- function(x, y, lossfunc, dfunc, d2func, maxiter=10)
    beta
 }
 
-logd1phi <- function(x, y, lp, j)
+l2d1phi <- function(lp)
 {
-   p <- exp(lp)
-   q <- p / (1 + p)
-   drop(crossprod(x[, j, drop=FALSE], q - y))
+   lp
 }
 
-logd2phi <- function(x, lp, j)
+l2d2phi <- function(lp)
 {
-   n <- nrow(x)
+   1
+}
+
+logd1phi <- function(lp)
+{
    p <- exp(lp)
-   P <- drop(p / (1 + p))
-   s <- sapply(1:n, function(i) {
-      x[i,j,drop=FALSE]^2 * P[i] * (1 - P[i])
-   })
-   sum(s)
+    p / (1 + p)
+}
+
+logd2phi <- function(lp)
+{
+   p <- exp(lp)
+   P <- p / (1 + p)
+   P * (1 - P)
 }
 
 # naive coordinate descent
-cd1 <- function(x, y, lossfunc, dfunc, d2func, maxiter=10)
+cd1 <- function(x, y, lossfunc, dfunc, d2func, maxiter=50)
 {
    x <- cbind(1, x)
    n <- nrow(x)
@@ -118,7 +128,7 @@ cd1 <- function(x, y, lossfunc, dfunc, d2func, maxiter=10)
 }
 
 # coordinate descent
-cd2 <- function(x, y, lossfunc, d1phi, d2phi, maxiter=10)
+cd2 <- function(x, y, lossfunc, d1phi, d2phi, lambda1=0, maxiter=50)
 {
    x <- cbind(1, x)
    n <- nrow(x)
@@ -132,10 +142,12 @@ cd2 <- function(x, y, lossfunc, d1phi, d2phi, maxiter=10)
       {
 	 beta.old <- beta[j]
 
-	 grad <- d1phi(x, y, lp, j)
-	 d2 <- d2phi(x, lp, j)
+	 grad <- sum(x[, j] * (d1phi(lp) - y))
+	 d2 <- sum(x[,j]^2 * d2phi(lp))
 
-	 beta[j] <- beta.old - grad / d2
+	 beta[j] <- if(j > 1) {
+	    softthresh(beta.old - grad / d2, lambda1)
+	 } else beta.old - grad / d2
 
 	 lp <- lp + x[, j] * (beta[j] - beta.old)
       }

@@ -33,11 +33,11 @@ system.time({
 })
 
 dir <- sprintf("~/Software/hapgen_1.3/%s", exper)
-system(sprintf("~/Code/sgd/src/sgd -model logistic -f \\
+system(sprintf("~/Code/cd/src/cd -model logistic -f \\
 %s/sim.bin.t -n %s -p %s -epochs 100 \\
--optim cd -v -thresh -1 -beta %s/beta_%s_cd.csv", dir, n, p, dir, exper))
+-v -beta %s/beta_%s_cd.csv", dir, n, p, dir, exper))
 b.cd <- read.csv(
-      sprintf("%s/beta_%s_cd.csv", dir, exper), header=FALSE)[,1]
+   sprintf("%s/beta_%s_cd.csv", dir, exper), header=FALSE)[,1]
 
 
 

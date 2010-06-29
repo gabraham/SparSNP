@@ -239,10 +239,8 @@ lambda1=%.9f lambda2=%.9f \n",
    /* get lambda1 max */
    lambda1max = get_lambda1max_gmatrix(&g, dloss_pt_func,
 	 d2loss_pt_func, d2loss_pt_j_func,
-	 loss_pt_func, predict_pt_func, betahat);
+	 loss_pt_func, predict_pt_func);
 
-   /* comes out too large */
-   lambda1max /= 10;
    printf("lambda1max: %.5f\n", lambda1max);
 
    /* create lambda1 path */

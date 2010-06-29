@@ -15,11 +15,11 @@ double get_lambda1max_gmatrix(gmatrix *g,
       d2loss_pt d2loss_pt_func,        /* 2nd deriv */
       d2loss_pt_j d2loss_pt_j_func,        /* 2nd deriv wrt beta_j */
       loss_pt loss_pt_func,    /* loss for one sample */
-      predict_pt predict_pt_func, /* prediction for one sample */
-      double *beta)
+      predict_pt predict_pt_func) /* prediction for one sample */
 {
    int i, j;
    double *lp = NULL;
+   double beta0 = 0;
    double grad, d2, s, pr, z, zmax = 0;
    sample sm;
 
@@ -54,12 +54,18 @@ double get_lambda1max_gmatrix(gmatrix *g,
        * the largest z, but evaluate the intercept first because
        * it's not penalised.
        */
-      z = beta[j] - s;
       if(j == 0)
-	 beta[j] = z;
-      else if(zmax < fabs(z))
-	 zmax = fabs(z);
+	 beta0 = -s;
+      else if(zmax < fabs(-s))
+	 zmax = fabs(-s);
+
+      printf("%.5f %.5f %.5f\n", grad, d2, s);
+
+      for(i = 0 ; i < g->n ; i++)
+	    lp[i] = sm.x[i] * beta0;
    } 
+
+   printf("beta0: %.5f\n", beta0);
 
    free(lp);
    free(sm.x);
