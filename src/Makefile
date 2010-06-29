@@ -1,22 +1,22 @@
 
 .PHONY: all
 
-all: sgd sgd_double #pcor
+all: cd cd_double #pcor
 
 # what about *.h?
 #
 CCFLAGS = -Wall -g -pg -std=gnu99
 LIBRARIES = -lm
 
-sgd: common.c gmatrix.c loss.c evaluation.c util.c sgd.c cd.c gd.c main.c
-	gcc $(CCFLAGS) $(LIBRARIES) $^ -o sgd
+cd: common.c gmatrix.c loss.c evaluation.c util.c cd.c gd.c main.c
+	gcc $(CCFLAGS) $(LIBRARIES) $^ -o cd
 
-sgd_double: common.c gmatrix.c loss.c evaluation.c util.c sgd.c cd.c gd.c main.c
-	gcc -Dintype=double $(CCFLAGS) $(LIBRARIES) $^ -o sgd_double
+cd_double: common.c gmatrix.c loss.c evaluation.c util.c cd.c gd.c main.c
+	gcc -Dintype=double $(CCFLAGS) $(LIBRARIES) $^ -o cd_double
 
-pcor: common.c gmatrix.c loss.c evaluation.c util.c sgd.c cd.c gd.c pcor.c
+pcor: common.c gmatrix.c loss.c evaluation.c util.c cd.c gd.c pcor.c
 	gcc -Dintype=double $(CCFLAGS) $(LIBRARIES) $^ -o pcor
 
 clean:
-	/bin/rm -f sgd pcor
+	/bin/rm -f cd pcor
 # DO NOT DELETE

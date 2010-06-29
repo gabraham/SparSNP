@@ -29,7 +29,7 @@ int main(int argc, char* argv[])
    short inmemory = FALSE;
    short scaleflag = FALSE;
    short rowmajor = TRUE;
-   optim_gmatrix optim_gmatrix_func = sgd_gmatrix;
+   optim_gmatrix optim_gmatrix_func = cd_gmatrix;
    double lambda1max = 1, lambda1min = 1;
    double *lambda1path = NULL;
    int nlambda1 = 100;
@@ -179,7 +179,7 @@ int main(int argc, char* argv[])
 
    if(filename == NULL || model == NULL || n == 0 || p == 0)
    {
-      printf("usage: sgd -model <model> -f <filename> -n <#samples> -p \
+      printf("usage: cd -model <model> -f <filename> -n <#samples> -p \
 <#variables> | -beta <beta filename> -pred <pred filename> -epoch <maxepochs> \
 -step <stepsize> -l1 <lambda1> -l2 <lambda2> -thresh <threshold> \
 -pred <prediction file> -cv <cvfolds> -inmemory -scale -seed <seed> -v -vv\n");
@@ -240,15 +240,20 @@ lambda1=%.9f lambda2=%.9f \n",
    lambda1max = get_lambda1max_gmatrix(&g, dloss_pt_func,
 	 d2loss_pt_func, d2loss_pt_j_func,
 	 loss_pt_func, predict_pt_func, betahat);
+
+   /* comes out too large */
+   lambda1max /= 10;
    printf("lambda1max: %.5f\n", lambda1max);
 
    /* create lambda1 path */
    lambda1path[0] = lambda1max;
    lambda1min = lambda1max / 1000;
    lambda1path[nlambda1 - 1] = lambda1min;
-   s = log((lambda1max - lambda1min + 1)) / (nlambda1 - 1);
+   /*s = log((lambda1max - lambda1min + 1)) / (nlambda1 - 1);*/
+   s = (lambda1max - lambda1min) / (nlambda1 - 1); 
    for(i = 1 ; i < nlambda1 ; i++)
-      lambda1path[i] = lambda1max - exp(s * i) + 1;
+      /*lambda1path[i] = lambda1max - exp(s * i) + 1;*/
+      lambda1path[i] = lambda1max - s * i;
 
    writevectorf("lambda1path.csv", lambda1path, nlambda1);
 
@@ -262,6 +267,11 @@ lambda1=%.9f lambda2=%.9f \n",
       snprintf(tmp, 100, "%s.%d", betafile, i);
       writevectorf(tmp, betahat, p + 1);
    }
+
+   /*cd_gmatrix(&g, dloss_pt_func, d2loss_pt_func, d2loss_pt_j_func,
+	 loss_pt_func, predict_pt_func, stepsize, maxepochs,
+	 betahat, lambda1, lambda2, threshold, verbose, trainf, trunc);
+   writevectorf(betafile, betahat, p + 1);*/
 
    
    gmatrix_reset(&g);

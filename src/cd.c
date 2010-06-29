@@ -107,8 +107,8 @@ double cd_gmatrix(gmatrix *g,
       {
 	 g->nextcol(g, &sm);
 
-	 if(converged[j])
-	   continue;
+	 /*if(converged[j])
+	   continue;*/
 
 	 grad = 0;
 	 d2 = 0;
@@ -166,11 +166,11 @@ double cd_gmatrix(gmatrix *g,
 	 allconverged++;
 
 	 /* converged twice in a row, no need to continue */
-	 if(allconverged == 2)
+	 /*if(allconverged == 2)
 	 {
 	    printf("all converged\n");
 	    break;
-	 }
+	 }*/
 	 for(j = 0 ; j < g->p + 1 ; j++)
 	    converged[j] = FALSE;
 	 numconverged = 0;

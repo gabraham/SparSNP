@@ -558,16 +558,16 @@ EOF
 }
 
 
-## Small HapMap data, several strong SNPs
-#DIR=sim5
-#prefix="sim"
-#N=1000
-#K=10
-#HAPLO=HapMap/genotypes_chr1_JPT+CHB_r22_nr.b36_fwd.phased.100
-#LEGEND=HapMap/genotypes_chr1_JPT+CHB_r22_nr.b36_fwd_legend.txt.100
-#simulate $DIR $prefix $N $K $HAPLO $LEGEND
-#
-#exit 1
+# Small HapMap data, several strong SNPs
+DIR=sim5
+prefix="sim"
+N=1000
+K=10
+HAPLO=HapMap/genotypes_chr1_JPT+CHB_r22_nr.b36_fwd.phased.100
+LEGEND=HapMap/genotypes_chr1_JPT+CHB_r22_nr.b36_fwd_legend.txt.100
+simulate $DIR $prefix $N $K $HAPLO $LEGEND
+
+exit 1
 
 # HapMap data, several strong SNPs
 DIR=sim6
