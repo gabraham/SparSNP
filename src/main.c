@@ -34,9 +34,10 @@ int main(int argc, char* argv[])
    double *lambda1path = NULL;
    int nlambda1 = 100;
    double s;
+   double l1minratio = 1e-3;
 
    /* Parameters */
-   int maxepochs = 20;
+   int maxepochs = 200;
    double stepsize = 1e-4;
    double lambda1 = 0;
    double lambda2 = 0;
@@ -114,6 +115,11 @@ int main(int argc, char* argv[])
       {
 	 i++;
 	 lambda2 = atof(argv[i]);
+      }
+      else if(strcmp2(argv[i], "-l1min"))
+      {
+	 i++;
+	 l1minratio = atof(argv[i]);
       }
       else if(strcmp2(argv[i], "-thresh"))
       {
@@ -245,20 +251,19 @@ lambda1=%.9f lambda2=%.9f \n",
 
    /* create lambda1 path */
    lambda1path[0] = lambda1max;
-   lambda1min = lambda1max / 1000;
+   
+   lambda1min = lambda1max * l1minratio;
    lambda1path[nlambda1 - 1] = lambda1min;
-   /*s = log((lambda1max - lambda1min + 1)) / (nlambda1 - 1);*/
-   s = (lambda1max - lambda1min) / (nlambda1 - 1); 
+   s = (log(lambda1max) - log(lambda1min)) / nlambda1; 
    for(i = 1 ; i < nlambda1 ; i++)
-      /*lambda1path[i] = lambda1max - exp(s * i) + 1;*/
-      lambda1path[i] = lambda1max - s * i;
+      lambda1path[i] = exp(log(lambda1max) - s * i);
 
    writevectorf("lambda1path.csv", lambda1path, nlambda1);
 
    for(i = 0 ; i < nlambda1 ; i++)
    {
       if(verbose)
-	 printf("\nFitting with lambda1=%.5f\n", lambda1path[i]);
+	 printf("\nFitting with lambda1=%.20f\n", lambda1path[i]);
       cd_gmatrix(&g, dloss_pt_func, d2loss_pt_func, d2loss_pt_j_func,
 	 loss_pt_func, predict_pt_func, stepsize, maxepochs,
 	 betahat, lambda1path[i], lambda2, threshold, verbose, trainf, trunc);

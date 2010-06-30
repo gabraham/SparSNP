@@ -572,7 +572,7 @@ EOF
 # HapMap data, several strong SNPs
 DIR=sim6
 prefix="sim"
-N=500
+N=250
 K=10
 HAPLO=HapMap/genotypes_chr1_JPT+CHB_r22_nr.b36_fwd.phased
 LEGEND=HapMap/genotypes_chr1_JPT+CHB_r22_nr.b36_fwd_legend.txt

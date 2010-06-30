@@ -60,7 +60,7 @@ double get_lambda1max_gmatrix(gmatrix *g,
 	 zmax = fabs(s);
 
       for(i = 0 ; i < g->n ; i++)
-	    lp[i] = sm.x[i] * beta0;
+	 lp[i] = sm.x[i] * beta0;
    } 
 
    free(lp);
@@ -109,8 +109,8 @@ double cd_gmatrix(gmatrix *g,
       {
 	 g->nextcol(g, &sm);
 
-	 /*if(converged[j])
-	   continue;*/
+	 if(converged[j])
+	   continue;
 
 	 grad = 0;
 	 d2 = 0;
@@ -118,7 +118,7 @@ double cd_gmatrix(gmatrix *g,
 	 /* compute gradient */
 	 for(i = 0 ; i < g->n ; i++)
 	 {
-	    /* skip zeros, they don't change linear predictor */
+	    /* skip zeros, they don't change the linear predictor */
 	    if(sm.x[i] == 0)
 	       continue;
 
@@ -150,6 +150,7 @@ double cd_gmatrix(gmatrix *g,
 	    if(sm.x[i] != 0)
 	       lp[i] += sm.x[i] * (beta_new - beta[j]);
 
+
 	 /* clip very large coefs to prevent divergence */
 	 beta[j] = fmin(fmax(beta_new, -truncl), truncl);
       }
@@ -168,11 +169,11 @@ double cd_gmatrix(gmatrix *g,
 	 allconverged++;
 
 	 /* converged twice in a row, no need to continue */
-	 /*if(allconverged == 2)
+	 if(allconverged == 2)
 	 {
 	    printf("all converged\n");
 	    break;
-	 }*/
+	 }
 	 for(j = 0 ; j < g->p + 1 ; j++)
 	    converged[j] = FALSE;
 	 numconverged = 0;
