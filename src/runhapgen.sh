@@ -484,7 +484,7 @@ function simulate {
    echo "####################################"
    
    hapmapcut $LEGEND $HAPLO $K $CUTFILE
-   
+
    echo
    echo "####################################"
    echo "Simulating genotypes"
@@ -558,24 +558,24 @@ EOF
 }
 
 
-# Small HapMap data, several strong SNPs
-DIR=sim5
-prefix="sim"
-N=1000
-K=10
-HAPLO=HapMap/genotypes_chr1_JPT+CHB_r22_nr.b36_fwd.phased.100
-LEGEND=HapMap/genotypes_chr1_JPT+CHB_r22_nr.b36_fwd_legend.txt.100
-simulate $DIR $prefix $N $K $HAPLO $LEGEND
-
-exit 1
+## Small HapMap data, several strong SNPs
+#DIR=sim5
+#prefix="sim"
+#N=1000
+#K=2
+#HAPLO=HapMap/genotypes_chr1_JPT+CHB_r22_nr.b36_fwd.phased.100
+#LEGEND=HapMap/genotypes_chr1_JPT+CHB_r22_nr.b36_fwd_legend.txt.100
+#simulate $DIR $prefix $N $K $HAPLO $LEGEND
+#
+#exit 1
 
 # HapMap data, several strong SNPs
 DIR=sim6
 prefix="sim"
-N=2500
+N=500
 K=10
-HAPLO=HapMap/genotypes_chr1_JPT+CHB_r22_nr.b36_fwd.phased.10000
-LEGEND=HapMap/genotypes_chr1_JPT+CHB_r22_nr.b36_fwd_legend.txt.10000
+HAPLO=HapMap/genotypes_chr1_JPT+CHB_r22_nr.b36_fwd.phased
+LEGEND=HapMap/genotypes_chr1_JPT+CHB_r22_nr.b36_fwd_legend.txt
 simulate $DIR $prefix $N $K $HAPLO $LEGEND
 #
 # Several strong SNPs, lots of weak SNPs

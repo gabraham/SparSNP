@@ -5,7 +5,7 @@ library(glmnet)
 set.seed(43249210)
 
 n <- 1000
-p <- 20
+p <- 1000
 w <- sample(0:1, p + 1, replace=TRUE, prob=c(0.9, 0.1)) 
 beta <- rnorm(p + 1) * w
 
@@ -53,16 +53,19 @@ getlambda1max <- function(x, y)
    max(abs(s[-1]))
 }
 
-lambda1max <- getlambda1max(x, y)
+l1max <- getlambda1max(x, y)
 
-stop()
-
-l <- 100:1 / 100 * lambda1max
+nl1 <- 50
+l1min <- 1e-3 * l1max
+s <- (log(l1max) - log(l1min)) / nl1
+l <- exp(log(l1max) - s * 0:nl1)
 b21 <- sapply(l, cd2, x=x, y=y,
       lossfunc=logloss, d1phi=logd1phi, d2phi=logd2phi)
 
-nz <- apply(b21[-1,], 2, function(x) sum(x != 0))
-l1max <- l[which(c(0, diff(nz)) > 0)]
+df <- apply(b21[-1,], 2, function(x) sum(x != 0))
+#l1max2 <- l[which(c(0, diff(df)) > 0)]
+
+plot(l, df, log="x")
 
 stop()
 

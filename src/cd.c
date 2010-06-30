@@ -48,24 +48,20 @@ double get_lambda1max_gmatrix(gmatrix *g,
       /* don't move if 2nd derivative is zero */
       s = 0;
       if(d2 != 0)
-	 s = grad / d2;
+	 s = -grad / d2;
 
       /* find smallest lambda1 that makes all coefficients zero, by finding
        * the largest z, but evaluate the intercept first because
        * it's not penalised.
        */
       if(j == 0)
-	 beta0 = -s;
-      else if(zmax < fabs(-s))
-	 zmax = fabs(-s);
-
-      printf("%.5f %.5f %.5f\n", grad, d2, s);
+	 beta0 = s;
+      else if(zmax < fabs(s))
+	 zmax = fabs(s);
 
       for(i = 0 ; i < g->n ; i++)
 	    lp[i] = sm.x[i] * beta0;
    } 
-
-   printf("beta0: %.5f\n", beta0);
 
    free(lp);
    free(sm.x);
