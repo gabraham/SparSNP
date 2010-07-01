@@ -344,6 +344,7 @@ lambda1=%.9f lambda2=%.9f \n",
    free(yhat_train);
    free(yhat_test);
    free(trainf);
+   free(lambda1path);
    if(testf)
       free(testf);
    
