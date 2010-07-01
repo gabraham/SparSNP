@@ -34,7 +34,8 @@ getlambda1max <- function(x, y)
    x <- cbind(1, x)
    n <- nrow(x)
    p <- ncol(x)
-   lp <- x %*% beta
+   lp <- numeric(n)
+   beta <- numeric(p)
    
    s <- numeric(p)
    for(j in 1:p)
@@ -42,15 +43,17 @@ getlambda1max <- function(x, y)
       grad <- sum(x[, j] * (d1phi(lp) - y))
       d2 <- sum(x[,j]^2 * d2phi(lp))
       
-      beta.old <- beta[j]
-      d <- beta.old - grad / d2
-      cat(j, grad, d2, d, "\n")
-      if(j == 1) {
-	 beta[j] <- d
-      }
+      if(grad != 0 && d2 != 0)
+      {
+	 beta.old <- beta[j]
+      	 d <- beta.old - grad / d2
+      	 if(j == 1) {
+      	    beta[j] <- d
+      	 }
    
-      lp <- lp + x[, j] * (beta[j] - beta.old)
-      s[j] <- d
+      	 lp <- lp + x[, j] * (beta[j] - beta.old)
+      	 s[j] <- d
+      }
    }
    
    max(abs(s[-1]))

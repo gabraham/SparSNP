@@ -18,5 +18,5 @@ pcor: common.c gmatrix.c loss.c evaluation.c util.c cd.c gd.c pcor.c
 	gcc -Dintype=double $(CCFLAGS) $(LIBRARIES) $^ -o pcor
 
 clean:
-	/bin/rm -f cd pcor
+	/bin/rm -f cd cd_double pcor
 # DO NOT DELETE

@@ -27,7 +27,7 @@ int main(int argc, char* argv[])
    d2loss_pt_j d2loss_pt_j_func = NULL;
    predict_gmatrix predict_gmatrix_func = NULL;
    short inmemory = FALSE;
-   short scaleflag = FALSE;
+   short scaleflag = TRUE;
    short rowmajor = TRUE;
    optim_gmatrix optim_gmatrix_func = cd_gmatrix;
    double lambda1max = 1, lambda1min = 1;
@@ -182,9 +182,9 @@ int main(int argc, char* argv[])
       {
 	 inmemory = TRUE;
       }
-      else if(strcmp2(argv[i], "-scale"))
+      else if(strcmp2(argv[i], "-noscale"))
       {
-	 scaleflag = TRUE;
+	 scaleflag = FALSE;
       }
    }
 
