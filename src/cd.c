@@ -1,7 +1,5 @@
 #include "sgd.h"
 
-#define ZERO_THRESH 1e-10
-
 short convergetest(double a, double b, double threshold)
 {
    /* absolute convergence */
@@ -40,8 +38,8 @@ double get_lambda1max_gmatrix(gmatrix *g,
       /* compute gradient */
       for(i = 0 ; i < g->n ; i++)
       {
-	/* if(sm.x[i] == 0)
-	    continue;*/
+	 if(sm.x[i] == 0)
+	    continue;
 
 	 pr = predict_pt_func(lp[i]);
 	 grad += sm.x[i] * (pr - g->y[i]);
@@ -152,6 +150,8 @@ double cd_gmatrix(gmatrix *g,
 	    numconverged++;
 	 }
 
+	    
+
 	 /* clip very large coefs to prevent divergence */
 	 beta_new = fmin(fmax(beta_new, -truncl), truncl);
 
@@ -170,13 +170,24 @@ double cd_gmatrix(gmatrix *g,
 	    loss += loss_pt_func(lp[i], g->y[i]) / g->n;
 	 
 	 zeros = 0;
-	 for(j = 0 ; j < g->p + 1 ; j++)
+	 /* don't count intercept */
+	 if(!converged[0])
+	    printf("not converged: %d (%.20f)\n", 0, beta[0]);
+	 for(j = 1 ; j < g->p + 1 ; j++)
+	 {
 	    if(beta[j] == 0)
 	       zeros++;
+	    else
+	       printf("nonzero: %d (%.20f)\n", j, beta[j]);
+
+	    if(!converged[j])
+	       printf("not converged: %d (%.20f)\n", j, beta[j]);
+	 }
 
 	 printf("Epoch %d  training loss: %.5f  converged: %d\
   zeros: %d  non-zeros: %d\n",
-   epoch, loss, numconverged, zeros, g->p + 1 - zeros);
+   epoch, loss, numconverged, zeros, g->p - zeros);
+
       }
 
       if(numconverged == g->p + 1)
