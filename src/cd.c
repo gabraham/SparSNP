@@ -23,7 +23,6 @@ double get_lambda1max_gmatrix(gmatrix *g,
 {
    int i, j;
    double *lp = NULL;
-   double beta0 = 0;
    double grad, d2, s, pr, zmax = 0;
    sample sm;
 
@@ -41,8 +40,8 @@ double get_lambda1max_gmatrix(gmatrix *g,
       /* compute gradient */
       for(i = 0 ; i < g->n ; i++)
       {
-	 if(sm.x[i] == 0)
-	    continue;
+	/* if(sm.x[i] == 0)
+	    continue;*/
 
 	 pr = predict_pt_func(lp[i]);
 	 grad += sm.x[i] * (pr - g->y[i]);
@@ -59,12 +58,12 @@ double get_lambda1max_gmatrix(gmatrix *g,
        * it's not penalised.
        */
       if(j == 0)
-	 beta0 = s;
+      {
+	 for(i = 0 ; i < g->n ; i++)
+	    lp[i] = sm.x[i] * s;
+      }
       else if(zmax < fabs(s))
 	 zmax = fabs(s);
-
-      for(i = 0 ; i < g->n ; i++)
-	 lp[i] = sm.x[i] * beta0;
    } 
 
    free(lp);

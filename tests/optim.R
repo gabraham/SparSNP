@@ -96,7 +96,7 @@ l2d2phi <- function(lp)
 logd1phi <- function(lp)
 {
    p <- exp(lp)
-    p / (1 + p)
+   p / (1 + p)
 }
 
 logd2phi <- function(lp)

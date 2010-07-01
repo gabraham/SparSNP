@@ -282,6 +282,7 @@ int gmatrix_scale(gmatrix *g)
 	    g->x[i][j] = 1;
 	    j++;
 	 }
+
 	 for( ; j < g->p + 1; j++)
 	 {
 	    g->x[i][j] = g->x[i][j] - g->mean[j];
@@ -364,8 +365,8 @@ int gmatrix_scale_colmajor(gmatrix *g)
    sample sm;
    double *mean, *sd;
 
-   MALLOCTEST(mean, sizeof(double) * (g->p + 1))
-   MALLOCTEST(sd, sizeof(double) * (g->p + 1))
+   CALLOCTEST(mean, g->p + 1, sizeof(double))
+   CALLOCTEST(sd, g->p + 1, sizeof(double))
 
    /* always allocate memory to sm.x since we can't just return a pointer to a
     * column
@@ -378,16 +379,16 @@ int gmatrix_scale_colmajor(gmatrix *g)
    j = 0;
    if(g->intercept)
    {
-      mean[j] = 0;
-      sd[j] = 1;
+      /* nextcol return the intercept so read it and ignore */
+      g->nextcol(g, &sm);
+      mean[j] = 0.0;
+      sd[j] = 1.0;
       j++;
    }
 
    for( ; j < g->p + 1 ; j++)
    {
       g->nextcol(g, &sm);
-
-      mean[j] = sd[j] = 0;
 
       for(i = 0 ; i < g->n; i++)
       {
@@ -406,13 +407,13 @@ int gmatrix_scale_colmajor(gmatrix *g)
    for( ; j < g->p + 1 ; j++)
       sd[j] = fmax(sqrt(sd[j] / (g->n - 1)), SDTHRESH);
 
-   sample_free(&sm);
-
    free(g->mean);
    free(g->sd);
 
    g->mean = mean;
    g->sd = sd;
+
+   sample_free(&sm);
 
    return SUCCESS;
 }

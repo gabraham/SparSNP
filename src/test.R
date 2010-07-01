@@ -4,8 +4,8 @@ library(glmnet)
 
 set.seed(43249210)
 
-n <- 1000
-p <- 10000
+n <- 20
+p <- 5
 w <- sample(0:1, p + 1, replace=TRUE, prob=c(0.9, 0.1)) 
 beta <- rnorm(p + 1) * w
 
@@ -17,17 +17,22 @@ z <- cbind(y, x)
 writeBin(as.raw(z), con="x.bin.t")
 
 
-base::q("no")
+#base::q("no")
 
 source("../tests/optim.R")
 
+
+#x2 <- scale(x)
+x2 <- x
+#x2[, apply(x, 2, var) == 0] <- 0
 
 #b1 <- cd1(x, y, logloss, logdloss, logd2loss)
 #b2 <- cd2(x, y, logloss, logd1phi, logd2phi)
 
 d1phi <- logd1phi
 d2phi <- logd2phi
-g2 <- glmnet(x, factor(y), family="binomial") 
+g2 <- glmnet(x2, factor(y), family="binomial") 
+g2$lambda[1]
 
 getlambda1max <- function(x, y)
 {
@@ -36,8 +41,8 @@ getlambda1max <- function(x, y)
    p <- ncol(x)
    lp <- numeric(n)
    beta <- numeric(p)
-   
    s <- numeric(p)
+
    for(j in 1:p)
    {
       grad <- sum(x[, j] * (d1phi(lp) - y))
@@ -45,21 +50,23 @@ getlambda1max <- function(x, y)
       
       if(grad != 0 && d2 != 0)
       {
-	 beta.old <- beta[j]
-      	 d <- beta.old - grad / d2
+	 s[j] <- -grad / d2
+	 cat(grad, d2, s[j], "\n")
       	 if(j == 1) {
-      	    beta[j] <- d
-      	 }
-   
-      	 lp <- lp + x[, j] * (beta[j] - beta.old)
-      	 s[j] <- d
+	    lp <- x[, j] * s[j]
+	    cat(">>> lp:", lp[1], "\n");
+	 }
       }
    }
    
-   max(abs(s[-1]))
+   #max(abs(s[-1]))
+   s
 }
 
-l1max <- getlambda1max(x, y)
+(l1max <- getlambda1max(x2, y))
+max(abs(l1max[-1]))
+
+stop()
 
 nl1 <- 50
 l1min <- 1e-3 * l1max

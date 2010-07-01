@@ -5,7 +5,7 @@ all: cd cd_double #pcor
 
 # what about *.h?
 #
-CCFLAGS = -Wall -g -pg -std=gnu99
+CCFLAGS = -Wall -g3 -pg -std=gnu99
 LIBRARIES = -lm
 
 cd: common.c gmatrix.c loss.c evaluation.c util.c cd.c gd.c main.c
