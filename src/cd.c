@@ -1,10 +1,14 @@
 #include "sgd.h"
 
+#define ZERO_THRESH 1e-10
+
 short convergetest(double a, double b, double threshold)
 {
-   if(a == 0 && b == 0)
+   /* absolute convergence */
+   if(fabs(a) <= ZERO_THRESH && fabs(b) <= ZERO_THRESH)
       return TRUE;
 
+   /* relative convergence */
    return (fabs(a - b) / (fabs(a) + fabs(b))) < threshold;
 }
 
@@ -20,7 +24,7 @@ double get_lambda1max_gmatrix(gmatrix *g,
    int i, j;
    double *lp = NULL;
    double beta0 = 0;
-   double grad, d2, s, pr, z, zmax = 0;
+   double grad, d2, s, pr, zmax = 0;
    sample sm;
 
    CALLOCTEST(lp, g->n, sizeof(double))
@@ -80,13 +84,12 @@ double cd_gmatrix(gmatrix *g,
       int maxepoch, double *beta, double lambda1, double lambda2,
       double threshold, int verbose, int *trainf, double trunc)
 {
-   int i, j, k;
+   int i, j;
    int epoch = 1;
    double loss = 0;
    double beta_new;
    short *converged = NULL;
    int numconverged = 0;
-   double relerr;
    double grad = 0;
    double d2 = 0;
    double *lp = NULL;
@@ -94,8 +97,8 @@ double cd_gmatrix(gmatrix *g,
    double s;
    sample sm;
    double truncl = log((1 - trunc) / trunc);
-   short done = FALSE;
    int allconverged = 0;
+   int zeros = 0;
 
    sample_init(&sm, g->inmemory, g->n);
    MALLOCTEST(sm.x, sizeof(dtype) * g->n)
@@ -136,7 +139,12 @@ double cd_gmatrix(gmatrix *g,
 	 if(j == 0)
 	    beta_new = beta[j] - s;
 	 else
-	    beta_new = soft_threshold(beta[j] - s, lambda1) / (1 + lambda2);
+	    beta_new = soft_threshold(beta[j] - s, lambda1)
+		  / (1 + lambda2);
+
+	 /*if(g->p + 1 - numconverged < 100 && beta_new != 0)
+	    printf("[%d] %.20f %.20f %.20f %.20f\n", j, beta[j], s, beta[j] - s, beta_new);*/
+	    
 
 	 /* check for convergence */
 	 if(epoch > 1 && convergetest(beta[j], beta_new, threshold))
@@ -145,14 +153,15 @@ double cd_gmatrix(gmatrix *g,
 	    numconverged++;
 	 }
 
+	 /* clip very large coefs to prevent divergence */
+	 beta_new = fmin(fmax(beta_new, -truncl), truncl);
+
 	 /* update linear predictor */
 	 for(i = 0 ; i < g->n ; i++)
 	    if(sm.x[i] != 0)
 	       lp[i] += sm.x[i] * (beta_new - beta[j]);
 
-
-	 /* clip very large coefs to prevent divergence */
-	 beta[j] = fmin(fmax(beta_new, -truncl), truncl);
+	 beta[j] = beta_new;
       }
 
       if(verbose)
@@ -160,20 +169,29 @@ double cd_gmatrix(gmatrix *g,
 	 loss = 0;
 	 for(i = 0 ; i < g->n ; i++)
 	    loss += loss_pt_func(lp[i], g->y[i]) / g->n;
-	 printf("Epoch %d  training loss: %.5f  converged: %d\n", epoch, loss,
-	       numconverged);
+	 
+	 zeros = 0;
+	 for(j = 0 ; j < g->p + 1 ; j++)
+	    if(beta[j] == 0)
+	       zeros++;
+
+	 printf("Epoch %d  training loss: %.5f  converged: %d\
+  zeros: %d  non-zeros: %d\n",
+   epoch, loss, numconverged, zeros, g->p + 1 - zeros);
       }
 
       if(numconverged == g->p + 1)
       {
+	 printf("all converged\n");
 	 allconverged++;
 
 	 /* converged twice in a row, no need to continue */
 	 if(allconverged == 2)
 	 {
-	    printf("all converged\n");
+	    printf("terminating\n");
 	    break;
 	 }
+
 	 for(j = 0 ; j < g->p + 1 ; j++)
 	    converged[j] = FALSE;
 	 numconverged = 0;

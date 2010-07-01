@@ -5,7 +5,7 @@ library(glmnet)
 set.seed(43249210)
 
 n <- 1000
-p <- 1000
+p <- 10000
 w <- sample(0:1, p + 1, replace=TRUE, prob=c(0.9, 0.1)) 
 beta <- rnorm(p + 1) * w
 
@@ -15,6 +15,9 @@ table(y)
 
 z <- cbind(y, x)
 writeBin(as.raw(z), con="x.bin.t")
+
+
+base::q("no")
 
 source("../tests/optim.R")
 
@@ -59,8 +62,7 @@ nl1 <- 50
 l1min <- 1e-3 * l1max
 s <- (log(l1max) - log(l1min)) / nl1
 l <- exp(log(l1max) - s * 0:nl1)
-b21 <- sapply(l, cd2, x=x, y=y,
-      lossfunc=logloss, d1phi=logd1phi, d2phi=logd2phi)
+b21 <- sapply(l, cd2, x=xs, y=y, lossfunc=logloss, d1phi=logd1phi, d2phi=logd2phi)
 
 df <- apply(b21[-1,], 2, function(x) sum(x != 0))
 #l1max2 <- l[which(c(0, diff(df)) > 0)]

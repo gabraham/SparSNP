@@ -127,8 +127,31 @@ cd1 <- function(x, y, lossfunc, dfunc, d2func, maxiter=50)
    beta
 }
 
+cd3 <- function(x, y, lossfunc, d1phi, d2phi, lambda1=0, maxiter=20)
+{
+   x <- cbind(1, x)
+   n <- nrow(x)
+   p <- ncol(x)
+   beta <- numeric(p)
+   lp <- x %*% beta
+
+   grad <- d2 <- numeric(p)
+
+   #for(i in 1:maxiter)
+   {
+      for(j in 1:p)
+      {
+	 beta.old <- beta[j]
+
+	 grad[j] <- sum(x[, j] * (d1phi(lp) - y))
+	 d2[j] <- sum(x[,j]^2 * d2phi(lp))
+      }
+   }
+   list(grad, d2)
+}
+
 # coordinate descent
-cd2 <- function(x, y, lossfunc, d1phi, d2phi, lambda1=0, maxiter=50)
+cd2 <- function(x, y, lossfunc, d1phi, d2phi, lambda1=0, maxiter=20)
 {
    x <- cbind(1, x)
    n <- nrow(x)
@@ -145,13 +168,21 @@ cd2 <- function(x, y, lossfunc, d1phi, d2phi, lambda1=0, maxiter=50)
 	 grad <- sum(x[, j] * (d1phi(lp) - y))
 	 d2 <- sum(x[,j]^2 * d2phi(lp))
 
-	 beta[j] <- if(j > 1) {
-	    softthresh(beta.old - grad / d2, lambda1)
-	 } else beta.old - grad / d2
+	 if(grad != 0 && d2 != 0)
+	 {
+	    beta[j] <- if(j > 1) {
+	       softthresh(beta.old - grad / d2, lambda1)
+	    } else beta.old - grad / d2
 
-	 lp <- lp + x[, j] * (beta[j] - beta.old)
+	    beta[j] <- sign(beta[j]) * pmin(abs(beta[j]), 20) 
+   
+	    lp <- lp + x[, j] * (beta[j] - beta.old)
+	    lp <- sign(lp) * pmin(abs(lp), 20)
+	 }
       }
-      cat(i, "loss:", lossfunc(x, y, beta), "\n")
+      nz <- sum(beta != 0)
+      cat(i, "loss:", lossfunc(x, y, beta), "nonzero:", nz, "\n")
+      cat(beta[c(1, 82, 102, 269, 396)], "\n")
    }
    beta
 }

@@ -276,7 +276,7 @@ int gmatrix_scale(gmatrix *g)
       for(i = 0 ; i < g->n ; i++)
       {
 	 j = 0;
-	 /* intercept, does this break pcor? */
+	 /* TODO: does this break pcor? */
 	 if(g->intercept)
 	 {
 	    g->x[i][j] = 1;
@@ -417,7 +417,6 @@ int gmatrix_scale_colmajor(gmatrix *g)
    return SUCCESS;
 }
 
-
 int gmatrix_mem_nextrow(gmatrix *g, sample *s)
 {
    if(g->i == g->n)
@@ -436,7 +435,6 @@ int gmatrix_mem_nextrow(gmatrix *g, sample *s)
 int gmatrix_mem_nextcol(gmatrix *g, sample *s)
 {
    int i;
-   double k;
 
    if(g->j == g->p + 1)
       if(!gmatrix_reset(g))
@@ -446,9 +444,7 @@ int gmatrix_mem_nextcol(gmatrix *g, sample *s)
     * return a pointer to it to return a column
     */
    for(i = 0 ; i < g->n ; i++)
-   {
       s->x[i] = g->x[i][g->j];
-   }
 
    g->j++;
 
@@ -486,8 +482,11 @@ int gmatrix_disk_nextcol(gmatrix *g, sample *s)
    else
    {
       for(i = 0 ; i < g->n ; i++)
-	 /*s->x[i] = ((dtype)tmp[i] - g->mean[g->j]) / g->sd[g->j];*/
-	 s->x[i] = (dtype)tmp[i];
+      {
+	 s->x[i] = (dtype)tmp[i] - g->mean[g->j];
+	 if(g->sd[g->j] > SDTHRESH)
+	    s->x[i] /= g->sd[g->j];
+      }
    }
 
    g->j++;
@@ -496,9 +495,6 @@ int gmatrix_disk_nextcol(gmatrix *g, sample *s)
 
    return SUCCESS;
 }
-
-
-
 /*void gmatrix_mem_pcor_nextrow(gmatrix *g, sample *s)
 {
    if(g->i == g->n)

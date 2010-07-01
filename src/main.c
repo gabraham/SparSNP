@@ -35,6 +35,7 @@ int main(int argc, char* argv[])
    int nlambda1 = 100;
    double s;
    double l1minratio = 1e-3;
+   short nofit = FALSE;
 
    /* Parameters */
    int maxepochs = 200;
@@ -85,6 +86,10 @@ int main(int argc, char* argv[])
 	 /*else if(strcmp2(model, "hinge"))
 	 {
 	 }*/
+      }
+      else if(strcmp2(argv[i], "-nofit"))
+      {
+	 nofit = TRUE;
       }
       else if(strcmp2(argv[i], "-n"))
       {
@@ -260,15 +265,19 @@ lambda1=%.9f lambda2=%.9f \n",
 
    writevectorf("lambda1path.csv", lambda1path, nlambda1);
 
-   for(i = 0 ; i < nlambda1 ; i++)
+   if(!nofit)
    {
-      if(verbose)
-	 printf("\nFitting with lambda1=%.20f\n", lambda1path[i]);
-      cd_gmatrix(&g, dloss_pt_func, d2loss_pt_func, d2loss_pt_j_func,
-	 loss_pt_func, predict_pt_func, stepsize, maxepochs,
-	 betahat, lambda1path[i], lambda2, threshold, verbose, trainf, trunc);
-      snprintf(tmp, 100, "%s.%d", betafile, i);
-      writevectorf(tmp, betahat, p + 1);
+      for(i = 0 ; i < nlambda1 ; i++)
+      {
+         if(verbose)
+            printf("\nFitting with lambda1=%.20f\n", lambda1path[i]);
+         cd_gmatrix(&g, dloss_pt_func, d2loss_pt_func, d2loss_pt_j_func,
+            loss_pt_func, predict_pt_func, stepsize, maxepochs,
+            betahat, lambda1path[i], lambda2, threshold, verbose,
+	    trainf, trunc);
+         snprintf(tmp, 100, "%s.%d", betafile, i);
+         writevectorf(tmp, betahat, p + 1);
+      }
    }
 
    /*cd_gmatrix(&g, dloss_pt_func, d2loss_pt_func, d2loss_pt_j_func,

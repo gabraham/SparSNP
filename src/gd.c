@@ -17,10 +17,7 @@ double gd_gmatrix(
    double stepsize = maxstepsize;
    double dp = 0;
    double *gradsum = NULL;
-   double *d2 = NULL;
-   double *d2sum = NULL;
    double loss;
-   double s;
    sample sm;
 
    MALLOCTEST(grad, sizeof(double) * (g->p + 1))
