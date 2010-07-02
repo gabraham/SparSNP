@@ -11,7 +11,7 @@
 
 /* Value below which is considered zero, for use in
  * absolute convergence test */
-#define ZERO_THRESH 1e-12
+#define ZERO_THRESH 1e-10
 
 /* How to treat the x input, as discrete or continuous */
 /*#ifdef DISCRETE

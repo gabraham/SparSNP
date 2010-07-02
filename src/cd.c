@@ -96,12 +96,17 @@ double cd_gmatrix(gmatrix *g,
    double truncl = log((1 - trunc) / trunc);
    int allconverged = 0;
    int zeros = 0;
+   double *stepsize = NULL;
 
    sample_init(&sm, g->inmemory, g->n);
    MALLOCTEST(sm.x, sizeof(dtype) * g->n)
 
    CALLOCTEST(converged, g->p + 1, sizeof(short));
+   CALLOCTEST(stepsize, g->p + 1, sizeof(double));
    CALLOCTEST(lp, g->n, sizeof(double));
+
+   for(j = 0 ; j < g->p + 1; j++)
+      stepsize[j] = 1.0;
 
    while(epoch <= maxepoch)
    {
@@ -130,7 +135,7 @@ double cd_gmatrix(gmatrix *g,
 	 /* don't move if 2nd derivative is zero */
 	 s = 0;
 	 if(d2 != 0)
-	    s = grad / d2;
+	    s = stepsize[j] * grad / d2;
 
 	 /* don't penalise intercept */
 	 if(j == 0)
@@ -150,8 +155,6 @@ double cd_gmatrix(gmatrix *g,
 	    numconverged++;
 	 }
 
-	    
-
 	 /* clip very large coefs to prevent divergence */
 	 beta_new = fmin(fmax(beta_new, -truncl), truncl);
 
@@ -169,21 +172,43 @@ double cd_gmatrix(gmatrix *g,
 	 for(i = 0 ; i < g->n ; i++)
 	    loss += loss_pt_func(lp[i], g->y[i]) / g->n;
 	 
-	 zeros = 0;
-	 /* don't count intercept */
-	 if(!converged[0])
-	    printf("not converged: %d (%.20f)\n", 0, beta[0]);
-	 for(j = 1 ; j < g->p + 1 ; j++)
+	 if(epoch > 1)
 	 {
-	    if(beta[j] == 0)
-	       zeros++;
-	    else
-	       printf("nonzero: %d (%.20f)\n", j, beta[j]);
+	    zeros = 0;
+	    /* don't count intercept */
+	    /*if(verbose > 1 && g->p - numconverged < 100 && !converged[0])
+	       printf("not converged: %d (%.20f)\n", 0, beta[0]);
+	    if(!converged[0] && fabs(beta[0]) < ZERO_THRESH)
+	       beta[0] = 0;*/
 
-	    if(!converged[j])
-	       printf("not converged: %d (%.20f)\n", j, beta[j]);
+	    for(j = 1 ; j < g->p + 1 ; j++)
+	    {
+	       if(fabs(beta[j]) < ZERO_THRESH)
+	       {
+		  beta[j] = 0;
+		  zeros++;
+	       }
+
+	      /* if(!converged[j])
+	       {
+	 	  if(fabs(beta[j]) < ZERO_THRESH)
+		  {
+		     beta[j] = 0;
+		     zeros++;
+		     converged[j] = TRUE;
+		     numconverged++;
+		  }
+		  else
+		     printf("nonzero: %d (%.20f)\n", j, beta[j]);
+	       }*/
+
+	       if(verbose > 1 && g->p - numconverged < 100 && !converged[j])
+	       {
+	          printf("not converged: %d (%.20f, %.20f, %.20f)\n",
+	                j, beta[j], grad, d2);
+	       }
+	    }
 	 }
-
 	 printf("Epoch %d  training loss: %.5f  converged: %d\
   zeros: %d  non-zeros: %d\n",
    epoch, loss, numconverged, zeros, g->p - zeros);
@@ -198,7 +223,8 @@ double cd_gmatrix(gmatrix *g,
 	 /* converged twice in a row, no need to continue */
 	 if(allconverged == 2)
 	 {
-	    printf("terminating\n");
+	    printf("terminating with %d non-zero coefs\n\n",
+		  g->p - zeros);
 	    break;
 	 }
 
@@ -206,6 +232,9 @@ double cd_gmatrix(gmatrix *g,
 	    converged[j] = FALSE;
 	 numconverged = 0;
       }
+
+      if(verbose)
+	 printf("\n");
 
       epoch++;
    }
