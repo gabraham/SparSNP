@@ -6,7 +6,7 @@
 #define SUCCESS 1
 #define FAILURE 0
 
-#define SDTHRESH 0
+#define SDTHRESH 1e-10
 
 /* How to treat the x input, as discrete or continuous */
 /*#ifdef DISCRETE
