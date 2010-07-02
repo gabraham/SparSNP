@@ -6,7 +6,12 @@
 #define SUCCESS 1
 #define FAILURE 0
 
+/* Value below which std dev is considered zero */
 #define SDTHRESH 1e-10
+
+/* Value below which is considered zero, for use in
+ * absolute convergence test */
+#define ZERO_THRESH 1e-12
 
 /* How to treat the x input, as discrete or continuous */
 /*#ifdef DISCRETE
