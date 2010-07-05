@@ -171,49 +171,33 @@ double cd_gmatrix(gmatrix *g,
 	 loss = 0;
 	 for(i = 0 ; i < g->n ; i++)
 	    loss += loss_pt_func(lp[i], g->y[i]) / g->n;
+      }
 	 
-	 if(epoch > 1)
+      if(epoch > 1)
+      {
+	 zeros = 0;
+
+	 for(j = 1 ; j < g->p + 1 ; j++)
 	 {
-	    zeros = 0;
-	    /* don't count intercept */
-	    /*if(verbose > 1 && g->p - numconverged < 100 && !converged[0])
-	       printf("not converged: %d (%.20f)\n", 0, beta[0]);
-	    if(!converged[0] && fabs(beta[0]) < ZERO_THRESH)
-	       beta[0] = 0;*/
-
-	    for(j = 1 ; j < g->p + 1 ; j++)
+	    if(fabs(beta[j]) < ZERO_THRESH)
 	    {
-	       if(fabs(beta[j]) < ZERO_THRESH)
-	       {
-		  beta[j] = 0;
-		  zeros++;
-	       }
+	       beta[j] = 0;
+	       zeros++;
+	    }
 
-	      /* if(!converged[j])
-	       {
-	 	  if(fabs(beta[j]) < ZERO_THRESH)
-		  {
-		     beta[j] = 0;
-		     zeros++;
-		     converged[j] = TRUE;
-		     numconverged++;
-		  }
-		  else
-		     printf("nonzero: %d (%.20f)\n", j, beta[j]);
-	       }*/
 
-	       if(verbose > 1 && g->p - numconverged < 100 && !converged[j])
-	       {
-	          printf("not converged: %d (%.20f, %.20f, %.20f)\n",
-	                j, beta[j], grad, d2);
-	       }
+	    if(verbose > 1 && g->p - numconverged < 100 && !converged[j])
+	    {
+	       printf("not converged: %d (%.20f, %.20f, %.20f)\n",
+		     j, beta[j], grad, d2);
 	    }
 	 }
+      }
+
+      if(verbose)
 	 printf("Epoch %d  training loss: %.5f  converged: %d\
   zeros: %d  non-zeros: %d\n",
    epoch, loss, numconverged, zeros, g->p - zeros);
-
-      }
 
       if(numconverged == g->p + 1)
       {
