@@ -72,9 +72,17 @@ return FAILURE; \
 
 #define FREADTEST(x, size, count, stream) \
 if(fread(x, size, count, stream) < count) { \
-fprintf(stderr, "read fewer bytes than expected (%d)\n", count); \
+fprintf(stderr, "read fewer items than expected (%d)\n", count); \
 return FAILURE; \
 }
+
+#define FWRITETEST(x, size, count, stream) \
+if(fwrite(x, size, count, stream) < count) { \
+fprintf(stderr, "wrote fewer items than expected (%d)\n", count); \
+return FAILURE; \
+}
+
+
 
 int strcmp2(const char*, const char*);
 

@@ -2,21 +2,76 @@
 
 int scale(gmatrix *g, char* filename)
 {
-   FILE *fileout = NULL;
-   
-   FOPENTEST(fileout, filename, "w")
+   int i, j;
+   FILE *fout = NULL, *fin = NULL;
+   intype *tmp;
+   dtype *tmp2;
+   double delta;
+
+   MALLOCTEST(g->mean, sizeof(double) * (g->p + 1))
+   MALLOCTEST(g->sd, sizeof(double) * (g->p + 1))
+   g->mean[0] = 0;
+   g->sd[0] = 1;
+
+   MALLOCTEST(tmp, sizeof(intype) * g->n)
+   MALLOCTEST(tmp2, sizeof(dtype*) * g->n)
+
+   FOPENTEST(fin, g->filename, "rb")
+   FOPENTEST(fout, filename, "w")
+
+   /* read y but do not scale it */
+   FREADTEST(tmp, sizeof(intype), g->n, fin)
+
+   for(i = 0 ; i < g->n ; i++)
+      tmp2[i] = (double)tmp[i];
+
+   FWRITETEST(tmp2, sizeof(dtype), g->n, fout)
+
+   /* read the data and scale each variable */
+   for(j = 1 ; j < g->p + 1 ; j++)
+   {
+      printf("%d of %d\r", j, g->p);
+      FREADTEST(tmp, sizeof(intype), g->n, fin)
+
+      g->mean[j] = g->sd[j] = 0;
+      for(i = 0 ; i < g->n ; i++)
+      {
+	 tmp2[i] = (double)tmp[i];
+
+	 delta = tmp2[i] - g->mean[j];
+	 g->mean[j] += delta / (i + 1);
+	 g->sd[j] += delta * (tmp2[i] - g->mean[j]);
+      }
+
+      g->sd[j] = sqrt(g->sd[j] / (g->n - 1));
+
+      for(i = 0 ; i < g->n ; i++)
+      {
+	 tmp2[i] = tmp2[i] - g->mean[j];
+	 if(g->sd[j] > SDTHRESH)
+	    tmp2[i] /= g->sd[j];
+      }
+        
+      FWRITETEST(tmp2, sizeof(dtype), g->n, fout)
+   }
+   printf("\n");
+
+   fclose(fin);
+   fclose(fout);
+
+   free(tmp);
+   free(tmp2);
       
    return SUCCESS;
 }
 
 int main(int argc, char* argv[])
 {
-   int i, n, p;
+   int i, n = 0, p = 0;
    char *filename_in = NULL;
    char *filename_out = NULL;
    gmatrix g;
    short rowmajor = FALSE;
-   
 
    for(i = 1 ; i < argc ; i++)
    {
@@ -40,13 +95,21 @@ int main(int argc, char* argv[])
 	 i++;
 	 p = (int)atof(argv[i]);
       }
+   }
 
+   if(filename_in == NULL || filename_out == NULL || n == 0 || p == 0)
+   {
+      printf("scale: -fin <filein> -fout <fileout> -n #n -p #p\n");
+      return EXIT_FAILURE;
    }
 
    if(!gmatrix_init(&g, FALSE, FALSE, rowmajor, filename_in, NULL, NULL, n, p))
       return EXIT_FAILURE;
 
    scale(&g, filename_out);
+
+   writevectorf("mean.csv", g.mean, p + 1);
+   writevectorf("sd.csv", g.sd, p + 1);
 
    gmatrix_free(&g);
 
