@@ -1,4 +1,4 @@
-#include "sgd.h"
+#include "cd.h"
 
 short convergetest(double a, double b, double threshold)
 {
@@ -161,7 +161,7 @@ double cd_gmatrix(gmatrix *g,
 	 /* update linear predictor */
 	 for(i = 0 ; i < g->n ; i++)
 	    if(sm.x[i] != 0)
-	       lp[i] += sm.x[i] * (beta_new - beta[j]);
+	       lp[i] = fmin(fmax(lp[i] + sm.x[i] * (beta_new - beta[j]), -MAXLP), MAXLP);
 
 	 beta[j] = beta_new;
       }
@@ -170,7 +170,11 @@ double cd_gmatrix(gmatrix *g,
       {
 	 loss = 0;
 	 for(i = 0 ; i < g->n ; i++)
+	 {
+	    if(verbose > 1)
+	       printf("\tlp[%d]: %.3f\n", i, lp[i]);
 	    loss += loss_pt_func(lp[i], g->y[i]) / g->n;
+	 }
       }
 	 
       if(epoch > 1)
@@ -184,7 +188,6 @@ double cd_gmatrix(gmatrix *g,
 	       beta[j] = 0;
 	       zeros++;
 	    }
-
 
 	    if(verbose > 1 && g->p - numconverged < 100 && !converged[j])
 	    {

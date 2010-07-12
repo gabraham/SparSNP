@@ -570,7 +570,7 @@ EOF
 #exit 1
 
 # HapMap data, several strong SNPs
-DIR=sim6
+DIR=sim7
 prefix="sim"
 N=250
 K=10

@@ -1,4 +1,4 @@
-#include "sgd.h"
+#include "cd.h"
 
 int main(int argc, char* argv[])
 {
@@ -28,7 +28,7 @@ int main(int argc, char* argv[])
    predict_gmatrix predict_gmatrix_func = NULL;
    short inmemory = FALSE;
    short scaleflag = TRUE;
-   short rowmajor = TRUE;
+   short rowmajor = FALSE;
    optim_gmatrix optim_gmatrix_func = cd_gmatrix;
    double lambda1max = 1, lambda1min = 1;
    double *lambda1path = NULL;
@@ -47,7 +47,6 @@ int main(int argc, char* argv[])
    /* double alpha = 0; */
 
    optim_gmatrix_func = cd_gmatrix;
-   rowmajor = FALSE;
 
    for(i = 1 ; i < argc ; i++)
    {

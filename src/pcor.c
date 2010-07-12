@@ -73,17 +73,7 @@ int main(int argc, char *argv[])
 
    for(i = 1 ; i < argc ; i++)
    {
-      if(strcmp2(argv[i], "-optim"))
-      {
-	 i++;
-	 if(strcmp2(argv[i], "sgd"))
-	    optim_gmatrix_func = sgd_gmatrix;
-	 else if(strcmp2(argv[i], "cd"))
-	    optim_gmatrix_func = cd_gmatrix;
-	 else if(strcmp2(argv[i], "gd"))
-	    optim_gmatrix_func = gd_gmatrix;
-      }
-      else if(strcmp2(argv[i], "-f"))
+      if(strcmp2(argv[i], "-f"))
       {
 	 i++;
 	 filename = argv[i];
