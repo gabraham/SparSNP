@@ -8,16 +8,16 @@ dir <- "~/Software/hapgen_1.3"
 #b.sgd <- read.csv("~/Code/sgd/src/beta_sgd_sim5.csv", header=FALSE)[,1]
 #b.gd <- read.csv("~/Code/sgd/src/beta_gd_sim5.csv", header=FALSE)[,1]
 #b.cd <- read.csv(sprintf("~/Code/sgd/src/beta_%s_cd.csv", exper), header=FALSE)[,1]
-n <- 500
+n <- 1000
 p <- 185805
 legend <- sprintf(
    "%s/HapMap/genotypes_chr1_JPT+CHB_r22_nr.b36_fwd_legend.txt",
    dir)
 #
 x <- matrix(as.numeric(
-	 readBin(sprintf("%s/%s/sim.bin", dir, exper),
+	 readBin(sprintf("%s/%s/sim.bin.t", dir, exper),
 	    what="raw", n=n*(p+1))),
-      nrow=n, byrow=TRUE)
+      nrow=n, byrow=FALSE)
 y <- x[,1]
 x <- x[,-1]
 
@@ -54,7 +54,7 @@ pos <- sapply(paste("^", snps, "$", sep=""), grep,
       x=as.character(snplist$position))
 ysnp <- as.numeric((1:ncol(x)) %in% pos)
 
-b.cd <- sapply(0:13, function(i) {
+b.cd <- sapply(0:8, function(i) {
    read.csv(sprintf("beta.csv.%s", i), header=FALSE)[-1,1]
 })
 
@@ -64,40 +64,14 @@ acc.cd <- apply(b.cd, 2, function(x) {
    mean(x != 0 & as.numeric(x != 0) == ysnp)
 })
 
-g1 <- glmnet(x, factor(y), family="binomial")
-b.glmnet <- as.matrix(coef(g1))[-1, ]
+cd.auprc <- sapply(1:ncol(b.cd), function(i) auprc(abs(b.cd[,i]), ysnp))
 
-acc.glmnet <- apply(b.glmnet, 2, function(x) {
-   mean(x != 0 & as.numeric(x != 0) == ysnp)
+res.glm <- lapply(1:ncol(x), function(j) {
+   cat(j, "\r")
+   coef(summary(glm(y ~ x[,j], family=binomial)))#[2, 4]
 })
-
-df.glmnet <- g1$df
-
-matplot(cbind(df.cd, df.glmnet), cbind(acc.cd, acc.glmnet), log="",
-      type="b", pch=21:22, lty=1, xlab="Non-zero vars",
-      ylab="SNP detection accuracy")
-
-#g2 <- glmnet(x, factor(y), family="binomial", alpha=0.5)
-#b.glmnet1 <- as.matrix(coef(g1))[,11]
-#b.glmnet2 <- as.matrix(coef(g1))[,length(g$lambda)]
-
-#auc.glmnet1 <- apply(as.matrix(coef(g1)), 2, function(p) {
-#   auc(abs(p[-1]), ysnp, 1, 0)
-#})
-#auprc.glmnet1 <- apply(as.matrix(coef(g1)), 2, function(p) {
-#   auprc(abs(p[-1]), ysnp, k=n)
-#})
-#auprc.glmnet1 <- apply(as.matrix(coef(g1)), 2, function(p) {
-#   auprc(abs(p[-1]), ysnp, k=500)
-#})
-#
-#p <- lapply(1:ncol(x), function(j) {
-#   cat(j, "\r")
-#   coef(summary(glm(y ~ x[,j], family=binomial)))#[2, 4]
-#})
-#p1 <- sapply(p, function(q) if(dim(q)[1] > 1) q[1,4] + q[2,4] else 0)
-#p2 <- sapply(p, function(q) if(dim(q)[1] > 1) q[2,4] else  1)
-#p3 <- -log10(p2)
+b.glm <- -log10(sapply(res.glm, function(q) if(dim(q)[1] > 1) q[2,4] else 1))
+b.auprc <- auprc(b.glm, ysnp)
 #
 
 

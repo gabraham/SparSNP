@@ -1,4 +1,6 @@
 #include "cd.h"
+#include "loss.h"
+#include "util.h"
 
 int main(int argc, char* argv[])
 {
@@ -25,10 +27,6 @@ int main(int argc, char* argv[])
    dloss_pt dloss_pt_func = NULL;
    d2loss_pt d2loss_pt_func = NULL;
    d2loss_pt_j d2loss_pt_j_func = NULL;
-   predict_gmatrix predict_gmatrix_func = NULL;
-   short inmemory = FALSE;
-   short scaleflag = FALSE;
-   short rowmajor = FALSE;
    optim_gmatrix optim_gmatrix_func = cd_gmatrix;
    double lambda1max = 1, lambda1min = 1;
    double *lambda1path = NULL;
@@ -39,7 +37,6 @@ int main(int argc, char* argv[])
 
    /* Parameters */
    int maxepochs = 200;
-   double stepsize = 1e-4;
    double lambda1 = 0;
    double lambda2 = 0;
    double threshold = 1e-4;
@@ -66,7 +63,6 @@ int main(int argc, char* argv[])
 	    dloss_pt_func = &logdloss_pt;
 	    d2loss_pt_func = &logd2loss_pt;
 	    d2loss_pt_j_func = &logd2loss_pt_j;
-	    predict_gmatrix_func = &predict_logloss_gmatrix;
 	 }
 	 else if(strcmp2(model, "linear"))
 	 {
@@ -75,7 +71,6 @@ int main(int argc, char* argv[])
 	    dloss_pt_func = &l2dloss_pt;
 	    d2loss_pt_func = &l2d2loss_pt;
 	    d2loss_pt_j_func = &l2d2loss_pt_j;
-	    predict_gmatrix_func = &predict_l2loss_gmatrix;
 	 }
 	 else
 	 {
@@ -104,11 +99,6 @@ int main(int argc, char* argv[])
       {
 	 i++;
 	 maxepochs = (int)atof(argv[i]);
-      }
-      else if(strcmp2(argv[i], "-step"))
-      {
-	 i++;
-	 stepsize = atof(argv[i]);
       }
       else if(strcmp2(argv[i], "-l1"))
       {
@@ -177,22 +167,14 @@ int main(int argc, char* argv[])
 	 i++;
 	 seed = atol(argv[i]);
       }
-      else if(strcmp2(argv[i], "-inmemory"))
-      {
-	 inmemory = TRUE;
-      }
-      else if(strcmp2(argv[i], "-scale"))
-      {
-	 scaleflag = TRUE;
-      }
    }
 
    if(filename == NULL || model == NULL || n == 0 || p == 0)
    {
       printf("usage: cd -model <model> -f <filename> -n <#samples> -p \
 <#variables> | -beta <beta filename> -pred <pred filename> -epoch <maxepochs> \
--step <stepsize> -l1 <lambda1> -l2 <lambda2> -thresh <threshold> \
--pred <prediction file> -cv <cvfolds> -inmemory -scale -seed <seed> -v -vv\n");
+-l1 <lambda1> -l2 <lambda2> -thresh <threshold> \
+-pred <prediction file> -cv <cvfolds> -seed <seed> -v -vv\n");
       return EXIT_FAILURE;
    }
 
@@ -203,24 +185,9 @@ int main(int argc, char* argv[])
 
    CALLOCTEST2(lambda1path, nlambda1, sizeof(double))
 
-   if(!gmatrix_init(&g, inmemory, FALSE, rowmajor, filename, NULL, NULL, n, p))
+   if(!gmatrix_init(&g, filename, n, p))
       return EXIT_FAILURE;
  
-   if(scaleflag)
-   {
-      if(verbose)
-	 printf("Scaling ... ");
-   
-      gmatrix_scale(&g);
-
-      writevectorf("mean.csv", g.mean, p + 1);
-      writevectorf("sd.csv", g.sd, p + 1);
-
-      if(verbose)
-	 printf("done\n");
-   }
-
-   
    gmatrix_reset(&g);
 
    MALLOCTEST2(trainf, sizeof(int) * g.n)
@@ -240,9 +207,8 @@ int main(int argc, char* argv[])
 
    if(verbose)
    {
-      printf("Parameters: model=%s, dtype=%s inmemory=%d, maxepochs=%d stepsize=%.9f \
-lambda1=%.9f lambda2=%.9f \n",
-      model, type, inmemory, maxepochs, stepsize, lambda1, lambda2);
+      printf("Parameters: model=%s, maxepochs=%d lambda1=%.9f lambda2=%.9f \n",
+      model, maxepochs, lambda1, lambda2);
       printf("%d training samples, %d test samples\n", ntrain, g.n - ntrain);
    }
 
@@ -271,7 +237,7 @@ lambda1=%.9f lambda2=%.9f \n",
          if(verbose)
             printf("\nFitting with lambda1=%.20f\n", lambda1path[i]);
          cd_gmatrix(&g, dloss_pt_func, d2loss_pt_func, d2loss_pt_j_func,
-            loss_pt_func, predict_pt_func, stepsize, maxepochs,
+            loss_pt_func, predict_pt_func, maxepochs,
             betahat, lambda1path[i], lambda2, threshold, verbose,
 	    trainf, trunc);
          snprintf(tmp, 100, "%s.%d", betafile, i);
@@ -279,12 +245,6 @@ lambda1=%.9f lambda2=%.9f \n",
       }
    }
 
-   /*cd_gmatrix(&g, dloss_pt_func, d2loss_pt_func, d2loss_pt_j_func,
-	 loss_pt_func, predict_pt_func, stepsize, maxepochs,
-	 betahat, lambda1, lambda2, threshold, verbose, trainf, trunc);
-   writevectorf(betafile, betahat, p + 1);*/
-
-   
    gmatrix_reset(&g);
    MALLOCTEST2(yhat_train, ntrain * sizeof(double))
    /*predict_gmatrix_func(&g, betahat, yhat_train, trainf);
@@ -297,8 +257,8 @@ lambda1=%.9f lambda2=%.9f \n",
    }*/
 
    /* unscale, return beta to original scale */
-   for(i = 1 ; i < p + 1 ; i++)
-      betahat_unsc[i] = g.sd[i] * betahat[i] + g.mean[i];
+   /*for(i = 1 ; i < p + 1 ; i++)
+      betahat_unsc[i] = g.sd[i] * betahat[i] + g.mean[i];*/
 
    /*writevectorf(betafile, betahat, p + 1);
    writevectorf(betaunscfile, betahat_unsc, p + 1);*/

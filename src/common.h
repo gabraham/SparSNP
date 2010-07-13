@@ -13,24 +13,16 @@
  * absolute convergence test */
 #define ZERO_THRESH 1e-10
 
-/* How to treat the x input, as discrete or continuous */
-/*#ifdef DISCRETE
-#define type "discrete"
-#define dtype char
-#define ONE 1
-#else
-#define dtype float
-#define type "continuous"
-#define ONE 1.0
-#endif */
-
-#define dtype double
-#define type "continuous"
 #define ONE 1.0
 
 /* The size for each datum in the binary input file */
-#ifndef intype
-#define intype char
+#ifndef DTYPE
+#define DTYPE char
+#endif
+
+#ifndef DTYPE_DEF
+typedef DTYPE dtype;
+#define DTYPE_DEF 1
 #endif
 
 #define MALLOCTEST(x, size) \

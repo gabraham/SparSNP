@@ -1,25 +1,27 @@
 
 .PHONY: all
 
-all: cd scale cd_double #pcor
+
+targets = cd scale cd_double #pcor
+all: $(targets)
 
 # what about *.h?
 #
 #CCFLAGS = -Wall -g3 -std=gnu99
-CCFLAGS = -Wall -g -pg -std=gnu99
+CCFLAGS = -Wall -O2 -std=gnu99
 LIBRARIES = -lm
 
-cd: common.c gmatrix.c loss.c evaluation.c util.c cd.c main.c
+cd: common.c gmatrix.c loss.c util.c main.c cd.c
 	gcc $(CCFLAGS) $(LIBRARIES) $^ -o cd
 
-cd_double: common.c gmatrix.c loss.c evaluation.c util.c cd.c main.c
-	gcc -Dintype=double $(CCFLAGS) $(LIBRARIES) $^ -o cd_double
+cd_double: common.c gmatrix.c loss.c util.c main.c cd.c
+	gcc -DDTYPE=double $(CCFLAGS) $(LIBRARIES) $^ -o cd_double
 
-scale: common.c gmatrix.c loss.c evaluation.c util.c cd.c scale.c
+scale: common.c gmatrix.c loss.c util.c cd.c scale.c
 	gcc $(CCFLAGS) $(LIBRARIES) $^ -o scale
 
-pcor: common.c gmatrix.c loss.c evaluation.c util.c cd.c pcor.c
-	gcc -Dintype=double $(CCFLAGS) $(LIBRARIES) $^ -o pcor
+#pcor: common.c gmatrix.c loss.c util.c cd.c pcor.c
+#	gcc -Dintype=double $(CCFLAGS) $(LIBRARIES) $^ -o pcor
 
 clean:
-	/bin/rm -f $(all)
+	/bin/rm -f $(targets)

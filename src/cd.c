@@ -1,3 +1,4 @@
+#include "common.h"
 #include "cd.h"
 
 short convergetest(double a, double b, double threshold)
@@ -25,12 +26,13 @@ double get_lambda1max_gmatrix(gmatrix *g,
    sample sm;
 
    CALLOCTEST(lp, g->n, sizeof(double))
-   sample_init(&sm, g->inmemory, g->n);
-   MALLOCTEST(sm.x, sizeof(dtype) * g->n)
+   if(!sample_init(&sm, g->n))
+      return FAILURE;
+   /*MALLOCTEST(sm.x, sizeof(intype) * g->n)*/
 
    for(j = 0 ; j < g->p + 1; j++)
    {
-      g->nextcol(g, &sm);
+      gmatrix_disk_nextcol(g, &sm);
 
       grad = 0;
       d2 = 0;
@@ -77,7 +79,6 @@ double cd_gmatrix(gmatrix *g,
       d2loss_pt_j d2loss_pt_j_func,        /* 2nd deriv wrt beta_j */
       loss_pt loss_pt_func,    /* loss for one sample */
       predict_pt predict_pt_func, /* prediction for one sample */
-      double maxstepsize,
       int maxepoch, double *beta, double lambda1, double lambda2,
       double threshold, int verbose, int *trainf, double trunc)
 {
@@ -96,23 +97,18 @@ double cd_gmatrix(gmatrix *g,
    double truncl = log((1 - trunc) / trunc);
    int allconverged = 0;
    int zeros = 0;
-   double *stepsize = NULL;
 
-   sample_init(&sm, g->inmemory, g->n);
-   MALLOCTEST(sm.x, sizeof(dtype) * g->n)
+   if(!sample_init(&sm, g->n))
+      return FAILURE;
 
    CALLOCTEST(converged, g->p + 1, sizeof(short));
-   CALLOCTEST(stepsize, g->p + 1, sizeof(double));
    CALLOCTEST(lp, g->n, sizeof(double));
-
-   for(j = 0 ; j < g->p + 1; j++)
-      stepsize[j] = 1.0;
 
    while(epoch <= maxepoch)
    {
       for(j = 0 ; j < g->p + 1; j++)
       {
-	 g->nextcol(g, &sm);
+	 gmatrix_disk_nextcol(g, &sm);
 
 	 if(converged[j])
 	   continue;
@@ -135,7 +131,7 @@ double cd_gmatrix(gmatrix *g,
 	 /* don't move if 2nd derivative is zero */
 	 s = 0;
 	 if(d2 != 0)
-	    s = stepsize[j] * grad / d2;
+	    s = grad / d2;
 
 	 /* don't penalise intercept */
 	 if(j == 0)
@@ -143,10 +139,6 @@ double cd_gmatrix(gmatrix *g,
 	 else
 	    beta_new = soft_threshold(beta[j] - s, lambda1)
 		  / (1 + lambda2);
-
-	 /*if(g->p + 1 - numconverged < 100 && beta_new != 0)
-	    printf("[%d] %.20f %.20f %.20f %.20f\n", j, beta[j], s, beta[j] - s, beta_new);*/
-	    
 
 	 /* check for convergence */
 	 if(epoch > 1 && convergetest(beta[j], beta_new, threshold))
@@ -229,7 +221,6 @@ double cd_gmatrix(gmatrix *g,
    free(converged);
    free(lp);
    sample_free(&sm);
-   free(sm.x);
 
    return SUCCESS;
 }

@@ -1,10 +1,11 @@
 #include "cd.h"
+#include "util.h"
 
 int scale(gmatrix *g, char* filename)
 {
    int i, j;
    FILE *fout = NULL, *fin = NULL;
-   intype *tmp;
+   dtype *tmp;
    dtype *tmp2;
    double delta;
 
@@ -13,14 +14,14 @@ int scale(gmatrix *g, char* filename)
    g->mean[0] = 0;
    g->sd[0] = 1;
 
-   MALLOCTEST(tmp, sizeof(intype) * g->n)
+   MALLOCTEST(tmp, sizeof(dtype) * g->n)
    MALLOCTEST(tmp2, sizeof(dtype*) * g->n)
 
    FOPENTEST(fin, g->filename, "rb")
    FOPENTEST(fout, filename, "w")
 
    /* read y but do not scale it */
-   FREADTEST(tmp, sizeof(intype), g->n, fin)
+   FREADTEST(tmp, sizeof(dtype), g->n, fin)
 
    for(i = 0 ; i < g->n ; i++)
       tmp2[i] = (double)tmp[i];
@@ -31,7 +32,7 @@ int scale(gmatrix *g, char* filename)
    for(j = 1 ; j < g->p + 1 ; j++)
    {
       printf("%d of %d\r", j, g->p);
-      FREADTEST(tmp, sizeof(intype), g->n, fin)
+      FREADTEST(tmp, sizeof(dtype), g->n, fin)
 
       g->mean[j] = g->sd[j] = 0;
       for(i = 0 ; i < g->n ; i++)
@@ -71,7 +72,6 @@ int main(int argc, char* argv[])
    char *filename_in = NULL;
    char *filename_out = NULL;
    gmatrix g;
-   short rowmajor = FALSE;
 
    for(i = 1 ; i < argc ; i++)
    {
@@ -103,7 +103,7 @@ int main(int argc, char* argv[])
       return EXIT_FAILURE;
    }
 
-   if(!gmatrix_init(&g, FALSE, FALSE, rowmajor, filename_in, NULL, NULL, n, p))
+   if(!gmatrix_init(&g, filename_in, n, p))
       return EXIT_FAILURE;
 
    scale(&g, filename_out);
