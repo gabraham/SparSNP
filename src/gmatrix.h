@@ -2,6 +2,8 @@
 #include <math.h>
 #include "common.h"
 
+#define BUFSIZE 10
+
 typedef struct sample {
    dtype *x;
 } sample;
@@ -16,6 +18,9 @@ typedef struct gmatrix {
    int j;
    double *mean;
    double *sd;
+   dtype *buffer;
+   int bufsize;
+   int bufidx;
 } gmatrix;
 
 int sample_init(sample *, int);
@@ -24,4 +29,5 @@ int gmatrix_init(gmatrix *, char *, int, int);
 int gmatrix_reset(gmatrix *);
 void gmatrix_free(gmatrix *);
 int gmatrix_disk_nextcol(gmatrix *, sample *);
+int gmatrix_disk_nextcol2(gmatrix *, sample *);
 
