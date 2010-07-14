@@ -7,7 +7,7 @@ all: $(targets)
 
 # what about *.h?
 #
-#CCFLAGS = -Wall -g3 -std=gnu99
+#CCFLAGS = -Wall -pg -g3 -std=gnu99
 CCFLAGS = -Wall -O2 -std=gnu99
 LIBRARIES = -lm
 

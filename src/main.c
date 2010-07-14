@@ -36,11 +36,12 @@ int main(int argc, char* argv[])
    short nofit = FALSE;
 
    /* Parameters */
-   int maxepochs = 200;
+   int maxepochs = 1000;
    double lambda1 = 0;
    double lambda2 = 0;
    double threshold = 1e-4;
    double trunc = 1e-9;
+   int nzmax = 0;
    /* double alpha = 0; */
 
    optim_gmatrix_func = cd_gmatrix;
@@ -125,10 +126,6 @@ int main(int argc, char* argv[])
 	 i++;
 	 nlambda1 = atoi(argv[i]);
       }
-      /*else if(strcmp2(argv[i], "-colmajor"))
-      {
-	 rowmajor = FALSE;
-      }*/
       else if(strcmp2(argv[i], "-v"))
       {
 	 verbose = TRUE;
@@ -167,6 +164,11 @@ int main(int argc, char* argv[])
 	 i++;
 	 seed = atol(argv[i]);
       }
+      else if(strcmp2(argv[i], "-nzmax"))
+      {
+	 i++;
+	 nzmax = atol(argv[i]);
+      }
    }
 
    if(filename == NULL || model == NULL || n == 0 || p == 0)
@@ -178,6 +180,8 @@ int main(int argc, char* argv[])
       return EXIT_FAILURE;
    }
 
+   if(lambda2 == 0 && nzmax == 0)
+      nzmax = (int)fmin(n, p);
   
    srand48(seed);
    CALLOCTEST2(betahat, p + 1, sizeof(double))
@@ -236,17 +240,19 @@ int main(int argc, char* argv[])
       {
          if(verbose)
             printf("\nFitting with lambda1=%.20f\n", lambda1path[i]);
-         cd_gmatrix(&g, dloss_pt_func, d2loss_pt_func, d2loss_pt_j_func,
-            loss_pt_func, predict_pt_func, maxepochs,
-            betahat, lambda1path[i], lambda2, threshold, verbose,
-	    trainf, trunc);
+         if(nzmax != 0 && nzmax < cd_gmatrix(
+		  &g, dloss_pt_func, d2loss_pt_func, d2loss_pt_j_func,
+		  loss_pt_func, predict_pt_func, maxepochs,
+		  betahat, lambda1path[i], lambda2, threshold, verbose,
+		  trainf, trunc))
+	    break;
          snprintf(tmp, 100, "%s.%d", betafile, i);
          writevectorf(tmp, betahat, p + 1);
       }
    }
 
-   gmatrix_reset(&g);
-   MALLOCTEST2(yhat_train, ntrain * sizeof(double))
+   /*gmatrix_reset(&g);
+   MALLOCTEST2(yhat_train, ntrain * sizeof(double))*/
    /*predict_gmatrix_func(&g, betahat, yhat_train, trainf);
 
    if(ntest > 0)
@@ -300,8 +306,8 @@ int main(int argc, char* argv[])
    gmatrix_free(&g);
    free(betahat);
    free(betahat_unsc);
-   free(yhat_train);
-   free(yhat_test);
+   /*free(yhat_train);*/
+/*   free(yhat_test);*/
    free(trainf);
    free(lambda1path);
    if(testf)

@@ -88,9 +88,9 @@ void gmatrix_free(gmatrix *g)
       free(g->y);
    g->y = NULL;
 
-   if(g->buffer)
+   /*if(g->buffer)
       free(g->buffer);
-   g->buffer = NULL;
+   g->buffer = NULL;*/
 }
 
 /* Expects the binary data column to be y, x_1, x_2, x_3, ..., x_p */

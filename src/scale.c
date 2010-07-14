@@ -6,7 +6,7 @@ int scale(gmatrix *g, char* filename)
    int i, j;
    FILE *fout = NULL, *fin = NULL;
    dtype *tmp;
-   dtype *tmp2;
+   double *tmp2;
    double delta;
 
    MALLOCTEST(g->mean, sizeof(double) * (g->p + 1))
@@ -15,7 +15,7 @@ int scale(gmatrix *g, char* filename)
    g->sd[0] = 1;
 
    MALLOCTEST(tmp, sizeof(dtype) * g->n)
-   MALLOCTEST(tmp2, sizeof(dtype*) * g->n)
+   MALLOCTEST(tmp2, sizeof(double*) * g->n)
 
    FOPENTEST(fin, g->filename, "rb")
    FOPENTEST(fout, filename, "w")
@@ -26,7 +26,7 @@ int scale(gmatrix *g, char* filename)
    for(i = 0 ; i < g->n ; i++)
       tmp2[i] = (double)tmp[i];
 
-   FWRITETEST(tmp2, sizeof(dtype), g->n, fout)
+   FWRITETEST(tmp2, sizeof(double), g->n, fout)
 
    /* read the data and scale each variable */
    for(j = 1 ; j < g->p + 1 ; j++)
@@ -53,7 +53,7 @@ int scale(gmatrix *g, char* filename)
 	    tmp2[i] /= g->sd[j];
       }
         
-      FWRITETEST(tmp2, sizeof(dtype), g->n, fout)
+      FWRITETEST(tmp2, sizeof(double), g->n, fout)
    }
    printf("\n");
 

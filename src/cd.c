@@ -73,7 +73,7 @@ double get_lambda1max_gmatrix(gmatrix *g,
 }
 
 /* coordinate descent */
-double cd_gmatrix(gmatrix *g,
+int cd_gmatrix(gmatrix *g,
       dloss_pt dloss_pt_func,        /* gradient */
       d2loss_pt d2loss_pt_func,        /* 2nd deriv */
       d2loss_pt_j d2loss_pt_j_func,        /* 2nd deriv wrt beta_j */
@@ -153,12 +153,14 @@ double cd_gmatrix(gmatrix *g,
 	 /* update linear predictor */
 	 for(i = 0 ; i < g->n ; i++)
 	    if(sm.x[i] != 0)
-	       lp[i] = fmin(fmax(lp[i] + sm.x[i] * (beta_new - beta[j]), -MAXLP), MAXLP);
+	       lp[i] = fmin(fmax(
+			lp[i] + sm.x[i] * (beta_new - beta[j]),
+		       -MAXLP), MAXLP);
 
 	 beta[j] = beta_new;
       }
 
-      if(verbose)
+      if(verbose > 1)
       {
 	 loss = 0;
 	 for(i = 0 ; i < g->n ; i++)
@@ -190,9 +192,16 @@ double cd_gmatrix(gmatrix *g,
       }
 
       if(verbose)
+      {
+	 printf("Epoch %d  converged: %d zeros: %d  non-zeros: %d\n",
+	       epoch, numconverged, zeros, g->p - zeros);
+      }
+      else if(verbose > 1)
+      {
 	 printf("Epoch %d  training loss: %.5f  converged: %d\
   zeros: %d  non-zeros: %d\n",
    epoch, loss, numconverged, zeros, g->p - zeros);
+      }
 
       if(numconverged == g->p + 1)
       {
@@ -222,6 +231,6 @@ double cd_gmatrix(gmatrix *g,
    free(lp);
    sample_free(&sm);
 
-   return SUCCESS;
+   return g->p - zeros;
 }
 

@@ -14,12 +14,12 @@ typedef void (*d2loss_pt)(dtype *, double, int, double *);
 typedef double (*d2loss_pt_j)(dtype, double);
 typedef void (*predict_gmatrix)(gmatrix *, double *, double *, int *);
 
-typedef double (*optim_gmatrix)(gmatrix *g,
+typedef int (*optim_gmatrix)(gmatrix *g,
    dloss_pt, d2loss_pt, d2loss_pt_j, loss_pt, predict_pt,
    int maxepoch, double *beta, double lambda1, double lambda2,
    double threshold, int verbose, int *trainf, double trunc);
 
-double cd_gmatrix(gmatrix *g,
+int cd_gmatrix(gmatrix *g,
    dloss_pt, d2loss_pt, d2loss_pt_j, loss_pt, predict_pt,
    int maxepoch, double *beta, double lambda1, double lambda2,
    double threshold, int verbose, int *trainf, double trunc);
