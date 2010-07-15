@@ -569,18 +569,35 @@ EOF
 #
 #exit 1
 
-# HapMap data, several strong SNPs
-DIR=sim7
-prefix="sim"
-N=500
-K=10
-HAPLO=HapMap/genotypes_chr1_JPT+CHB_r22_nr.b36_fwd.phased
-LEGEND=HapMap/genotypes_chr1_JPT+CHB_r22_nr.b36_fwd_legend.txt
-simulate $DIR $prefix $N $K $HAPLO $LEGEND
-#
-# Several strong SNPs, lots of weak SNPs
-#
+for ((J=1 ; J<=10; J++));
+do
+   DIR="sim8.$J"
+   if ! [ -d "$DIR" ]; then
+      mkdir $DIR
+   fi
+   prefix="sim"
+   N=500
+   K=20
+   HAPLO=HapMap/genotypes_chr1_JPT+CHB_r22_nr.b36_fwd.phased
+   LEGEND=HapMap/genotypes_chr1_JPT+CHB_r22_nr.b36_fwd_legend.txt
+   simulate $DIR $prefix $N $K $HAPLO $LEGEND
+   echo "exit:" $J $?
+done
 
+exit 1
+
+## HapMap data, several strong SNPs
+#DIR=sim7
+#prefix="sim"
+#N=500
+#K=10
+#HAPLO=HapMap/genotypes_chr1_JPT+CHB_r22_nr.b36_fwd.phased
+#LEGEND=HapMap/genotypes_chr1_JPT+CHB_r22_nr.b36_fwd_legend.txt
+#simulate $DIR $prefix $N $K $HAPLO $LEGEND
+##
+## Several strong SNPs, lots of weak SNPs
+##
+#
 
 
 
