@@ -149,6 +149,7 @@ int cd_gmatrix(gmatrix *g,
    double truncl = log((1 - trunc) / trunc);
    int allconverged = 0;
    int zeros = 0;
+   const int CONVERGED = 2;
 
    if(!sample_init(&sm, g->n))
       return FAILURE;
@@ -260,7 +261,7 @@ int cd_gmatrix(gmatrix *g,
 	 allconverged++;
 
 	 /* converged twice in a row, no need to continue */
-	 if(allconverged == 2)
+	 if(allconverged == CONVERGED)
 	 {
 	    printf("terminating with %d non-zero coefs\n\n",
 		  g->p - zeros);
@@ -282,6 +283,9 @@ int cd_gmatrix(gmatrix *g,
    free(lp);
    sample_free(&sm);
 
-   return g->p - zeros;
+   if(allconverged == CONVERGED)
+      return g->p - zeros;
+   else
+      return FAILURE;
 }
 

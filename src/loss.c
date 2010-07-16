@@ -71,29 +71,6 @@ void l2dloss_pt(dtype *x, double d, dtype y, int p, double* grad)
       grad[j] = x[j] * (d - (double)y);
 }
 
-/*void l2d2loss_pt(dtype *x, double d, int p, double* d2)
-{
-   int j;
-   for(j = 0 ; j < p ; j++)
-      d2[j] = l2d2loss_pt_j(x[j], 0);
-}
-
-double l2d2loss_pt_j(dtype x, double pr)
-{
-   return 1;
-}
-
-double predict_logloss_pt(double lp)
-{
-   return 1 / (1 + exp(-lp));
-}
-
-double predict_l2loss_pt(double lp)
-{
-   return lp;
-}*/
-
-/*****************************************************************************/
 double l2phi1(double lp)
 {
    return lp;

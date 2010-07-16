@@ -5,6 +5,7 @@
 int main(int argc, char* argv[])
 {
    int i, j;
+   int ret;
    double *betahat, *betahat_unsc;
 /*   double *yhat_train = NULL, *yhat_test = NULL;*/
    gmatrix g;
@@ -239,11 +240,23 @@ int main(int argc, char* argv[])
       {
          if(verbose)
             printf("\nFitting with lambda1=%.20f\n", lambda1path[i]);
-         if(nzmax != 0 && nzmax < cd_gmatrix(
+	 ret = cd_gmatrix(
 		  &g, phi1_func, phi2_func, loss_pt_func, maxepochs,
 		  betahat, lambda1path[i], lambda2, threshold, verbose,
-		  trainf, trunc))
+		  trainf, trunc);
+
+	 if(ret == FAILURE)
+	 {
+	    printf("failed to converge after %d\n", maxepochs);
 	    break;
+	 }
+
+         if(nzmax != 0 && nzmax < ret)
+	 {
+	    printf("maximum number of non-zero variables reached: %d\n", 
+		  nzmax);
+	    break;
+	 }
          /*if(nzmax != 0 && nzmax < cd_gmatrix2(
 		  &g, phi1_func, phi2_func, loss_pt_func,
 		  maxepochs, betahat, lambda1path[i]))

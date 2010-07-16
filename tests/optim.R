@@ -160,6 +160,7 @@ cd2 <- function(x, y, lossfunc, d1phi, d2phi, lambda1=0, maxiter=20)
 
    for(i in 1:maxiter)
    {
+      cat("epoch", i, "\r")
       for(j in 1:p)
       {
 	 beta.old <- beta[j]
@@ -185,6 +186,7 @@ cd2 <- function(x, y, lossfunc, d1phi, d2phi, lambda1=0, maxiter=20)
       nz <- sum(beta != 0)
       #cat(i, "loss:", lossfunc(x, y, beta), "nonzero:", nz, "\n")
    }
+   cat("\n")
    beta
 }
 
