@@ -4,9 +4,9 @@
 
 int main(int argc, char* argv[])
 {
-   int i;
+   int i, j;
    double *betahat, *betahat_unsc;
-   double *yhat_train = NULL, *yhat_test = NULL;
+/*   double *yhat_train = NULL, *yhat_test = NULL;*/
    gmatrix g;
    char *filename = NULL;
    char *model = NULL;
@@ -23,11 +23,9 @@ int main(int argc, char* argv[])
    int cv = 1;
    long seed = time(NULL);
    loss_pt loss_pt_func = NULL;
-   predict_pt predict_pt_func = NULL;
-   dloss_pt dloss_pt_func = NULL;
-   d2loss_pt d2loss_pt_func = NULL;
-   d2loss_pt_j d2loss_pt_j_func = NULL;
-   optim_gmatrix optim_gmatrix_func = cd_gmatrix;
+   /*predict_pt predict_pt_func = NULL;*/
+   phi1 phi1_func = NULL;
+   phi2 phi2_func = NULL;
    double lambda1max = 1, lambda1min = 1;
    double *lambda1path = NULL;
    int nlambda1 = 100;
@@ -37,14 +35,12 @@ int main(int argc, char* argv[])
 
    /* Parameters */
    int maxepochs = 1000;
-   double lambda1 = 0;
+   double lambda1 = -1;
    double lambda2 = 0;
    double threshold = 1e-4;
    double trunc = 1e-9;
    int nzmax = 0;
    /* double alpha = 0; */
-
-   optim_gmatrix_func = cd_gmatrix;
 
    for(i = 1 ; i < argc ; i++)
    {
@@ -60,18 +56,14 @@ int main(int argc, char* argv[])
 	 if(strcmp2(model, "logistic"))
 	 {
 	    loss_pt_func = &logloss_pt;
-	    predict_pt_func = &predict_logloss_pt;
-	    dloss_pt_func = &logdloss_pt;
-	    d2loss_pt_func = &logd2loss_pt;
-	    d2loss_pt_j_func = &logd2loss_pt_j;
+	    phi1_func = &logphi1;
+	    phi2_func = &logphi2;
 	 }
 	 else if(strcmp2(model, "linear"))
 	 {
 	    loss_pt_func = &l2loss_pt;
-	    predict_pt_func = &predict_l2loss_pt;
-	    dloss_pt_func = &l2dloss_pt;
-	    d2loss_pt_func = &l2d2loss_pt;
-	    d2loss_pt_j_func = &l2d2loss_pt_j;
+	    phi1_func = &l2phi1;
+	    phi2_func = &l2phi2;
 	 }
 	 else
 	 {
@@ -180,8 +172,7 @@ int main(int argc, char* argv[])
       return EXIT_FAILURE;
    }
 
-   if(lambda2 == 0 && nzmax == 0)
-      nzmax = (int)fmin(n, p);
+   nzmax = (int)fmin(n, p);
   
    srand48(seed);
    CALLOCTEST2(betahat, p + 1, sizeof(double))
@@ -216,15 +207,23 @@ int main(int argc, char* argv[])
       printf("%d training samples, %d test samples\n", ntrain, g.n - ntrain);
    }
 
-   /* get lambda1 max */
-   lambda1max = get_lambda1max_gmatrix(&g, dloss_pt_func,
-	 d2loss_pt_func, d2loss_pt_j_func,
-	 loss_pt_func, predict_pt_func);
 
-   printf("lambda1max: %.5f\n", lambda1max);
 
-   /* create lambda1 path */
-   lambda1path[0] = lambda1max;
+   if(lambda1 >= 0)
+   {
+      lambda1max = lambda1;
+      l1minratio = 1;
+      nlambda1 = 1;
+   }
+   else
+   {
+      /* create lambda1 path */
+      /* get lambda1 max */
+      lambda1max = get_lambda1max_gmatrix(&g, phi1_func, phi2_func);
+      if(verbose)
+	 printf("lambda1max: %.5f\n", lambda1max);
+      lambda1path[0] = lambda1max;
+   }
    
    lambda1min = lambda1max * l1minratio;
    lambda1path[nlambda1 - 1] = lambda1min;
@@ -241,13 +240,19 @@ int main(int argc, char* argv[])
          if(verbose)
             printf("\nFitting with lambda1=%.20f\n", lambda1path[i]);
          if(nzmax != 0 && nzmax < cd_gmatrix(
-		  &g, dloss_pt_func, d2loss_pt_func, d2loss_pt_j_func,
-		  loss_pt_func, predict_pt_func, maxepochs,
+		  &g, phi1_func, phi2_func, loss_pt_func, maxepochs,
 		  betahat, lambda1path[i], lambda2, threshold, verbose,
 		  trainf, trunc))
 	    break;
+         /*if(nzmax != 0 && nzmax < cd_gmatrix2(
+		  &g, phi1_func, phi2_func, loss_pt_func,
+		  maxepochs, betahat, lambda1path[i]))
+	    break;*/
          snprintf(tmp, 100, "%s.%d", betafile, i);
          writevectorf(tmp, betahat, p + 1);
+
+	 for(j = 0 ; j < p + 1; j++)
+	    betahat[j] = 0;
       }
    }
 

@@ -95,8 +95,7 @@ l2d2phi <- function(lp)
 
 logd1phi <- function(lp)
 {
-   p <- exp(lp)
-   p / (1 + p)
+   1 / (1 + exp(-lp))
 }
 
 logd2phi <- function(lp)
@@ -168,6 +167,8 @@ cd2 <- function(x, y, lossfunc, d1phi, d2phi, lambda1=0, maxiter=20)
 	 grad <- sum(x[, j] * (d1phi(lp) - y))
 	 d2 <- sum(x[,j]^2 * d2phi(lp))
 
+	 #cat(grad, d2, "\n")
+
 	 if(grad != 0 && d2 != 0)
 	 {
 	    beta[j] <- if(j > 1) {
@@ -179,10 +180,10 @@ cd2 <- function(x, y, lossfunc, d1phi, d2phi, lambda1=0, maxiter=20)
 	    lp <- lp + x[, j] * (beta[j] - beta.old)
 	    lp <- sign(lp) * pmin(abs(lp), 20)
 	 }
+	 #cat(lp, "\n")
       }
       nz <- sum(beta != 0)
-      cat(i, "loss:", lossfunc(x, y, beta), "nonzero:", nz, "\n")
-      cat(beta[c(1, 82, 102, 269, 396)], "\n")
+      #cat(i, "loss:", lossfunc(x, y, beta), "nonzero:", nz, "\n")
    }
    beta
 }

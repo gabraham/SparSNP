@@ -557,6 +557,11 @@ EOF
    transpose $DIR/sim.bin $((N*2)) $P 
 }
 
+#function randomdata {
+#   shuffle $DIR $prefix $((N*2))
+#   convert $DIR $prefix $((N*2))
+#   transpose $DIR/sim.bin $((N*2)) $P 
+#}
 
 ## Small HapMap data, several strong SNPs
 #DIR=sim5

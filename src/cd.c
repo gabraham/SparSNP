@@ -13,22 +13,19 @@ short convergetest(double a, double b, double threshold)
 
 /* Find smallest lambda1 that makes all coefficients zero (except the intercept)
  */
-double get_lambda1max_gmatrix(gmatrix *g,
-      dloss_pt dloss_pt_func,        /* gradient */
-      d2loss_pt d2loss_pt_func,        /* 2nd deriv */
-      d2loss_pt_j d2loss_pt_j_func,        /* 2nd deriv wrt beta_j */
-      loss_pt loss_pt_func,    /* loss for one sample */
-      predict_pt predict_pt_func) /* prediction for one sample */
+double get_lambda1max_gmatrix(
+      gmatrix *g,
+      phi1 phi1_func,
+      phi2 phi2_func)
 {
    int i, j;
    double *lp = NULL;
-   double grad, d2, s, pr, zmax = 0;
+   double grad, d2, s, zmax = 0;
    sample sm;
 
    CALLOCTEST(lp, g->n, sizeof(double))
    if(!sample_init(&sm, g->n))
       return FAILURE;
-   /*MALLOCTEST(sm.x, sizeof(intype) * g->n)*/
 
    for(j = 0 ; j < g->p + 1; j++)
    {
@@ -43,9 +40,8 @@ double get_lambda1max_gmatrix(gmatrix *g,
 	 if(sm.x[i] == 0)
 	    continue;
 
-	 pr = predict_pt_func(lp[i]);
-	 grad += sm.x[i] * (pr - g->y[i]);
-	 d2 += d2loss_pt_j_func(sm.x[i], pr);
+	 grad += sm.x[i] * (phi1_func(lp[i]) - g->y[i]);
+	 d2 += sm.x[i] * sm.x[i] * phi2_func(lp[i]);
       }
 
       /* don't move if 2nd derivative is zero */
@@ -72,13 +68,70 @@ double get_lambda1max_gmatrix(gmatrix *g,
    return zmax;
 }
 
+int cd_gmatrix2(gmatrix *g,
+      phi1 phi1_func,
+      phi2 phi2_func,
+      loss_pt loss_pt_func,    /* loss for one sample */
+      int maxepoch,
+      double *beta,
+      double lambda1)
+{
+   int i, j;
+   int iter;
+   double beta_old = 0, grad, d2, s;
+   double *lp = NULL;
+   sample sm;
+
+   CALLOCTEST(lp, g->n, sizeof(double))
+
+   if(!sample_init(&sm, g->n))
+      return FAILURE;
+
+   for(iter = 0 ; iter < maxepoch ; iter++)
+   {
+      for(j = 0 ; j < g->p + 1; j++)
+      {
+	 beta_old = beta[j];
+	 gmatrix_disk_nextcol(g, &sm);
+	 grad = d2 = 0;
+	 for(i = 0 ; i < g->n ; i++)
+	 {
+	    grad += sm.x[i] * (phi1_func(lp[i]) - g->y[i]);
+	    d2 += sm.x[i] * sm.x[i] * phi2_func(lp[i]);
+	 }
+	 /*printf("%.5f %.5f\n", grad, d2);*/
+	 
+	 s = 0;
+	 if(d2 != 0)
+	    s = grad / d2;
+
+	 if(j == 0)
+	    beta[j] = soft_threshold(beta[j] - s, lambda1);
+	 else
+	    beta[j] -= s;
+
+	 for(i = 0 ; i < g->n ; i++)
+	 {
+	    lp[i] += sm.x[i] * (beta[j] - beta_old);
+	    /*printf("%.5f ", lp[i]);*/
+	 }
+	 /*printf("\n");*/
+	 
+      }
+   }
+
+   free(lp);
+   sample_free(&sm);
+
+   return SUCCESS;
+}
+
+
 /* coordinate descent */
 int cd_gmatrix(gmatrix *g,
-      dloss_pt dloss_pt_func,        /* gradient */
-      d2loss_pt d2loss_pt_func,        /* 2nd deriv */
-      d2loss_pt_j d2loss_pt_j_func,        /* 2nd deriv wrt beta_j */
+      phi1 phi1_func,
+      phi2 phi2_func,
       loss_pt loss_pt_func,    /* loss for one sample */
-      predict_pt predict_pt_func, /* prediction for one sample */
       int maxepoch, double *beta, double lambda1, double lambda2,
       double threshold, int verbose, int *trainf, double trunc)
 {
@@ -91,7 +144,6 @@ int cd_gmatrix(gmatrix *g,
    double grad = 0;
    double d2 = 0;
    double *lp = NULL;
-   double pr;
    double s;
    sample sm;
    double truncl = log((1 - trunc) / trunc);
@@ -123,9 +175,8 @@ int cd_gmatrix(gmatrix *g,
 	    if(sm.x[i] == 0)
 	       continue;
 
-	    pr = predict_pt_func(lp[i]);
-	    grad += sm.x[i] * (pr - g->y[i]);
-	    d2 += d2loss_pt_j_func(sm.x[i], pr);
+	    grad += sm.x[i] * (phi1_func(lp[i]) - g->y[i]);
+	    d2 += sm.x[i] * sm.x[i] * phi2_func(lp[i]);
 	 }
 
 	 /* don't move if 2nd derivative is zero */
