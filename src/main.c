@@ -251,21 +251,18 @@ int main(int argc, char* argv[])
 	    break;
 	 }
 
-         if(nzmax != 0 && nzmax < ret)
-	 {
-	    printf("maximum number of non-zero variables reached: %d\n", 
-		  nzmax);
-	    break;
-	 }
-         /*if(nzmax != 0 && nzmax < cd_gmatrix2(
-		  &g, phi1_func, phi2_func, loss_pt_func,
-		  maxepochs, betahat, lambda1path[i]))
-	    break;*/
          snprintf(tmp, 100, "%s.%d", betafile, i);
          writevectorf(tmp, betahat, p + 1);
 
 	 for(j = 0 ; j < p + 1; j++)
 	    betahat[j] = 0;
+
+	 if(nzmax != 0 && nzmax <= ret)
+	 {
+	    printf("maximum number of non-zero variables reached: %d\n", 
+		  nzmax);
+	    break;
+	 }
       }
    }
 
