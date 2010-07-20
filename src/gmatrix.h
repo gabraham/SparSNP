@@ -21,6 +21,7 @@ typedef struct gmatrix {
    dtype *buffer;
    int bufsize;
    int bufidx;
+   int yidx; /* only used for pcor */
 } gmatrix;
 
 int sample_init(sample *, int);

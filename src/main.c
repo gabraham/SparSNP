@@ -93,6 +93,12 @@ int opt_parse(int argc, char* argv[], Opt* opt)
 	    opt->phi1_func = &l2phi1;
 	    opt->phi2_func = &l2phi2;
 	 }
+	 else if(strcmp2(opt->model, "pcor"))
+	 {
+	    opt->loss_pt_func = &l2loss_pt;
+	    opt->phi1_func = &l2phi1;
+	    opt->phi2_func = &l2phi2;
+	 }
 	 else
 	 {
 	    printf("model not available\n");
@@ -248,9 +254,6 @@ int run(Opt *opt, gmatrix *g)
 	    opt->ntrain, opt->n - opt->ntrain);
    }
 
-   if(opt->nofit)
-      return SUCCESS;
-
    CALLOCTEST2(betahat, opt->p + 1, sizeof(double))
 
    for(i = 0 ; i < opt->nlambda1 ; i++)
@@ -292,6 +295,72 @@ int run(Opt *opt, gmatrix *g)
    return SUCCESS;
 }
 
+int run_pcor(Opt *opt, gmatrix *g)
+{
+   int i, j, k, ret;
+   double *betahat;
+   char tmp[MAX_STR_LEN];
+   FILE *out;
+
+   FOPENTEST(out, opt->filename, "wb");
+
+
+   for(i = 0 ; i < opt->nlambda1 ; i++)
+   {
+      if(opt->verbose)
+	 printf("\nFitting with lambda1=%.20f\n", opt->lambda1path[i]);
+
+      for(j = 0 ; j < opt->p + 1 ; j++)
+      {
+	 CALLOCTEST(betahat, opt->p + 1, sizeof(double))
+
+	 ret = cd_gmatrix(
+      	       g, opt->phi1_func, opt->phi2_func, opt->loss_pt_func,
+      	       opt->maxepochs, betahat[j], opt->lambda1path[i], opt->lambda2,
+      	       opt->threshold, opt->verbose, opt->trainf, opt->trunc);
+
+      	 gmatrix_reset(g);
+
+      	 if(ret == FAILURE)
+      	 {
+      	    printf("failed to converge after %d\n", opt->maxepochs);
+      	    break;
+      	 }
+
+      	 /*snprintf(tmp, MAX_STR_LEN, "%s.%d", opt->betafile, i);
+      	 if(!writevectorf(tmp, betahat, opt->p + 1))
+      	    return FAILURE;*/
+
+      	 /* if(!opt->warmrestarts)
+      	    for(k = 0 ; k < opt->p + 1 ; k++)
+      	       betahat[k] = 0; */
+
+      	 if(opt->nzmax != 0 && opt->nzmax <= ret)
+      	 {
+      	    printf("maximum number of non-zero variables reached: %d\n", 
+      	          opt->nzmax);
+      	    break;
+      	 }
+
+	 /* write output incrementally */
+	 for(k = 0 ; k < opt->p + 1 ; k++)
+	    FWRITETEST(betahat[k], sizeof(double), opt->p + 1, out)
+
+	 free(betahat);
+      }
+
+      if(!writematrixf(betahat, opt->n, opt->p, opt->betafile))
+	 return FAILURE;
+   }
+
+
+   fflush(out);
+   fclose(out);
+
+
+   return SUCCESS;
+}
+
 int main(int argc, char* argv[])
 {
    Opt opt;
@@ -307,7 +376,8 @@ int main(int argc, char* argv[])
    make_lambda1path(&opt, &g);
    gmatrix_reset(&g);
 
-   run(&opt, &g);
+   if(!opt->nofit)
+      run(&opt, &g);
 
    gmatrix_free(&g);
    opt_free(&opt);

@@ -27,6 +27,7 @@ int gmatrix_init(gmatrix *g, char *filename, int n, int p)
    g->i = g-> j = 0;
    g->n = n;
    g->p = p;
+   g->yidx = 0;
 
    CALLOCTEST(g->mean, p + 1, sizeof(double))
    MALLOCTEST(g->sd, sizeof(double) * (p + 1))
@@ -117,6 +118,26 @@ int gmatrix_disk_nextcol(gmatrix *g, sample *s)
 
    return SUCCESS;
 }
+
+/* Expects the binary data column to be x_1, x_2, x_3, ..., x_p */
+int gmatrix_disk_nextcol_no_y(gmatrix *g, sample *s)
+{
+   int i;
+   
+   if(g->j == g->p + 1)
+      if(!gmatrix_reset(g))
+	 return FAILURE;
+
+   if(g->j == g->yidx)
+      FREADTEST(g->y, sizeof(dtype), g->n, g->file)
+   else
+      FREADTEST(s->x, sizeof(dtype), g->n, g->file)
+
+   g->j++;
+
+   return SUCCESS;
+}
+
 
 /* Expects the binary data column to be y, x_1, x_2, x_3, ..., x_p */
 /*int gmatrix_disk_nextcol2(gmatrix *g, sample *s)

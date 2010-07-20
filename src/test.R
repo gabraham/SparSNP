@@ -120,7 +120,7 @@ do_plot <- function(r)
    print(g2, vp=viewport(layout.pos.row=1, layout.pos.col=2))
 }
 
-res <- lapply(4:10, function(i) {
+res <- lapply(3:12, function(i) {
    rmoutput()
    cat(i, "... ")
    r <- run(n=1000, p=2^i, nsim=50)

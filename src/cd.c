@@ -51,13 +51,10 @@ double get_lambda1max_gmatrix(
 
       /* find smallest lambda1 that makes all coefficients zero, by finding
        * the largest z, but evaluate the intercept first because
-       * it's not penalised.
-       */
+       * it's not penalised. */
       if(j == 0)
-      {
 	 for(i = 0 ; i < g->n ; i++)
 	    lp[i] = sm.x[i] * s;
-      }
       else if(zmax < fabs(s))
 	 zmax = fabs(s);
    } 
@@ -68,10 +65,10 @@ double get_lambda1max_gmatrix(
    return zmax;
 }
 
-int cd_gmatrix2(gmatrix *g,
+/*int cd_gmatrix2(gmatrix *g,
       phi1 phi1_func,
       phi2 phi2_func,
-      loss_pt loss_pt_func,    /* loss for one sample */
+      loss_pt loss_pt_func,
       int maxepoch,
       double *beta,
       double lambda1)
@@ -99,7 +96,6 @@ int cd_gmatrix2(gmatrix *g,
 	    grad += sm.x[i] * (phi1_func(lp[i]) - g->y[i]);
 	    d2 += sm.x[i] * sm.x[i] * phi2_func(lp[i]);
 	 }
-	 /*printf("%.5f %.5f\n", grad, d2);*/
 	 
 	 s = 0;
 	 if(d2 != 0)
@@ -111,12 +107,7 @@ int cd_gmatrix2(gmatrix *g,
 	    beta[j] -= s;
 
 	 for(i = 0 ; i < g->n ; i++)
-	 {
 	    lp[i] += sm.x[i] * (beta[j] - beta_old);
-	    /*printf("%.5f ", lp[i]);*/
-	 }
-	 /*printf("\n");*/
-	 
       }
    }
 
@@ -124,7 +115,7 @@ int cd_gmatrix2(gmatrix *g,
    sample_free(&sm);
 
    return SUCCESS;
-}
+}*/
 
 
 /* coordinate descent */
@@ -199,7 +190,7 @@ int cd_gmatrix(gmatrix *g,
 	    numconverged++;
 	 }
 
-	 /* clip very large coefs to prevent divergence */
+	 /* clip very large coefs to limit divergence */
 	 beta_new = fmin(fmax(beta_new, -truncl), truncl);
 
 	 /* update linear predictor */
