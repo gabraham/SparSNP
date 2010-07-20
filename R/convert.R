@@ -158,6 +158,47 @@ hapgen2bin <- function(hgfile, hgyfile, outfile, alleles=c(0, 1, 2), sep=" ")
    close(yin)
 }
 
+hapgen2ped <- function(hgfile, hgyfile, outfile, alleles=c(0, 1, 2), sep=" ")
+{
+   fin <- file(hgfile, "rt")
+   out <- file(outfile, "wb")
+   yin <- file(hgyfile, "rt")
+
+   cont <- contr.treatment(factor(alleles))
+
+   cat("Using conversion table:\n")
+   print(cont)
+
+   i <- 1
+   while(TRUE)
+   {
+      y <- as.integer(readLines(yin, n=1))
+      if(length(y) == 0)
+	 break
+      r <- readLines(fin, n=1)
+      r <- strsplit(r, split=sep)[[1]]
+
+      cat("read", length(r), "fields\n")
+
+      # Equivalent to calling model.matrix on the entire matrix, except for
+      # the intercept that we don't include here but is added later in SGD.
+      bin <- as.integer(t(cont[r,])) 
+      v <- as.character(c(y, bin))
+      x <- as.raw(v)
+      cat(i, "y=", y, length(x), "following: x:", x[1:21], "...\n")
+      writeBin(x, con=out)
+      flush(out)
+      i <- i + 1
+   }
+   cat("\n")
+
+   #cat("Number of variables:", length(x) - 1, "\n")
+
+   close(out)
+   close(fin)
+   close(yin)
+
+
 bin2smidas <- function(infile, outfile="smidas", n, p,
       type=c("numeric", "integer"))
 {

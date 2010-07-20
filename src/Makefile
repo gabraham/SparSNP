@@ -2,7 +2,7 @@
 .PHONY: all
 
 
-targets = cd scale cd_double #pcor
+targets = cd scale cd_double pcor
 all: $(targets)
 
 # what about *.h?
@@ -20,8 +20,8 @@ cd_double: common.c gmatrix.c loss.c util.c main.c cd.c
 scale: common.c gmatrix.c loss.c util.c cd.c scale.c
 	gcc $(CCFLAGS) $(LIBRARIES) $^ -o scale
 
-#pcor: common.c gmatrix.c loss.c util.c cd.c pcor.c
-#	gcc -Dintype=double $(CCFLAGS) $(LIBRARIES) $^ -o pcor
+pcor: common.c gmatrix.c loss.c util.c cd.c pcor.c
+	gcc -Dintype=double $(CCFLAGS) $(LIBRARIES) $^ -o pcor
 
 clean:
 	/bin/rm -f $(targets)

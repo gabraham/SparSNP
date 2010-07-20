@@ -1,3 +1,3 @@
-void writevectorf(char* file, double* beta, int p);
-void writevectorl(char* file, int* beta, int p);
+int writevectorf(char* file, double* beta, int p);
+int writevectorl(char* file, int* beta, int p);
 

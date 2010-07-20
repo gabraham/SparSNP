@@ -4,17 +4,43 @@
 #include <string.h>
 #include "gmatrix.h"
 
-
 #define MAXLP 20
 
 typedef double (*loss_pt)(double, dtype);
 typedef double (*predict_pt)(double);
-/*typedef void (*dloss_pt)(dtype *, double, dtype, int, double *);
-typedef void (*d2loss_pt)(dtype *, double, int, double *);
-typedef double (*d2loss_pt_j)(dtype, double);
-typedef void (*predict_gmatrix)(gmatrix *, double *, double *, int *);*/
 typedef double (*phi1)(double);
 typedef double (*phi2)(double);
+
+typedef struct Opt {
+   int maxepochs;
+   double lambda1;
+   double lambda2;
+   double threshold;
+   double l1minratio;
+   int nlambda1;
+   double trunc;
+   char *model;
+   char *betafile;
+   loss_pt loss_pt_func;
+   phi1 phi1_func;
+   phi2 phi2_func;
+   short nofit;
+   int n, p;
+   short warmrestarts;
+   char *filename;
+   double *lambda1path;
+   double lambda1max;
+   double lambda1min;
+   int verbose;
+   int cv;
+   long seed;
+   int nzmax;
+   int ntrain;
+   int *trainf;
+   char *subsetfile;
+   char *lambda1pathfile;
+
+} Opt;
 
 int cd_gmatrix(gmatrix *g,
       phi1 phi1_func,
@@ -31,9 +57,15 @@ int cd_gmatrix2(gmatrix *g,
       double *beta,
       double lambda1);
 
-
 double get_lambda1max_gmatrix(gmatrix *g,
       phi1 phi1_func,
       phi2 phi2_func
 );
+
+int cvsplit(Opt *opt);
+void opt_free(Opt *opt);
+void opt_defaults(Opt *opt);
+int opt_parse(int argc, char* argv[], Opt* opt);
+int make_lambda1path(Opt *opt, gmatrix *g);
+int run(Opt *opt, gmatrix *g);
 

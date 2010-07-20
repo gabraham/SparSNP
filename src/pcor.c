@@ -1,4 +1,4 @@
-#include "pcor.h"
+#include "cd.h"
 
 int writematrix(double **x, int n, int p, char* file)
 {
@@ -62,7 +62,7 @@ int main(int argc, char *argv[])
    double **beta;
    double **pcor;
    int *trainf = NULL;
-   optim_gmatrix optim_gmatrix_func = gd_gmatrix;
+   /* optim_gmatrix optim_gmatrix_func = gd_gmatrix; */
    loss_pt loss_pt_func = NULL;
    predict_pt predict_pt_func = NULL;
    dloss_pt dloss_pt_func = NULL;
@@ -176,9 +176,14 @@ int main(int argc, char *argv[])
       }
       g.y = tmp;
 
-      optim_gmatrix_func(&g, dloss_pt_func, loss_pt_func, predict_pt_func,
+      /*optim_gmatrix_func(&g, dloss_pt_func, loss_pt_func, predict_pt_func,
 	 stepsize, maxepochs, beta[j], lambda1, lambda2, threshold,
-	 verbose, trainf, trunc);
+	 verbose, trainf, trunc);*/
+
+      ret = cd_gmatrix(
+		  &g, phi1_func, phi2_func, loss_pt_func, maxepochs,
+		  betahat, lambda1path[i], lambda2, threshold, verbose,
+		  trainf, trunc);
 
       /* put variable back */
       for(i = 0 ; i < n ; i++)

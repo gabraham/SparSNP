@@ -2,69 +2,96 @@
 #include "loss.h"
 #include "util.h"
 
-int main(int argc, char* argv[])
-{
-   int i, j;
-   int ret;
-   double *betahat, *betahat_unsc;
-/*   double *yhat_train = NULL, *yhat_test = NULL;*/
-   gmatrix g;
-   char *filename = NULL;
-   char *model = NULL;
-   char tmp[100];
-   char *betafile = "beta.csv";
-   char *betaunscfile = "beta_unsc.csv";
-   char *predtrainfile = "pred_train.csv";
-   char *predtestfile = "pred_test.csv";
-   char *subsetfile = "subset.csv";
-   int n = 0, p = 0;
-   int verbose = FALSE;
-   int *trainf = NULL, *testf = NULL;
-   int ntrain = 0, ntest = 0;
-   int cv = 1;
-   long seed = time(NULL);
-   loss_pt loss_pt_func = NULL;
-   /*predict_pt predict_pt_func = NULL;*/
-   phi1 phi1_func = NULL;
-   phi2 phi2_func = NULL;
-   double lambda1max = 1, lambda1min = 1;
-   double *lambda1path = NULL;
-   int nlambda1 = 100;
-   double s;
-   double l1minratio = 1e-3;
-   short nofit = FALSE;
 
-   /* Parameters */
-   int maxepochs = 1000;
-   double lambda1 = -1;
-   double lambda2 = 0;
-   double threshold = 1e-4;
-   double trunc = 1e-9;
-   int nzmax = 0;
-   /* double alpha = 0; */
+/*
+ * Split data into training and test set
+ */
+int cvsplit(Opt *opt)
+{
+   int i;
+
+   MALLOCTEST2(opt->trainf, sizeof(int) * opt->n)
+
+   for(i = 0 ; i < opt->n ; i++)
+   {
+      if(opt->cv > 1)
+	 opt->trainf[i] = drand48() >= (1.0 / opt->cv);
+      else
+	 opt->trainf[i] = TRUE;
+      opt->ntrain += opt->trainf[i];
+   }
+   return writevectorl(opt->subsetfile, opt->trainf, opt->n);
+}
+
+void opt_free(Opt *opt)
+{
+   if(opt->lambda1path)
+   {
+      free(opt->lambda1path);
+      opt->lambda1path = NULL;
+   }
+
+   if(opt->trainf)
+   {
+      free(opt->trainf);
+      opt->trainf = NULL;
+   }
+}
+
+void opt_defaults(Opt *opt)
+{
+   opt->nlambda1 = 100;
+   opt->l1minratio = 1e-3;
+   opt->maxepochs = 1000;
+   opt->lambda1 = -1;
+   opt->lambda2 = 0;
+   opt->threshold = 1e-4;
+   opt->trunc = 1e-9;
+   opt->nzmax = 0;
+   opt->betafile = "beta.csv";
+   opt->n = 0;
+   opt->p = 0;
+   opt->warmrestarts = FALSE;
+   opt->nofit = FALSE;
+   opt->filename = NULL;
+   opt->lambda1path = NULL;
+   opt->verbose = FALSE;
+   opt->lambda1max = opt->lambda1min = 1;
+   opt->cv = 1;
+   opt->seed = time(NULL);
+   opt->nzmax = 0;
+   opt->trainf = NULL;
+   opt->ntrain = opt->n;
+   opt->subsetfile = "subset.csv";
+   opt->lambda1pathfile = "lambda1path.csv";
+}
+
+int opt_parse(int argc, char* argv[], Opt* opt)
+{
+   int i;
 
    for(i = 1 ; i < argc ; i++)
    {
       if(strcmp2(argv[i], "-f"))
       {
 	 i++;
-	 filename = argv[i];
+	 opt->filename = argv[i];
       }
       else if(strcmp2(argv[i], "-model"))
       {
 	 i++;
-	 model = argv[i];
-	 if(strcmp2(model, "logistic"))
+	 opt->model = argv[i];
+	 if(strcmp2(opt->model, "logistic"))
 	 {
-	    loss_pt_func = &logloss_pt;
-	    phi1_func = &logphi1;
-	    phi2_func = &logphi2;
+	    opt->loss_pt_func = &logloss_pt;
+	    opt->phi1_func = &logphi1;
+	    opt->phi2_func = &logphi2;
 	 }
-	 else if(strcmp2(model, "linear"))
+	 else if(strcmp2(opt->model, "linear"))
 	 {
-	    loss_pt_func = &l2loss_pt;
-	    phi1_func = &l2phi1;
-	    phi2_func = &l2phi2;
+	    opt->loss_pt_func = &l2loss_pt;
+	    opt->phi1_func = &l2phi1;
+	    opt->phi2_func = &l2phi2;
 	 }
 	 else
 	 {
@@ -77,256 +104,213 @@ int main(int argc, char* argv[])
       }
       else if(strcmp2(argv[i], "-nofit"))
       {
-	 nofit = TRUE;
+	 opt->nofit = TRUE;
       }
       else if(strcmp2(argv[i], "-n"))
       {
 	 i++;
-	 n = (int)atof(argv[i]);
+	 opt->n = (int)atof(argv[i]);
       }
       else if(strcmp2(argv[i], "-p"))
       {
 	 i++;
-	 p = (int)atof(argv[i]);
+	 opt->p = (int)atof(argv[i]);
       }
       else if(strcmp2(argv[i], "-epochs"))
       {
 	 i++;
-	 maxepochs = (int)atof(argv[i]);
+	 opt->maxepochs = (int)atof(argv[i]);
       }
       else if(strcmp2(argv[i], "-l1"))
       {
 	 i++;
-	 lambda1 = atof(argv[i]);
+	 opt->lambda1 = atof(argv[i]);
       }
       else if(strcmp2(argv[i], "-l2"))
       {
 	 i++;
-	 lambda2 = atof(argv[i]);
+	 opt->lambda2 = atof(argv[i]);
       }
       else if(strcmp2(argv[i], "-l1min"))
       {
 	 i++;
-	 l1minratio = atof(argv[i]);
+	 opt->l1minratio = atof(argv[i]);
       }
       else if(strcmp2(argv[i], "-thresh"))
       {
 	 i++;
-	 threshold = atof(argv[i]);
+	 opt->threshold = atof(argv[i]);
       }
       else if(strcmp2(argv[i], "-nl1"))
       {
 	 i++;
-	 nlambda1 = atoi(argv[i]);
+	 opt->nlambda1 = atoi(argv[i]);
       }
       else if(strcmp2(argv[i], "-v"))
       {
-	 verbose = TRUE;
+	 opt->verbose = TRUE;
       }
       else if(strcmp2(argv[i], "-vv"))
       {
-	 verbose = 2;
+	 opt->verbose = 2;
       }
       else if(strcmp2(argv[i], "-beta"))
       {
 	 i++;
-	 betafile = argv[i];
-      }
-      else if(strcmp2(argv[i], "-betaunsc"))
-      {
-	 i++;
-	 betaunscfile = argv[i];
-      }
-      else if(strcmp2(argv[i], "-predtrain"))
-      {
-	 i++;
-	 predtrainfile = argv[i];
-      }
-      else if(strcmp2(argv[i], "-predtest"))
-      {
-	 i++;
-	 predtestfile = argv[i];
+	 opt->betafile = argv[i];
       }
       else if(strcmp2(argv[i], "-cv"))
       {
 	 i++;
-	 cv = atoi(argv[i]);
+	 opt->cv = atoi(argv[i]);
       }
       else if(strcmp2(argv[i], "-seed"))
       {
 	 i++;
-	 seed = atol(argv[i]);
+	 opt->seed = atol(argv[i]);
       }
       else if(strcmp2(argv[i], "-nzmax"))
       {
 	 i++;
-	 nzmax = atol(argv[i]);
+	 opt->nzmax = atol(argv[i]);
       }
    }
 
-   if(filename == NULL || model == NULL || n == 0 || p == 0)
+
+   if(opt->filename == NULL || opt->model == NULL
+	 || opt->n == 0 || opt->p == 0)
    {
       printf("usage: cd -model <model> -f <filename> -n <#samples> -p \
 <#variables> | -beta <beta filename> -pred <pred filename> -epoch <maxepochs> \
 -l1 <lambda1> -l2 <lambda2> -thresh <threshold> \
 -pred <prediction file> -cv <cvfolds> -seed <seed> -v -vv\n");
-      return EXIT_FAILURE;
+      return FAILURE;
    }
 
-   nzmax = (int)fmin(n, p);
-  
-   srand48(seed);
-   CALLOCTEST2(betahat, p + 1, sizeof(double))
-   CALLOCTEST2(betahat_unsc, p + 1, sizeof(double))
+   if(!opt->nzmax)
+      opt->nzmax = (int)fmin(opt->n, opt->p); 
 
-   CALLOCTEST2(lambda1path, nlambda1, sizeof(double))
+   srand(opt->seed);
 
-   if(!gmatrix_init(&g, filename, n, p))
-      return EXIT_FAILURE;
- 
-   gmatrix_reset(&g);
+   CALLOCTEST2(opt->lambda1path, opt->nlambda1, sizeof(double))
+   
 
-   MALLOCTEST2(trainf, sizeof(int) * g.n)
-   MALLOCTEST2(testf, sizeof(int) * g.n)
+   return SUCCESS; 
+}
 
-   for(i = 0 ; i < g.n ; i++)
+/*
+ * Creates a vector of lambda1 penalties
+ */
+int make_lambda1path(Opt *opt, gmatrix *g)
+{
+   int i;
+   double s;
+
+   if(opt->lambda1 >= 0)
    {
-      if(cv > 1)
-	 trainf[i] = drand48() >= (1.0 / cv);
-      else
-	 trainf[i] = TRUE;
-      ntrain += trainf[i];
-      testf[i] = 1 - trainf[i];
-   }
-   ntest = g.n - ntrain;
-   writevectorl(subsetfile, trainf, g.n);
-
-   if(verbose)
-   {
-      printf("Parameters: model=%s, maxepochs=%d lambda1=%.9f lambda2=%.9f \n",
-      model, maxepochs, lambda1, lambda2);
-      printf("%d training samples, %d test samples\n", ntrain, g.n - ntrain);
-   }
-
-
-
-   if(lambda1 >= 0)
-   {
-      lambda1max = lambda1;
-      l1minratio = 1;
-      nlambda1 = 1;
+      opt->lambda1max = opt->lambda1;
+      opt->l1minratio = 1;
+      opt->nlambda1 = 1;
    }
    else
    {
       /* create lambda1 path */
       /* get lambda1 max */
-      lambda1max = get_lambda1max_gmatrix(&g, phi1_func, phi2_func);
-      if(verbose)
-	 printf("lambda1max: %.5f\n", lambda1max);
-      lambda1path[0] = lambda1max;
+      opt->lambda1max = get_lambda1max_gmatrix(g, opt->phi1_func, opt->phi2_func);
+      if(opt->verbose)
+	 printf("lambda1max: %.5f\n", opt->lambda1max);
+      opt->lambda1path[0] = opt->lambda1max;
    }
    
-   lambda1min = lambda1max * l1minratio;
-   lambda1path[nlambda1 - 1] = lambda1min;
-   s = (log(lambda1max) - log(lambda1min)) / nlambda1; 
-   for(i = 1 ; i < nlambda1 ; i++)
-      lambda1path[i] = exp(log(lambda1max) - s * i);
+   opt->lambda1min = opt->lambda1max * opt->l1minratio;
+   opt->lambda1path[opt->nlambda1 - 1] = opt->lambda1min;
+   s = (log(opt->lambda1max) - log(opt->lambda1min)) / opt->nlambda1; 
+   for(i = 1 ; i < opt->nlambda1 ; i++)
+      opt->lambda1path[i] = exp(log(opt->lambda1max) - s * i);
 
-   writevectorf("lambda1path.csv", lambda1path, nlambda1);
+   return writevectorf(opt->lambda1pathfile, opt->lambda1path, opt->nlambda1);
+}
 
-   if(!nofit)
+/*
+ * Run coordinate descent for each lambda1 penalty
+ */
+int run(Opt *opt, gmatrix *g)
+{
+   int i, j, ret;
+   double *betahat;
+   char tmp[MAX_STR_LEN];
+
+   if(opt->verbose)
    {
-      for(i = 0 ; i < nlambda1 ; i++)
+      printf("Parameters: model=%s, maxepochs=%d lambda1=%.9f lambda2=%.9f \n",
+	    opt->model, opt->maxepochs, opt->lambda1, opt->lambda2);
+      printf("%d training samples, %d test samples\n",
+	    opt->ntrain, opt->n - opt->ntrain);
+   }
+
+   if(opt->nofit)
+      return SUCCESS;
+
+   CALLOCTEST2(betahat, opt->p + 1, sizeof(double))
+
+   for(i = 0 ; i < opt->nlambda1 ; i++)
+   {
+      if(opt->verbose)
+	 printf("\nFitting with lambda1=%.20f\n", opt->lambda1path[i]);
+      ret = cd_gmatrix(
+	    g, opt->phi1_func, opt->phi2_func, opt->loss_pt_func,
+	    opt->maxepochs, betahat, opt->lambda1path[i], opt->lambda2,
+	    opt->threshold, opt->verbose, opt->trainf, opt->trunc);
+
+      gmatrix_reset(g);
+
+      if(ret == FAILURE)
       {
-         if(verbose)
-            printf("\nFitting with lambda1=%.20f\n", lambda1path[i]);
-	 ret = cd_gmatrix(
-		  &g, phi1_func, phi2_func, loss_pt_func, maxepochs,
-		  betahat, lambda1path[i], lambda2, threshold, verbose,
-		  trainf, trunc);
+	 printf("failed to converge after %d\n", opt->maxepochs);
+	 break;
+      }
 
-	 if(ret == FAILURE)
-	 {
-	    printf("failed to converge after %d\n", maxepochs);
-	    break;
-	 }
+      snprintf(tmp, MAX_STR_LEN, "%s.%d", opt->betafile, i);
 
-         snprintf(tmp, 100, "%s.%d", betafile, i);
-         writevectorf(tmp, betahat, p + 1);
+      if(!writevectorf(tmp, betahat, opt->p + 1))
+	 return FAILURE;
 
-	 for(j = 0 ; j < p + 1; j++)
+      if(!opt->warmrestarts)
+	 for(j = 0 ; j < opt->p + 1; j++)
 	    betahat[j] = 0;
 
-	 if(nzmax != 0 && nzmax <= ret)
-	 {
-	    printf("maximum number of non-zero variables reached: %d\n", 
-		  nzmax);
-	    break;
-	 }
+      if(opt->nzmax != 0 && opt->nzmax <= ret)
+      {
+	 printf("maximum number of non-zero variables reached: %d\n", 
+	       opt->nzmax);
+	 break;
       }
    }
 
-   /*gmatrix_reset(&g);
-   MALLOCTEST2(yhat_train, ntrain * sizeof(double))*/
-   /*predict_gmatrix_func(&g, betahat, yhat_train, trainf);
+   free(betahat);
 
-   if(ntest > 0)
-   {
-      gmatrix_reset(&g);
-      MALLOCTEST2(yhat_test, ntest * sizeof(double))
-      predict_gmatrix_func(&g, betahat, yhat_test, testf);
-   }*/
+   return SUCCESS;
+}
 
-   /* unscale, return beta to original scale */
-   /*for(i = 1 ; i < p + 1 ; i++)
-      betahat_unsc[i] = g.sd[i] * betahat[i] + g.mean[i];*/
+int main(int argc, char* argv[])
+{
+   Opt opt;
+   gmatrix g;
 
-   /*writevectorf(betafile, betahat, p + 1);
-   writevectorf(betaunscfile, betahat_unsc, p + 1);*/
-   /*writevectorf(predtrainfile, yhat_train, ntrain);*/
+   opt_defaults(&opt);
+   if(!opt_parse(argc, argv, &opt))
+      return EXIT_FAILURE;
 
-
-   printf("###############################\n");
-
-   /*gmatrix_reset(&g);
-   printf("Training AUC (fixed beta): %.5f\n",
-	 gmatrix_auc(yhat_train, &g, trainf, ntrain));
-
+   if(!gmatrix_init(&g, opt.filename, opt.n, opt.p))
+      return EXIT_FAILURE;
+  
+   make_lambda1path(&opt, &g);
    gmatrix_reset(&g);
-   printf("Training Accuracy (fixed beta): %.8f\n",
-	 gmatrix_accuracy(yhat_train, &g, 0.5, trainf, ntrain));
 
-   printf("\n");
-   
-
-   printf("###############################\n");
-
-   if(ntest > 0)
-   {
-      gmatrix_reset(&g);
-      printf("Test AUC (fixed beta): %.5f\n",
-	    gmatrix_auc(yhat_test, &g, testf, ntest));
-   
-      gmatrix_reset(&g);
-      printf("Test Accuracy (fixed beta): %.8f\n",
-	    gmatrix_accuracy(yhat_test, &g, 0.5, testf, ntest));
-   
-      writevectorf(predtestfile, yhat_test, ntest);
-   }
-
-   printf("\n");
-
-   */
+   run(&opt, &g);
 
    gmatrix_free(&g);
-   free(betahat);
-   free(betahat_unsc);
-   /*free(yhat_train);*/
-/*   free(yhat_test);*/
-   free(trainf);
-   free(lambda1path);
-   if(testf)
-      free(testf);
+   opt_free(&opt);
    
    return EXIT_SUCCESS;
 }

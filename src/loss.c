@@ -92,5 +92,12 @@ double logphi2(double lp)
    return p * (1 - p);
 }
 
+/*double sqhingephi1(double lp)
+{
+}
 
+double sqhingephi2(double lp)
+{
+}
+*/
 

@@ -6,6 +6,8 @@
 #define SUCCESS 1
 #define FAILURE 0
 
+#define MAX_STR_LEN 100
+
 /* Value below which std dev is considered zero */
 #define SDTHRESH 1e-10
 
