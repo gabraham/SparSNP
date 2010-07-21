@@ -158,16 +158,23 @@ hapgen2bin <- function(hgfile, hgyfile, outfile, alleles=c(0, 1, 2), sep=" ")
    close(yin)
 }
 
-hapgen2ped <- function(hgfile, hgyfile, outfile, alleles=c(0, 1, 2), sep=" ")
+# Converts hapgen output to plink PED files
+hapgen2ped <- function(hgfile, hgyfile, outfile,
+      alleles=c("0"="AA", "1"="AB", "2"="BB"),
+      constfields=c(FamilyID=1, PaternalID=0, MaternalID=0, Sex=1),
+      plinkpheno=c(unaffected=1, affected=2), hgsep=" "
+   )
 {
    fin <- file(hgfile, "rt")
-   out <- file(outfile, "wb")
    yin <- file(hgyfile, "rt")
+   
+   #out <- file(outfile, "wb")
+   cat("", file=outfile)
 
-   cont <- contr.treatment(factor(alleles))
-
-   cat("Using conversion table:\n")
-   print(cont)
+   # plink wants spaces between the alleles
+   alleles2 <- sapply(strsplit(alleles, ""), {
+      function(k) paste(k, collapse=" ")
+   })
 
    i <- 1
    while(TRUE)
@@ -176,28 +183,50 @@ hapgen2ped <- function(hgfile, hgyfile, outfile, alleles=c(0, 1, 2), sep=" ")
       if(length(y) == 0)
 	 break
       r <- readLines(fin, n=1)
-      r <- strsplit(r, split=sep)[[1]]
+      r <- strsplit(r, split=hgsep)[[1]]
 
-      cat("read", length(r), "fields\n")
+      # plink phenotype coding
+      yp <- ifelse(y == 0, plinkpheno["unaffected"], plinkpheno["affected"])
 
-      # Equivalent to calling model.matrix on the entire matrix, except for
-      # the intercept that we don't include here but is added later in SGD.
-      bin <- as.integer(t(cont[r,])) 
-      v <- as.character(c(y, bin))
-      x <- as.raw(v)
-      cat(i, "y=", y, length(x), "following: x:", x[1:21], "...\n")
-      writeBin(x, con=out)
-      flush(out)
+      s <- paste(constfields["FamilyID"], i, constfields["PaternalID"],
+	 constfields["MaternalID"], constfields["Sex"], yp,
+	 paste(alleles2[r], collapse=" ")
+      )
+      cat(i, "\r")
+      cat(s, "\n", file=outfile, append=TRUE)
       i <- i + 1
    }
    cat("\n")
 
-   #cat("Number of variables:", length(x) - 1, "\n")
-
-   close(out)
    close(fin)
    close(yin)
+}
 
+# Converts HapMap legend files, used by hapgen, to plink MAP files
+hapmap2map <- function(lfile, outfile, chromo=0, genetdist=0, lsep="\t",
+      skip=1)
+{
+   fin <- file(lfile, "rt")
+
+   cat("", file=outfile)
+
+   i <- 1
+   while(TRUE)
+   {
+      r <- readLines(fin, n=1)
+
+      if(length(r) == 0) {
+	 break
+      } else if(i > skip) {
+	 r <- strsplit(r, split=lsep)[[1]]
+	 s <- paste(chromo, r[1], genetdist, r[2])
+	 cat(s, "\n", file=outfile, append=TRUE)
+      }
+      i <- i + 1
+   }
+
+   close(fin)
+}
 
 bin2smidas <- function(infile, outfile="smidas", n, p,
       type=c("numeric", "integer"))

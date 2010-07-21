@@ -355,112 +355,6 @@ EOF
    /bin/rm $rscript
 }
 
-#################################################################################
-## Small example with one strong SNP
-#
-#DIR="ex"
-#prefix="sim"
-#
-## No. samples in each group
-#N=5000
-#
-#if ! [ -d "$DIR" ]; then
-#   mkdir $DIR
-#fi
-#
-#./hapgen -h example/ex.haps \
-#-l example/ex.leg \
-#-r example/ex.map \
-#-o $DIR/$prefix -n $N $N -gen -rr 2 4 -dl 14431347
-#
-#shuffle $DIR $prefix $((2*N))
-#convert $DIR $prefix $((2*N))
-#
-#exit 1
-
-################################################################################
-
-#testscd
-
-#exit 1
-
-#################################################################################
-## Truncated HapMap data, one strong SNP
-#
-#DIR=sim1
-#prefix="sim"
-#p=100
-#N=1000 # No. samples in each group
-#HAPLO=HapMap/genotypes_chr1_JPT+CHB_r22_nr.b36_fwd.phased.100
-#LEGEND=HapMap/genotypes_chr1_JPT+CHB_r22_nr.b36_fwd_legend.txt.100
-#SNP=72434
-#
-#if ! [ -d "$DIR" ]; then
-#   mkdir $DIR
-#fi
-#
-#set +e
-#./hapgen -h $HAPLO -l $LEGEND \
-#-o $DIR/$prefix -n $N $N -gen -rr 4 8 -dl $SNP
-#set -e
-#
-#shuffle $DIR $prefix $((2*N))
-#convert $DIR $prefix $((2*N))
-#
-#exit 1
-
-##formatsmidas $DIR "$prefix.bin" $N $p
-##formatscd $DIR "$prefix.bin" $N $p
-#
-#
-################################################################################
-# Truncated HapMap data, one strong SNP, different SNP
-#
-#DIR=sim2
-#SNP=555296
-#
-#if ! [ -d "$DIR" ]; then
-#   mkdir $DIR
-#fi
-#
-#./hapgen -h $HAPLO -l $LEGEND \
-#-o $DIR/$prefix -n $N $N -gen -rr 4 8 -dl $SNP
-#
-#shuffleconv $DIR $prefix $N
-#
-###formatsmidas $DIR "$prefix.bin" $N $p
-###formatscd $DIR "$prefix.bin" $N $p
-##
-#
-#exit 1
-#
-#################################################################################
-## HapMap data, one strong SNP
-#
-#DIR=sim3
-#prefix="sim"
-#
-#if ! [ -d "$DIR" ]; then
-#   mkdir $DIR
-#fi
-#
-## No. samples in each group
-#N=2500
-#p=185805
-#HAPLO=HapMap/genotypes_chr1_JPT+CHB_r22_nr.b36_fwd.phased
-#LEGEND=HapMap/genotypes_chr1_JPT+CHB_r22_nr.b36_fwd_legend.txt
-#
-##./hapgen -h $HAPLO -l $LEGEND \
-##-o $DIR/$prefix -n $N $N -gen -rr 4.0 8.0 -dl 555296
-#
-##shuffleconv $DIR $prefix $N
-#
-#formatsvmlight $DIR "$prefix.bin" $N $p
-#
-#exit 1
-
-#################################################################################
-
 function simulate {
    local DIR=$1
    local prefix=$2
@@ -557,22 +451,34 @@ EOF
    transpose $DIR/sim.bin $((N*2)) $P 
 }
 
-#function randomdata {
-#   shuffle $DIR $prefix $((N*2))
-#   convert $DIR $prefix $((N*2))
-#   transpose $DIR/sim.bin $((N*2)) $P 
-#}
+#################################################################################
 
-## Small HapMap data, several strong SNPs
-#DIR=sim5
-#prefix="sim"
-#N=1000
-#K=2
-#HAPLO=HapMap/genotypes_chr1_JPT+CHB_r22_nr.b36_fwd.phased.100
-#LEGEND=HapMap/genotypes_chr1_JPT+CHB_r22_nr.b36_fwd_legend.txt.100
-#simulate $DIR $prefix $N $K $HAPLO $LEGEND
-#
-#exit 1
+
+# HapMap data, one strong SNP
+
+DIR=sim1
+prefix="sim"
+N=1000 # No. samples in each group
+HAPLO=HapMap/genotypes_chr1_JPT+CHB_r22_nr.b36_fwd.phased
+LEGEND=HapMap/genotypes_chr1_JPT+CHB_r22_nr.b36_fwd_legend.txt
+SNP=72434
+
+if ! [ -d "$DIR" ]; then
+   mkdir $DIR
+fi
+
+set +e
+./hapgen -h $HAPLO -l $LEGEND \
+-o $DIR/$prefix -n $N $N -gen -rr 1.5 2.25 -dl $SNP
+set -e
+
+#shuffle $DIR $prefix $((2*N))
+#convert $DIR $prefix $((2*N))
+
+exit 1
+
+
+################################################################################
 
 for ((J=1 ; J<=10; J++));
 do
