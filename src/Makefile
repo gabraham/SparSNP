@@ -2,7 +2,7 @@
 .PHONY: all
 
 
-targets = cd scale cd_double pcor
+targets = cd scale cd_double
 all: $(targets)
 
 # what about *.h?

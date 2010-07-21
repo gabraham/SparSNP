@@ -131,7 +131,7 @@ P <- 3:13
 res <- lapply(P, function(k) {
    rmoutput()
    cat(k, "... ")
-   r <- run(n=n, p=2^k, nsim=3)
+   r <- run(n=n, p=2^k, nsim=50)
    cat("\n")
    list(res=r, n=n, p=2^k)
 })
