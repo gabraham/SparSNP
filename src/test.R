@@ -75,7 +75,7 @@ run <- function(n, p, nsim=50)
       
       acc.cd <- apply(b.cd, 2, accuracy, b=beta.z)
 
-      cbind(df=df.cd, acc=acc.cd, mes=t(mes.cd))
+      cbind(df=df.cd, acc=acc.cd, mes=t(mes.cd), nonzero=sum(beta.z))
    }
 
    res <- lapply(1:nsim, function(i) {
@@ -85,9 +85,9 @@ run <- function(n, p, nsim=50)
 
    res2 <- data.frame(do.call("rbind", res), check.names=FALSE,
 	 check.rows=FALSE)
+   
    res2$Sim <- rep(1:nsim, sapply(res, nrow))
-   colnames(res2) <- c("DF", "ACC", "APRC", "AROC", "Sim")
-   #res2$DF <- factor(res2$DF)
+   colnames(res2) <- c("DF", "ACC", "APRC", "AROC", "NonZero", "Sim")
 
    res2
 }
@@ -99,19 +99,25 @@ rmoutput <- function()
    unlink(list.files(pattern="^b\\.cd\\.[[:digit:]]+"))
 }
 
-do_plot <- function(r)
+do_plot <- function(r, n, p)
 {
    g1 <- ggplot(r, aes(x=DF, y=AROC)) 
    g1 <- g1 + ylim(0, 1)
    g1 <- g1 + stat_summary(fun.y="mean_cl_normal",
       geom="errorbar", fun.ymin=min, fun.ymax=max)
    g1 <- g1 + stat_summary(fun.y=mean, geom="point")
+   g1 <- g1 + opts(
+      title=sprintf("N=%s, p=%s, nonzero=%s", n, p, round(mean(r$NonZero),
+	    digits=1)))
 
    g2 <- ggplot(r, aes(x=DF, y=APRC)) 
    g2 <- g2 + ylim(0, 1)
    g2 <- g2 + stat_summary(fun.y="mean_cl_normal",
       geom="errorbar", fun.ymin=min, fun.ymax=max)
    g2 <- g2 + stat_summary(fun.y=mean, geom="point")
+   g2 <- g2 + opts(
+      title=sprintf("N=%s, p=%s, nonzero=%s", n, p, round(mean(r$NonZero),
+	    digits=1)))
 
    grid.newpage()
    pushViewport(viewport(layout=grid.layout(1, 2)))
@@ -120,15 +126,17 @@ do_plot <- function(r)
    print(g2, vp=viewport(layout.pos.row=1, layout.pos.col=2))
 }
 
-res <- lapply(3:12, function(i) {
+n <- 1000
+P <- 3:13
+res <- lapply(P, function(k) {
    rmoutput()
-   cat(i, "... ")
-   r <- run(n=1000, p=2^i, nsim=50)
+   cat(k, "... ")
+   r <- run(n=n, p=2^k, nsim=3)
    cat("\n")
-   r
+   list(res=r, n=n, p=2^k)
 })
 
 pdf("results_sim.pdf", width=10)
-for(r in res) do_plot(r)
+for(r in res) do_plot(r$res, r$n, r$p)
 dev.off()
 

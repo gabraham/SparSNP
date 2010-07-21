@@ -297,9 +297,8 @@ int run(Opt *opt, gmatrix *g)
 
 int run_pcor(Opt *opt, gmatrix *g)
 {
-   int i, j, k, ret;
-   double *betahat;
-   char tmp[MAX_STR_LEN];
+   int i, j, ret;
+   double *betahat = NULL;
    FILE *out;
 
    FOPENTEST(out, opt->filename, "wb");
@@ -316,7 +315,7 @@ int run_pcor(Opt *opt, gmatrix *g)
 
 	 ret = cd_gmatrix(
       	       g, opt->phi1_func, opt->phi2_func, opt->loss_pt_func,
-      	       opt->maxepochs, betahat[j], opt->lambda1path[i], opt->lambda2,
+      	       opt->maxepochs, betahat, opt->lambda1path[i], opt->lambda2,
       	       opt->threshold, opt->verbose, opt->trainf, opt->trunc);
 
       	 gmatrix_reset(g);
@@ -343,14 +342,10 @@ int run_pcor(Opt *opt, gmatrix *g)
       	 }
 
 	 /* write output incrementally */
-	 for(k = 0 ; k < opt->p + 1 ; k++)
-	    FWRITETEST(betahat[k], sizeof(double), opt->p + 1, out)
+	 FWRITETEST(betahat, sizeof(double), opt->p + 1, out)
 
 	 free(betahat);
       }
-
-      if(!writematrixf(betahat, opt->n, opt->p, opt->betafile))
-	 return FAILURE;
    }
 
 
@@ -376,7 +371,7 @@ int main(int argc, char* argv[])
    make_lambda1path(&opt, &g);
    gmatrix_reset(&g);
 
-   if(!opt->nofit)
+   if(!opt.nofit)
       run(&opt, &g);
 
    gmatrix_free(&g);
