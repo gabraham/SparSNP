@@ -39,7 +39,7 @@ run <- function(n, p, nsim=50)
       z <- cbind(y, xs)
       writeBin(as.numeric(z), con="x.bin.t")
       
-      cmd <- sprintf("./cd_double -model logistic \\
+      cmd <- sprintf("../cd_double -model logistic \\
       -f x.bin.t -n %s -p %s \\
       -epochs 100 \\
       -nl1 100 -v \\
@@ -75,6 +75,8 @@ run <- function(n, p, nsim=50)
       
       acc.cd <- apply(b.cd, 2, accuracy, b=beta.z)
 
+      # DF: number of non-zeros estimated by lasso
+      # nonzero: number of true non-zeros
       cbind(df=df.cd, acc=acc.cd, mes=t(mes.cd), nonzero=sum(beta.z))
    }
 
@@ -126,6 +128,7 @@ do_plot <- function(r, n, p)
    print(g2, vp=viewport(layout.pos.row=1, layout.pos.col=2))
 }
 
+setwd("test")
 n <- 1000
 P <- 3:13
 res <- lapply(P, function(k) {

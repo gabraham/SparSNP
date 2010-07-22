@@ -1,6 +1,8 @@
 #include "common.h"
 #include "cd.h"
 
+#define MAX_SHOW_NOTCONV 100
+
 short convergetest(double a, double b, double threshold)
 {
    /* absolute convergence */
@@ -16,23 +18,41 @@ short convergetest(double a, double b, double threshold)
 double get_lambda1max_gmatrix(
       gmatrix *g,
       phi1 phi1_func,
-      phi2 phi2_func)
+      phi2 phi2_func,
+      inv inv_func
+      )
 {
    int i, j;
    double *lp = NULL;
-   double grad, d2, s, zmax = 0;
+   double grad, d2, s, zmax = 0, beta0;
    sample sm;
 
    CALLOCTEST(lp, g->n, sizeof(double))
    if(!sample_init(&sm, g->n))
       return FAILURE;
 
-   for(j = 0 ; j < g->p + 1; j++)
-   {
-      gmatrix_disk_nextcol(g, &sm);
 
+   gmatrix_disk_nextcol(g, &sm);
+
+   /* First compute the intercept. When all other variables are zero, the
+    * intercept is just the inv(mean(y)) */
+   s = 0;
+   for(i = 0 ; i < g->n ; i++)
+      s += (double)g->y[i];
+
+   beta0 = inv_func(s / g->n);
+
+   for(i = 0 ; i < g->n ; i++)
+      lp[i] = beta0;
+
+   printf("intercept: %.20f\n", beta0);
+
+   for(j = 1 ; j < g->p + 1; j++)
+   {
       grad = 0;
       d2 = 0;
+
+      gmatrix_disk_nextcol(g, &sm);
 
       /* compute gradient */
       for(i = 0 ; i < g->n ; i++)
@@ -50,12 +70,9 @@ double get_lambda1max_gmatrix(
 	 s = -grad / d2;
 
       /* find smallest lambda1 that makes all coefficients zero, by finding
-       * the largest z, but evaluate the intercept first because
+       * the largest z, but let the intercept affect lp first because
        * it's not penalised. */
-      if(j == 0)
-	 for(i = 0 ; i < g->n ; i++)
-	    lp[i] = sm.x[i] * s;
-      else if(zmax < fabs(s))
+      if(zmax < fabs(s))
 	 zmax = fabs(s);
    } 
 
@@ -65,64 +82,12 @@ double get_lambda1max_gmatrix(
    return zmax;
 }
 
-/*int cd_gmatrix2(gmatrix *g,
-      phi1 phi1_func,
-      phi2 phi2_func,
-      loss_pt loss_pt_func,
-      int maxepoch,
-      double *beta,
-      double lambda1)
-{
-   int i, j;
-   int iter;
-   double beta_old = 0, grad, d2, s;
-   double *lp = NULL;
-   sample sm;
-
-   CALLOCTEST(lp, g->n, sizeof(double))
-
-   if(!sample_init(&sm, g->n))
-      return FAILURE;
-
-   for(iter = 0 ; iter < maxepoch ; iter++)
-   {
-      for(j = 0 ; j < g->p + 1; j++)
-      {
-	 beta_old = beta[j];
-	 gmatrix_disk_nextcol(g, &sm);
-	 grad = d2 = 0;
-	 for(i = 0 ; i < g->n ; i++)
-	 {
-	    grad += sm.x[i] * (phi1_func(lp[i]) - g->y[i]);
-	    d2 += sm.x[i] * sm.x[i] * phi2_func(lp[i]);
-	 }
-	 
-	 s = 0;
-	 if(d2 != 0)
-	    s = grad / d2;
-
-	 if(j == 0)
-	    beta[j] = soft_threshold(beta[j] - s, lambda1);
-	 else
-	    beta[j] -= s;
-
-	 for(i = 0 ; i < g->n ; i++)
-	    lp[i] += sm.x[i] * (beta[j] - beta_old);
-      }
-   }
-
-   free(lp);
-   sample_free(&sm);
-
-   return SUCCESS;
-}*/
-
-
 /* coordinate descent */
 int cd_gmatrix(gmatrix *g,
       phi1 phi1_func,
       phi2 phi2_func,
       loss_pt loss_pt_func,    /* loss for one sample */
+      inv inv_func,
       int maxepoch, double *beta, double lambda1, double lambda2,
       double threshold, int verbose, int *trainf, double trunc)
 {
@@ -157,6 +122,17 @@ int cd_gmatrix(gmatrix *g,
 	 if(converged[j])
 	   continue;
 
+	 /*if(epoch == 1 && j == 0)
+	 {
+	    s = 0;
+	    for(i = 0 ; i < g->n ; i++)
+	       s += (double)g->y[i];
+
+	    beta[j] = inv_func(s / g->n);
+	     
+	    continue;
+	 }*/
+
 	 grad = 0;
 	 d2 = 0;
 
@@ -175,6 +151,11 @@ int cd_gmatrix(gmatrix *g,
 	 s = 0;
 	 if(d2 != 0)
 	    s = grad / d2;
+
+	 if(verbose > 2 && j == 0)
+	 {
+	    printf(">>> %.10f %.10f\n", grad, d2);
+	 }
 
 	 /* don't penalise intercept */
 	 if(j == 0)
@@ -208,7 +189,7 @@ int cd_gmatrix(gmatrix *g,
 	 loss = 0;
 	 for(i = 0 ; i < g->n ; i++)
 	 {
-	    if(verbose > 1)
+	    if(verbose > 3)
 	       printf("\tlp[%d]: %.3f\n", i, lp[i]);
 	    loss += loss_pt_func(lp[i], g->y[i]) / g->n;
 	 }
@@ -218,6 +199,9 @@ int cd_gmatrix(gmatrix *g,
       {
 	 zeros = 0;
 
+	 if(verbose > 1 && !converged[0])
+	    printf("intercept not converged: %.10f\n", beta[0]); 
+
 	 for(j = 1 ; j < g->p + 1 ; j++)
 	 {
 	    if(fabs(beta[j]) < ZERO_THRESH)
@@ -226,11 +210,8 @@ int cd_gmatrix(gmatrix *g,
 	       zeros++;
 	    }
 
-	    if(verbose > 1 && g->p - numconverged < 100 && !converged[j])
-	    {
-	       printf("not converged: %d (%.20f, %.20f, %.20f)\n",
-		     j, beta[j], grad, d2);
-	    }
+	    if(verbose > 1 && !converged[j])
+	       printf("beta[%d] not converged: %.10f\n", j, beta[j]);
 	 }
       }
 
@@ -246,12 +227,13 @@ int cd_gmatrix(gmatrix *g,
    epoch, loss, numconverged, zeros, g->p - zeros);
       }
 
+      /* All vars must converge in two consecutive epochs 
+       * in order to stop */
       if(numconverged == g->p + 1)
       {
 	 printf("all converged\n");
 	 allconverged++;
-
-	 /* converged twice in a row, no need to continue */
+	 
 	 if(allconverged == CONVERGED)
 	 {
 	    printf("terminating with %d non-zero coefs\n\n",
@@ -263,6 +245,8 @@ int cd_gmatrix(gmatrix *g,
 	    converged[j] = FALSE;
 	 numconverged = 0;
       }
+      else
+	 allconverged = 0;
 
       if(verbose)
 	 printf("\n");

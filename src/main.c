@@ -86,27 +86,21 @@ int opt_parse(int argc, char* argv[], Opt* opt)
 	    opt->loss_pt_func = &logloss_pt;
 	    opt->phi1_func = &logphi1;
 	    opt->phi2_func = &logphi2;
+	    opt->inv_func = &loginv;
 	 }
-	 else if(strcmp2(opt->model, "linear"))
+	 else if(strcmp2(opt->model, "linear") ||
+	       strcmp2(opt->model, "pcor"))
 	 {
 	    opt->loss_pt_func = &l2loss_pt;
 	    opt->phi1_func = &l2phi1;
 	    opt->phi2_func = &l2phi2;
-	 }
-	 else if(strcmp2(opt->model, "pcor"))
-	 {
-	    opt->loss_pt_func = &l2loss_pt;
-	    opt->phi1_func = &l2phi1;
-	    opt->phi2_func = &l2phi2;
+	    opt->inv_func = &l2inv;
 	 }
 	 else
 	 {
 	    printf("model not available\n");
 	    return EXIT_FAILURE;
 	 }
-	 /*else if(strcmp2(model, "hinge"))
-	 {
-	 }*/
       }
       else if(strcmp2(argv[i], "-nofit"))
       {
@@ -131,6 +125,7 @@ int opt_parse(int argc, char* argv[], Opt* opt)
       {
 	 i++;
 	 opt->lambda1 = atof(argv[i]);
+	 opt->nlambda1 = 1;
       }
       else if(strcmp2(argv[i], "-l2"))
       {
@@ -159,6 +154,10 @@ int opt_parse(int argc, char* argv[], Opt* opt)
       else if(strcmp2(argv[i], "-vv"))
       {
 	 opt->verbose = 2;
+      }
+      else if(strcmp2(argv[i], "-vvv"))
+      {
+	 opt->verbose = 3;
       }
       else if(strcmp2(argv[i], "-beta"))
       {
@@ -200,6 +199,7 @@ int opt_parse(int argc, char* argv[], Opt* opt)
 
    CALLOCTEST2(opt->lambda1path, opt->nlambda1, sizeof(double))
    
+   cvsplit(opt);
 
    return SUCCESS; 
 }
@@ -222,9 +222,10 @@ int make_lambda1path(Opt *opt, gmatrix *g)
    {
       /* create lambda1 path */
       /* get lambda1 max */
-      opt->lambda1max = get_lambda1max_gmatrix(g, opt->phi1_func, opt->phi2_func);
+      opt->lambda1max = get_lambda1max_gmatrix(g, opt->phi1_func,
+	    opt->phi2_func, opt->inv_func);
       if(opt->verbose)
-	 printf("lambda1max: %.5f\n", opt->lambda1max);
+	 printf("lambda1max: %.20f\n", opt->lambda1max);
       opt->lambda1path[0] = opt->lambda1max;
    }
    
@@ -248,8 +249,6 @@ int run(Opt *opt, gmatrix *g)
 
    if(opt->verbose)
    {
-      printf("Parameters: model=%s, maxepochs=%d lambda1=%.9f lambda2=%.9f \n",
-	    opt->model, opt->maxepochs, opt->lambda1, opt->lambda2);
       printf("%d training samples, %d test samples\n",
 	    opt->ntrain, opt->n - opt->ntrain);
    }
@@ -262,16 +261,17 @@ int run(Opt *opt, gmatrix *g)
 	 printf("\nFitting with lambda1=%.20f\n", opt->lambda1path[i]);
       ret = cd_gmatrix(
 	    g, opt->phi1_func, opt->phi2_func, opt->loss_pt_func,
+	    opt->inv_func,
 	    opt->maxepochs, betahat, opt->lambda1path[i], opt->lambda2,
 	    opt->threshold, opt->verbose, opt->trainf, opt->trunc);
 
       gmatrix_reset(g);
 
-      if(ret == FAILURE)
+  /*    if(ret == FAILURE)
       {
 	 printf("failed to converge after %d\n", opt->maxepochs);
 	 break;
-      }
+      } */
 
       snprintf(tmp, MAX_STR_LEN, "%s.%d", opt->betafile, i);
 
@@ -315,6 +315,7 @@ int run_pcor(Opt *opt, gmatrix *g)
 
 	 ret = cd_gmatrix(
       	       g, opt->phi1_func, opt->phi2_func, opt->loss_pt_func,
+	       opt->inv_func,
       	       opt->maxepochs, betahat, opt->lambda1path[i], opt->lambda2,
       	       opt->threshold, opt->verbose, opt->trainf, opt->trunc);
 
@@ -360,6 +361,8 @@ int main(int argc, char* argv[])
 {
    Opt opt;
    gmatrix g;
+
+   setbuf(stdout, NULL);
 
    opt_defaults(&opt);
    if(!opt_parse(argc, argv, &opt))

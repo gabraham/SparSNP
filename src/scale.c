@@ -1,6 +1,10 @@
 #include "cd.h"
 #include "util.h"
 
+/*
+ * Converts a matrix encoded as chars (one byte per entry), scales it, and
+ * saves it as a matrix of doubles (8 bytes per entry).
+ */
 int scale(gmatrix *g, char* filename)
 {
    int i, j;

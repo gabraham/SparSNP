@@ -92,12 +92,14 @@ double logphi2(double lp)
    return p * (1 - p);
 }
 
-/*double sqhingephi1(double lp)
+double l2inv(double lp)
 {
+   return lp;
 }
 
-double sqhingephi2(double lp)
+/* same as logit */
+double loginv(double lp)
 {
+   return log(lp / (1 - lp));
 }
-*/
 
