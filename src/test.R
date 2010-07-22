@@ -128,7 +128,7 @@ do_plot <- function(r, n, p)
    print(g2, vp=viewport(layout.pos.row=1, layout.pos.col=2))
 }
 
-setwd("test")
+#setwd("test")
 n <- 1000
 P <- 3:13
 res <- lapply(P, function(k) {

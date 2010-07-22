@@ -45,8 +45,6 @@ double get_lambda1max_gmatrix(
    for(i = 0 ; i < g->n ; i++)
       lp[i] = beta0;
 
-   printf("intercept: %.20f\n", beta0);
-
    for(j = 1 ; j < g->p + 1; j++)
    {
       grad = 0;
@@ -151,11 +149,6 @@ int cd_gmatrix(gmatrix *g,
 	 s = 0;
 	 if(d2 != 0)
 	    s = grad / d2;
-
-	 if(verbose > 2 && j == 0)
-	 {
-	    printf(">>> %.10f %.10f\n", grad, d2);
-	 }
 
 	 /* don't penalise intercept */
 	 if(j == 0)
