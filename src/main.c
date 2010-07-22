@@ -179,6 +179,10 @@ int opt_parse(int argc, char* argv[], Opt* opt)
 	 i++;
 	 opt->nzmax = atol(argv[i]);
       }
+      else if(strcmp2(argv[i], "-warm"))
+      {
+	 opt->warmrestarts = TRUE;
+      }
    }
 
 
