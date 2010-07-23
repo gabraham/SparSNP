@@ -274,6 +274,9 @@ int run(Opt *opt, gmatrix *g)
    {
       if(opt->verbose)
 	 printf("\nFitting with lambda1=%.20f\n", opt->lambda1path[i]);
+
+      /* return value is number of nonzero variables,
+       * including the intercept */
       ret = cd_gmatrix(
 	    g, opt->phi1_func, opt->phi2_func, opt->loss_pt_func,
 	    opt->inv_func, opt->step_func,
@@ -282,11 +285,11 @@ int run(Opt *opt, gmatrix *g)
 
       gmatrix_reset(g);
 
-  /*    if(ret == FAILURE)
+      if(ret == FAILURE)
       {
 	 printf("failed to converge after %d\n", opt->maxepochs);
 	 break;
-      } */
+      } 
 
       snprintf(tmp, MAX_STR_LEN, "%s.%d", opt->betafile, i);
 
@@ -297,7 +300,7 @@ int run(Opt *opt, gmatrix *g)
 	 for(j = 0 ; j < opt->p + 1; j++)
 	    betahat[j] = 0;
 
-      if(opt->nzmax != 0 && opt->nzmax <= ret)
+      if(opt->nzmax != 0 && opt->nzmax <= ret - 1)
       {
 	 printf("maximum number of non-zero variables reached: %d\n", 
 	       opt->nzmax);

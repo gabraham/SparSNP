@@ -347,8 +347,9 @@ function transpose {
    local rscript=.transpose.R
 
    cat > $rscript <<EOF
-   x <- matrix(as.numeric(readBin("$infile", what="raw",
-	 n=$n * ($p + 1))), nrow=$n, byrow=TRUE)
+   x <- matrix(readBin("$infile", what="raw",
+	 n=$n * ($p + 1)), nrow=$n, byrow=TRUE)
+   gc()
    writeBin(as.raw(x), con="$outfile")
 EOF
    Rscript $rscript
@@ -456,26 +457,26 @@ EOF
 
 # HapMap data, one strong SNP
 
-DIR=sim1
-prefix="sim"
-N=1000 # No. samples in each group
-HAPLO=HapMap/genotypes_chr1_JPT+CHB_r22_nr.b36_fwd.phased
-LEGEND=HapMap/genotypes_chr1_JPT+CHB_r22_nr.b36_fwd_legend.txt
-SNP=72434
-
-if ! [ -d "$DIR" ]; then
-   mkdir $DIR
-fi
-
-set +e
-./hapgen -h $HAPLO -l $LEGEND \
--o $DIR/$prefix -n $N $N -gen -rr 1.5 2.25 -dl $SNP
-set -e
-
-#shuffle $DIR $prefix $((2*N))
-#convert $DIR $prefix $((2*N))
-
-exit 1
+#DIR=sim1
+#prefix="sim"
+#N=1000 # No. samples in each group
+#HAPLO=HapMap/genotypes_chr1_JPT+CHB_r22_nr.b36_fwd.phased
+#LEGEND=HapMap/genotypes_chr1_JPT+CHB_r22_nr.b36_fwd_legend.txt
+#SNP=72434
+#
+#if ! [ -d "$DIR" ]; then
+#   mkdir $DIR
+#fi
+#
+#set +e
+#./hapgen -h $HAPLO -l $LEGEND \
+#-o $DIR/$prefix -n $N $N -gen -rr 1.5 2.25 -dl $SNP
+#set -e
+#
+##shuffle $DIR $prefix $((2*N))
+##convert $DIR $prefix $((2*N))
+#
+#exit 1
 
 
 ################################################################################
@@ -487,7 +488,7 @@ do
       mkdir $DIR
    fi
    prefix="sim"
-   N=500
+   N=1000
    K=20
    HAPLO=HapMap/genotypes_chr1_JPT+CHB_r22_nr.b36_fwd.phased
    LEGEND=HapMap/genotypes_chr1_JPT+CHB_r22_nr.b36_fwd_legend.txt

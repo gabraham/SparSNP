@@ -55,8 +55,11 @@ double get_lambda1max_gmatrix(
 
       gmatrix_disk_nextcol(g, &sm);
 
+      step_func(sm.x, g->y, lp, g->n,
+	       phi1_func, phi2_func, &grad, &d2);
+
       /* compute gradient */
-      for(i = 0 ; i < g->n ; i++)
+      /*for(i = 0 ; i < g->n ; i++)
       {
 	 if(sm.x[i] == 0)
 	    continue;
@@ -64,7 +67,7 @@ double get_lambda1max_gmatrix(
 	 lphi1 = phi1_func(lp[i]);
 	 grad += sm.x[i] * (lphi1 - g->y[i]);
 	 d2 += sm.x[i] * sm.x[i] * phi2_func(lphi1);
-      }
+      }*/
 
       /* don't move if 2nd derivative is zero */
       s = 0;
@@ -98,8 +101,21 @@ void step_regular(dtype *x, dtype *y, double *lp, int n,
 	 continue;
 
       lphi1 = phi1_func(lp[i]);
-      (*grad) += x[i] * (lphi1 - y[i]);
-      (*d2) += x[i] * x[i] * phi2_func(lphi1);
+      if(x[i] == 1)
+      {
+	 (*grad) += lphi1 - y[i];
+	 (*d2) += phi2_func(lphi1);
+      }
+      else if(x[i] == 2)
+      {
+	 (*grad) += 2 * (lphi1 - y[i]);
+	 (*d2) += 4 * phi2_func(lphi1);
+      }
+      else
+      {
+	 (*grad) += x[i] * (lphi1 - y[i]);
+	 (*d2) += x[i] * x[i] * phi2_func(lphi1);
+      }
    }
 }
 
@@ -164,7 +180,8 @@ int cd_gmatrix(gmatrix *g,
 
 	 grad = d2 = 0;
 
-	 step_func(sm.x, g->y, lp, g->n, phi1_func, phi2_func, &grad, &d2);
+	 step_func(sm.x, g->y, lp, g->n,
+	       phi1_func, phi2_func, &grad, &d2);
 	 
 	 /* don't move if 2nd derivative is zero */
 	 s = 0;
@@ -272,7 +289,7 @@ int cd_gmatrix(gmatrix *g,
    sample_free(&sm);
 
    if(allconverged == CONVERGED)
-      return g->p - zeros;
+      return g->p - zeros + 1;
    else
       return FAILURE;
 }
