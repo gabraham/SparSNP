@@ -11,7 +11,7 @@ typedef double (*predict_pt)(double);
 typedef double (*phi1)(double);
 typedef double (*phi2)(double);
 typedef double (*inv)(double);
-typedef void (*step_regular)(dtype *x, dtype *y, double *lp, int n,
+typedef void (*step)(dtype *x, dtype *y, double *lp, int n,
       phi1 phi1_func, phi2 phi2_func, double *grad, double *d2);
 
 typedef struct Opt {
@@ -43,6 +43,7 @@ typedef struct Opt {
    int *trainf;
    char *subsetfile;
    char *lambda1pathfile;
+   step step_func;
 
 } Opt;
 
@@ -76,4 +77,10 @@ void opt_defaults(Opt *opt);
 int opt_parse(int argc, char* argv[], Opt* opt);
 int make_lambda1path(Opt *opt, gmatrix *g);
 int run(Opt *opt, gmatrix *g);
+
+void step_regular(dtype *x, dtype *y, double *lp, int n,
+      phi1 phi1_func, phi2 phi2_func, double *grad, double *d2);
+
+void step_grouped(dtype *x, dtype *y, double *lp, int n,
+      phi1 phi1_func, phi2 phi2_func, double *grad, double *d2);
 

@@ -164,7 +164,7 @@ int cd_gmatrix(gmatrix *g,
 
 	 grad = d2 = 0;
 
-	 stepfunc(sm.x, g->y, lp, g->n, phi1_func, phi2_func, &grad, &d2);
+	 step_func(sm.x, g->y, lp, g->n, phi1_func, phi2_func, &grad, &d2);
 	 
 	 /* don't move if 2nd derivative is zero */
 	 s = 0;
