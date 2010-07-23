@@ -64,6 +64,7 @@ void opt_defaults(Opt *opt)
    opt->ntrain = opt->n;
    opt->subsetfile = "subset.csv";
    opt->lambda1pathfile = "lambda1path.csv";
+   opt->step_func = NULL;
 }
 
 int opt_parse(int argc, char* argv[], Opt* opt)
@@ -87,6 +88,15 @@ int opt_parse(int argc, char* argv[], Opt* opt)
 	    opt->phi1_func = &logphi1;
 	    opt->phi2_func = &logphi2;
 	    opt->inv_func = &loginv;
+	    opt->step_func = &step_regular;
+	 }
+	 else if(strcmp2(opt->model, "grouped"))
+	 {
+	    opt->loss_pt_func = &logloss_pt;
+	    opt->phi1_func = &logphi1;
+	    opt->phi2_func = &logphi2;
+	    opt->inv_func = &loginv;
+	    opt->step_func = &step_grouped;
 	 }
 	 else if(strcmp2(opt->model, "linear") ||
 	       strcmp2(opt->model, "pcor"))
@@ -95,6 +105,7 @@ int opt_parse(int argc, char* argv[], Opt* opt)
 	    opt->phi1_func = &l2phi1;
 	    opt->phi2_func = &l2phi2;
 	    opt->inv_func = &l2inv;
+	    opt->step_func = &step_regular;
 	 }
 	 else
 	 {
@@ -227,7 +238,7 @@ int make_lambda1path(Opt *opt, gmatrix *g)
       /* create lambda1 path */
       /* get lambda1 max */
       opt->lambda1max = get_lambda1max_gmatrix(g, opt->phi1_func,
-	    opt->phi2_func, opt->inv_func);
+	    opt->phi2_func, opt->inv_func, opt->step_func);
       if(opt->verbose)
 	 printf("lambda1max: %.20f\n", opt->lambda1max);
       opt->lambda1path[0] = opt->lambda1max;
@@ -265,7 +276,7 @@ int run(Opt *opt, gmatrix *g)
 	 printf("\nFitting with lambda1=%.20f\n", opt->lambda1path[i]);
       ret = cd_gmatrix(
 	    g, opt->phi1_func, opt->phi2_func, opt->loss_pt_func,
-	    opt->inv_func,
+	    opt->inv_func, opt->step_func,
 	    opt->maxepochs, betahat, opt->lambda1path[i], opt->lambda2,
 	    opt->threshold, opt->verbose, opt->trainf, opt->trunc);
 
@@ -319,7 +330,7 @@ int run_pcor(Opt *opt, gmatrix *g)
 
 	 ret = cd_gmatrix(
       	       g, opt->phi1_func, opt->phi2_func, opt->loss_pt_func,
-	       opt->inv_func,
+	       opt->inv_func, opt->step_func,
       	       opt->maxepochs, betahat, opt->lambda1path[i], opt->lambda2,
       	       opt->threshold, opt->verbose, opt->trainf, opt->trunc);
 

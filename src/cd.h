@@ -11,6 +11,8 @@ typedef double (*predict_pt)(double);
 typedef double (*phi1)(double);
 typedef double (*phi2)(double);
 typedef double (*inv)(double);
+typedef void (*step_regular)(dtype *x, dtype *y, double *lp, int n,
+      phi1 phi1_func, phi2 phi2_func, double *grad, double *d2);
 
 typedef struct Opt {
    int maxepochs;
@@ -49,21 +51,23 @@ int cd_gmatrix(gmatrix *g,
       phi2 phi2_func,
       loss_pt loss_pt_func,    /* loss for one sample */
       inv inv_func,
+      step step_func,
       int maxepoch, double *beta, double lambda1, double lambda2,
       double threshold, int verbose, int *trainf, double trunc);
 
-int cd_gmatrix2(gmatrix *g,
+/*int cd_gmatrix2(gmatrix *g,
       phi1 phi1_func,
       phi2 phi2_func,
       loss_pt loss_pt_func,
       int maxepoch,
       double *beta,
-      double lambda1);
+      double lambda1);*/
 
 double get_lambda1max_gmatrix(gmatrix *g,
       phi1 phi1_func,
       phi2 phi2_func,
-      inv inv_func
+      inv inv_func,
+      step step_func
 );
 
 int cvsplit(Opt *opt);

@@ -76,8 +76,6 @@ fprintf(stderr, "wrote fewer items than expected (%d)\n", count); \
 return FAILURE; \
 }
 
-
-
 int strcmp2(const char*, const char*);
 
 double soft_threshold(double beta, double gamma);

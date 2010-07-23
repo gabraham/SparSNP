@@ -1,8 +1,7 @@
 # Test CD
 
 library(ggplot2)
-
-#library(glmnet)
+library(glmnet)
 
 #set.seed(16937)
 
@@ -13,6 +12,11 @@ runperf <- function(f)
    p <- as.numeric(sapply(strsplit(s, "[[:space:]]+"), function(x) x[2]))
    names(p) <- sapply(strsplit(s, "[[:space:]]+"), function(x) x[1])
    p
+}
+
+accuracy <- function(a, b)
+{
+   mean(a == 0 & b == 0)
 }
 
 run <- function(n, p, nsim=50)
@@ -33,51 +37,56 @@ run <- function(n, p, nsim=50)
             runif(n) <= plogis(cbind(1, x) %*% beta + rnorm(n, 1, 2)), 1, 0)
       }
 
-      xs <- scale(x)
-      rm(x)
-      gc()
-      z <- cbind(y, xs)
-      writeBin(as.numeric(z), con="x.bin.t")
-      
-      cmd <- sprintf("../cd_double -model logistic \\
-      -f x.bin.t -n %s -p %s \\
-      -epochs 100 \\
-      -nl1 100 -v \\
-      -beta beta_test.csv 2>&1 > /dev/null", n, p)
-      out <- capture.output(system(cmd))
-      
-      files <- list.files(pattern="^beta_test\\.csv\\.")
-      if(length(files) == 0)
-         return()
+      #xs <- scale(x)
+      #rm(x)
+      #gc()
+      #z <- cbind(y, xs)
+      #writeBin(as.numeric(z), con="x.bin.t")
+      #
+      #cmd <- sprintf("../cd_double -model logistic \\
+      #-f x.bin.t -n %s -p %s \\
+      #-epochs 100 \\
+      #-nl1 100 -v \\
+      #-beta beta_test.csv 2>&1 > /dev/null", n, p)
+      #out <- capture.output(system(cmd))
+      #
+      #files <- list.files(pattern="^beta_test\\.csv\\.")
+      #if(length(files) == 0)
+      #   return()
 
-      nm <- as.numeric(sapply(strsplit(files, "\\."), function(x) x[3]))
-      files <- files[order(nm)]
+      #nm <- as.numeric(sapply(strsplit(files, "\\."), function(x) x[3]))
+      #files <- files[order(nm)]
+      #
+      #b.cd <- sapply(files, function(f) {
+      #   read.csv(f, header=FALSE)[,1]
+      #})
+      #df.cd <- apply(b.cd[-1,], 2, function(x) sum(x != 0))
+      #lambda.cd <- read.csv("lambda1path.csv", header=FALSE)[,1]
       
-      b.cd <- sapply(files, function(f) {
-         read.csv(f, header=FALSE)[,1]
+      #mes.cd <- sapply(1:ncol(b.cd), function(i) {
+      #   f <- sprintf("b.cd.%s", i - 1)
+      #   write.table(cbind(beta.z, abs(b.cd[,i])),
+      #      col.names=FALSE, row.names=FALSE, sep="\t",
+      #      file=f)
+      #   runperf(f)
+      #})
+      #acc.cd <- apply(b.cd, 2, accuracy, b=beta.z)
+
+      g <- glmnet(x, factor(y), family="binomial")
+      b.glmnet <- as.matrix(coef(g))
+      mes.cd <- sapply(seq(along=g$lambda), function(i) {
+         f <- sprintf("b.cd_n%s_p%s.%s", n, p, i - 1)
+         write.table(cbind(beta.z, abs(b.glmnet[,i])),
+            col.names=FALSE, row.names=FALSE, sep="\t",
+            file=f)
+         runperf(f)
       })
-      df.cd <- apply(b.cd[-1,], 2, function(x) sum(x != 0))
-      
-      lambda.cd <- read.csv("lambda1path.csv", header=FALSE)[,1]
-      
-      mes.cd <- sapply(1:ncol(b.cd), function(i) {
-	 f <- sprintf("b.cd.%s", i - 1)
-         write.table(cbind(beta.z, abs(b.cd[,i])),
-	    col.names=FALSE, row.names=FALSE, sep="\t",
-	    file=f)
-	 runperf(f)
-      })
-      
-      accuracy <- function(a, b)
-      {
-         mean(a == 0 & b == 0)
-      }
-      
-      acc.cd <- apply(b.cd, 2, accuracy, b=beta.z)
+
 
       # DF: number of non-zeros estimated by lasso
       # nonzero: number of true non-zeros
-      cbind(df=df.cd, acc=acc.cd, mes=t(mes.cd), nonzero=sum(beta.z))
+      #cbind(df=df.cd, acc=acc.cd, mes=t(mes.cd), nonzero=sum(beta.z))
+      cbind(df=g$df, acc=0, mes=t(mes.cd), nonzero=sum(beta.z))
    }
 
    res <- lapply(1:nsim, function(i) {
@@ -131,13 +140,15 @@ do_plot <- function(r, n, p)
 #setwd("test")
 n <- 1000
 P <- 3:13
-res <- lapply(P, function(k) {
-   rmoutput()
+res <- vector("list", length(P))
+for(k in seq(along=P))
+{
+   #rmoutput()
    cat(k, "... ")
    r <- run(n=n, p=2^k, nsim=50)
    cat("\n")
-   list(res=r, n=n, p=2^k)
-})
+   res[[k]] <- list(res=r, n=n, p=2^k)
+}
 
 pdf("results_sim.pdf", width=10)
 for(r in res) do_plot(r$res, r$n, r$p)

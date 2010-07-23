@@ -1,10 +1,10 @@
 #include <math.h>
 #include "loss.h"
 
-double plogis(double x)
+/*double plogis(double x)
 {
    return 1 / (1 + exp(-x));
-}
+}*/
 
 double dotprod(dtype *a, double *b, int m)
 {
@@ -83,12 +83,12 @@ double l2phi2(double lp)
 
 double logphi1(double lp)
 {
-   return plogis(lp);
+   return 1 / (1 + exp(-lp));
 }
 
-double logphi2(double lp)
+double logphi2(double p)
 {
-   double p = logphi1(lp);
+   /*double p = logphi1(lp);*/
    return p * (1 - p);
 }
 

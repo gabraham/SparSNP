@@ -2,6 +2,8 @@
 #include "cd.h"
 
 #define MAX_SHOW_NOTCONV 100
+#define FMAX(a, b) (a < b ? b : a) 
+#define FMIN(a, b) (a < b ? a : b)
 
 short convergetest(double a, double b, double threshold)
 {
@@ -19,18 +21,19 @@ double get_lambda1max_gmatrix(
       gmatrix *g,
       phi1 phi1_func,
       phi2 phi2_func,
-      inv inv_func
+      inv inv_func,
+      step step_func
       )
 {
    int i, j;
    double *lp = NULL;
    double grad, d2, s, zmax = 0, beta0;
+   double lphi1;
    sample sm;
 
    CALLOCTEST(lp, g->n, sizeof(double))
    if(!sample_init(&sm, g->n))
       return FAILURE;
-
 
    gmatrix_disk_nextcol(g, &sm);
 
@@ -58,8 +61,9 @@ double get_lambda1max_gmatrix(
 	 if(sm.x[i] == 0)
 	    continue;
 
-	 grad += sm.x[i] * (phi1_func(lp[i]) - g->y[i]);
-	 d2 += sm.x[i] * sm.x[i] * phi2_func(lp[i]);
+	 lphi1 = phi1_func(lp[i]);
+	 grad += sm.x[i] * (lphi1 - g->y[i]);
+	 d2 += sm.x[i] * sm.x[i] * phi2_func(lphi1);
       }
 
       /* don't move if 2nd derivative is zero */
@@ -80,12 +84,49 @@ double get_lambda1max_gmatrix(
    return zmax;
 }
 
+void step_regular(dtype *x, dtype *y, double *lp, int n,
+      phi1 phi1_func, phi2 phi2_func, double *grad, double *d2)
+{
+   int i;
+   double lphi1;
+
+   /* compute gradient */
+   for(i = 0 ; i < n ; i++)
+   {
+      /* skip zeros, they don't change the linear predictor */
+      if(x[i] == 0)
+	 continue;
+
+      lphi1 = phi1_func(lp[i]);
+      (*grad) += x[i] * (lphi1 - y[i]);
+      (*d2) += x[i] * x[i] * phi2_func(lphi1);
+   }
+}
+
+void step_grouped(dtype *x, dtype *y, double *lp, int n,
+      phi1 phi1_func, phi2 phi2_func, double *grad, double *d2)
+{
+   int i;
+   double lphi1;
+
+   /*for(i = 0 ; i < n ; i++)
+   {
+      if(x[i] == 0)
+	 continue;
+
+      lphi1 = phi1_func(lp[i]);
+      (*grad) += x[i] * (lphi1 - y[i]);
+      (*d2) += x[i] * x[i] * phi2_func(lphi1);
+   }*/
+}
+
 /* coordinate descent */
 int cd_gmatrix(gmatrix *g,
       phi1 phi1_func,
       phi2 phi2_func,
       loss_pt loss_pt_func,    /* loss for one sample */
       inv inv_func,
+      step step_func,
       int maxepoch, double *beta, double lambda1, double lambda2,
       double threshold, int verbose, int *trainf, double trunc)
 {
@@ -104,6 +145,7 @@ int cd_gmatrix(gmatrix *g,
    int allconverged = 0;
    int zeros = 0;
    const int CONVERGED = 2;
+   /*double lphi1 = 0;*/
 
    if(!sample_init(&sm, g->n))
       return FAILURE;
@@ -120,31 +162,10 @@ int cd_gmatrix(gmatrix *g,
 	 if(converged[j])
 	   continue;
 
-	 /*if(epoch == 1 && j == 0)
-	 {
-	    s = 0;
-	    for(i = 0 ; i < g->n ; i++)
-	       s += (double)g->y[i];
+	 grad = d2 = 0;
 
-	    beta[j] = inv_func(s / g->n);
-	     
-	    continue;
-	 }*/
-
-	 grad = 0;
-	 d2 = 0;
-
-	 /* compute gradient */
-	 for(i = 0 ; i < g->n ; i++)
-	 {
-	    /* skip zeros, they don't change the linear predictor */
-	    if(sm.x[i] == 0)
-	       continue;
-
-	    grad += sm.x[i] * (phi1_func(lp[i]) - g->y[i]);
-	    d2 += sm.x[i] * sm.x[i] * phi2_func(lp[i]);
-	 }
-
+	 stepfunc(sm.x, g->y, lp, g->n, phi1_func, phi2_func, &grad, &d2);
+	 
 	 /* don't move if 2nd derivative is zero */
 	 s = 0;
 	 if(d2 != 0)
@@ -170,9 +191,8 @@ int cd_gmatrix(gmatrix *g,
 	 /* update linear predictor */
 	 for(i = 0 ; i < g->n ; i++)
 	    if(sm.x[i] != 0)
-	       lp[i] = fmin(fmax(
-			lp[i] + sm.x[i] * (beta_new - beta[j]),
-		       -MAXLP), MAXLP);
+	       lp[i] = fmin(MAXLP, fmax(-MAXLP,
+		     lp[i] + sm.x[i] * (beta_new - beta[j])));
 
 	 beta[j] = beta_new;
       }
@@ -208,7 +228,7 @@ int cd_gmatrix(gmatrix *g,
 	 }
       }
 
-      if(verbose)
+      if(verbose == 1)
       {
 	 printf("Epoch %d  converged: %d zeros: %d  non-zeros: %d\n",
 	       epoch, numconverged, zeros, g->p - zeros);

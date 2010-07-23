@@ -190,6 +190,56 @@ cd2 <- function(x, y, lossfunc, d1phi, d2phi, lambda1=0, maxiter=20)
    beta
 }
 
+# Only for logistic regression
+cd3 <- function(x, y, lossfunc, d1phi=logd1phi, d2phi=logd2phi,
+      lambda1=0, maxiter=20)
+{
+   x <- cbind(1, x)
+   n <- nrow(x)
+   p <- ncol(x)
+   beta <- numeric(p)
+   lp <- x %*% beta
+
+   for(i in 1:maxiter)
+   {
+      cat("epoch", i, "\r")
+      for(j in 1:p)
+      {
+	 beta.old <- beta[j]
+
+	 #grad <- sum(x[, j] * (d1phi(lp) - y))
+	 #d2 <- sum(x[,j]^2 * d2phi(lp))
+	 grad <- sum(
+
+	 #cat(grad, d2, "\n")
+
+	 if(grad != 0 && d2 != 0)
+	 {
+	    beta[j] <- if(j > 1) {
+	       softthresh(beta.old - grad / d2, lambda1)
+	    } else beta.old - grad / d2
+
+	    beta[j] <- sign(beta[j]) * pmin(abs(beta[j]), 20) 
+   
+	    lp <- lp + x[, j] * (beta[j] - beta.old)
+	    lp <- sign(lp) * pmin(abs(lp), 20)
+	 }
+	 #cat(lp, "\n")
+      }
+      nz <- sum(beta != 0)
+      #cat(i, "loss:", lossfunc(x, y, beta), "nonzero:", nz, "\n")
+   }
+   cat("\n")
+   beta
+}
+
+
+compress <- function(x, y)
+{
+   apply(x, 2, function(z) table(y, z))
+}
+
+
 
 #set.seed(32431431)
 #n <- 1000
