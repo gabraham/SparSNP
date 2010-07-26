@@ -15,7 +15,8 @@ short convergetest(double a, double b, double threshold)
    return (fabs(a - b) / (fabs(a) + fabs(b))) < threshold;
 }
 
-/* Find smallest lambda1 that makes all coefficients zero (except the intercept)
+/* Find smallest lambda1 that makes all coefficients
+ * zero (except the intercept)
  */
 double get_lambda1max_gmatrix(
       gmatrix *g,
@@ -28,7 +29,6 @@ double get_lambda1max_gmatrix(
    int i, j;
    double *lp = NULL;
    double grad, d2, s, zmax = 0, beta0;
-   double lphi1;
    sample sm;
 
    CALLOCTEST(lp, g->n, sizeof(double))
@@ -37,8 +37,8 @@ double get_lambda1max_gmatrix(
 
    gmatrix_disk_nextcol(g, &sm);
 
-   /* First compute the intercept. When all other variables are zero, the
-    * intercept is just the inv(mean(y)) */
+   /* First compute the intercept. When all other variables
+    * are zero, the intercept is just the inv(mean(y)) */
    s = 0;
    for(i = 0 ; i < g->n ; i++)
       s += (double)g->y[i];
@@ -48,35 +48,23 @@ double get_lambda1max_gmatrix(
    for(i = 0 ; i < g->n ; i++)
       lp[i] = beta0;
 
+   /* find smallest lambda1 that makes all coefficients zero, by
+    * finding the largest z, but let the intercept affect lp
+    * first because it's not penalised. */
    for(j = 1 ; j < g->p + 1; j++)
    {
-      grad = 0;
-      d2 = 0;
+      grad = d2 = 0;
 
       gmatrix_disk_nextcol(g, &sm);
 
       step_func(sm.x, g->y, lp, g->n,
 	       phi1_func, phi2_func, &grad, &d2);
 
-      /* compute gradient */
-      /*for(i = 0 ; i < g->n ; i++)
-      {
-	 if(sm.x[i] == 0)
-	    continue;
-
-	 lphi1 = phi1_func(lp[i]);
-	 grad += sm.x[i] * (lphi1 - g->y[i]);
-	 d2 += sm.x[i] * sm.x[i] * phi2_func(lphi1);
-      }*/
-
       /* don't move if 2nd derivative is zero */
       s = 0;
       if(d2 != 0)
 	 s = -grad / d2;
 
-      /* find smallest lambda1 that makes all coefficients zero, by finding
-       * the largest z, but let the intercept affect lp first because
-       * it's not penalised. */
       if(zmax < fabs(s))
 	 zmax = fabs(s);
    } 
@@ -101,29 +89,16 @@ void step_regular(dtype *x, dtype *y, double *lp, int n,
 	 continue;
 
       lphi1 = phi1_func(lp[i]);
-      if(x[i] == 1)
-      {
-	 (*grad) += lphi1 - y[i];
-	 (*d2) += phi2_func(lphi1);
-      }
-      else if(x[i] == 2)
-      {
-	 (*grad) += 2 * (lphi1 - y[i]);
-	 (*d2) += 4 * phi2_func(lphi1);
-      }
-      else
-      {
-	 (*grad) += x[i] * (lphi1 - y[i]);
-	 (*d2) += x[i] * x[i] * phi2_func(lphi1);
-      }
+      (*grad) += x[i] * (lphi1 - y[i]);
+      (*d2) += x[i] * x[i] * phi2_func(lphi1);
    }
 }
 
 void step_grouped(dtype *x, dtype *y, double *lp, int n,
       phi1 phi1_func, phi2 phi2_func, double *grad, double *d2)
 {
-   int i;
-   double lphi1;
+   /*int i;
+   double lphi1;*/
 
    /*for(i = 0 ; i < n ; i++)
    {
@@ -146,22 +121,15 @@ int cd_gmatrix(gmatrix *g,
       int maxepoch, double *beta, double lambda1, double lambda2,
       double threshold, int verbose, int *trainf, double trunc)
 {
-   int i, j;
-   int epoch = 1;
-   double loss = 0;
-   double beta_new;
+   int i, j, epoch = 1;
+   double loss = 0, grad, d2, s, beta_new;
    short *converged = NULL;
    int numconverged = 0;
-   double grad = 0;
-   double d2 = 0;
    double *lp = NULL;
-   double s;
    sample sm;
    double truncl = log((1 - trunc) / trunc);
-   int allconverged = 0;
-   int zeros = 0;
+   int allconverged = 0, zeros = 0;
    const int CONVERGED = 2;
-   /*double lphi1 = 0;*/
 
    if(!sample_init(&sm, g->n))
       return FAILURE;

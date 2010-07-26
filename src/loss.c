@@ -52,7 +52,8 @@ double logd2loss_pt_j(dtype x, double P)
 
 double l2loss_pt(double d, dtype y)
 {
-   return pow(y - d, 2);
+   double z = y - d;
+   return z * z;
 }
 
 double l2loss(double *d, dtype *y, int n)

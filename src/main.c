@@ -110,7 +110,7 @@ int opt_parse(int argc, char* argv[], Opt* opt)
 	 else
 	 {
 	    printf("model not available\n");
-	    return EXIT_FAILURE;
+	    return FAILURE;
 	 }
       }
       else if(strcmp2(argv[i], "-nofit"))
