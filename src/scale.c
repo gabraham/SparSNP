@@ -75,6 +75,7 @@ int main(int argc, char* argv[])
    int i, n = 0, p = 0;
    char *filename_in = NULL;
    char *filename_out = NULL;
+   short inmemory = FALSE;
    gmatrix g;
 
    for(i = 1 ; i < argc ; i++)
@@ -99,6 +100,10 @@ int main(int argc, char* argv[])
 	 i++;
 	 p = (int)atof(argv[i]);
       }
+      else if(strcmp2(argv[i], "-inmemory"))
+      {
+	 inmemory = TRUE;
+      }
    }
 
    if(filename_in == NULL || filename_out == NULL || n == 0 || p == 0)
@@ -107,7 +112,7 @@ int main(int argc, char* argv[])
       return EXIT_FAILURE;
    }
 
-   if(!gmatrix_init(&g, filename_in, n, p))
+   if(!gmatrix_init(&g, filename_in, n, p, inmemory))
       return EXIT_FAILURE;
 
    scale(&g, filename_out);

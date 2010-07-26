@@ -65,6 +65,7 @@ void opt_defaults(Opt *opt)
    opt->subsetfile = "subset.csv";
    opt->lambda1pathfile = "lambda1path.csv";
    opt->step_func = NULL;
+   opt->inmemory = FALSE;
 }
 
 int opt_parse(int argc, char* argv[], Opt* opt)
@@ -194,6 +195,10 @@ int opt_parse(int argc, char* argv[], Opt* opt)
       {
 	 opt->warmrestarts = TRUE;
       }
+      else if(strcmp2(argv[i], "-inmemory"))
+      {
+	 opt->inmemory = TRUE;
+      }
    }
 
 
@@ -260,6 +265,7 @@ int run(Opt *opt, gmatrix *g)
 {
    int i, j, ret;
    double *betahat;
+   double *lp;
    char tmp[MAX_STR_LEN];
 
    if(opt->verbose)
@@ -269,6 +275,7 @@ int run(Opt *opt, gmatrix *g)
    }
 
    CALLOCTEST2(betahat, opt->p + 1, sizeof(double))
+   CALLOCTEST2(lp, opt->n, sizeof(double))
 
    for(i = 0 ; i < opt->nlambda1 ; i++)
    {
@@ -280,7 +287,7 @@ int run(Opt *opt, gmatrix *g)
       ret = cd_gmatrix(
 	    g, opt->phi1_func, opt->phi2_func, opt->loss_pt_func,
 	    opt->inv_func, opt->step_func,
-	    opt->maxepochs, betahat, opt->lambda1path[i], opt->lambda2,
+	    opt->maxepochs, betahat, lp, opt->lambda1path[i], opt->lambda2,
 	    opt->threshold, opt->verbose, opt->trainf, opt->trunc);
 
       gmatrix_reset(g);
@@ -297,8 +304,12 @@ int run(Opt *opt, gmatrix *g)
 	 return FAILURE;
 
       if(!opt->warmrestarts)
+      {
 	 for(j = 0 ; j < opt->p + 1; j++)
 	    betahat[j] = 0;
+	 for(j = 0 ; j < opt->n; j++)
+	    lp[j] = 0;
+      }
 
       if(opt->nzmax != 0 && opt->nzmax <= ret - 1)
       {
@@ -309,6 +320,7 @@ int run(Opt *opt, gmatrix *g)
    }
 
    free(betahat);
+   free(lp);
 
    return SUCCESS;
 }
@@ -317,6 +329,7 @@ int run_pcor(Opt *opt, gmatrix *g)
 {
    int i, j, ret;
    double *betahat = NULL;
+   double *lp = NULL;
    FILE *out;
 
    FOPENTEST(out, opt->filename, "wb");
@@ -330,11 +343,12 @@ int run_pcor(Opt *opt, gmatrix *g)
       for(j = 0 ; j < opt->p + 1 ; j++)
       {
 	 CALLOCTEST(betahat, opt->p + 1, sizeof(double))
+	 CALLOCTEST(lp, opt->n, sizeof(double))
 
 	 ret = cd_gmatrix(
       	       g, opt->phi1_func, opt->phi2_func, opt->loss_pt_func,
 	       opt->inv_func, opt->step_func,
-      	       opt->maxepochs, betahat, opt->lambda1path[i], opt->lambda2,
+      	       opt->maxepochs, betahat, lp, opt->lambda1path[i], opt->lambda2,
       	       opt->threshold, opt->verbose, opt->trainf, opt->trunc);
 
       	 gmatrix_reset(g);
@@ -364,6 +378,7 @@ int run_pcor(Opt *opt, gmatrix *g)
 	 FWRITETEST(betahat, sizeof(double), opt->p + 1, out)
 
 	 free(betahat);
+	 free(lp);
       }
    }
 
@@ -386,7 +401,7 @@ int main(int argc, char* argv[])
    if(!opt_parse(argc, argv, &opt))
       return EXIT_FAILURE;
 
-   if(!gmatrix_init(&g, opt.filename, opt.n, opt.p))
+   if(!gmatrix_init(&g, opt.filename, opt.n, opt.p, opt.inmemory))
       return EXIT_FAILURE;
   
    make_lambda1path(&opt, &g);

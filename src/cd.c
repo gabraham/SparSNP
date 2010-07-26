@@ -32,10 +32,10 @@ double get_lambda1max_gmatrix(
    sample sm;
 
    CALLOCTEST(lp, g->n, sizeof(double))
-   if(!sample_init(&sm, g->n))
+   if(!sample_init(&sm, g->n, g->inmemory))
       return FAILURE;
 
-   gmatrix_disk_nextcol(g, &sm);
+   g->nextcol(g, &sm);
 
    /* First compute the intercept. When all other variables
     * are zero, the intercept is just the inv(mean(y)) */
@@ -55,7 +55,7 @@ double get_lambda1max_gmatrix(
    {
       grad = d2 = 0;
 
-      gmatrix_disk_nextcol(g, &sm);
+      g->nextcol(g, &sm);
 
       step_func(sm.x, g->y, lp, g->n,
 	       phi1_func, phi2_func, &grad, &d2);
@@ -70,7 +70,7 @@ double get_lambda1max_gmatrix(
    } 
 
    free(lp);
-   free(sm.x);
+   sample_free(&sm);
 
    return zmax;
 }
@@ -118,30 +118,30 @@ int cd_gmatrix(gmatrix *g,
       loss_pt loss_pt_func,    /* loss for one sample */
       inv inv_func,
       step step_func,
-      int maxepoch, double *beta, double lambda1, double lambda2,
+      int maxepoch, double *beta, double *lp, double lambda1, double lambda2,
       double threshold, int verbose, int *trainf, double trunc)
 {
    int i, j, epoch = 1;
    double loss = 0, grad, d2, s, beta_new;
    short *converged = NULL;
    int numconverged = 0;
-   double *lp = NULL;
+   /*double *lp = NULL;*/
    sample sm;
    double truncl = log((1 - trunc) / trunc);
    int allconverged = 0, zeros = 0;
    const int CONVERGED = 2;
 
-   if(!sample_init(&sm, g->n))
+   if(!sample_init(&sm, g->n, g->inmemory))
       return FAILURE;
 
    CALLOCTEST(converged, g->p + 1, sizeof(short));
-   CALLOCTEST(lp, g->n, sizeof(double));
+   /*CALLOCTEST(lp, g->n, sizeof(double));*/
 
    while(epoch <= maxepoch)
    {
       for(j = 0 ; j < g->p + 1; j++)
       {
-	 gmatrix_disk_nextcol(g, &sm);
+	 g->nextcol(g, &sm);
 
 	 if(converged[j])
 	   continue;
@@ -253,7 +253,7 @@ int cd_gmatrix(gmatrix *g,
    }
 
    free(converged);
-   free(lp);
+ /*  free(lp);*/
    sample_free(&sm);
 
    if(allconverged == CONVERGED)

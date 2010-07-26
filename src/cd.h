@@ -44,7 +44,7 @@ typedef struct Opt {
    char *subsetfile;
    char *lambda1pathfile;
    step step_func;
-
+   short inmemory;
 } Opt;
 
 int cd_gmatrix(gmatrix *g,
@@ -53,7 +53,8 @@ int cd_gmatrix(gmatrix *g,
       loss_pt loss_pt_func,    /* loss for one sample */
       inv inv_func,
       step step_func,
-      int maxepoch, double *beta, double lambda1, double lambda2,
+      int maxepoch, double *beta, double *lp,
+      double lambda1, double lambda2,
       double threshold, int verbose, int *trainf, double trunc);
 
 /*int cd_gmatrix2(gmatrix *g,

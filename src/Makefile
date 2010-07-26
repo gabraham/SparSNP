@@ -7,9 +7,8 @@ all: $(targets)
 
 # what about *.h?
 #
-#CCFLAGS = -Wall -pg -g3 -std=gnu99
-#CCFLAGS = -Wall -pg -g3 -funroll-loops -std=gnu99
-CCFLAGS = -Wall -O2 -std=gnu99
+CCFLAGS = -Wall -pg -g3 -std=gnu99
+#CCFLAGS = -Wall -O2 -std=gnu99
 LIBRARIES = -lm
 
 cd: common.c gmatrix.c loss.c util.c main.c cd.c
