@@ -125,7 +125,6 @@ int cd_gmatrix(gmatrix *g,
    double loss = 0, grad, d2, s, beta_new;
    short *converged = NULL;
    int numconverged = 0;
-   /*double *lp = NULL;*/
    sample sm;
    double truncl = log((1 - trunc) / trunc);
    int allconverged = 0, zeros = 0;
@@ -135,7 +134,6 @@ int cd_gmatrix(gmatrix *g,
       return FAILURE;
 
    CALLOCTEST(converged, g->p + 1, sizeof(short));
-   /*CALLOCTEST(lp, g->n, sizeof(double));*/
 
    while(epoch <= maxepoch)
    {
@@ -182,6 +180,7 @@ int cd_gmatrix(gmatrix *g,
 	 beta[j] = beta_new;
       }
 
+#ifdef VERBOSE
       if(verbose > 1)
       {
 	 loss = 0;
@@ -192,13 +191,16 @@ int cd_gmatrix(gmatrix *g,
 	    loss += loss_pt_func(lp[i], g->y[i]) / g->n;
 	 }
       }
+#endif
 	 
       if(epoch > 1)
       {
 	 zeros = 0;
 
+#ifdef VERBOSE
 	 if(verbose > 1 && !converged[0])
 	    printf("intercept not converged: %.10f\n", beta[0]); 
+#endif
 
 	 for(j = 1 ; j < g->p + 1 ; j++)
 	 {
@@ -208,11 +210,14 @@ int cd_gmatrix(gmatrix *g,
 	       zeros++;
 	    }
 
+#ifdef VERBOSE
 	    if(verbose > 1 && !converged[j])
 	       printf("beta[%d] not converged: %.10f\n", j, beta[j]);
+#endif
 	 }
       }
 
+#ifdef VERBOSE
       if(verbose == 1)
       {
 	 printf("Epoch %d  converged: %d zeros: %d  non-zeros: %d\n",
@@ -224,18 +229,25 @@ int cd_gmatrix(gmatrix *g,
   zeros: %d  non-zeros: %d\n",
    epoch, loss, numconverged, zeros, g->p - zeros);
       }
+#endif
 
       /* All vars must converge in two consecutive epochs 
        * in order to stop */
       if(numconverged == g->p + 1)
       {
-	 printf("all converged\n");
+#ifdef VERBOSE
+	 if(verbose)
+	    printf("all converged\n");
+#endif
 	 allconverged++;
 	 
 	 if(allconverged == CONVERGED)
 	 {
-	    printf("terminating with %d non-zero coefs\n\n",
-		  g->p - zeros);
+#ifdef VERBOSE
+	    if(verbose)
+	       printf("terminating with %d non-zero coefs\n\n",
+		     g->p - zeros);
+#endif
 	    break;
 	 }
 
@@ -246,14 +258,15 @@ int cd_gmatrix(gmatrix *g,
       else
 	 allconverged = 0;
 
+#ifdef VERBOSE
       if(verbose)
 	 printf("\n");
+#endif
 
       epoch++;
    }
 
    free(converged);
- /*  free(lp);*/
    sample_free(&sm);
 
    if(allconverged == CONVERGED)
