@@ -129,6 +129,7 @@ int cd_gmatrix(gmatrix *g,
    double truncl = log((1 - trunc) / trunc);
    int allconverged = 0, zeros = 0;
    const int CONVERGED = 2;
+   int numiter = 0;
 
    if(!sample_init(&sm, g->n, g->inmemory))
       return FAILURE;
@@ -141,50 +142,59 @@ int cd_gmatrix(gmatrix *g,
       {
 	 g->nextcol(g, &sm);
 
-	 if(converged[j])
-	   continue;
+	 /*if(converged[j])
+	   continue;*/
 
-	 grad = d2 = 0;
+	 while(!converged[j])
+	 {
+	    numiter++;
+	    grad = d2 = 0;
 
-	 step_func(sm.x, g->y, lp, g->n,
-	       phi1_func, phi2_func, &grad, &d2);
-	 
-	 /* don't move if 2nd derivative is zero */
-	 s = 0;
-	 if(d2 != 0)
-	    s = grad / d2;
+	    step_func(sm.x, g->y, lp, g->n,
+		  phi1_func, phi2_func, &grad, &d2);
 
-	 /* don't penalise intercept */
-	 if(j == 0)
-	    beta_new = beta[j] - s;
-	 else
-	    beta_new = soft_threshold(beta[j] - s, lambda1)
+	    /* don't move if 2nd derivative is zero */
+	    s = 0;
+	    if(d2 != 0)
+	       s = grad / d2;
+
+	    /* don't penalise intercept */
+	    if(j == 0)
+	       beta_new = beta[j] - s;
+	    else
+	       beta_new = soft_threshold(beta[j] - s, lambda1)
 		  / (1 + lambda2);
 
-	 /* check for convergence */
-	 if(epoch > 1 && convergetest(beta[j], beta_new, threshold))
-	 {
-	    converged[j] = TRUE;
-	    numconverged++;
-	 }
-
-	 /* clip very large coefs to limit divergence */
-	 beta_new = fmin(fmax(beta_new, -truncl), truncl);
-
-	 /* update linear predictor */
-	 for(i = 0 ; i < g->n ; i++)
-	    if(sm.x[i] != 0)
+	    /* check for convergence */
+	    /*if(epoch > 1 && convergetest(beta[j], beta_new, threshold))
+	      {
+	      converged[j] = TRUE;
+	      numconverged++;
+	      }*/
+	    if(numiter > 1 && convergetest(beta[j], beta_new, threshold))
 	    {
-	       /*lp[i] = fmin(MAXLP, fmax(-MAXLP,
-		     lp[i] + sm.x[i] * (beta_new - beta[j])));*/
-	       lp[i] += sm.x[i] * (beta_new - beta[j]);
-	       if(lp[i] < -MAXLP)
-		  lp[i] = -MAXLP;
-	       else if(lp[i] > MAXLP)
-		  lp[i] = MAXLP;
+	       converged[j] = TRUE;
+	       numconverged++;
 	    }
 
-	 beta[j] = beta_new;
+	    /* clip very large coefs to limit divergence */
+	    beta_new = fmin(fmax(beta_new, -truncl), truncl);
+
+	    /* update linear predictor */
+	    for(i = 0 ; i < g->n ; i++)
+	       if(sm.x[i] != 0)
+	       {
+		  /*lp[i] = fmin(MAXLP, fmax(-MAXLP,
+		    lp[i] + sm.x[i] * (beta_new - beta[j])));*/
+		  lp[i] += sm.x[i] * (beta_new - beta[j]);
+		  if(lp[i] < -MAXLP)
+		     lp[i] = -MAXLP;
+		  else if(lp[i] > MAXLP)
+		     lp[i] = MAXLP;
+	       }
+
+	    beta[j] = beta_new;
+	 }
       }
 
 #ifdef VERBOSE

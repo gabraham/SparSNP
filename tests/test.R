@@ -2,8 +2,8 @@ library(GeneSets)
 library(glmnet)
 library(ElemStatLearn)
 
-source("~/Code/sgd/R/gmatrix.R")
-source("~/Code/sgd/R/sgd.R")
+#source("~/Code/sgd/R/gmatrix.R")
+#source("~/Code/sgd/R/sgd.R")
 
 #test.multinom <- function()
 #{

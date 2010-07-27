@@ -84,7 +84,8 @@ inline double l2phi2(double lp)
 
 inline double logphi1(double lp)
 {
-   return 1 / (1 + exp(-lp));
+   /*return 1 / (1 + exp(-lp));*/
+   return pow(1 + exp(-lp), -1);
 }
 
 inline double logphi2(double p)
