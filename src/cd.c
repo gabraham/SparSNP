@@ -121,15 +121,14 @@ int cd_gmatrix(gmatrix *g,
       int maxepoch, double *beta, double *lp, double lambda1, double lambda2,
       double threshold, int verbose, int *trainf, double trunc)
 {
-   int i, j, epoch = 1;
+   int i, j, epoch = 1, numconverged = 0, numiter;
    double loss = 0, grad, d2, s, beta_new;
    short *converged = NULL;
-   int numconverged = 0;
    sample sm;
-   double truncl = log((1 - trunc) / trunc);
+   double truncl = log2((1 - trunc) / trunc);
    int allconverged = 0, zeros = 0;
    const int CONVERGED = 2;
-   int numiter = 0;
+   double l2recip = 1 / (1 + lambda2);
 
    if(!sample_init(&sm, g->n, g->inmemory))
       return FAILURE;
@@ -141,11 +140,9 @@ int cd_gmatrix(gmatrix *g,
       for(j = 0 ; j < g->p + 1; j++)
       {
 	 g->nextcol(g, &sm);
+	 numiter = 0;
 
-	 /*if(converged[j])
-	   continue;*/
-
-	 while(!converged[j])
+	 while(!converged[j] && numiter <= maxepoch)
 	 {
 	    numiter++;
 	    grad = d2 = 0;
@@ -162,15 +159,9 @@ int cd_gmatrix(gmatrix *g,
 	    if(j == 0)
 	       beta_new = beta[j] - s;
 	    else
-	       beta_new = soft_threshold(beta[j] - s, lambda1)
-		  / (1 + lambda2);
+	       beta_new = soft_threshold(beta[j] - s, lambda1) * l2recip;
 
 	    /* check for convergence */
-	    /*if(epoch > 1 && convergetest(beta[j], beta_new, threshold))
-	      {
-	      converged[j] = TRUE;
-	      numconverged++;
-	      }*/
 	    if(numiter > 1 && convergetest(beta[j], beta_new, threshold))
 	    {
 	       converged[j] = TRUE;
@@ -184,8 +175,6 @@ int cd_gmatrix(gmatrix *g,
 	    for(i = 0 ; i < g->n ; i++)
 	       if(sm.x[i] != 0)
 	       {
-		  /*lp[i] = fmin(MAXLP, fmax(-MAXLP,
-		    lp[i] + sm.x[i] * (beta_new - beta[j])));*/
 		  lp[i] += sm.x[i] * (beta_new - beta[j]);
 		  if(lp[i] < -MAXLP)
 		     lp[i] = -MAXLP;

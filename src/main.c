@@ -42,11 +42,11 @@ void opt_defaults(Opt *opt)
 {
    opt->nlambda1 = 100;
    opt->l1minratio = 1e-3;
-   opt->maxepochs = 1000;
+   opt->maxepochs = 100;
    opt->lambda1 = -1;
    opt->lambda2 = 0;
    opt->threshold = 1e-4;
-   opt->trunc = 1e-9;
+   opt->trunc = 1e-15;
    opt->nzmax = 0;
    opt->betafile = "beta.csv";
    opt->n = 0;

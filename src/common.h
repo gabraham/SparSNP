@@ -15,7 +15,7 @@
 
 /* Value below which is considered zero, for use in
  * absolute convergence test */
-#define ZERO_THRESH 1e-10
+#define ZERO_THRESH 1e-12
 
 #define ONE 1.0
 
