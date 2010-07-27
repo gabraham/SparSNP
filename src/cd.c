@@ -174,8 +174,15 @@ int cd_gmatrix(gmatrix *g,
 	 /* update linear predictor */
 	 for(i = 0 ; i < g->n ; i++)
 	    if(sm.x[i] != 0)
-	       lp[i] = fmin(MAXLP, fmax(-MAXLP,
-		     lp[i] + sm.x[i] * (beta_new - beta[j])));
+	    {
+	       /*lp[i] = fmin(MAXLP, fmax(-MAXLP,
+		     lp[i] + sm.x[i] * (beta_new - beta[j])));*/
+	       lp[i] += sm.x[i] * (beta_new - beta[j]);
+	       if(lp[i] < -MAXLP)
+		  lp[i] = -MAXLP;
+	       else if(lp[i] > MAXLP)
+		  lp[i] = MAXLP;
+	    }
 
 	 beta[j] = beta_new;
       }

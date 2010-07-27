@@ -72,22 +72,22 @@ void l2dloss_pt(dtype *x, double d, dtype y, int p, double* grad)
       grad[j] = x[j] * (d - (double)y);
 }
 
-double l2phi1(double lp)
+inline double l2phi1(double lp)
 {
    return lp;
 }
 
-double l2phi2(double lp)
+inline double l2phi2(double lp)
 {
    return 1;
 }
 
-double logphi1(double lp)
+inline double logphi1(double lp)
 {
    return 1 / (1 + exp(-lp));
 }
 
-double logphi2(double p)
+inline double logphi2(double p)
 {
    /*double p = logphi1(lp);*/
    return p * (1 - p);
