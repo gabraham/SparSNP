@@ -66,6 +66,7 @@ void opt_defaults(Opt *opt)
    opt->lambda1pathfile = "lambda1path.csv";
    opt->step_func = NULL;
    opt->inmemory = FALSE;
+   opt->tabulate = FALSE;
 }
 
 int opt_parse(int argc, char* argv[], Opt* opt)
@@ -198,6 +199,10 @@ int opt_parse(int argc, char* argv[], Opt* opt)
       else if(strcmp2(argv[i], "-inmemory"))
       {
 	 opt->inmemory = TRUE;
+      }
+      else if(strcmp2(argv[i], "-tabulate"))
+      {
+	 opt->tabulate = TRUE;
       }
    }
 
@@ -401,7 +406,7 @@ int main(int argc, char* argv[])
    if(!opt_parse(argc, argv, &opt))
       return EXIT_FAILURE;
 
-   if(!gmatrix_init(&g, opt.filename, opt.n, opt.p, opt.inmemory))
+   if(!gmatrix_init(&g, opt.filename, opt.n, opt.p, opt.inmemory, opt.tabulate))
       return EXIT_FAILURE;
   
    make_lambda1path(&opt, &g);

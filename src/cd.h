@@ -45,6 +45,7 @@ typedef struct Opt {
    char *lambda1pathfile;
    step step_func;
    short inmemory;
+   short tabulate;
 } Opt;
 
 int cd_gmatrix(gmatrix *g,
