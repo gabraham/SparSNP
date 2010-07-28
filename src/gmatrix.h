@@ -4,15 +4,24 @@
 
 #define BUFSIZE 10
 
+/* categorical x inputs: 0, 1, 2 */
+#define NUM_X_LEVELS 3
+#define X_LEVELS {0, 1, 2}
+
 typedef struct tabulation {
    int p;
    int nbins;
+   double *values;
    int **counts;
 } tabulation;
 
 typedef struct sample {
    dtype *x;
    short inmemory;
+
+   int nbins;
+   int *counts;
+   double *values;
 } sample;
 
 typedef struct gmatrix {
@@ -24,8 +33,8 @@ typedef struct gmatrix {
    int p;
    int i;
    int j;
-   double *mean;
-   double *sd;
+   double *mean, *sd;
+   double *lookup;
    dtype *buffer;
    int bufsize;
    int bufidx;
@@ -33,11 +42,12 @@ typedef struct gmatrix {
    short inmemory;
    int (*nextcol)(struct gmatrix*, sample*);
    tabulation *tab;
+   char *scalefile;
 } gmatrix;
 
 int sample_init(sample *, int, short);
 void sample_free(sample *);
-int gmatrix_init(gmatrix *, char *, int, int, short, short);
+int gmatrix_init(gmatrix *, char *, int, int, short, short, char*);
 int gmatrix_reset(gmatrix *);
 void gmatrix_free(gmatrix *);
 int gmatrix_disk_nextcol(gmatrix *, sample *);
@@ -54,4 +64,5 @@ int tabulation_read(tabulation *t, char* filein);
 
 int gmatrix_tabulation_load(gmatrix *g);
 int gmatrix_tabulation_nextcol(gmatrix *g, sample *s);
+int gmatrix_read_scaling(gmatrix *g, char *file_scale);
 

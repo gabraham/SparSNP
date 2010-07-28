@@ -22,15 +22,19 @@ int scale(gmatrix *g, char* filename)
    MALLOCTEST(tmp2, sizeof(double*) * g->n)
 
    FOPENTEST(fin, g->filename, "rb")
-   FOPENTEST(fout, filename, "w")
+
+   if(filename)
+      FOPENTEST(fout, filename, "w")
 
    /* read y but do not scale it */
    FREADTEST(tmp, sizeof(dtype), g->n, fin)
 
-   for(i = 0 ; i < g->n ; i++)
-      tmp2[i] = (double)tmp[i];
-
-   FWRITETEST(tmp2, sizeof(double), g->n, fout)
+   if(filename)
+   {
+      for(i = 0 ; i < g->n ; i++)
+	 tmp2[i] = (double)tmp[i];
+      FWRITETEST(tmp2, sizeof(double), g->n, fout)
+   }
 
    /* read the data and scale each variable */
    for(j = 1 ; j < g->p + 1 ; j++)
@@ -50,23 +54,49 @@ int scale(gmatrix *g, char* filename)
 
       g->sd[j] = sqrt(g->sd[j] / (g->n - 1));
 
-      for(i = 0 ; i < g->n ; i++)
+      if(filename)
       {
-	 tmp2[i] = tmp2[i] - g->mean[j];
-	 if(g->sd[j] > SDTHRESH)
-	    tmp2[i] /= g->sd[j];
+	 for(i = 0 ; i < g->n ; i++)
+      	 {
+      	    tmp2[i] = tmp2[i] - g->mean[j];
+      	    if(g->sd[j] > SDTHRESH)
+      	       tmp2[i] /= g->sd[j];
+      	 }
+      	   
+      	 FWRITETEST(tmp2, sizeof(double), g->n, fout)
       }
-        
-      FWRITETEST(tmp2, sizeof(double), g->n, fout)
    }
    printf("\n");
 
    fclose(fin);
-   fclose(fout);
+   if(filename)
+      fclose(fout);
 
    free(tmp);
    free(tmp2);
       
+   return SUCCESS;
+}
+
+int writescale(double *mean, double *sd, int p, short ascii)
+{
+   FILE *out;
+
+   if(ascii)
+   {
+      if(!writevectorf("mean.csv", mean, p))
+	 return FAILURE;
+
+      if(!writevectorf("sd.csv", sd, p))
+	 return FAILURE;
+
+      return SUCCESS;
+   }
+   
+   FOPENTEST(out, "scale.bin", "wb")
+   FWRITETEST(mean, sizeof(double), p, out);
+   FWRITETEST(sd, sizeof(double), p, out);
+   fclose(out);
    return SUCCESS;
 }
 
@@ -76,6 +106,7 @@ int main(int argc, char* argv[])
    char *filename_in = NULL;
    char *filename_out = NULL;
    short inmemory = FALSE;
+   short ascii = FALSE;
    gmatrix g;
 
    for(i = 1 ; i < argc ; i++)
@@ -101,25 +132,26 @@ int main(int argc, char* argv[])
 	 p = (int)atof(argv[i]);
       }
       else if(strcmp2(argv[i], "-inmemory"))
-      {
 	 inmemory = TRUE;
-      }
+      else if(strcmp2(argv[i], "-ascii"))
+	 ascii = TRUE;
    }
 
-   if(filename_in == NULL || filename_out == NULL || n == 0 || p == 0)
+   if(filename_in == NULL || n == 0 || p == 0)
    {
-      printf("scale: -fin <filein> -fout <fileout> -n #n -p #p\n");
+      printf("scale: -fin <filein> [-fout <fileout>] -n #n -p #p\n");
       return EXIT_FAILURE;
    }
 
-   if(!gmatrix_init(&g, filename_in, n, p, inmemory, FALSE))
+   if(!gmatrix_init(&g, filename_in, n, p, inmemory, FALSE, NULL))
       return EXIT_FAILURE;
 
-   scale(&g, filename_out);
+   if(!scale(&g, filename_out))
+      return EXIT_FAILURE;
 
-   writevectorf("mean.csv", g.mean, p + 1);
-   writevectorf("sd.csv", g.sd, p + 1);
-
+   if(!writescale(g.mean, g.sd, p + 1, ascii))
+      return EXIT_FAILURE;
+  
    gmatrix_free(&g);
 
    return EXIT_SUCCESS;

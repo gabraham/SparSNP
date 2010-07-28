@@ -1,21 +1,21 @@
 
 .PHONY: all
 
+CCFLAGS = -O2 -ftree-vectorize -fno-omit-frame-pointer
 
-targets = cd scale cd_double tabulate
+targets = tabulate cd scale #cd_double
 all: $(targets)
 
-# what about *.h?
-#
-#CCFLAGS = -Wall -pg -g3 -std=gnu99
-CCFLAGS = -Wall -g3 -O2 -ftree-vectorize -fno-omit-frame-pointer -std=gnu99
+debug: CCFLAGS = -Wall -g3 -std=gnu99
+debug: $(targets)
+
 LIBRARIES = -lm
 
 cd: common.c tabulation.c gmatrix.c loss.c util.c main.c cd.c
 	gcc $(CCFLAGS) $(LIBRARIES) $^ -o cd
 
-cd_double: common.c tabulation.c gmatrix.c loss.c util.c main.c cd.c
-	gcc -DDTYPE=double $(CCFLAGS) $(LIBRARIES) $^ -o cd_double
+#cd_double: common.c tabulation.c gmatrix.c loss.c util.c main.c cd.c
+#	gcc -DDTYPE=double $(CCFLAGS) $(LIBRARIES) $^ -o cd_double
 
 scale: common.c tabulation.c gmatrix.c loss.c util.c cd.c scale.c
 	gcc $(CCFLAGS) $(LIBRARIES) $^ -o scale

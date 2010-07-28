@@ -65,7 +65,7 @@ int main(int argc, char* argv[])
       return EXIT_FAILURE;
    }
 
-   if(!gmatrix_init(&g, filename_in, n, p, inmemory, FALSE))
+   if(!gmatrix_init(&g, filename_in, n, p, inmemory, FALSE, NULL))
       return EXIT_FAILURE;
 
    tabulate(&g, filename_out, doscale, xlevels, ylevels, verbose);

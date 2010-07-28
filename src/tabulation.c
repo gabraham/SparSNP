@@ -6,6 +6,9 @@ int tabulation_init(tabulation *t , int p, int nbins)
    int j;
    t->nbins = nbins;
    t->p = p;
+
+   MALLOCTEST(t->values, sizeof(double) * nbins)
+
    MALLOCTEST(t->counts, sizeof(int*) * p)
    for(j = 0 ; j < p ; j++)
       CALLOCTEST(t->counts[j], nbins, sizeof(int))
@@ -21,6 +24,10 @@ void tabulation_free(tabulation *t)
 	 free(t->counts[j]);
    free(t->counts);
    t->counts = NULL;
+
+   if(t->values)
+      free(t->values);
+   t->values = NULL;
 }
 
 int tabulation_write(tabulation *t, char* fileout)
