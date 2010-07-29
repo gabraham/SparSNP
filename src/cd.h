@@ -4,7 +4,8 @@
 #include <string.h>
 #include "gmatrix.h"
 
-#define MAXLP 20
+/* This will affect the error of the exponential approximation */
+#define MAXLP 7
 
 typedef double (*loss_pt)(double, dtype);
 typedef double (*predict_pt)(double);

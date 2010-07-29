@@ -96,7 +96,6 @@ double step_regular(sample *s, double *y, double *lp, int n,
       x2 = s->x2[i];
 
       lphi1 = phi1_func(lp[i]);
-      printf("%.10f\n", lp[i]);
       grad += x * (lphi1 - y[i]);
       d2 += x2 * phi2_func(lphi1);
    }

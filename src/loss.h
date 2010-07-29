@@ -5,6 +5,11 @@
 /* Used to truncate exp before infinity, which occurs at ~709 */ 
 #define MAXPROD 700
 
+#define EXP_A (1048576/M_LN2)
+#define EXP_C 60801
+
+inline double exponential(double y);
+
 double predict_logloss_pt(double);
 double predict_l2loss_pt(double);
 
