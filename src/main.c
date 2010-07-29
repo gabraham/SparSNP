@@ -41,7 +41,7 @@ void opt_free(Opt *opt)
 void opt_defaults(Opt *opt)
 {
    opt->nlambda1 = 100;
-   opt->l1minratio = 1e-3;
+   opt->l1minratio = 1e-2;
    opt->maxepochs = 100;
    opt->lambda1 = -1;
    opt->lambda2 = 0;
@@ -205,6 +205,8 @@ int opt_parse(int argc, char* argv[], Opt* opt)
       else if(strcmp2(argv[i], "-inmemory"))
       {
 	 opt->inmemory = TRUE;
+	 printf("-inmemory not working currently\n");
+	 return FAILURE;
       }
       else if(strcmp2(argv[i], "-tabulate"))
       {
@@ -217,8 +219,8 @@ int opt_parse(int argc, char* argv[], Opt* opt)
 	 || opt->n == 0 || opt->p == 0)
    {
       printf("usage: cd -model <model> -f <filename> -n <#samples> -p \
-<#variables> | -beta <beta filename> -pred <pred filename> -epoch <maxepochs> \
--l1 <lambda1> -l2 <lambda2> -thresh <threshold> \
+<#variables> | -beta <beta filename> -pred <pred filename> \
+-epoch <maxepochs> -l1 <lambda1> -l2 <lambda2> -thresh <threshold> \
 -pred <prediction file> -cv <cvfolds> -seed <seed> -v -vv\n");
       return FAILURE;
    }
@@ -230,7 +232,8 @@ int opt_parse(int argc, char* argv[], Opt* opt)
 
    CALLOCTEST2(opt->lambda1path, opt->nlambda1, sizeof(double))
    
-   cvsplit(opt);
+   if(opt->cv > 1)
+      cvsplit(opt);
 
    return SUCCESS; 
 }

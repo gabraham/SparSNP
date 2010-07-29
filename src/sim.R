@@ -44,6 +44,7 @@ run <- function(n, p, nsim=50)
       #z <- cbind(y, xs)
       #writeBin(as.numeric(z), con="x.bin.t")
       z <- cbind(y, x)
+      rm(x); gc()
       writeBin(as.raw(z), con="x.bin.t")
       #
       #cmd <- sprintf("../cd_double -model logistic \\

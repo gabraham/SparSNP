@@ -11,8 +11,8 @@ typedef double (*predict_pt)(double);
 typedef double (*phi1)(double);
 typedef double (*phi2)(double);
 typedef double (*inv)(double);
-typedef void (*step)(sample *s, dtype *y, double *lp, int n,
-      phi1 phi1_func, phi2 phi2_func, double *grad, double *d2);
+typedef double (*step)(sample *s, double *y, double *lp, int n,
+      phi1 phi1_func, phi2 phi2_func);
 
 typedef struct Opt {
    int maxepochs;
@@ -81,9 +81,9 @@ int opt_parse(int argc, char* argv[], Opt* opt);
 int make_lambda1path(Opt *opt, gmatrix *g);
 int run(Opt *opt, gmatrix *g);
 
-void step_regular(sample *s, dtype *y, double *lp, int n,
-      phi1 phi1_func, phi2 phi2_func, double *grad, double *d2);
+double step_regular(sample *s, double *y, double *lp, int n,
+      phi1 phi1_func, phi2 phi2_func);
 
-void step_grouped(sample *s, dtype *y, double *lp, int n,
-      phi1 phi1_func, phi2 phi2_func, double *grad, double *d2);
+double step_grouped(sample *s, double *y, double *lp, int n,
+      phi1 phi1_func, phi2 phi2_func);
 

@@ -28,7 +28,8 @@ double get_lambda1max_gmatrix(
 {
    int i, j;
    double *lp = NULL;
-   double grad, d2, s, zmax = 0, beta0;
+   /*double grad, d2;*/
+   double s, zmax = 0, beta0;
    sample sm;
 
    CALLOCTEST(lp, g->n, sizeof(double))
@@ -53,19 +54,21 @@ double get_lambda1max_gmatrix(
     * first because it's not penalised. */
    for(j = 1 ; j < g->p + 1; j++)
    {
-      grad = d2 = 0;
+      /*grad = d2 = 0;*/
 
       g->nextcol(g, &sm);
 
-      step_func(&sm, g->y, lp, g->n,
-	       phi1_func, phi2_func, &grad, &d2);
+      /*step_func(&sm, g->y, lp, g->n,
+	       phi1_func, phi2_func, &grad, &d2);*/
+      s = -step_regular(&sm, g->y, lp, g->n,
+	       phi1_func, phi2_func);
 
       /* don't move if 2nd derivative is zero */
-      s = 0;
+    /*  s = 0;
       if(d2 != 0)
-	 s = -grad / d2;
+	 s = -grad / d2;*/
 
-      if(zmax < fabs(s))
+      if(s != 0 && zmax < fabs(s))
 	 zmax = fabs(s);
    } 
 
@@ -75,12 +78,13 @@ double get_lambda1max_gmatrix(
    return zmax;
 }
 
-void step_regular(sample *s, dtype *y, double *lp, int n,
-      phi1 phi1_func, phi2 phi2_func, double *grad, double *d2)
+double step_regular(sample *s, double *y, double *lp, int n,
+      phi1 phi1_func, phi2 phi2_func)
 {
    int i;
    double lphi1;
-   dtype x;
+   double x, x2;
+   double grad = 0, d2 = 0;
 
    /* compute gradient */
    for(i = 0 ; i < n ; i++)
@@ -89,15 +93,20 @@ void step_regular(sample *s, dtype *y, double *lp, int n,
       /* skip zeros, they don't change the linear predictor */
       if(x == 0)
 	 continue;
+      x2 = s->x2[i];
 
       lphi1 = phi1_func(lp[i]);
-      (*grad) += x * (lphi1 - y[i]);
-      (*d2) += x * x * phi2_func(lphi1);
+      printf("%.10f\n", lp[i]);
+      grad += x * (lphi1 - y[i]);
+      d2 += x2 * phi2_func(lphi1);
    }
+   if(d2 == 0)
+      return 0;
+   return grad / d2;
 }
 
-void step_grouped(sample *s, dtype *y, double *lp, int n,
-      phi1 phi1_func, phi2 phi2_func, double *grad, double *d2)
+double step_grouped(sample *s, double *y, double *lp, int n,
+      phi1 phi1_func, phi2 phi2_func)
 {
    /*int i, k;
    double lphi1;
@@ -110,6 +119,7 @@ void step_grouped(sample *s, dtype *y, double *lp, int n,
 	 (*grad) += 	 
       }
    }*/
+   return 0;
 }
 
 /* coordinate descent */
@@ -119,11 +129,13 @@ int cd_gmatrix(gmatrix *g,
       loss_pt loss_pt_func,    /* loss for one sample */
       inv inv_func,
       step step_func,
-      int maxepoch, double *beta, double *lp, double lambda1, double lambda2,
-      double threshold, int verbose, int *trainf, double trunc)
+      int maxepoch, double *beta, double *lp, double lambda1,
+      double lambda2, double threshold, int verbose,
+      int *trainf, double trunc)
 {
    int i, j, epoch = 1, numconverged = 0, numiter;
-   double loss = 0, grad, d2, s, beta_new;
+   double loss = 0, s, beta_new;
+   /*double grad, d2;*/
    short *converged = NULL;
    sample sm;
    double truncl = log2((1 - trunc) / trunc);
@@ -146,15 +158,20 @@ int cd_gmatrix(gmatrix *g,
 	 while(!converged[j] && numiter <= maxepoch)
 	 {
 	    numiter++;
-	    grad = d2 = 0;
+	   /* grad = d2 = 0;*/
 
-	    step_func(&sm, g->y, lp, g->n,
-		  phi1_func, phi2_func, &grad, &d2);
+	    /*step_func(&sm, g->y, lp, g->n,
+		  phi1_func, phi2_func, &grad, &d2);*/
+	    s = step_regular(&sm, g->y, lp, g->n,
+		  phi1_func, phi2_func);
 
 	    /* don't move if 2nd derivative is zero */
-	    s = 0;
+	    /*s = 0;
 	    if(d2 != 0)
-	       s = grad / d2;
+	       s = grad / d2;*/
+
+	    if(s == 0)
+	       continue;
 
 	    /* don't penalise intercept */
 	    if(j == 0)

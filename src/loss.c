@@ -94,13 +94,13 @@ inline double logphi2(double p)
    return p * (1 - p);
 }
 
-double l2inv(double lp)
+inline double l2inv(double lp)
 {
    return lp;
 }
 
 /* same as logit */
-double loginv(double lp)
+inline double loginv(double lp)
 {
    return log(lp / (1 - lp));
 }

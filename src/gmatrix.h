@@ -16,8 +16,10 @@ typedef struct tabulation {
 } tabulation;
 
 typedef struct sample {
-   dtype *x;
+   double *x;
+   double *x2;
    short inmemory;
+   short intercept;
 
    int nbins;
    int *counts;
@@ -27,14 +29,17 @@ typedef struct sample {
 typedef struct gmatrix {
    char* filename;
    FILE* file;
-   dtype *y;
-   dtype **x;
+   /*dtype *y;
+   dtype **x;*/
+   double *y;
+   double **x;
    int n;
    int p;
    int i;
    int j;
    double *mean, *sd;
-   double *lookup;
+   double *lookup, *lookup2;
+   double *intercept;
    dtype *buffer;
    int bufsize;
    int bufidx;
@@ -43,6 +48,7 @@ typedef struct gmatrix {
    int (*nextcol)(struct gmatrix*, sample*);
    tabulation *tab;
    char *scalefile;
+   dtype *tmp;
 } gmatrix;
 
 int sample_init(sample *, int, short);

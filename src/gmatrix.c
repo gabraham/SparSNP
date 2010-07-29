@@ -6,25 +6,30 @@
 int sample_init(sample *s, int n, short inmemory)
 {
    s->inmemory = inmemory;
-   if(!inmemory)
-      MALLOCTEST(s->x, sizeof(dtype) * n)
+   s->x = NULL;
+   s->x2 = NULL;
+   s->intercept = FALSE;
    return SUCCESS;
 }
 
 void sample_free(sample *s)
 {
-   if(s->inmemory)
+   if(s->intercept)
       return;
    
    if(s->x)
       free(s->x);
    s->x = NULL;
+
+   if(s->x2)
+      free(s->x2);
+   s->x2 = NULL;
 }
 
 int gmatrix_init(gmatrix *g, char *filename, int n, int p, short inmemory,
       short tabulate, char *scalefile)
 {
-   /*int i;*/
+   int i;
 
    if(filename)
       FOPENTEST(g->file, filename, "rb")
@@ -34,11 +39,22 @@ int gmatrix_init(gmatrix *g, char *filename, int n, int p, short inmemory,
    g->n = n;
    g->p = p;
    g->yidx = 0;
+   g->y = NULL;
    g->inmemory = inmemory;
    g->tab = NULL;
    g->scalefile = scalefile;
+   g->lookup = NULL;
+   g->lookup2 = NULL;
+   g->intercept = NULL;
+   g->mean = NULL;
+   g->sd = NULL;
+   g->tmp = NULL;
 
-   MALLOCTEST(g->y, sizeof(dtype) * g->n)
+   MALLOCTEST(g->intercept, sizeof(double) * g->n)
+   for(i = 0 ; i < n ; i++)
+      g->intercept[i] = 1.0;
+
+   MALLOCTEST(g->tmp, sizeof(dtype) * g->n)
 
    if(tabulate)
    {
@@ -55,18 +71,13 @@ int gmatrix_init(gmatrix *g, char *filename, int n, int p, short inmemory,
    else
       g->nextcol = gmatrix_disk_nextcol;
 
-   /*CALLOCTEST(g->mean, p + 1, sizeof(double))
-   MALLOCTEST(g->sd, sizeof(double) * (p + 1))
-   for(i = 0 ; i < g->p + 1 ; i++)
-      g->sd[i] = 1;*/
-
    if(scalefile && !gmatrix_read_scaling(g, scalefile))
       return FAILURE;
 
    return SUCCESS;
 }
 
-int gmatrix_init2(gmatrix *g, char *filename, int n, int p)
+/*int gmatrix_init2(gmatrix *g, char *filename, int n, int p)
 {
    int i;
 
@@ -93,7 +104,7 @@ int gmatrix_init2(gmatrix *g, char *filename, int n, int p)
    FREADTEST(g->buffer, sizeof(dtype), g->n * (int)fmin(g->bufsize, g->p), g->file)
 
    return SUCCESS;
-}
+}*/
 
 void gmatrix_free(gmatrix *g)
 {
@@ -135,7 +146,19 @@ void gmatrix_free(gmatrix *g)
 
    if(g->lookup)
       free(g->lookup);
-   g->lookup = FALSE;
+   g->lookup = NULL;
+
+   if(g->lookup2)
+      free(g->lookup2);
+   g->lookup2 = NULL;
+
+   if(g->intercept)
+      free(g->intercept);
+   g->intercept = NULL;
+
+   if(g->tmp)
+      free(g->tmp);
+   g->tmp = NULL;
 
    /*if(g->buffer)
       free(g->buffer);
@@ -145,55 +168,71 @@ void gmatrix_free(gmatrix *g)
 /* Expects the binary data column to be y, x_1, x_2, x_3, ..., x_p */
 int gmatrix_disk_nextcol(gmatrix *g, sample *s)
 {
-   int i;
-   dtype *tmp;
+   int i, l1, l2;
    
-   if(g->j == g->p + 1)
-      if(!gmatrix_reset(g))
-	 return FAILURE;
+   if(g->j == g->p + 1 && !gmatrix_reset(g))
+      return FAILURE;
 
+   /* intercept treated separately */
    if(g->j == 0)
    {
-      FREADTEST(g->y, sizeof(dtype), g->n, g->file)
-      
-      /* intercept */
-      for(i = 0 ; i < g->n ; i++)
-	 s->x[i] = 1.0;
-   }
-   else if(g->scalefile)
-   {
-      MALLOCTEST(tmp, sizeof(dtype) * g->n)
-      FREADTEST(tmp, sizeof(dtype), g->n, g->file)
-
-      /* Get the scaled value instead of the original value */
-      for(i = 0 ; i < g->n ; i++)
+      s->intercept = TRUE;
+      if(!g->y)
       {
-	 s->x[i] = g->lookup[g->j * NUM_X_LEVELS + tmp[i]];
+	 MALLOCTEST(g->y, sizeof(double) * g->n)
+	 FREADTEST(g->tmp, sizeof(dtype), g->n, g->file)
+	 /* y and intercept */
+	 for(i = 0 ; i < g->n ; i++)
+      	    g->y[i] = (double)g->tmp[i];
       }
-
-      free(tmp);
+      else /* don't read y again */
+	 FSEEKTEST(g->file, sizeof(dtype) * g->n, SEEK_CUR)
+      
+      /* No need to copy values, just assign the intercept vector,
+       * but first, free any old data we have from previous
+       * iterations*/
+      if(s->x)
+	 free(s->x);
+      if(s->x2)
+	 free(s->x2);
+      s->x = g->intercept;
+      s->x2 = g->intercept;
    }
    else
-      FREADTEST(s->x, sizeof(dtype), g->n, g->file)
+   {
+      /* not intercept, need to copy values */
+      s->intercept = FALSE;
+      if(g->j == 1)
+      {
+	 MALLOCTEST(s->x, sizeof(double) * g->n)
+	 MALLOCTEST(s->x2, sizeof(double) * g->n)
+      }
+      
+      if(g->scalefile)
+      {
+         s->intercept = FALSE;
+         FREADTEST(g->tmp, sizeof(dtype), g->n, g->file)
 
-   g->j++;
-
-   return SUCCESS;
-}
-
-/* Expects the binary data column to be x_1, x_2, x_3, ..., x_p */
-int gmatrix_disk_nextcol_no_y(gmatrix *g, sample *s)
-{
-   if(g->j == g->p + 1)
-      if(!gmatrix_reset(g))
-	 return FAILURE;
-
-   if(g->j == g->yidx) {
-      FREADTEST(g->y, sizeof(dtype), g->n, g->file)
-   } else {
-      FREADTEST(s->x, sizeof(dtype), g->n, g->file)
+         /* Get the scaled value instead of the original value */
+	 l1 = g->j * NUM_X_LEVELS;
+         for(i = 0 ; i < g->n ; i++)
+	 {
+	    l2 = l1 + g->tmp[i];
+            s->x[i] = g->lookup[l2];
+            s->x2[i] = g->lookup2[l2];
+	 }
+      }
+      else
+      {
+         FREADTEST(g->tmp, sizeof(dtype), g->n, g->file)
+         for(i = 0 ; i < g->n ; i++)
+	 {
+            s->x[i] = (double)g->tmp[i];
+            s->x2[i] = s->x[i] * s->x[i];
+	 }
+      }
    }
-
+   
    g->j++;
 
    return SUCCESS;
@@ -208,6 +247,24 @@ int gmatrix_mem_nextcol(gmatrix *g, sample *s)
       
    s->x = g->x[g->j];
    g->j++;
+
+   return SUCCESS;
+}
+
+/* Expects the binary data column to be x_1, x_2, x_3, ..., x_p */
+int gmatrix_disk_nextcol_no_y(gmatrix *g, sample *s)
+{
+   /*if(g->j == g->p + 1)
+      if(!gmatrix_reset(g))
+	 return FAILURE;
+
+   if(g->j == g->yidx) {
+      FREADTEST(g->y, sizeof(dtype), g->n, g->file)
+   } else {
+      FREADTEST(s->x, sizeof(dtype), g->n, g->file)
+   }
+
+   g->j++;*/
 
    return SUCCESS;
 }
@@ -235,16 +292,16 @@ int gmatrix_load(gmatrix *g)
    if(!sample_init(&s, g->n, FALSE))
       return FAILURE;
 
-   MALLOCTEST(g->x, sizeof(dtype*) * (g->p + 1))
+   MALLOCTEST(g->x, sizeof(double*) * (g->p + 1))
 
    for(j = 0 ; j < g->p + 1 ; j++)
    {
-      MALLOCTEST(g->x[j], sizeof(dtype) * g->n)
+      MALLOCTEST(g->x[j], sizeof(double) * g->n)
       if(!gmatrix_disk_nextcol(g, &s))
 	 return FAILURE;
 
       for(i = 0 ; i < g->n ; i++)
-	 g->x[j][i] = s.x[i];
+	 g->x[j][i] = (double)s.x[i];
    }
 
    sample_free(&s);
@@ -318,10 +375,11 @@ int gmatrix_reset(gmatrix *g)
 
 int gmatrix_read_scaling(gmatrix *g, char *file_scale)
 {
-   int j, k;
+   int j, k, l1, l2;
    FILE *in;
 
    MALLOCTEST(g->lookup, sizeof(double) * NUM_X_LEVELS * (g->p + 1))
+   MALLOCTEST(g->lookup2, sizeof(double) * NUM_X_LEVELS * (g->p + 1))
    MALLOCTEST(g->mean, sizeof(double) * (g->p + 1))
    MALLOCTEST(g->sd, sizeof(double) * (g->p + 1))
 
@@ -332,11 +390,21 @@ int gmatrix_read_scaling(gmatrix *g, char *file_scale)
 
    /* intercept */
    for(k = 0 ; k < NUM_X_LEVELS ; k++)
+   {
       g->lookup[k] = 1;
+      g->lookup2[k] = 1;
+   }
 
    for(j = 1 ; j < g->p + 1; j++)
+   {
+      l1 = j * NUM_X_LEVELS;
       for(k = 0 ; k < NUM_X_LEVELS ; k++)
-	 g->lookup[j * NUM_X_LEVELS + k] = (k - g->mean[j]) / g->sd[j];
+      {
+	 l2 = l1 + k;
+	 g->lookup[l2] = (k - g->mean[j]) / g->sd[j];
+	 g->lookup2[l2] = g->lookup[l2] * g->lookup[l2];
+      }
+   }
    
    fclose(in);
 

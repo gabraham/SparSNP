@@ -29,6 +29,9 @@ typedef DTYPE dtype;
 #define DTYPE_DEF 1
 #endif
 
+
+/* Macros with built in error checking */
+
 #define MALLOCTEST(x, size) \
 if(!(x = malloc(size))) { \
 fprintf(stderr, "can't malloc\n"); \
@@ -59,10 +62,15 @@ fprintf(stderr, "can't realloc\n"); \
 return FAILURE; \
 }
 
-
 #define FOPENTEST(x, filename, mode) \
 if(!(x = fopen(filename, mode))) { \
 fprintf(stderr, "can't open file %s\n", filename); \
+return FAILURE; \
+}
+
+#define FSEEKTEST(x, offset, whence) \
+if(fseek(x, offset, whence) != 0) { \
+fprintf(stderr, "can't seek offset %ld\n", offset); \
 return FAILURE; \
 }
 

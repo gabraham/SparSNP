@@ -1,12 +1,13 @@
 
 .PHONY: all
 
-CCFLAGS = -O2 -ftree-vectorize -fno-omit-frame-pointer
+CCFLAGS = -Wall -ggdb3 -O2 -ftree-vectorize -fno-omit-frame-pointer \
+	  -funroll-loops -Winline
 
 targets = tabulate cd scale #cd_double
 all: $(targets)
 
-debug: CCFLAGS = -Wall -g3 -std=gnu99
+debug: CCFLAGS = -Wall -ggdb3 -std=gnu99
 debug: $(targets)
 
 LIBRARIES = -lm

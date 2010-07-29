@@ -23,10 +23,10 @@ void l2dloss_pt(dtype *, double, dtype, int, double*);
 void l2d2loss_pt(dtype *, double, int, double*);
 double l2d2loss_pt_j(dtype, double);
 
-double l2phi1(double lp);
-double l2phi2(double lp);
-double logphi1(double lp);
-double logphi2(double lp);
-double l2inv(double lp);
-double loginv(double lp);
+inline double l2phi1(double lp);
+inline double l2phi2(double lp);
+inline double logphi1(double lp);
+inline double logphi2(double lp);
+inline double l2inv(double lp);
+inline double loginv(double lp);
 
