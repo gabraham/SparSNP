@@ -41,7 +41,7 @@ void opt_free(Opt *opt)
 void opt_defaults(Opt *opt)
 {
    opt->nlambda1 = 100;
-   opt->l1minratio = 1e-2;
+   opt->l1minratio = 5e-2;
    opt->maxepochs = 100;
    opt->lambda1 = -1;
    opt->lambda2 = 0;

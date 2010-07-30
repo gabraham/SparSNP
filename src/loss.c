@@ -1,5 +1,10 @@
 #include <math.h>
+#include <stdio.h>
 #include "loss.h"
+
+#ifndef EXP
+#define EXP exp
+#endif
 
 /*double plogis(double x)
 {
@@ -111,7 +116,7 @@ inline double l2phi2(double lp)
 
 inline double logphi1(double lp)
 {
-   return 1 / (1 + exp(-lp));
+   return 1 / (1 + EXP(-lp));
 }
 
 inline double logphi2(double p)
