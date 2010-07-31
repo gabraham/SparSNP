@@ -8,12 +8,11 @@
 #endif
 
 #define HASH_SIZE 1024
-#define MOD_SHIFT 22
+#define MOD_SHIFT 22 /* 2**32 - 2**10 = 2**22 bits*/
 
 int hashtable_init(hashtable *ht)
 {
    unsigned int i;
-   bucket *tmp;
    ht->size = HASH_SIZE;
    ht->active = 0;
 
@@ -32,8 +31,25 @@ int hashtable_init(hashtable *ht)
 void hashtable_free(hashtable *ht)
 {
    unsigned int i;
+   bucket *bk1, *bk2;
+
    if(ht->buckets)
+   {
+      /* free the chain except for the first bucket */
+      for(i = 0 ; i < ht->size ; i++)
+      {
+	 bk1 = ht->buckets[i].next;
+	 while(bk1)
+	 {  
+	    bk2 = bk1->next;
+	    free(bk1);
+	    bk1 = bk2;
+	 }
+      }
+
+      /* free the first buckets */
       free(ht->buckets);
+   }
    ht->buckets = NULL;
    ht->active = 0;
 }
@@ -41,12 +57,12 @@ void hashtable_free(hashtable *ht)
 /* If a key already exists, we don't overwrite it */
 int hashtable_put(hashtable *ht, double key, double value)
 {
-   bucket *bk, *bk_prev;
+   bucket *bk = NULL, *bk_prev = NULL;
    unsigned int hval = HASH(&key, sizeof(double), SEED);
 
    /* traverse chain */
    bk = &ht->buckets[hval];
-   while(bk->active && bk->key != key && bk->next)
+   while(bk && bk->active && bk->key != key)
    {
       bk_prev = bk;
       bk = bk->next;
@@ -74,12 +90,14 @@ double hashtable_get(hashtable *ht, double key)
    /* traverse chain */
    bk = &ht->buckets[hval];
    while(bk && bk->active && bk->key != key)
+   {
       bk = bk->next;
+   }
 
    if(bk)
       return bk->value;
 
-   return NAN;
+   return -3;
 }
 
 //-----------------------------------------------------------------------------

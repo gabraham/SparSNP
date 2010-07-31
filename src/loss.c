@@ -1,10 +1,13 @@
 #include <math.h>
 #include <stdio.h>
 #include "loss.h"
+#include "hashtable.h"
 
 #ifndef EXP
 #define EXP exp
 #endif
+
+extern hashtable ht_global;
 
 /*double plogis(double x)
 {
@@ -36,6 +39,19 @@ inline double exponential(double y)
     _eco.n.j = 0;
 
     return _eco.d;
+}
+
+double hashedexp(double x)
+{
+   double val;
+   val = hashtable_get(&ht_global, x);
+   if(isnan(val))
+   {
+      val = exp(x);
+      hashtable_put(&ht_global, x, val);
+      return val;
+   }
+   return val;
 }
 
 double dotprod(dtype *a, double *b, int m)
@@ -104,34 +120,34 @@ void l2dloss_pt(dtype *x, double d, dtype y, int p, double* grad)
       grad[j] = x[j] * (d - (double)y);
 }
 
-inline double l2phi1(double lp)
+double l2phi1(double lp)
 {
    return lp;
 }
 
-inline double l2phi2(double lp)
+ double l2phi2(double lp)
 {
    return 1;
 }
 
-inline double logphi1(double lp)
+ double logphi1(double lp)
 {
    return 1 / (1 + EXP(-lp));
 }
 
-inline double logphi2(double p)
+ double logphi2(double p)
 {
    /*double p = logphi1(lp);*/
    return p * (1 - p);
 }
 
-inline double l2inv(double lp)
+ double l2inv(double lp)
 {
    return lp;
 }
 
 /* same as logit */
-inline double loginv(double lp)
+ double loginv(double lp)
 {
    return log(lp / (1 - lp));
 }

@@ -8,7 +8,7 @@ int main()
    double *values, *keys;
    double val;
    hashtable ht;
-   int N = 100;
+   int N = 12000;
 
    if(!hashtable_init(&ht))
       return EXIT_FAILURE;
@@ -31,34 +31,15 @@ int main()
       val = hashtable_get(&ht, keys[i]);
       if(val != values[i])
       {
-	 printf("mismatch %.3f: %.3f %.3f\n>",
+	 printf("mismatch %.3f: is %.3f, should be %.3f\n",
 	       keys[i], val, values[i]);
       }
+      else
+	 printf("match %.3f: %.3f\n", keys[i], val);
    }
 
-   /* replacement */
-   /*for(i = 0 ; i < N ; i++)
-      if(!hashtable_put(&ht, (double)i, (double)i * 3))
-	 return EXIT_FAILURE;
-
-   for(i = 0 ; i < N ; i++)
-   {
-      val = hashtable_get(&ht, (double)i);
-      printf("key: %.3f\tval: %.3f\n", (double)i, val);
-   }*/
-
-   /* collisions */
- /*  for(i = 0 ; i < 10 * N ; i++)
-      if(!hashtable_put(&ht, (double)i, (double)i * 3))
-	 return EXIT_FAILURE;
-
-   for(i = 0 ; i < 10 * N ; i++)
-   {
-      val = hashtable_get(&ht, (double)i);
-      printf("key: %.3f\tval: %.3f\n", (double)i, val);
-   }*/
-
-
+   free(values);
+   free(keys);
 
    hashtable_free(&ht);
 

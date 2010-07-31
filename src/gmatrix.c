@@ -58,9 +58,9 @@ int gmatrix_init(gmatrix *g, char *filename, int n, int p, short inmemory,
 
    if(tabulate)
    {
-      if(!gmatrix_tabulation_load(g))
+      /*if(!gmatrix_tabulation_load(g))
 	 return FAILURE;
-      g->nextcol = gmatrix_tabulation_nextcol;
+      g->nextcol = gmatrix_tabulation_nextcol;*/
    }
    else if(inmemory)
    {
@@ -139,7 +139,7 @@ void gmatrix_free(gmatrix *g)
       g->x = NULL;
    }
 
-   if(g->tab)
+   /*if(g->tab)
       tabulation_free(g->tab);
    free(g->tab);
    g->tab = NULL;
@@ -160,7 +160,7 @@ void gmatrix_free(gmatrix *g)
       free(g->tmp);
    g->tmp = NULL;
 
-   /*if(g->buffer)
+   *if(g->buffer)
       free(g->buffer);
    g->buffer = NULL;*/
 }
@@ -269,7 +269,7 @@ int gmatrix_disk_nextcol_no_y(gmatrix *g, sample *s)
    return SUCCESS;
 }
 
-int gmatrix_tabulation_nextcol(gmatrix *g, sample *s)
+/*int gmatrix_tabulation_nextcol(gmatrix *g, sample *s)
 {
    if(g->j == g->p + 1)
    {
@@ -282,7 +282,7 @@ int gmatrix_tabulation_nextcol(gmatrix *g, sample *s)
    g->j++;
 
    return SUCCESS;
-}
+}*/
 
 int gmatrix_load(gmatrix *g)
 {
@@ -309,11 +309,11 @@ int gmatrix_load(gmatrix *g)
    return SUCCESS;
 }
 
-int gmatrix_tabulation_load(gmatrix *g)
+/*int gmatrix_tabulation_load(gmatrix *g)
 {
    MALLOCTEST(g->tab, sizeof(tabulation))
 
-   /* TODO: magic number, replace with xlevels * ylevels */
+   * TODO: magic number, replace with xlevels * ylevels *
    if(!tabulation_init(g->tab, g->p + 1, 6))
       return FAILURE;
 
@@ -321,7 +321,7 @@ int gmatrix_tabulation_load(gmatrix *g)
       return FAILURE;
 
    return SUCCESS;
-}
+}*/
 
 /* Expects the binary data column to be y, x_1, x_2, x_3, ..., x_p */
 /*int gmatrix_disk_nextcol2(gmatrix *g, sample *s)

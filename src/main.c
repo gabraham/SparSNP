@@ -1,7 +1,9 @@
 #include "cd.h"
 #include "loss.h"
 #include "util.h"
+#include "hashtable.h"
 
+hashtable ht_global;
 
 /*
  * Split data into training and test set
@@ -411,6 +413,9 @@ int main(int argc, char* argv[])
 
    setbuf(stdout, NULL);
 
+   if(!hashtable_init(&ht_global))
+      return EXIT_FAILURE;
+
    opt_defaults(&opt);
    if(!opt_parse(argc, argv, &opt))
       return EXIT_FAILURE;
@@ -427,6 +432,8 @@ int main(int argc, char* argv[])
 
    gmatrix_free(&g);
    opt_free(&opt);
+
+   hashtable_free(&ht_global);
    
    return EXIT_SUCCESS;
 }
