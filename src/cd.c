@@ -49,25 +49,18 @@ double get_lambda1max_gmatrix(
    for(i = 0 ; i < g->n ; i++)
       lp[i] = beta0;
 
+   printf("beta0: %.10f\n", beta0);
+
    /* find smallest lambda1 that makes all coefficients zero, by
     * finding the largest z, but let the intercept affect lp
     * first because it's not penalised. */
    for(j = 1 ; j < g->p + 1; j++)
    {
-      /*grad = d2 = 0;*/
-
       g->nextcol(g, &sm);
+      if(!g->active[j])
+	 continue;
 
-      /*step_func(&sm, g->y, lp, g->n,
-	       phi1_func, phi2_func, &grad, &d2);*/
-      s = -step_regular(&sm, g->y, lp, g->n,
-	       phi1_func, phi2_func);
-
-      /* don't move if 2nd derivative is zero */
-    /*  s = 0;
-      if(d2 != 0)
-	 s = -grad / d2;*/
-
+      s = -step_func(&sm, g->y, lp, g->n, phi1_func, phi2_func);
       if(s != 0 && zmax < fabs(s))
 	 zmax = fabs(s);
    } 
@@ -104,6 +97,24 @@ double step_regular(sample *s, double *y, double *lp, int n,
    return grad / d2;
 }
 
+/* In linear regression, for standardised inputs x, the 2nd derivative is
+ * always N since it is the sum of squares \sum_{i=1}^N x_{ij}^2 =
+ * \sum_{i=1}^N 1 = N
+ */
+double step_regular_l2(sample *s, double *y, double *lp, int n,
+      phi1 phi1_func, phi2 phi2_func)
+{
+   int i;
+   double grad = 0;
+
+   /* compute gradient */
+   for(i = 0 ; i < n ; i++)
+      grad += s->x[i] * (lp[i] - y[i]);
+
+   return grad / n;
+}
+
+
 double step_grouped(sample *s, double *y, double *lp, int n,
       phi1 phi1_func, phi2 phi2_func)
 {
@@ -134,7 +145,6 @@ int cd_gmatrix(gmatrix *g,
 {
    int i, j, epoch = 1, numconverged = 0, numiter;
    double loss = 0, s, beta_new;
-   /*double grad, d2;*/
    short *converged = NULL;
    sample sm;
    double truncl = log2((1 - trunc) / trunc);
@@ -152,25 +162,25 @@ int cd_gmatrix(gmatrix *g,
       for(j = 0 ; j < g->p + 1; j++)
       {
 	 g->nextcol(g, &sm);
+	 if(!g->active[j])
+	 {
+	    converged[j] = TRUE;
+	    numconverged++;
+	    continue;
+	 }
+
 	 numiter = 0;
 
-	 while(!converged[j] && numiter <= maxepoch)
+	 while(!converged[j] && numiter <= 10)
 	 {
 	    numiter++;
-	   /* grad = d2 = 0;*/
 
-	    /*step_func(&sm, g->y, lp, g->n,
-		  phi1_func, phi2_func, &grad, &d2);*/
-	    s = step_regular(&sm, g->y, lp, g->n,
-		  phi1_func, phi2_func);
+	    s = step_func(&sm, g->y, lp, g->n,  phi1_func, phi2_func);
+	    /*printf("[%d:%d:%d] s: %.10f   b:%.10f\n", epoch, j, numiter, s,
+		  beta[j]);*/
 
-	    /* don't move if 2nd derivative is zero */
-	    /*s = 0;
-	    if(d2 != 0)
-	       s = grad / d2;*/
-
-	    if(s == 0)
-	       continue;
+	    /*if(s == 0)
+	       continue;*/
 
 	    /* don't penalise intercept */
 	    if(j == 0)

@@ -49,6 +49,7 @@ int gmatrix_init(gmatrix *g, char *filename, int n, int p, short inmemory,
    g->mean = NULL;
    g->sd = NULL;
    g->tmp = NULL;
+   g->active = NULL;
 
    MALLOCTEST(g->intercept, sizeof(double) * g->n)
    for(i = 0 ; i < n ; i++)
@@ -139,10 +140,17 @@ void gmatrix_free(gmatrix *g)
       g->x = NULL;
    }
 
-   /*if(g->tab)
-      tabulation_free(g->tab);
-   free(g->tab);
-   g->tab = NULL;
+   if(g->active)
+      free(g->active);
+   g->active = NULL;
+
+   if(g->tmp)
+      free(g->tmp);
+   g->tmp = NULL;
+
+   if(g->intercept)
+      free(g->intercept);
+   g->intercept = NULL;
 
    if(g->lookup)
       free(g->lookup);
@@ -152,17 +160,23 @@ void gmatrix_free(gmatrix *g)
       free(g->lookup2);
    g->lookup2 = NULL;
 
-   if(g->intercept)
-      free(g->intercept);
-   g->intercept = NULL;
-
-   if(g->tmp)
-      free(g->tmp);
-   g->tmp = NULL;
+   /*if(g->tab)
+      tabulation_free(g->tab);
+   free(g->tab);
+   g->tab = NULL;
 
    *if(g->buffer)
       free(g->buffer);
    g->buffer = NULL;*/
+}
+
+int gmatrix_disk_skipcol(gmatrix *g)
+{
+   if(g->j == 0)
+   {
+   }
+   FSEEKTEST(g->file, sizeof(dtype) * g->n, SEEK_CUR)
+   return SUCCESS;
 }
 
 /* Expects the binary data column to be y, x_1, x_2, x_3, ..., x_p */
@@ -177,6 +191,8 @@ int gmatrix_disk_nextcol(gmatrix *g, sample *s)
    if(g->j == 0)
    {
       s->intercept = TRUE;
+
+      /* read y the first time we see it */
       if(!g->y)
       {
 	 MALLOCTEST(g->y, sizeof(double) * g->n)
@@ -373,15 +389,18 @@ int gmatrix_reset(gmatrix *g)
    return SUCCESS;
 }
 
+/* Populate lookup tables for SNP levels 0, 1, 2
+ */
 int gmatrix_read_scaling(gmatrix *g, char *file_scale)
 {
    int j, k, l1, l2;
    FILE *in;
 
-   MALLOCTEST(g->lookup, sizeof(double) * NUM_X_LEVELS * (g->p + 1))
-   MALLOCTEST(g->lookup2, sizeof(double) * NUM_X_LEVELS * (g->p + 1))
+   CALLOCTEST(g->lookup, NUM_X_LEVELS * (g->p + 1), sizeof(double))
+   CALLOCTEST(g->lookup2, NUM_X_LEVELS * (g->p + 1), sizeof(double))
    MALLOCTEST(g->mean, sizeof(double) * (g->p + 1))
    MALLOCTEST(g->sd, sizeof(double) * (g->p + 1))
+   MALLOCTEST(g->active, sizeof(int) * (g->p + 1))
 
    FOPENTEST(in, file_scale, "rb")
 
@@ -394,15 +413,20 @@ int gmatrix_read_scaling(gmatrix *g, char *file_scale)
       g->lookup[k] = 1;
       g->lookup2[k] = 1;
    }
+   
+   g->active[0] = TRUE;
 
    for(j = 1 ; j < g->p + 1; j++)
    {
-      l1 = j * NUM_X_LEVELS;
-      for(k = 0 ; k < NUM_X_LEVELS ; k++)
+      if((g->active[j] = (g->sd[j] != 0)))
       {
-	 l2 = l1 + k;
-	 g->lookup[l2] = (k - g->mean[j]) / g->sd[j];
-	 g->lookup2[l2] = g->lookup[l2] * g->lookup[l2];
+	 l1 = j * NUM_X_LEVELS;
+	 for(k = 0 ; k < NUM_X_LEVELS ; k++)
+	 {
+	    l2 = l1 + k;
+	    g->lookup[l2] = (k - g->mean[j]) / g->sd[j];
+	    g->lookup2[l2] = g->lookup[l2] * g->lookup[l2];
+	 }
       }
    }
    

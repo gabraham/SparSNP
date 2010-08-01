@@ -125,29 +125,29 @@ double l2phi1(double lp)
    return lp;
 }
 
- double l2phi2(double lp)
+double l2phi2(double lp)
 {
    return 1;
 }
 
- double logphi1(double lp)
+double logphi1(double lp)
 {
    return 1 / (1 + EXP(-lp));
 }
 
- double logphi2(double p)
+double logphi2(double p)
 {
    /*double p = logphi1(lp);*/
    return p * (1 - p);
 }
 
- double l2inv(double lp)
+double l2inv(double lp)
 {
    return lp;
 }
 
 /* same as logit */
- double loginv(double lp)
+double loginv(double lp)
 {
    return log(lp / (1 - lp));
 }

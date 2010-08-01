@@ -7,8 +7,9 @@
 #define SEED 984634157 /* arbitrary */
 #endif
 
-#define HASH_SIZE 1024
-#define MOD_SHIFT 22 /* 2**32 - 2**10 = 2**22 bits*/
+#define HASH_SIZE 1048576
+#define MOD_SHIFT 12 /* 2**32 / 2**20 = 2**12 bits*/
+#define EXP_ERROR 1e-6
 
 int hashtable_init(hashtable *ht)
 {
@@ -62,7 +63,7 @@ int hashtable_put(hashtable *ht, double key, double value)
 
    /* traverse chain */
    bk = &ht->buckets[hval];
-   while(bk && bk->active && bk->key != key)
+   while(bk && bk->active && fabs(bk->key - key) > EXP_ERROR)
    {
       bk_prev = bk;
       bk = bk->next;
@@ -78,6 +79,7 @@ int hashtable_put(hashtable *ht, double key, double value)
    bk->key = key;
    bk->value = value;
    bk->active = TRUE;
+   ht->active++;
 
    return SUCCESS;
 }
@@ -89,15 +91,15 @@ double hashtable_get(hashtable *ht, double key)
 
    /* traverse chain */
    bk = &ht->buckets[hval];
-   while(bk && bk->active && bk->key != key)
+   while(bk && bk->active && fabs(bk->key - key) > EXP_ERROR)
    {
       bk = bk->next;
    }
 
-   if(bk)
+   if(bk && bk->active)
       return bk->value;
 
-   return -3;
+   return NAN;
 }
 
 //-----------------------------------------------------------------------------

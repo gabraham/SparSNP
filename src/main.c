@@ -110,7 +110,7 @@ int opt_parse(int argc, char* argv[], Opt* opt)
 	    opt->phi1_func = &l2phi1;
 	    opt->phi2_func = &l2phi2;
 	    opt->inv_func = &l2inv;
-	    opt->step_func = &step_regular;
+	    opt->step_func = &step_regular_l2;
 	 }
 	 else
 	 {

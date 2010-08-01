@@ -40,6 +40,7 @@ typedef struct gmatrix {
    double *mean, *sd;
    double *lookup, *lookup2;
    double *intercept;
+   int *active;
    dtype *buffer;
    int bufsize;
    int bufidx;
@@ -60,6 +61,7 @@ int gmatrix_disk_nextcol(gmatrix *, sample *);
 int gmatrix_mem_nextcol(gmatrix *, sample *);
 int gmatrix_disk_nextcol2(gmatrix *, sample *);
 int gmatrix_load(gmatrix *g);
+int gmatrix_disk_skipcol(gmatrix *g);
 
 int tabulation_init(tabulation *t, int p, int nbins);
 void tabulation_free(tabulation *t);
