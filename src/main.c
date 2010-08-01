@@ -93,7 +93,7 @@ int opt_parse(int argc, char* argv[], Opt* opt)
 	    opt->phi1_func = &logphi1;
 	    opt->phi2_func = &logphi2;
 	    opt->inv_func = &loginv;
-	    opt->step_func = &step_regular;
+	    opt->step_func = &step_regular_logistic;
 	 }
 	 else if(strcmp2(opt->model, "grouped"))
 	 {

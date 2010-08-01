@@ -114,6 +114,31 @@ double step_regular_l2(sample *s, double *y, double *lp, int n,
    return grad / n;
 }
 
+double step_regular_logistic(sample *s, double *y, double *lp, int n,
+      phi1 phi1_func, phi2 phi2_func)
+{
+   int i;
+   double lphi1;
+   double x, x2;
+   double grad = 0, d2 = 0;
+
+   /* compute gradient */
+   for(i = 0 ; i < n ; i++)
+   {
+      x = s->x[i];
+      /* skip zeros, they don't change the linear predictor */
+/*      if(x == 0)
+	 continue; */
+      x2 = s->x2[i];
+
+      lphi1 = 1 / (1 + exp(-lp[i]));
+      grad += x * (lphi1 - y[i]);
+      d2 += x2 * lphi1 * (1 - lphi1);
+   }
+   if(d2 == 0)
+      return 0;
+   return grad / d2;
+}
 
 double step_grouped(sample *s, double *y, double *lp, int n,
       phi1 phi1_func, phi2 phi2_func)
@@ -143,8 +168,9 @@ int cd_gmatrix(gmatrix *g,
       double lambda2, double threshold, int verbose,
       int *trainf, double trunc)
 {
+   int maxiter = 10;
    int i, j, epoch = 1, numconverged = 0, numiter;
-   double loss = 0, s, beta_new;
+   double s, beta_new;
    short *converged = NULL;
    sample sm;
    double truncl = log2((1 - trunc) / trunc);
@@ -164,23 +190,21 @@ int cd_gmatrix(gmatrix *g,
 	 g->nextcol(g, &sm);
 	 if(!g->active[j])
 	 {
-	    converged[j] = TRUE;
-	    numconverged++;
+	    if(!converged[j])
+	    {
+	       converged[j] = TRUE;
+	       numconverged++;
+	    }
 	    continue;
 	 }
 
 	 numiter = 0;
 
-	 while(!converged[j] && numiter <= 10)
+	 while(!converged[j] && numiter <= maxiter)
 	 {
 	    numiter++;
 
 	    s = step_func(&sm, g->y, lp, g->n,  phi1_func, phi2_func);
-	    /*printf("[%d:%d:%d] s: %.10f   b:%.10f\n", epoch, j, numiter, s,
-		  beta[j]);*/
-
-	    /*if(s == 0)
-	       continue;*/
 
 	    /* don't penalise intercept */
 	    if(j == 0)
@@ -213,28 +237,10 @@ int cd_gmatrix(gmatrix *g,
 	 }
       }
 
-#ifdef VERBOSE
-      if(verbose > 1)
-      {
-	 loss = 0;
-	 for(i = 0 ; i < g->n ; i++)
-	 {
-	    if(verbose > 3)
-	       printf("\tlp[%d]: %.3f\n", i, lp[i]);
-	    loss += loss_pt_func(lp[i], g->y[i]) / g->n;
-	 }
-      }
-#endif
-	 
+      /* count number of zero variables */
       if(epoch > 1)
       {
 	 zeros = 0;
-
-#ifdef VERBOSE
-	 if(verbose > 1 && !converged[0])
-	    printf("intercept not converged: %.10f\n", beta[0]); 
-#endif
-
 	 for(j = 1 ; j < g->p + 1 ; j++)
 	 {
 	    if(fabs(beta[j]) < ZERO_THRESH)
@@ -242,11 +248,6 @@ int cd_gmatrix(gmatrix *g,
 	       beta[j] = 0;
 	       zeros++;
 	    }
-
-#ifdef VERBOSE
-	    if(verbose > 1 && !converged[j])
-	       printf("beta[%d] not converged: %.10f\n", j, beta[j]);
-#endif
 	 }
       }
 
@@ -255,12 +256,6 @@ int cd_gmatrix(gmatrix *g,
       {
 	 printf("Epoch %d  converged: %d zeros: %d  non-zeros: %d\n",
 	       epoch, numconverged, zeros, g->p - zeros);
-      }
-      else if(verbose > 1)
-      {
-	 printf("Epoch %d  training loss: %.5f  converged: %d\
-  zeros: %d  non-zeros: %d\n",
-   epoch, loss, numconverged, zeros, g->p - zeros);
       }
 #endif
 
@@ -284,6 +279,7 @@ int cd_gmatrix(gmatrix *g,
 	    break;
 	 }
 
+	 /* reset convergence for next epoch */
 	 for(j = 0 ; j < g->p + 1 ; j++)
 	    converged[j] = FALSE;
 	 numconverged = 0;

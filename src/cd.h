@@ -91,3 +91,6 @@ double step_grouped(sample *s, double *y, double *lp, int n,
 double step_regular_l2(sample *s, double *y, double *lp, int n,
       phi1 phi1_func, phi2 phi2_func);
 
+double step_regular_logistic(sample *s, double *y, double *lp, int n,
+      phi1 phi1_func, phi2 phi2_func);
+
