@@ -151,8 +151,6 @@ hapgen2bin <- function(hgfile, hgyfile, outfile, alleles=c(0, 1, 2), sep=" ")
    }
    cat("\n")
 
-   #cat("Number of variables:", length(x) - 1, "\n")
-
    close(out)
    close(fin)
    close(yin)
