@@ -3,9 +3,6 @@
 
 #include "gmatrix.h"
 
-#define YFORMAT01 0
-#define YFORMAT11 1
-
 int sample_init(sample *s, int n, short inmemory)
 {
    s->inmemory = inmemory;

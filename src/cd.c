@@ -140,14 +140,13 @@ double step_regular_sqrhinge(sample *s, double *y, double *lp, int n,
       phi1 phi1_func, phi2 phi2_func)
 {
    int i;
-   double x, double l;
-   double grad = 0;
+   double grad = 0, l;
 
    /* compute gradient */
    for(i = 0 ; i < n ; i++)
    {
       l = y[i] * lp[i];
-      if(l > 0)
+      if(l < 1)
 	 grad += y[i] * s->x[i] * (l - 1);
    }
    return grad / n;

@@ -101,7 +101,7 @@ int opt_parse(int argc, char* argv[], Opt* opt)
 	 }
 	 else if(strcmp2(opt->model, "sqrhinge"))
 	 {
-	    opt->inv_func = &loginv;
+	    opt->inv_func = &sqrhingeinv;
 	    opt->step_func = &step_regular_sqrhinge;
 	    opt->yformat = YFORMAT11;
 	 }
@@ -309,7 +309,7 @@ int run(Opt *opt, gmatrix *g)
 
       if(ret == FAILURE)
       {
-	 printf("failed to converge after %d\n", opt->maxepochs);
+	 printf("failed to converge after %d epochs\n", opt->maxepochs);
 	 break;
       } 
 
