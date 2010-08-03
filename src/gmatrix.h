@@ -8,6 +8,9 @@
 #define NUM_X_LEVELS 3
 #define X_LEVELS {0, 1, 2}
 
+#define YFORMAT01 1
+#define YFORMAT11 2
+
 typedef struct tabulation {
    int p;
    int nbins;
@@ -50,11 +53,12 @@ typedef struct gmatrix {
    tabulation *tab;
    char *scalefile;
    dtype *tmp;
+   short yformat;
 } gmatrix;
 
 int sample_init(sample *, int, short);
 void sample_free(sample *);
-int gmatrix_init(gmatrix *, char *, int, int, short, short, char*);
+int gmatrix_init(gmatrix *, char *, int, int, short, short, char*, short);
 int gmatrix_reset(gmatrix *);
 void gmatrix_free(gmatrix *);
 int gmatrix_disk_nextcol(gmatrix *, sample *);

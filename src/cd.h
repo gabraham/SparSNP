@@ -48,6 +48,7 @@ typedef struct Opt {
    short inmemory;
    short tabulate;
    char *scalefile;
+   short yformat;
 } Opt;
 
 int cd_gmatrix(gmatrix *g,
@@ -92,5 +93,8 @@ double step_regular_l2(sample *s, double *y, double *lp, int n,
       phi1 phi1_func, phi2 phi2_func);
 
 double step_regular_logistic(sample *s, double *y, double *lp, int n,
+      phi1 phi1_func, phi2 phi2_func);
+
+double step_regular_sqrhinge(sample *s, double *y, double *lp, int n,
       phi1 phi1_func, phi2 phi2_func);
 

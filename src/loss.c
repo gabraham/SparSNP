@@ -141,14 +141,20 @@ double logphi2(double p)
    return p * (1 - p);
 }
 
+/* linear link function */
 double l2inv(double lp)
 {
    return lp;
 }
 
-/* same as logit */
+/* logistic link function, i.e., logit */
 double loginv(double lp)
 {
    return log(lp / (1 - lp));
+}
+
+double sqrhingeinv(double lp)
+{
+   return -lp;
 }
 

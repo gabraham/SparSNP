@@ -119,25 +119,37 @@ double step_regular_logistic(sample *s, double *y, double *lp, int n,
 {
    int i;
    double lphi1;
-   double x, x2;
    double grad = 0, d2 = 0;
 
    /* compute gradient */
    for(i = 0 ; i < n ; i++)
    {
-      x = s->x[i];
-      /* skip zeros, they don't change the linear predictor */
-/*      if(x == 0)
-	 continue; */
-      x2 = s->x2[i];
-
       lphi1 = 1 / (1 + exp(-lp[i]));
-      grad += x * (lphi1 - y[i]);
-      d2 += x2 * lphi1 * (1 - lphi1);
+      grad += s->x[i] * (lphi1 - y[i]);
+      d2 += s->x2[i] * lphi1 * (1 - lphi1);
    }
    if(d2 == 0)
       return 0;
    return grad / d2;
+}
+
+/*
+ * Squared hinge loss, assumes y \in {-1,1}
+ */
+double step_regular_sqrhinge(sample *s, double *y, double *lp, int n,
+      phi1 phi1_func, phi2 phi2_func)
+{
+   int i;
+   double grad = 0, l;
+
+   /* compute gradient */
+   for(i = 0 ; i < n ; i++)
+   {
+      l = y[i] * lp[i];
+      if(l < 1)
+	 grad += y[i] * s->x[i] * (l - 1);
+   }
+   return grad / n;
 }
 
 double step_grouped(sample *s, double *y, double *lp, int n,

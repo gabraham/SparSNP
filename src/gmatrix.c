@@ -27,7 +27,7 @@ void sample_free(sample *s)
 }
 
 int gmatrix_init(gmatrix *g, char *filename, int n, int p, short inmemory,
-      short tabulate, char *scalefile)
+      short tabulate, char *scalefile, short yformat)
 {
    int i;
 
@@ -50,6 +50,7 @@ int gmatrix_init(gmatrix *g, char *filename, int n, int p, short inmemory,
    g->sd = NULL;
    g->tmp = NULL;
    g->active = NULL;
+   g->yformat = yformat;
 
    MALLOCTEST(g->intercept, sizeof(double) * g->n)
    for(i = 0 ; i < n ; i++)
@@ -197,9 +198,12 @@ int gmatrix_disk_nextcol(gmatrix *g, sample *s)
       {
 	 MALLOCTEST(g->y, sizeof(double) * g->n)
 	 FREADTEST(g->tmp, sizeof(dtype), g->n, g->file)
-	 /* y and intercept */
-	 for(i = 0 ; i < g->n ; i++)
-      	    g->y[i] = (double)g->tmp[i];
+	 if(g->yformat == YFORMAT01)
+	    for(i = 0 ; i < g->n ; i++)
+	       g->y[i] = (double)g->tmp[i];
+	 else
+	    for(i = 0 ; i < g->n ; i++)
+	       g->y[i] = 2.0 * g->tmp[i] - 1.0;
       }
       else /* don't read y again */
 	 FSEEKTEST(g->file, sizeof(dtype) * g->n, SEEK_CUR)

@@ -71,6 +71,7 @@ void opt_defaults(Opt *opt)
    opt->inmemory = FALSE;
    opt->tabulate = FALSE;
    opt->scalefile = NULL;
+   opt->yformat = YFORMAT01;
 }
 
 int opt_parse(int argc, char* argv[], Opt* opt)
@@ -90,26 +91,23 @@ int opt_parse(int argc, char* argv[], Opt* opt)
 	 opt->model = argv[i];
 	 if(strcmp2(opt->model, "logistic"))
 	 {
-	    opt->loss_pt_func = &logloss_pt;
-	    opt->phi1_func = &logphi1;
-	    opt->phi2_func = &logphi2;
 	    opt->inv_func = &loginv;
 	    opt->step_func = &step_regular_logistic;
 	 }
 	 else if(strcmp2(opt->model, "grouped"))
 	 {
-	    opt->loss_pt_func = &logloss_pt;
-	    opt->phi1_func = &logphi1;
-	    opt->phi2_func = &logphi2;
 	    opt->inv_func = &loginv;
 	    opt->step_func = &step_grouped;
+	 }
+	 else if(strcmp2(opt->model, "sqrhinge"))
+	 {
+	    opt->inv_func = &sqrhingeinv;
+	    opt->step_func = &step_regular_sqrhinge;
+	    opt->yformat = YFORMAT11;
 	 }
 	 else if(strcmp2(opt->model, "linear") ||
 	       strcmp2(opt->model, "pcor"))
 	 {
-	    opt->loss_pt_func = &l2loss_pt;
-	    opt->phi1_func = &l2phi1;
-	    opt->phi2_func = &l2phi2;
 	    opt->inv_func = &l2inv;
 	    opt->step_func = &step_regular_l2;
 	 }
@@ -302,8 +300,8 @@ int run(Opt *opt, gmatrix *g)
       /* return value is number of nonzero variables,
        * including the intercept */
       ret = cd_gmatrix(
-	    g, opt->phi1_func, opt->phi2_func, opt->loss_pt_func,
-	    opt->inv_func, opt->step_func,
+	    g, opt->phi1_func, opt->phi2_func,
+	    opt->loss_pt_func, opt->inv_func, opt->step_func,
 	    opt->maxepochs, betahat, lp, opt->lambda1path[i], opt->lambda2,
 	    opt->threshold, opt->verbose, opt->trainf, opt->trunc);
 
@@ -311,7 +309,7 @@ int run(Opt *opt, gmatrix *g)
 
       if(ret == FAILURE)
       {
-	 printf("failed to converge after %d\n", opt->maxepochs);
+	 printf("failed to converge after %d epochs\n", opt->maxepochs);
 	 break;
       } 
 
@@ -363,8 +361,8 @@ int run_pcor(Opt *opt, gmatrix *g)
 	 CALLOCTEST(lp, opt->n, sizeof(double))
 
 	 ret = cd_gmatrix(
-      	       g, opt->phi1_func, opt->phi2_func, opt->loss_pt_func,
-	       opt->inv_func, opt->step_func,
+      	       g, opt->phi1_func, opt->phi2_func,
+	       opt->loss_pt_func, opt->inv_func, opt->step_func,
       	       opt->maxepochs, betahat, lp, opt->lambda1path[i], opt->lambda2,
       	       opt->threshold, opt->verbose, opt->trainf, opt->trunc);
 
@@ -422,7 +420,7 @@ int main(int argc, char* argv[])
       return EXIT_FAILURE;
 
    if(!gmatrix_init(&g, opt.filename, opt.n, opt.p, opt.inmemory,
-	    opt.tabulate, opt.scalefile))
+	    opt.tabulate, opt.scalefile, opt.yformat))
       return EXIT_FAILURE;
   
    make_lambda1path(&opt, &g);

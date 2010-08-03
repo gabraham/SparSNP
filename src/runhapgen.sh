@@ -163,46 +163,46 @@ EOF
    formatscd $DIR "$binfile" $n $p
 }
 
-function shuffle {
-   local DIR=$1
-   local prefix=$2
-   local N=$3
-   local binfile="$prefix.bin"
-   local xfile="$prefix.all.g"
-   local xfileshuf="$xfile.shuffled"
-   local yfile="$prefix.y"
-   local yfileshuf="$yfile.shuffled"
-   local tmp1=".tmp1"
-   local tmp2=".tmp2"
-   local rscript=".shuffle.R"
-   
-   echo -n "Shuffling ... "
-   # Shuffle samples 
-   cat > $rscript <<EOF
-   n2 <- $N
-   s <- sample(n2)
-   y <- read.csv("$DIR/$yfile", header=FALSE)[,1]
-   write.table(y[order(s)], "$DIR/$yfileshuf", col.names=FALSE, row.names=FALSE)
-   f <- file("$DIR/$xfile", "rt")
-   tmp <- file("$DIR/$tmp1", "wt")
-   for(i in 1:n2)
-   {
-      r <- readLines(f, n=1)
-      writeLines(paste(s[i], r, sep=" "), tmp)
-   }
-   close(tmp)
-   close(f)
-EOF
-   
-   Rscript $rscript
-   
-   sort -T $TMPDIR -n -k 1,1 $DIR/$tmp1 > $DIR/$tmp2
-   /bin/rm $DIR/$tmp1
-
-   cut -f2- -d ' ' $DIR/$tmp2 > $DIR/$xfileshuf
-   /bin/rm $DIR/$tmp2 $rscript
-   
-}
+## Randomly shuffle the samples
+#function shuffle {
+#   local DIR=$1
+#   local prefix=$2
+#   local N=$3
+#   local binfile="$prefix.bin"
+#   local xfile="$prefix.all.g"
+#   local xfileshuf="$xfile.shuffled"
+#   local yfile="$prefix.y"
+#   local yfileshuf="$yfile.shuffled"
+#   local tmp1=".tmp1"
+#   local tmp2=".tmp2"
+#   local rscript=".shuffle.R"
+#   
+#   echo -n "Shuffling ... "
+#   # Shuffle samples 
+#   cat > $rscript <<EOF
+#   n2 <- $N
+#   s <- sample(n2)
+#   y <- read.csv("$DIR/$yfile", header=FALSE)[,1]
+#   write.table(y[order(s)], "$DIR/$yfileshuf", col.names=FALSE, row.names=FALSE)
+#   f <- file("$DIR/$xfile", "rt")
+#   tmp <- file("$DIR/$tmp1", "wt")
+#   for(i in 1:n2)
+#   {
+#      r <- readLines(f, n=1)
+#      writeLines(paste(s[i], r, sep=" "), tmp)
+#   }
+#   close(tmp)
+#   close(f)
+#EOF
+#   
+#   Rscript $rscript
+#   
+#   sort -T $TMPDIR -n -k 1,1 $DIR/$tmp1 > $DIR/$tmp2
+#   /bin/rm $DIR/$tmp1
+#
+#   cut -f2- -d ' ' $DIR/$tmp2 > $DIR/$xfileshuf
+#   /bin/rm $DIR/$tmp2 $rscript
+#}
 
 function convert {
    local DIR=$1
@@ -216,8 +216,10 @@ function convert {
    local rscript=".convert.R"
    
    cat > $rscript <<EOF
-   hgfile <- "$DIR/$xfileshuf"
-   hgyfile <- "$DIR/$yfileshuf"
+   #hgfile <- "$DIR/$xfileshuf"
+   #hgyfile <- "$DIR/$yfileshuf"
+   hgfile <- "$DIR/$xfile"
+   hgyfile <- "$DIR/$yfile"
    outfile <- "$DIR/$binfile"
    sep <- " "
 
@@ -378,7 +380,20 @@ function simulate {
    echo "Cutting HapMap data"
    echo "####################################"
    
+   # Cut hapmap legend files into blocks
    hapmapcut $LEGEND $HAPLO $K $CUTFILE
+
+   # Convert hapmap legend file to plink MAP file
+   if ! [ -a "$LEGEND.map" ];
+   then
+      local RSCRIPT=".conv.R"
+      cat > $RSCRIPT <<EOF
+   source("~/Code/cd/R/convert.R")
+   hapmap2map("$LEGEND", "$LEGEND.map")
+EOF
+      Rscript $RSCRIPT
+   fi
+
 
    echo
    echo "####################################"
@@ -447,9 +462,27 @@ EOF
    echo "Postprocessing genotypes"
    echo "####################################"
    
-   shuffle $DIR $prefix $((N*2))
+   # For coordinate descent 
+   #shuffle $DIR $prefix $((N*2))
    convert $DIR $prefix $((N*2))
    transpose $DIR/sim.bin $((N*2)) $P 
+
+   echo "####################################"
+   echo "Converting to plink PED format"
+   echo "####################################"
+
+   # For plink
+   cat > $RSCRIPT <<EOF
+   source("~/Code/cd/R/convert.R")
+   hapgen2ped("$DIR/sim.all.g", "$DIR/sim.y", "$DIR/sim.ped")
+EOF
+
+   Rscript $RSCRIPT
+
+   echo
+   echo "####################################"
+   echo "DONE"
+   echo "####################################"
 }
 
 #################################################################################
@@ -481,31 +514,31 @@ EOF
 
 ################################################################################
 
-#for ((J=1 ; J<=10; J++));
-#do
-#   DIR="sim8.$J"
-#   if ! [ -d "$DIR" ]; then
-#      mkdir $DIR
-#   fi
-#   prefix="sim"
-#   N=1000
-#   K=20
-#   HAPLO=HapMap/genotypes_chr1_JPT+CHB_r22_nr.b36_fwd.phased
-#   LEGEND=HapMap/genotypes_chr1_JPT+CHB_r22_nr.b36_fwd_legend.txt
-#   simulate $DIR $prefix $N $K $HAPLO $LEGEND
-#   echo "exit:" $J $?
-#done
-#
-#exit 1
+for ((J=1 ; J<=10; J++));
+do
+   DIR="sim6.$J"
+   if ! [ -d "$DIR" ]; then
+      mkdir $DIR
+   fi
+   prefix="sim"
+   N=1000
+   K=20
+   HAPLO=HapMap/genotypes_chr1_JPT+CHB_r22_nr.b36_fwd.phased
+   LEGEND=HapMap/genotypes_chr1_JPT+CHB_r22_nr.b36_fwd_legend.txt
+   simulate $DIR $prefix $N $K $HAPLO $LEGEND
+   echo "exit:" $J $?
+done
 
-# HapMap data, several strong SNPs
-DIR=sim7
-prefix="sim"
-N=500
-K=10
-HAPLO=HapMap/genotypes_chr1_JPT+CHB_r22_nr.b36_fwd.phased
-LEGEND=HapMap/genotypes_chr1_JPT+CHB_r22_nr.b36_fwd_legend.txt
-simulate $DIR $prefix $N $K $HAPLO $LEGEND
+exit 1
+
+## HapMap data, several strong SNPs
+#DIR=sim7
+#prefix="sim"
+#N=1000
+#K=20
+#HAPLO=HapMap/genotypes_chr1_JPT+CHB_r22_nr.b36_fwd.phased
+#LEGEND=HapMap/genotypes_chr1_JPT+CHB_r22_nr.b36_fwd_legend.txt
+#simulate $DIR $prefix $N $K $HAPLO $LEGEND
 
 ##
 ## Several strong SNPs, lots of weak SNPs

@@ -143,7 +143,7 @@ int main(int argc, char* argv[])
       return EXIT_FAILURE;
    }
 
-   if(!gmatrix_init(&g, filename_in, n, p, inmemory, FALSE, NULL))
+   if(!gmatrix_init(&g, filename_in, n, p, inmemory, FALSE, NULL, YFORMAT01))
       return EXIT_FAILURE;
 
    if(!scale(&g, filename_out))

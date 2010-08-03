@@ -34,4 +34,5 @@ double logphi1(double lp);
 double logphi2(double lp);
 double l2inv(double lp);
 double loginv(double lp);
+double sqrhingeinv(double lp);
 
