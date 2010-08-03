@@ -22,7 +22,7 @@ extern hashtable ht_global;
    Accuracy depends on y being not too large
 
  */
-inline double exponential(double y)
+/*inline double exponential(double y)
 {
     union
     {
@@ -39,7 +39,7 @@ inline double exponential(double y)
     _eco.n.j = 0;
 
     return _eco.d;
-}
+}*/
 
 double hashedexp(double x)
 {

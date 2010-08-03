@@ -1,10 +1,10 @@
 library(ggplot2)
 
-exper <- c("sim8.1", "sim8.2", "sim8.3", "sim8.4", "sim8.5", "sim8.6",
-"sim8.7")
+nexper <- 10
+exper <- paste("sim6.", 1:nexper, sep="")
 dir <- "~/Software/hapgen_1.3"
 
-n <- 1000
+n <- 5000
 p <- 185805
 legend <- sprintf(
    "%s/HapMap/genotypes_chr1_JPT+CHB_r22_nr.b36_fwd_legend.txt",
@@ -18,15 +18,19 @@ legend <- sprintf(
 #x <- x[,-1]
 
 
-res <- lapply(exper, function(ex) {
+res <- lapply(exper[1:6], function(ex) {
+
+   dir <- sprintf("%s/results", ex)
 
    # Find all files and sort by numerical ordering
-   files <- list.files(pattern=sprintf("^beta_cd_%s\\.csv\\.", ex))
+   files <- list.files(pattern="^beta\\.csv\\.", path=dir, full.names=TRUE)
+   if(length(files) == 0)
+      stop("no files found")
    id <- sapply(strsplit(files, "\\."), function(x) x[4])
    files <- files[order(as.numeric(id))]
 
    # Get indices of causal SNPs
-   snps <- as.character(read.csv(sprintf("%s/%s/loci.txt", dir, ex),
+   snps <- as.character(read.csv(sprintf("%s/loci.txt", ex),
          header=FALSE)[,1])
    snplist <- read.csv(legend, sep="\t")
    pos <- sapply(paste("^", snps, "$", sep=""), grep,
@@ -53,14 +57,15 @@ res <- lapply(exper, function(ex) {
       p
    }
    
+
    mes <- sapply(1:ncol(b.cd), function(i) {
-      f <- sprintf("b.cd.%s", i - 1)
+      f <- sprintf("%s/b.cd.%s", dir, i - 1)
       write.table(cbind(ysnp, abs(b.cd[,i])),
    	 col.names=FALSE, row.names=FALSE, sep="\t",
    	 file=f)
       runperf(f)
    })
-   
+
    #write.table(cbind(ysnp, b.glm), col.names=FALSE, row.names=FALSE,
    #      file="b.glm", sep="\t")
    #auprc.glm <- runperf("b.glm")

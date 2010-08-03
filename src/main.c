@@ -1,3 +1,4 @@
+#include <stdlib.h>
 #include "cd.h"
 #include "loss.h"
 #include "util.h"

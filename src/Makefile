@@ -1,7 +1,7 @@
 
 .PHONY: all
 
-CCFLAGS = -Wall -ggdb3 -O2 -ftree-vectorize -fno-omit-frame-pointer \
+CCFLAGS = -std=gnu99 -Wall -ggdb3 -O2 -ftree-vectorize -fno-omit-frame-pointer \
 	  -funroll-loops -Winline #-ffast-math
 
 targets = cd scale
