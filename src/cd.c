@@ -237,7 +237,7 @@ int cd_gmatrix(gmatrix *g,
 
 	    /* update linear predictor */
 	    for(i = 0 ; i < g->n ; i++)
-	       if(sm.x[i] != 0)
+	       /*if(sm.x[i] != 0)*/
 	       {
 		  lp[i] += sm.x[i] * (beta_new - beta[j]);
 		  if(lp[i] < -MAXLP)

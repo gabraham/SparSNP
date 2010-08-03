@@ -28,7 +28,16 @@ ysnp <- lapply(exper, function(ex) {
    as.numeric((1:p) %in% pos)
 })
 
-res <- lapply(seq(along=exper), function(k) {
+runperf <- function(f)
+{
+   s <- system(sprintf("~/Software/perf.src/perf -APR -ROC < %s", f), intern=TRUE)
+   p <- as.numeric(sapply(strsplit(s, "[[:space:]]+"), function(x) x[2]))
+   names(p) <- sapply(strsplit(s, "[[:space:]]+"), function(x) x[1])
+   p
+}
+
+# Analyse CD results
+res.cd <- lapply(seq(along=exper), function(k) {
    ex <- exper[[k]]
    dir <- sprintf("%s/results", ex)
 
@@ -45,21 +54,6 @@ res <- lapply(seq(along=exper), function(k) {
    
    df.cd <- apply(b.cd, 2, function(x) sum(x != 0))
 
-   #res.glm <- lapply(1:ncol(x), function(j) {
-   #   cat(j, "\r")
-   #   coef(summary(glm(y ~ x[,j], family=binomial)))#[2, 4]
-   #})
-   #b.glm <- -log10(sapply(res.glm, function(q) if(dim(q)[1] > 1) q[2,4] else 1))
-   
-   runperf <- function(f)
-   {
-      s <- system(sprintf("~/Software/perf.src/perf -APR -ROC < %s", f), intern=TRUE)
-      p <- as.numeric(sapply(strsplit(s, "[[:space:]]+"), function(x) x[2]))
-      names(p) <- sapply(strsplit(s, "[[:space:]]+"), function(x) x[1])
-      p
-   }
-   
-
    mes <- sapply(1:ncol(b.cd), function(i) {
       f <- sprintf("%s/b.cd.%s", dir, i - 1)
       write.table(cbind(ysnp[[k]], abs(b.cd[,i])),
@@ -68,40 +62,66 @@ res <- lapply(seq(along=exper), function(k) {
       runperf(f)
    })
 
-   #write.table(cbind(ysnp, b.glm), col.names=FALSE, row.names=FALSE,
-   #      file="b.glm", sep="\t")
-   #auprc.glm <- runperf("b.glm")
-
    list(measure=mes, df=df.cd, nsim=length(id))
 })
 
-#plot(df.cd, auprc.cd, xlab="# active variables", ylab="MAP", log="x", type="b")
-m <- data.frame(
-   do.call("rbind", lapply(res, function(r) t(do.call("rbind", r))))
+m.cd <- data.frame(
+   do.call("rbind", lapply(res.cd, function(r) t(do.call("rbind", r))))
 )
-m$Sim <- factor(rep(1:length(res), sapply(res, function(x) length(x$df))))
+m.cd$Sim <- factor(
+   rep(1:length(res), sapply(res.cd, function(x) length(x$df)))
+)
+
+# Analyse plink results
+res.pl <- lapply(seq(along=exper), function(k) {
+   ex <- exper[[k]]
+   dir <- sprintf("%s/results", ex)
+   d <- read.csv(sprintf("%s/plink.assoc.logistic", dir), sep="")
+    
+   stats <- cbind(coef=d$STAT, logpval=-log10(d$P))
+
+   mes <- sapply(1:ncol(stats), function(i) {
+      f <- sprintf("%s/b.cd.plink.%s", dir, colnames(stats)[i])
+      write.table(cbind(ysnp[[k]], abs(stats[,i])),
+	 col.names=FALSE, row.names=FALSE, sep="\t",
+	 file=f)
+      runperf(f)
+   })
+   colnames(mes) <- colnames(stats)
+   list(measure=mes)
+})
+
+# Both -log10(pval) and STAT yield same AROC/APRC, so take one
+m.pl <- data.frame(t(sapply(res.pl, function(x) x[[1]][,1])))
+m.pl$df <- 3100 # fake DF, to make the point plot nicely
+m.pl$Sim <- 1
+m.pl$nsim <- 1
+m.pl$Method <- "logistic"
+
+m.cd$Method <- "lasso"
+
+m.comb <- rbind(m.cd, m.pl)
+m.comb$Method <- factor(m.comb$Method)
+
+m.comb <- m.comb[m.comb$df > 0, ]
+
+# Plotting
 
 save(m, ysnp, file="results.RData")
 
-#g.apr <- ggplot(m, aes(x=df, y=APR, colour=Sim)) + geom_point() + geom_line()
-#g.apr <- g.apr + scale_x_log10()
-#
-#g.roc <- ggplot(m, aes(x=df, y=ROC, colour=Sim)) + geom_point() + geom_line()
-#g.roc <- g.roc + scale_x_log10()
+b <- 2^sort(unique(round(log2(m$df[m.cd$df > 0]))))
 
-g.roc <- ggplot(m[m$df > 0, ], aes(x=df, y=ROC))
-g.roc <- g.roc + geom_point()
-b <- 2^sort(unique(round(log2(m$df[m$df > 0]))))
-g.roc <- g.roc + scale_x_log2(labels=b, breaks=b) + stat_smooth()
-
-g.apr <- ggplot(m[m$df > 0, ], aes(x=df, y=APR))
-g.apr <- g.apr + geom_point()
-b <- 2^sort(unique(round(log2(m$df[m$df > 0]))))
-g.apr <- g.apr + scale_x_log2(labels=b, breaks=b) + stat_smooth()
-
+gg <- lapply(c("APR", "ROC"), function(nm) {
+   g <- ggplot(m.comb, aes_string(x="df", y=nm, shape="Method"))
+   g <- g + scale_x_log2(labels=b, breaks=b) + stat_smooth()
+   g <- g + stat_summary(data=subset(m.comb, Method=="logistic"),
+         fun.data=mean_cl_normal, geom="pointrange", colour="blue")
+   g <- g + stat_summary(data=subset(m.comb, Method=="logistic"),
+         fun.data=mean_cl_normal, geom="errorbar", colour="blue")
+   g + geom_point(colour="black")
+})
 
 pdf("results.pdf")
-print(g.apr)
-print(g.roc)
+for(g in gg) print(g)
 dev.off()
 
