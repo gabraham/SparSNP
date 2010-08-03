@@ -6,8 +6,8 @@ set -e
 DIR_STEM="sim6."
 N=2000
 P=185805
-CD="~/Code/cd/src/cd -model logistic -f ../sim.bin.t -scale ../scale.bin \
--n $N -p $P -v"
+CD="~/Code/cd/src/cd -model sqrhinge -f ../sim.bin.t -scale ../scale.bin \
+-n $N -p $P -v -beta beta_sqrhinge.csv"
 SCALE="~/Code/cd/src/scale -fin sim.bin.t -n $N -p $P"
 scale="scale.bin"
 results="results"
@@ -24,7 +24,7 @@ do
       eval "$SCALE"   
    fi
    pushd "$results"
-   eval "$CD" 2>&1 | tee > log
+   eval "time $CD" 2>&1 | tee > log
    popd
    popd
 done

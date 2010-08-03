@@ -18,12 +18,12 @@ legend <- sprintf(
 #x <- x[,-1]
 
 
-res <- lapply(exper[1:6], function(ex) {
+res <- lapply(exper, function(ex) {
 
    dir <- sprintf("%s/results", ex)
 
    # Find all files and sort by numerical ordering
-   files <- list.files(pattern="^beta\\.csv\\.", path=dir, full.names=TRUE)
+   files <- list.files(pattern="^beta_sqrhinge\\.csv\\.", path=dir, full.names=TRUE)
    if(length(files) == 0)
       stop("no files found")
    id <- sapply(strsplit(files, "\\."), function(x) x[4])
@@ -78,11 +78,21 @@ m <- data.frame(
    do.call("rbind", lapply(res, function(r) t(do.call("rbind", r))))
 )
 m$Sim <- factor(rep(1:length(res), sapply(res, function(x) length(x$df))))
-g.apr <- ggplot(m, aes(x=df, y=APR, colour=Sim)) + geom_point() + geom_line()
-g.apr <- g.apr + scale_x_log10()
 
-g.roc <- ggplot(m, aes(x=df, y=ROC, colour=Sim)) + geom_point() + geom_line()
-g.roc <- g.roc + scale_x_log10()
+#g.apr <- ggplot(m, aes(x=df, y=APR, colour=Sim)) + geom_point() + geom_line()
+#g.apr <- g.apr + scale_x_log10()
+#
+#g.roc <- ggplot(m, aes(x=df, y=ROC, colour=Sim)) + geom_point() + geom_line()
+#g.roc <- g.roc + scale_x_log10()
+
+g.roc <- ggplot(m[m$df > 0, ], aes(x=df, y=ROC))
+g.roc <- g.roc + geom_point()
+b <- 2^sort(unique(round(log2(m$df[m$df > 0]))))
+g.roc <- g.roc + scale_x_log2(labels=b, breaks=b) + stat_smooth()
+
+g.apr <- ggplot(m[m$df > 0, ], aes(x=df, y=APR))
+g.apr <- g.apr + geom_point() + scale_x_log2() + stat_smooth()
+
 
 pdf("results.pdf")
 print(g.apr)
