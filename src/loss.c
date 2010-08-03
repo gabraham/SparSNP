@@ -1,58 +1,6 @@
 #include <math.h>
 #include <stdio.h>
 #include "loss.h"
-#include "hashtable.h"
-
-#ifndef EXP
-#define EXP exp
-#endif
-
-extern hashtable ht_global;
-
-/*double plogis(double x)
-{
-   return 1 / (1 + exp(-x));
-}*/
-
-/* Schraudolph 1998, ``A Fast, Compact Approximation of the Exponential Function''
-   and
-   Cawley 2000, ``On a Fast, Compact Approximation of the Exponential
-   Function''
-   
-   Accuracy depends on y being not too large
-
- */
-/*inline double exponential(double y)
-{
-    union
-    {
-        double d;
-#ifdef LITTLE_ENDIAN
-        struct { int j, i; } n;
-#else
-        struct { int i, j; } n;
-#endif
-    }
-    _eco;
-
-    _eco.n.i = (int)(EXP_A*(y)) + (1072693248 - EXP_C);
-    _eco.n.j = 0;
-
-    return _eco.d;
-}*/
-
-double hashedexp(double x)
-{
-   double val;
-   val = hashtable_get(&ht_global, x);
-   if(isnan(val))
-   {
-      val = exp(x);
-      hashtable_put(&ht_global, x, val);
-      return val;
-   }
-   return val;
-}
 
 double dotprod(dtype *a, double *b, int m)
 {
@@ -132,7 +80,7 @@ double l2phi2(double lp)
 
 double logphi1(double lp)
 {
-   return 1 / (1 + EXP(-lp));
+   return 1 / (1 + exp(-lp));
 }
 
 double logphi2(double p)

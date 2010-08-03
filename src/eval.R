@@ -18,8 +18,18 @@ legend <- sprintf(
 #x <- x[,-1]
 
 
-res <- lapply(exper, function(ex) {
+# Get indices of causal SNPs
+ysnp <- lapply(exper, function(ex) {
+   snps <- as.character(read.csv(sprintf("%s/loci.txt", ex),
+         header=FALSE)[,1])
+   snplist <- read.csv(legend, sep="\t")
+   pos <- sapply(paste("^", snps, "$", sep=""), grep,
+         x=as.character(snplist$position))
+   as.numeric((1:p) %in% pos)
+})
 
+res <- lapply(seq(along=exper), function(k) {
+   ex <- exper[[k]]
    dir <- sprintf("%s/results", ex)
 
    # Find all files and sort by numerical ordering
@@ -29,14 +39,6 @@ res <- lapply(exper, function(ex) {
    id <- sapply(strsplit(files, "\\."), function(x) x[4])
    files <- files[order(as.numeric(id))]
 
-   # Get indices of causal SNPs
-   snps <- as.character(read.csv(sprintf("%s/loci.txt", ex),
-         header=FALSE)[,1])
-   snplist <- read.csv(legend, sep="\t")
-   pos <- sapply(paste("^", snps, "$", sep=""), grep,
-         x=as.character(snplist$position))
-   ysnp <- as.numeric((1:p) %in% pos)
-   
    b.cd <- sapply(files, function(f) {
       read.csv(f, header=FALSE)[-1,1]
    })
@@ -60,7 +62,7 @@ res <- lapply(exper, function(ex) {
 
    mes <- sapply(1:ncol(b.cd), function(i) {
       f <- sprintf("%s/b.cd.%s", dir, i - 1)
-      write.table(cbind(ysnp, abs(b.cd[,i])),
+      write.table(cbind(ysnp[[k]], abs(b.cd[,i])),
    	 col.names=FALSE, row.names=FALSE, sep="\t",
    	 file=f)
       runperf(f)
@@ -79,6 +81,8 @@ m <- data.frame(
 )
 m$Sim <- factor(rep(1:length(res), sapply(res, function(x) length(x$df))))
 
+save(m, ysnp, file="results.RData")
+
 #g.apr <- ggplot(m, aes(x=df, y=APR, colour=Sim)) + geom_point() + geom_line()
 #g.apr <- g.apr + scale_x_log10()
 #
@@ -91,7 +95,9 @@ b <- 2^sort(unique(round(log2(m$df[m$df > 0]))))
 g.roc <- g.roc + scale_x_log2(labels=b, breaks=b) + stat_smooth()
 
 g.apr <- ggplot(m[m$df > 0, ], aes(x=df, y=APR))
-g.apr <- g.apr + geom_point() + scale_x_log2() + stat_smooth()
+g.apr <- g.apr + geom_point()
+b <- 2^sort(unique(round(log2(m$df[m$df > 0]))))
+g.apr <- g.apr + scale_x_log2(labels=b, breaks=b) + stat_smooth()
 
 
 pdf("results.pdf")

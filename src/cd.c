@@ -101,15 +101,16 @@ double step_regular(sample *s, double *y, double *lp, int n,
  * always N since it is the sum of squares \sum_{i=1}^N x_{ij}^2 =
  * \sum_{i=1}^N 1 = N
  */
-double step_regular_l2(sample *s, double *y, double *lp, int n,
+double step_regular_l2(sample *s, double *restrict y, double *restrict lp, int n,
       phi1 phi1_func, phi2 phi2_func)
 {
    int i;
    double grad = 0;
+   double *restrict x = s->x;
 
    /* compute gradient */
    for(i = 0 ; i < n ; i++)
-      grad += s->x[i] * (lp[i] - y[i]);
+      grad += x[i] * (lp[i] - y[i]);
 
    return grad / n;
 }
@@ -136,18 +137,18 @@ double step_regular_logistic(sample *s, double *y, double *lp, int n,
 /*
  * Squared hinge loss, assumes y \in {-1,1}
  */
-double step_regular_sqrhinge(sample *s, double *y, double *lp, int n,
-      phi1 phi1_func, phi2 phi2_func)
+double step_regular_sqrhinge(sample *s, double *restrict y, double *restrict lp,
+      int n, phi1 phi1_func, phi2 phi2_func)
 {
    int i;
    double grad = 0, l;
+   double *restrict x = s->x;
 
    /* compute gradient */
    for(i = 0 ; i < n ; i++)
    {
-      l = y[i] * lp[i];
-      if(l < 1)
-	 grad += y[i] * s->x[i] * (l - 1);
+      l = y[i] * lp[i] - 1;
+      grad += (l < 0) * y[i] * x[i] * l;
    }
    return grad / n;
 }
