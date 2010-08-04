@@ -242,10 +242,6 @@ int cd_gmatrix(gmatrix *g,
 	       /*if(sm.x[i] != 0)*/
 	       {
 		  lp[i] += x[i] * (beta_new - beta[j]);
-		  /*if(lp[i] < -MAXLP)
-		     lp[i] = -MAXLP;
-		  else if(lp[i] > MAXLP)
-		     lp[i] = MAXLP;*/
 		  lp[i] = (lp[i] > MAXLP) ? 
 		     MAXLP : ((lp[i] < -MAXLP) ? -MAXLP : lp[i]); 
 	       }
