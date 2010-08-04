@@ -137,8 +137,8 @@ double step_regular_logistic(sample *s, double *y, double *lp, int n,
 /*
  * Squared hinge loss, assumes y \in {-1,1}
  */
-double step_regular_sqrhinge(sample *s, double *restrict y, double *restrict lp,
-      int n, phi1 phi1_func, phi2 phi2_func)
+double step_regular_sqrhinge(sample *s, double *restrict y,
+      double *restrict lp, int n, phi1 phi1_func, phi2 phi2_func)
 {
    int i;
    double grad = 0, l;
@@ -177,7 +177,7 @@ int cd_gmatrix(gmatrix *g,
       loss_pt loss_pt_func,    /* loss for one sample */
       inv inv_func,
       step step_func,
-      int maxepoch, double *beta, double *lp, double lambda1,
+      int maxepoch, double *beta, double *restrict lp, double lambda1,
       double lambda2, double threshold, int verbose,
       int *trainf, double trunc)
 {
@@ -190,6 +190,7 @@ int cd_gmatrix(gmatrix *g,
    int allconverged = 0, zeros = 0;
    const int CONVERGED = 2;
    double l2recip = 1 / (1 + lambda2);
+   double *restrict x;
 
    if(!sample_init(&sm, g->n, g->inmemory))
       return FAILURE;
@@ -211,6 +212,7 @@ int cd_gmatrix(gmatrix *g,
 	    continue;
 	 }
 
+	 x = sm.x;
 	 numiter = 0;
 
 	 while(!converged[j] && numiter <= maxiter)
@@ -239,11 +241,13 @@ int cd_gmatrix(gmatrix *g,
 	    for(i = 0 ; i < g->n ; i++)
 	       /*if(sm.x[i] != 0)*/
 	       {
-		  lp[i] += sm.x[i] * (beta_new - beta[j]);
-		  if(lp[i] < -MAXLP)
+		  lp[i] += x[i] * (beta_new - beta[j]);
+		  /*if(lp[i] < -MAXLP)
 		     lp[i] = -MAXLP;
 		  else if(lp[i] > MAXLP)
-		     lp[i] = MAXLP;
+		     lp[i] = MAXLP;*/
+		  lp[i] = (lp[i] > MAXLP) ? 
+		     MAXLP : ((lp[i] < -MAXLP) ? -MAXLP : lp[i]); 
 	       }
 
 	    beta[j] = beta_new;
