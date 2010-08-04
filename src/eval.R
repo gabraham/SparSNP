@@ -30,7 +30,9 @@ ysnp <- lapply(exper, function(ex) {
 
 runperf <- function(f)
 {
-   s <- system(sprintf("~/Software/perf.src/perf -APR -ROC < %s", f), intern=TRUE)
+   s <- system(
+	 sprintf("~/Software/perf.src/perf -APR -ROC < %s", f),
+	 intern=TRUE)
    p <- as.numeric(sapply(strsplit(s, "[[:space:]]+"), function(x) x[2]))
    names(p) <- sapply(strsplit(s, "[[:space:]]+"), function(x) x[1])
    p
@@ -42,7 +44,8 @@ res.cd <- lapply(seq(along=exper), function(k) {
    dir <- sprintf("%s/results", ex)
 
    # Find all files and sort by numerical ordering
-   files <- list.files(pattern="^beta_sqrhinge\\.csv\\.", path=dir, full.names=TRUE)
+   files <- list.files(pattern="^beta_sqrhinge\\.csv\\.",
+	 path=dir, full.names=TRUE)
    if(length(files) == 0)
       stop("no files found")
    id <- sapply(strsplit(files, "\\."), function(x) x[4])
@@ -56,7 +59,7 @@ res.cd <- lapply(seq(along=exper), function(k) {
 
    mes <- sapply(1:ncol(b.cd), function(i) {
       f <- sprintf("%s/b.cd.%s", dir, i - 1)
-      write.table(cbind(ysnp[[k]], abs(b.cd[,i])),
+      write.table(cbind(ysnp[[k]], abs(sign(b.cd[,i]))),
    	 col.names=FALSE, row.names=FALSE, sep="\t",
    	 file=f)
       runperf(f)
@@ -69,7 +72,7 @@ m.cd <- data.frame(
    do.call("rbind", lapply(res.cd, function(r) t(do.call("rbind", r))))
 )
 m.cd$Sim <- factor(
-   rep(1:length(res), sapply(res.cd, function(x) length(x$df)))
+   rep(1:length(res.cd), sapply(res.cd, function(x) length(x$df)))
 )
 
 # Analyse plink results
@@ -107,9 +110,9 @@ m.comb <- m.comb[m.comb$df > 0, ]
 
 # Plotting
 
-save(m, ysnp, file="results.RData")
+#save(m, ysnp, file="results.RData")
 
-b <- 2^sort(unique(round(log2(m$df[m.cd$df > 0]))))
+b <- 2^sort(unique(round(log2(m.cd$df[m.cd$df > 0]))))
 
 gg <- lapply(c("APR", "ROC"), function(nm) {
    g <- ggplot(m.comb, aes_string(x="df", y=nm, shape="Method"))
