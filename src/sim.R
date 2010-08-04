@@ -35,7 +35,7 @@ run <- function(n, p, nsim=50)
          x <- matrix(sample(c(0, 1, 2), size=n * p, replace=TRUE), n, p)
 	 #x <- scale(matrix(rnorm(n * p), n, p))
          y <- ifelse(
-            runif(n) <= plogis(cbind(1, x) %*% beta + rnorm(n, 1, 2)), 1, 0)
+            runif(n) <= plogis(cbind(1, x) %*% beta + rnorm(n, 0, 1)), 1, 0)
       }
 
       #xs <- scale(x)
