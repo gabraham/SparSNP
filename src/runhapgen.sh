@@ -8,6 +8,7 @@ set -e
 
 TMPDIR=.
 
+PLINK="p-link"
 
 # Row major ordering
 #Line 1: m d
@@ -163,56 +164,13 @@ EOF
    formatscd $DIR "$binfile" $n $p
 }
 
-## Randomly shuffle the samples
-#function shuffle {
-#   local DIR=$1
-#   local prefix=$2
-#   local N=$3
-#   local binfile="$prefix.bin"
-#   local xfile="$prefix.all.g"
-#   local xfileshuf="$xfile.shuffled"
-#   local yfile="$prefix.y"
-#   local yfileshuf="$yfile.shuffled"
-#   local tmp1=".tmp1"
-#   local tmp2=".tmp2"
-#   local rscript=".shuffle.R"
-#   
-#   echo -n "Shuffling ... "
-#   # Shuffle samples 
-#   cat > $rscript <<EOF
-#   n2 <- $N
-#   s <- sample(n2)
-#   y <- read.csv("$DIR/$yfile", header=FALSE)[,1]
-#   write.table(y[order(s)], "$DIR/$yfileshuf", col.names=FALSE, row.names=FALSE)
-#   f <- file("$DIR/$xfile", "rt")
-#   tmp <- file("$DIR/$tmp1", "wt")
-#   for(i in 1:n2)
-#   {
-#      r <- readLines(f, n=1)
-#      writeLines(paste(s[i], r, sep=" "), tmp)
-#   }
-#   close(tmp)
-#   close(f)
-#EOF
-#   
-#   Rscript $rscript
-#   
-#   sort -T $TMPDIR -n -k 1,1 $DIR/$tmp1 > $DIR/$tmp2
-#   /bin/rm $DIR/$tmp1
-#
-#   cut -f2- -d ' ' $DIR/$tmp2 > $DIR/$xfileshuf
-#   /bin/rm $DIR/$tmp2 $rscript
-#}
-
 function convert {
    local DIR=$1
    local prefix=$2
    local N=$3
    local binfile="$prefix.bin"
    local xfile="$prefix.all.g"
-   local xfileshuf="$xfile.shuffled"
    local yfile="$prefix.y"
-   local yfileshuf="$yfile.shuffled"
    local rscript=".convert.R"
    
    cat > $rscript <<EOF
@@ -456,6 +414,7 @@ EOF
    
    # See previous comment
    /bin/cp $DIR/sim1.y $DIR/sim.y
+   /bin/rm -rf $DIR/sim*.all.g
    
    
    echo "####################################"
@@ -463,21 +422,24 @@ EOF
    echo "####################################"
    
    # For coordinate descent 
-   #shuffle $DIR $prefix $((N*2))
    convert $DIR $prefix $((N*2))
-   transpose $DIR/sim.bin $((N*2)) $P 
+   transpose "$DIR/sim.bin" $((N*2)) $P 
+   /bin/rm "$DIR/sim.bin"
 
    echo "####################################"
    echo "Converting to plink PED format"
    echo "####################################"
 
-   # For plink
+   # For plink, text ped format
    cat > $RSCRIPT <<EOF
    source("~/Code/cd/R/convert.R")
    hapgen2ped("$DIR/sim.all.g", "$DIR/sim.y", "$DIR/sim.ped")
 EOF
-
    Rscript $RSCRIPT
+
+   # plink, binary bed format
+   $PLINK --ped "$DIR/sim.ped" --map "$LEGEND.map" --make-bed --out "$DIR/sim"
+   /bin/rm "./$DIR/sim.ped"
 
    echo
    echo "####################################"
@@ -506,7 +468,6 @@ EOF
 #-o $DIR/$prefix -n $N $N -gen -rr 1.5 2.25 -dl $SNP
 #set -e
 #
-##shuffle $DIR $prefix $((2*N))
 ##convert $DIR $prefix $((2*N))
 #
 #exit 1
@@ -514,14 +475,14 @@ EOF
 
 ################################################################################
 
-for ((J=1 ; J<=10; J++));
+for ((J=1 ; J<=50; J++));
 do
    DIR="sim6.$J"
    if ! [ -d "$DIR" ]; then
       mkdir $DIR
    fi
    prefix="sim"
-   N=1000
+   N=2000
    K=20
    HAPLO=HapMap/genotypes_chr1_JPT+CHB_r22_nr.b36_fwd.phased
    LEGEND=HapMap/genotypes_chr1_JPT+CHB_r22_nr.b36_fwd_legend.txt

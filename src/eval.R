@@ -1,10 +1,10 @@
 library(ggplot2)
 
-nexper <- 10
+nexper <- 1
 exper <- paste("sim6.", 1:nexper, sep="")
 dir <- "~/Software/hapgen_1.3"
 
-n <- 5000
+n <- 4000
 p <- 185805
 legend <- sprintf(
    "%s/HapMap/genotypes_chr1_JPT+CHB_r22_nr.b36_fwd_legend.txt",

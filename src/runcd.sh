@@ -4,15 +4,15 @@ set -u
 set -e
 
 DIR_STEM="sim6."
-N=2000
+N=4000
 P=185805
 CD="~/Code/cd/src/cd -model sqrhinge -f ../sim.bin.t -scale ../scale.bin \
--n $N -p $P -v -beta beta_sqrhinge.csv"
+-n $N -p $P -v -beta beta_sqrhinge.csv -epochs 1000"
 SCALE="~/Code/cd/src/scale -fin sim.bin.t -n $N -p $P"
 scale="scale.bin"
 results="results"
 
-for i in $(seq 1 10);
+for i in $(seq 2 2);
 do
    dir="$DIR_STEM""$i"
    dir_res="$dir/$results"
@@ -25,7 +25,6 @@ do
    fi
    pushd "$results"
    eval "time $CD" 2>&1 | tee > log
-   popd
    popd
 done
 
