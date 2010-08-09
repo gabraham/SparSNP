@@ -42,7 +42,7 @@ void opt_defaults(Opt *opt)
 {
    opt->model = 0;
    opt->nlambda1 = 100;
-   opt->l1minratio = 5e-2;
+   opt->l1minratio = 1e-2;
    opt->maxepochs = 100;
    opt->lambda1 = -1;
    opt->lambda2 = 0;
@@ -246,6 +246,7 @@ int make_lambda1path(Opt *opt, gmatrix *g)
 {
    int i;
    double s;
+   char tmp[MAX_STR_LEN];
 
    if(opt->lambda1 >= 0)
    {
@@ -270,6 +271,10 @@ int make_lambda1path(Opt *opt, gmatrix *g)
    for(i = 1 ; i < opt->nlambda1 ; i++)
       opt->lambda1path[i] = exp(log(opt->lambda1max) - s * i);
 
+   snprintf(tmp, MAX_STR_LEN, "%s.%d", opt->betafile, 0);
+   if(!writevectorf(tmp, g->beta, opt->p + 1))
+      return FAILURE;
+
    return writevectorf(opt->lambda1pathfile, opt->lambda1path, opt->nlambda1);
 }
 
@@ -279,16 +284,15 @@ int make_lambda1path(Opt *opt, gmatrix *g)
 int run(Opt *opt, gmatrix *g)
 {
    int i, j, ret;
-   double *betahat;
    char tmp[MAX_STR_LEN];
 
    if(opt->verbose)
       printf("%d training samples, %d test samples\n",
 	    opt->ntrain, opt->n - opt->ntrain);
    
-   CALLOCTEST(betahat, opt->p + 1, sizeof(double))
-	    
-   for(i = 0 ; i < opt->nlambda1 ; i++)
+   /* The maximum lambda1 has already been run by make_lambda1path, and the
+    * the linear predictor and its related vectors have already been updated */
+   for(i = 1 ; i < opt->nlambda1 ; i++)
    {
       if(opt->verbose)
 	 printf("\nFitting with lambda1=%.20f\n", opt->lambda1path[i]);
@@ -298,7 +302,7 @@ int run(Opt *opt, gmatrix *g)
       ret = cd_gmatrix(
 	    g, opt->phi1_func, opt->phi2_func,
 	    opt->loss_pt_func, opt->inv_func, opt->step_func,
-	    opt->maxepochs, betahat, opt->lambda1path[i], opt->lambda2,
+	    opt->maxepochs, opt->lambda1path[i], opt->lambda2,
 	    opt->threshold, opt->verbose, opt->trainf, opt->trunc);
 
       gmatrix_reset(g);
@@ -310,14 +314,13 @@ int run(Opt *opt, gmatrix *g)
       } 
 
       snprintf(tmp, MAX_STR_LEN, "%s.%d", opt->betafile, i);
-
-      if(!writevectorf(tmp, betahat, opt->p + 1))
+      if(!writevectorf(tmp, g->beta, opt->p + 1))
 	 return FAILURE;
 
       if(!opt->warmrestarts)
       {
 	 for(j = 0 ; j < opt->p + 1; j++)
-	    betahat[j] = 0;
+	    g->beta[j] = 0;
 	 for(j = 0 ; j < opt->n; j++)
 	    g->lp[j] = 0;
 	 if(opt->model == MODEL_LOGISTIC)
@@ -325,7 +328,10 @@ int run(Opt *opt, gmatrix *g)
 	       g->lp_invlogit[j] = 0.5; /* 0.5 = 1 / (1 + exp(-0)) */
 	 else if(opt->model == MODEL_SQRHINGE)
 	    for(j = 0 ; j < opt->n; j++)
-	       g->ylp[j] = g->ylp_pos[j] = 0;
+	    {
+	       g->ylp[j] = -1;    /* y * 0 - 1 = -1  */
+	       g->ylp_neg[j] = 1; /* ylp < 0 => true */
+	    }
       }
 
       if(opt->nzmax != 0 && opt->nzmax <= ret - 1)
@@ -335,8 +341,6 @@ int run(Opt *opt, gmatrix *g)
 	 break;
       }
    }
-
-   free(betahat);
 
    return SUCCESS;
 }

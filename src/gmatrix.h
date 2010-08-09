@@ -40,7 +40,8 @@ typedef struct gmatrix {
    int j;
    double *mean, *sd;
    double *lookup, *lookup2;
-   double *lp, *ylp, *ylp_pos, *lp_invlogit;
+   double *lp, *ylp, *ylp_neg, *lp_invlogit;
+   double *beta;
    double *intercept;
    int *active;
    dtype *buffer;

@@ -26,8 +26,8 @@ double get_lambda1max_gmatrix(
       step step_func
       )
 {
-   int i, j;
-   double s, zmax = 0, beta0;
+   int i, j, n = g->n;
+   double s, zmax = 0;
    sample sm;
 
    if(!sample_init(&sm, g->n, g->inmemory))
@@ -38,15 +38,31 @@ double get_lambda1max_gmatrix(
    /* First compute the intercept. When all other variables
     * are zero, the intercept is just the inv(mean(y)) */
    s = 0;
-   for(i = 0 ; i < g->n ; i++)
-      s += (double)g->y[i];
+   for(i = 0 ; i < n ; i++)
+      s += g->y[i];
 
-   beta0 = inv_func(s / g->n);
+   g->beta[0] = inv_func(s / g->n);
 
-   for(i = 0 ; i < g->n ; i++)
-      g->lp[i] = beta0;
+   /* update linear predictor */
+   for(i = 0 ; i < n ; i++)
+      g->lp[i] = g->beta[0];
+   
+   /* update functions of linear predictor */
+   if(g->model == MODEL_LOGISTIC)
+   {
+      for(i = 0 ; i < n ; i++)
+	 g->lp_invlogit[i] = 1 / (1 + exp(-g->lp[i]));
+   }
+   else if(g->model == MODEL_SQRHINGE)
+   {
+      for(i = 0 ; i < n ; i++)
+      {
+	 g->ylp[i] = g->y[i] * g->lp[i] - 1;
+	 g->ylp_neg[i] = (g->ylp[i] < 0);
+      }
+   }
 
-   printf("beta0: %.10f\n", beta0);
+   printf("beta[0]: %.10f\n", g->beta[0]);
 
    /* find smallest lambda1 that makes all coefficients zero, by
     * finding the largest z, but let the intercept affect lp
@@ -57,9 +73,9 @@ double get_lambda1max_gmatrix(
       if(!g->active[j])
 	 continue;
 
-      s = -step_func(&sm, g, phi1_func, phi2_func);
-      if(s != 0 && zmax < fabs(s))
-	 zmax = fabs(s);
+      s = fabs(step_func(&sm, g, phi1_func, phi2_func));
+      if(zmax < s)
+	 zmax = s;
    } 
 
    sample_free(&sm);
@@ -142,11 +158,11 @@ double step_regular_sqrhinge(sample *s, gmatrix *g,
    double *restrict x_tmp = s->x,
 	  *restrict y_tmp = g->y,
 	  *restrict ylp_tmp = g->ylp,
-	  *restrict ylp_pos_tmp = g->ylp_pos;
+	  *restrict ylp_neg_tmp = g->ylp_neg;
 
    /* compute gradient */
    for(i = 0 ; i < n ; i++)
-      grad += ylp_pos_tmp[i] * y_tmp[i] * x_tmp[i] * ylp_tmp[i];
+      grad += ylp_neg_tmp[i] * y_tmp[i] * x_tmp[i] * ylp_tmp[i];
    return grad / n;
 }
 
@@ -157,20 +173,20 @@ int cd_gmatrix(gmatrix *g,
       loss_pt loss_pt_func,    /* loss for one sample */
       inv inv_func,
       step step_func,
-      int maxepoch, double *beta, double lambda1,
+      int maxepoch, double lambda1,
       double lambda2, double threshold, int verbose,
       int *trainf, double trunc)
 {
-   const int maxiter = 100;
-   int i, j, epoch = 1, numconverged = 0, numiter;
-   double s, beta_new;
+   const int maxiter = 100, CONVERGED = 2;
+   int i, j, numiter,
+       epoch = 1, numconverged = 0,
+       allconverged = 0, zeros = 0;
    short *converged = NULL;
-   sample sm;
-   double truncl = log2((1 - trunc) / trunc);
-   int allconverged = 0, zeros = 0;
-   const int CONVERGED = 2;
-   double l2recip = 1 / (1 + lambda2);
+   double s, beta_new,
+	  truncl = log2((1 - trunc) / trunc),
+	  l2recip = 1 / (1 + lambda2);
    double *restrict x;
+   sample sm;
 
    if(!sample_init(&sm, g->n, g->inmemory))
       return FAILURE;
@@ -203,12 +219,12 @@ int cd_gmatrix(gmatrix *g,
 
 	    /* don't penalise intercept */
 	    if(j == 0)
-	       beta_new = beta[j] - s;
+	       beta_new = g->beta[j] - s;
 	    else
-	       beta_new = soft_threshold(beta[j] - s, lambda1) * l2recip;
+	       beta_new = soft_threshold(g->beta[j] - s, lambda1) * l2recip;
 
 	    /* check for convergence */
-	    if(numiter > 1 && convergetest(beta[j], beta_new, threshold))
+	    if(numiter > 1 && convergetest(g->beta[j], beta_new, threshold))
 	    {
 	       converged[j] = TRUE;
 	       numconverged++;
@@ -221,9 +237,9 @@ int cd_gmatrix(gmatrix *g,
 	    /* update linear predictor */
 	    for(i = 0 ; i < g->n ; i++)
 	    {
-	       g->lp[i] += x[i] * (beta_new - beta[j]);
+	       g->lp[i] += x[i] * (beta_new - g->beta[j]);
 	       g->lp[i] = (g->lp[i] > MAXLP) ? 
-		     MAXLP : ((g->lp[i] < -MAXLP) ? -MAXLP : g->lp[i]); 
+		     MAXLP : ((g->lp[i] < -MAXLP) ? -MAXLP : g->lp[i]);
 	    }
 
 	    /* update functions of linear predictor */
@@ -236,12 +252,12 @@ int cd_gmatrix(gmatrix *g,
 	    {
 	       for(i = 0 ; i < g->n ; i++)
 	       {
-		  g->ylp[i] = g->y[i] * g->lp[i];
-		  g->ylp_pos[i] = (g->ylp[i] > 0);
+		  g->ylp[i] = g->y[i] * g->lp[i] - 1;
+		  g->ylp_neg[i] = (g->ylp[i] < 0);
 	       }
 	    }
 
-	    beta[j] = beta_new;
+	    g->beta[j] = beta_new;
 	 }
 	 if(numiter > maxiter)
 	    printf("maximum number of internal iterations reached\n");
@@ -253,9 +269,9 @@ int cd_gmatrix(gmatrix *g,
 	 zeros = 0;
 	 for(j = 1 ; j < g->p + 1 ; j++)
 	 {
-	    if(fabs(beta[j]) < ZERO_THRESH)
+	    if(fabs(g->beta[j]) < ZERO_THRESH)
 	    {
-	       beta[j] = 0;
+	       g->beta[j] = 0;
 	       zeros++;
 	    }
 	 }

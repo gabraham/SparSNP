@@ -57,17 +57,9 @@ int cd_gmatrix(gmatrix *g,
       loss_pt loss_pt_func,    /* loss for one sample */
       inv inv_func,
       step step_func,
-      int maxepoch, double *beta,
+      int maxepoch,
       double lambda1, double lambda2,
       double threshold, int verbose, int *trainf, double trunc);
-
-/*int cd_gmatrix2(gmatrix *g,
-      phi1 phi1_func,
-      phi2 phi2_func,
-      loss_pt loss_pt_func,
-      int maxepoch,
-      double *beta,
-      double lambda1);*/
 
 double get_lambda1max_gmatrix(gmatrix *g,
       phi1 phi1_func,
