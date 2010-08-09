@@ -12,10 +12,11 @@ typedef double (*predict_pt)(double);
 typedef double (*phi1)(double);
 typedef double (*phi2)(double);
 typedef double (*inv)(double);
-typedef double (*step)(sample *s, double *y, double *lp, int n,
+typedef double (*step)(sample *s, gmatrix *g,
       phi1 phi1_func, phi2 phi2_func);
 
 typedef struct Opt {
+   short model;
    int maxepochs;
    double lambda1;
    double lambda2;
@@ -23,7 +24,6 @@ typedef struct Opt {
    double l1minratio;
    int nlambda1;
    double trunc;
-   char *model;
    char *betafile;
    loss_pt loss_pt_func;
    phi1 phi1_func;
@@ -57,7 +57,7 @@ int cd_gmatrix(gmatrix *g,
       loss_pt loss_pt_func,    /* loss for one sample */
       inv inv_func,
       step step_func,
-      int maxepoch, double *beta, double *lp,
+      int maxepoch, double *beta,
       double lambda1, double lambda2,
       double threshold, int verbose, int *trainf, double trunc);
 
@@ -83,18 +83,15 @@ int opt_parse(int argc, char* argv[], Opt* opt);
 int make_lambda1path(Opt *opt, gmatrix *g);
 int run(Opt *opt, gmatrix *g);
 
-double step_regular(sample *s, double *y, double *lp, int n,
+double step_regular(sample *s, gmatrix *g,
       phi1 phi1_func, phi2 phi2_func);
 
-double step_grouped(sample *s, double *y, double *lp, int n,
+double step_regular_l2(sample *s, gmatrix *g,
       phi1 phi1_func, phi2 phi2_func);
 
-double step_regular_l2(sample *s, double *y, double *lp, int n,
+double step_regular_logistic(sample *s, gmatrix *g,
       phi1 phi1_func, phi2 phi2_func);
 
-double step_regular_logistic(sample *s, double *y, double *lp, int n,
-      phi1 phi1_func, phi2 phi2_func);
-
-double step_regular_sqrhinge(sample *s, double *y, double *lp, int n,
+double step_regular_sqrhinge(sample *s, gmatrix *g,
       phi1 phi1_func, phi2 phi2_func);
 

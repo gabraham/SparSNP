@@ -40,6 +40,7 @@ void opt_free(Opt *opt)
 
 void opt_defaults(Opt *opt)
 {
+   opt->model = 0;
    opt->nlambda1 = 100;
    opt->l1minratio = 5e-2;
    opt->maxepochs = 100;
@@ -85,28 +86,30 @@ int opt_parse(int argc, char* argv[], Opt* opt)
       else if(strcmp2(argv[i], "-model"))
       {
 	 i++;
-	 opt->model = argv[i];
-	 if(strcmp2(opt->model, "logistic"))
+	 if(strcmp2(argv[i], MODEL_NAME_LOGISTIC))
 	 {
 	    opt->inv_func = &loginv;
 	    opt->step_func = &step_regular_logistic;
+	    opt->model = MODEL_LOGISTIC;
 	 }
-	 else if(strcmp2(opt->model, "grouped"))
-	 {
-	    opt->inv_func = &loginv;
-	    opt->step_func = &step_grouped;
-	 }
-	 else if(strcmp2(opt->model, "sqrhinge"))
+	 else if(strcmp2(argv[i], MODEL_NAME_SQRHINGE))
 	 {
 	    opt->inv_func = &sqrhingeinv;
 	    opt->step_func = &step_regular_sqrhinge;
 	    opt->yformat = YFORMAT11;
+	    opt->model = MODEL_SQRHINGE;
 	 }
-	 else if(strcmp2(opt->model, "linear") ||
-	       strcmp2(opt->model, "pcor"))
+	 else if(strcmp2(argv[i], MODEL_NAME_LINEAR))
 	 {
 	    opt->inv_func = &l2inv;
 	    opt->step_func = &step_regular_l2;
+	    opt->model = MODEL_LINEAR;
+	 }
+	 else if(strcmp2(argv[i], MODEL_NAME_PCOR))
+	 {
+	    opt->inv_func = &l2inv;
+	    opt->step_func = &step_regular_l2;
+	    opt->model = MODEL_LINEAR;
 	 }
 	 else
 	 {
@@ -213,7 +216,7 @@ int opt_parse(int argc, char* argv[], Opt* opt)
    }
 
 
-   if(opt->filename == NULL || opt->model == NULL
+   if(opt->filename == NULL || opt->model == 0
 	 || opt->n == 0 || opt->p == 0)
    {
       printf("usage: cd -model <model> -f <filename> -n <#samples> -p \
@@ -277,18 +280,14 @@ int run(Opt *opt, gmatrix *g)
 {
    int i, j, ret;
    double *betahat;
-   double *lp;
    char tmp[MAX_STR_LEN];
 
    if(opt->verbose)
-   {
       printf("%d training samples, %d test samples\n",
 	    opt->ntrain, opt->n - opt->ntrain);
-   }
-
-   CALLOCTEST2(betahat, opt->p + 1, sizeof(double))
-   CALLOCTEST2(lp, opt->n, sizeof(double))
-
+   
+   CALLOCTEST(betahat, opt->p + 1, sizeof(double))
+	    
    for(i = 0 ; i < opt->nlambda1 ; i++)
    {
       if(opt->verbose)
@@ -299,7 +298,7 @@ int run(Opt *opt, gmatrix *g)
       ret = cd_gmatrix(
 	    g, opt->phi1_func, opt->phi2_func,
 	    opt->loss_pt_func, opt->inv_func, opt->step_func,
-	    opt->maxepochs, betahat, lp, opt->lambda1path[i], opt->lambda2,
+	    opt->maxepochs, betahat, opt->lambda1path[i], opt->lambda2,
 	    opt->threshold, opt->verbose, opt->trainf, opt->trunc);
 
       gmatrix_reset(g);
@@ -320,7 +319,13 @@ int run(Opt *opt, gmatrix *g)
 	 for(j = 0 ; j < opt->p + 1; j++)
 	    betahat[j] = 0;
 	 for(j = 0 ; j < opt->n; j++)
-	    lp[j] = 0;
+	    g->lp[j] = 0;
+	 if(opt->model == MODEL_LOGISTIC)
+	    for(j = 0 ; j < opt->n; j++)
+	       g->lp_invlogit[j] = 0.5; /* 0.5 = 1 / (1 + exp(-0)) */
+	 else if(opt->model == MODEL_SQRHINGE)
+	    for(j = 0 ; j < opt->n; j++)
+	       g->ylp[j] = g->ylp_pos[j] = 0;
       }
 
       if(opt->nzmax != 0 && opt->nzmax <= ret - 1)
@@ -332,12 +337,11 @@ int run(Opt *opt, gmatrix *g)
    }
 
    free(betahat);
-   free(lp);
 
    return SUCCESS;
 }
 
-int run_pcor(Opt *opt, gmatrix *g)
+/*int run_pcor(Opt *opt, gmatrix *g)
 {
    int i, j, ret;
    double *betahat = NULL;
@@ -360,7 +364,7 @@ int run_pcor(Opt *opt, gmatrix *g)
 	 ret = cd_gmatrix(
       	       g, opt->phi1_func, opt->phi2_func,
 	       opt->loss_pt_func, opt->inv_func, opt->step_func,
-      	       opt->maxepochs, betahat, lp, opt->lambda1path[i], opt->lambda2,
+      	       opt->maxepochs, betahat, opt->lambda1path[i], opt->lambda2,
       	       opt->threshold, opt->verbose, opt->trainf, opt->trunc);
 
       	 gmatrix_reset(g);
@@ -371,13 +375,13 @@ int run_pcor(Opt *opt, gmatrix *g)
       	    break;
       	 }
 
-      	 /*snprintf(tmp, MAX_STR_LEN, "%s.%d", opt->betafile, i);
+      	 *snprintf(tmp, MAX_STR_LEN, "%s.%d", opt->betafile, i);
       	 if(!writevectorf(tmp, betahat, opt->p + 1))
-      	    return FAILURE;*/
+      	    return FAILURE;*
 
-      	 /* if(!opt->warmrestarts)
+      	 * if(!opt->warmrestarts)
       	    for(k = 0 ; k < opt->p + 1 ; k++)
-      	       betahat[k] = 0; */
+      	       betahat[k] = 0; *
 
       	 if(opt->nzmax != 0 && opt->nzmax <= ret)
       	 {
@@ -386,7 +390,7 @@ int run_pcor(Opt *opt, gmatrix *g)
       	    break;
       	 }
 
-	 /* write output incrementally */
+	 * write output incrementally *
 	 FWRITETEST(betahat, sizeof(double), opt->p + 1, out)
 
 	 free(betahat);
@@ -394,13 +398,11 @@ int run_pcor(Opt *opt, gmatrix *g)
       }
    }
 
-
    fflush(out);
    fclose(out);
 
-
    return SUCCESS;
-}
+}*/
 
 int main(int argc, char* argv[])
 {
@@ -414,7 +416,7 @@ int main(int argc, char* argv[])
       return EXIT_FAILURE;
 
    if(!gmatrix_init(&g, opt.filename, opt.n, opt.p, opt.inmemory,
-	    opt.tabulate, opt.scalefile, opt.yformat))
+	    opt.tabulate, opt.scalefile, opt.yformat, opt.model))
       return EXIT_FAILURE;
   
    make_lambda1path(&opt, &g);

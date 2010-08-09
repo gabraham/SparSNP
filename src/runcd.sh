@@ -12,9 +12,14 @@ SCALE="~/Code/cd/src/scale -fin sim.bin.t -n $N -p $P"
 scale="scale.bin"
 results="results"
 
-for i in $(seq 2 2);
+for i in $(seq 1 50);
 do
    dir="$DIR_STEM""$i"
+   while ! [ -d "$dir" ];
+   do
+      echo "Dir $dir doesn't exist yet, sleeping..."
+      sleep 120
+   done
    dir_res="$dir/$results"
    if ! [ -d "$dir_res" ]; then
       mkdir "$dir_res"
@@ -24,7 +29,11 @@ do
       eval "$SCALE"   
    fi
    pushd "$results"
-   eval "time $CD" 2>&1 | tee > log
+   if ! [ -a "lambda1path.csv" ];
+   then
+      eval "time $CD" 2>&1 | tee > log
+   fi
+   popd
    popd
 done
 

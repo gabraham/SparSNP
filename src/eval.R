@@ -1,6 +1,6 @@
 library(ggplot2)
 
-nexper <- 1
+nexper <- 50
 exper <- paste("sim6.", 1:nexper, sep="")
 dir <- "~/Software/hapgen_1.3"
 
@@ -59,9 +59,10 @@ res.cd <- lapply(seq(along=exper), function(k) {
 
    mes <- sapply(1:ncol(b.cd), function(i) {
       f <- sprintf("%s/b.cd.%s", dir, i - 1)
-      write.table(cbind(ysnp[[k]], abs(sign(b.cd[,i]))),
-   	 col.names=FALSE, row.names=FALSE, sep="\t",
-   	 file=f)
+      if(!file.exists(f)) 
+	 write.table(cbind(ysnp[[k]], abs(sign(b.cd[,i]))),
+	    col.names=FALSE, row.names=FALSE, sep="\t",
+	    file=f)
       runperf(f)
    })
 
@@ -96,7 +97,7 @@ res.pl <- lapply(seq(along=exper), function(k) {
 
 # Both -log10(pval) and STAT yield same AROC/APRC, so take one
 m.pl <- data.frame(t(sapply(res.pl, function(x) x[[1]][,1])))
-m.pl$df <- 3100 # fake DF, to make the point plot nicely
+m.pl$df <- 5000 # fake DF, to make the point plot nicely
 m.pl$Sim <- 1
 m.pl$nsim <- 1
 m.pl$Method <- "logistic"

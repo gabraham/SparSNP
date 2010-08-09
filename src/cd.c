@@ -27,12 +27,9 @@ double get_lambda1max_gmatrix(
       )
 {
    int i, j;
-   double *lp = NULL;
-   /*double grad, d2;*/
    double s, zmax = 0, beta0;
    sample sm;
 
-   CALLOCTEST(lp, g->n, sizeof(double))
    if(!sample_init(&sm, g->n, g->inmemory))
       return FAILURE;
 
@@ -47,7 +44,7 @@ double get_lambda1max_gmatrix(
    beta0 = inv_func(s / g->n);
 
    for(i = 0 ; i < g->n ; i++)
-      lp[i] = beta0;
+      g->lp[i] = beta0;
 
    printf("beta0: %.10f\n", beta0);
 
@@ -60,37 +57,33 @@ double get_lambda1max_gmatrix(
       if(!g->active[j])
 	 continue;
 
-      s = -step_func(&sm, g->y, lp, g->n, phi1_func, phi2_func);
+      s = -step_func(&sm, g, phi1_func, phi2_func);
       if(s != 0 && zmax < fabs(s))
 	 zmax = fabs(s);
    } 
 
-   free(lp);
    sample_free(&sm);
 
    return zmax;
 }
 
-double step_regular(sample *s, double *y, double *lp, int n,
+double step_regular(sample *s, gmatrix *g,
       phi1 phi1_func, phi2 phi2_func)
 {
-   int i;
+   int i, n = g->n;
    double lphi1;
-   double x, x2;
    double grad = 0, d2 = 0;
+   double *restrict x_tmp = s->x,
+	  *restrict x2_tmp = s->x2,
+	  *restrict lp_tmp = g->lp,
+	  *restrict y_tmp = g->y;
 
    /* compute gradient */
    for(i = 0 ; i < n ; i++)
    {
-      x = s->x[i];
-      /* skip zeros, they don't change the linear predictor */
-      if(x == 0)
-	 continue;
-      x2 = s->x2[i];
-
-      lphi1 = phi1_func(lp[i]);
-      grad += x * (lphi1 - y[i]);
-      d2 += x2 * phi2_func(lphi1);
+      lphi1 = phi1_func(lp_tmp[i]);
+      grad += x_tmp[i] * (lphi1 - y_tmp[i]);
+      d2 += x2_tmp[i] * phi2_func(lphi1);
    }
    if(d2 == 0)
       return 0;
@@ -101,33 +94,37 @@ double step_regular(sample *s, double *y, double *lp, int n,
  * always N since it is the sum of squares \sum_{i=1}^N x_{ij}^2 =
  * \sum_{i=1}^N 1 = N
  */
-double step_regular_l2(sample *s, double *restrict y, double *restrict lp, int n,
+double step_regular_l2(sample *s, gmatrix *g,
       phi1 phi1_func, phi2 phi2_func)
 {
-   int i;
+   int i, n = g->n;
    double grad = 0;
-   double *restrict x = s->x;
+   double *restrict x_tmp = s->x, 
+          *restrict lp_tmp = g->lp,
+	  *restrict y_tmp = g->y;
 
    /* compute gradient */
    for(i = 0 ; i < n ; i++)
-      grad += x[i] * (lp[i] - y[i]);
+      grad += x_tmp[i] * (lp_tmp[i] - y_tmp[i]);
 
    return grad / n;
 }
 
-double step_regular_logistic(sample *s, double *y, double *lp, int n,
+double step_regular_logistic(sample *s, gmatrix *g,
       phi1 phi1_func, phi2 phi2_func)
 {
-   int i;
-   double lphi1;
+   int i, n = g->n;
    double grad = 0, d2 = 0;
+   double *restrict y_tmp = g->y,
+	  *restrict lp_invlogit_tmp = g->lp_invlogit,
+	  *restrict x_tmp = s->x,
+	  *restrict x2_tmp = s->x2;
 
    /* compute gradient */
    for(i = 0 ; i < n ; i++)
    {
-      lphi1 = 1 / (1 + exp(-lp[i]));
-      grad += s->x[i] * (lphi1 - y[i]);
-      d2 += s->x2[i] * lphi1 * (1 - lphi1);
+      grad += x_tmp[i] * (lp_invlogit_tmp[i] - y_tmp[i]);
+      d2 += x2_tmp[i] * lp_invlogit_tmp[i] * (1 - lp_invlogit_tmp[i]);
    }
    if(d2 == 0)
       return 0;
@@ -137,37 +134,20 @@ double step_regular_logistic(sample *s, double *y, double *lp, int n,
 /*
  * Squared hinge loss, assumes y \in {-1,1}
  */
-double step_regular_sqrhinge(sample *s, double *restrict y,
-      double *restrict lp, int n, phi1 phi1_func, phi2 phi2_func)
+double step_regular_sqrhinge(sample *s, gmatrix *g,
+      phi1 phi1_func, phi2 phi2_func)
 {
-   int i;
-   double grad = 0, l;
-   double *restrict x = s->x;
+   int i, n = g->n;
+   double grad = 0;
+   double *restrict x_tmp = s->x,
+	  *restrict y_tmp = g->y,
+	  *restrict ylp_tmp = g->ylp,
+	  *restrict ylp_pos_tmp = g->ylp_pos;
 
    /* compute gradient */
    for(i = 0 ; i < n ; i++)
-   {
-      l = y[i] * lp[i] - 1;
-      grad += (l < 0) * y[i] * x[i] * l;
-   }
+      grad += ylp_pos_tmp[i] * y_tmp[i] * x_tmp[i] * ylp_tmp[i];
    return grad / n;
-}
-
-double step_grouped(sample *s, double *y, double *lp, int n,
-      phi1 phi1_func, phi2 phi2_func)
-{
-   /*int i, k;
-   double lphi1;
-
-   for(i = 0 ; i < n ; i++)
-   {
-      lphi1 = phi1_func(lp[i]);
-      for(k = 0 ; k < s->nbins ; k++)
-      {
-	 (*grad) += 	 
-      }
-   }*/
-   return 0;
 }
 
 /* coordinate descent */
@@ -177,11 +157,11 @@ int cd_gmatrix(gmatrix *g,
       loss_pt loss_pt_func,    /* loss for one sample */
       inv inv_func,
       step step_func,
-      int maxepoch, double *beta, double *restrict lp, double lambda1,
+      int maxepoch, double *beta, double lambda1,
       double lambda2, double threshold, int verbose,
       int *trainf, double trunc)
 {
-   int maxiter = 10;
+   const int maxiter = 100;
    int i, j, epoch = 1, numconverged = 0, numiter;
    double s, beta_new;
    short *converged = NULL;
@@ -219,7 +199,7 @@ int cd_gmatrix(gmatrix *g,
 	 {
 	    numiter++;
 
-	    s = step_func(&sm, g->y, lp, g->n,  phi1_func, phi2_func);
+	    s = step_func(&sm, g, phi1_func, phi2_func);
 
 	    /* don't penalise intercept */
 	    if(j == 0)
@@ -235,19 +215,36 @@ int cd_gmatrix(gmatrix *g,
 	    }
 
 	    /* clip very large coefs to limit divergence */
-	    beta_new = fmin(fmax(beta_new, -truncl), truncl);
+	    beta_new = (beta_new > truncl) ? 
+		  truncl : ((beta_new < -truncl) ? -truncl : beta_new);
 
 	    /* update linear predictor */
 	    for(i = 0 ; i < g->n ; i++)
-	       /*if(sm.x[i] != 0)*/
+	    {
+	       g->lp[i] += x[i] * (beta_new - beta[j]);
+	       g->lp[i] = (g->lp[i] > MAXLP) ? 
+		     MAXLP : ((g->lp[i] < -MAXLP) ? -MAXLP : g->lp[i]); 
+	    }
+
+	    /* update functions of linear predictor */
+	    if(g->model == MODEL_LOGISTIC)
+	    {
+	       for(i = 0 ; i < g->n ; i++)
+		  g->lp_invlogit[i] = 1 / (1 + exp(-g->lp[i]));
+	    }
+	    else if(g->model == MODEL_SQRHINGE)
+	    {
+	       for(i = 0 ; i < g->n ; i++)
 	       {
-		  lp[i] += x[i] * (beta_new - beta[j]);
-		  lp[i] = (lp[i] > MAXLP) ? 
-		     MAXLP : ((lp[i] < -MAXLP) ? -MAXLP : lp[i]); 
+		  g->ylp[i] = g->y[i] * g->lp[i];
+		  g->ylp_pos[i] = (g->ylp[i] > 0);
 	       }
+	    }
 
 	    beta[j] = beta_new;
 	 }
+	 if(numiter > maxiter)
+	    printf("maximum number of internal iterations reached\n");
       }
 
       /* count number of zero variables */

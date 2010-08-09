@@ -27,19 +27,24 @@ void sample_free(sample *s)
 }
 
 int gmatrix_init(gmatrix *g, char *filename, int n, int p, short inmemory,
-      short tabulate, char *scalefile, short yformat)
+      short tabulate, char *scalefile, short yformat, short model)
 {
    int i;
 
    if(filename)
       FOPENTEST(g->file, filename, "rb")
 
+   g->model = model;
    g->filename = filename;
    g->i = g-> j = 0;
    g->n = n;
    g->p = p;
    g->yidx = 0;
    g->y = NULL;
+   g->lp = NULL;
+   g->ylp = NULL;
+   g->ylp_pos = NULL;
+   g->lp_invlogit = NULL;
    g->inmemory = inmemory;
    g->tab = NULL;
    g->scalefile = scalefile;
@@ -75,6 +80,18 @@ int gmatrix_init(gmatrix *g, char *filename, int n, int p, short inmemory,
 
    if(scalefile && !gmatrix_read_scaling(g, scalefile))
       return FAILURE;
+
+   
+   CALLOCTEST(g->lp, g->n, sizeof(double))
+   if(g->model == MODEL_LOGISTIC)
+   {
+      CALLOCTEST(g->lp_invlogit, g->n, sizeof(double))
+   }
+   else if(g->model == MODEL_SQRHINGE)
+   {
+      CALLOCTEST(g->ylp, g->n, sizeof(double))
+      CALLOCTEST(g->ylp_pos, g->n, sizeof(double))
+   }
 
    return SUCCESS;
 }
@@ -160,6 +177,22 @@ void gmatrix_free(gmatrix *g)
    if(g->lookup2)
       free(g->lookup2);
    g->lookup2 = NULL;
+
+   if(g->lp)
+      free(g->lp);
+   g->lp = NULL;
+
+   if(g->ylp)
+      free(g->ylp);
+   g->ylp = NULL;
+
+   if(g->ylp_pos)
+      free(g->ylp_pos);
+   g->ylp_pos = NULL;
+
+   if(g->lp_invlogit)
+      free(g->lp_invlogit);
+   g->lp_invlogit = NULL;
 
    /*if(g->tab)
       tabulation_free(g->tab);
