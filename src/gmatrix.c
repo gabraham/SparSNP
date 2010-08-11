@@ -27,7 +27,7 @@ void sample_free(sample *s)
 }
 
 int gmatrix_init(gmatrix *g, char *filename, int n, int p, short inmemory,
-      short tabulate, char *scalefile, short yformat, short model)
+      short tabulate, char *scalefile, short yformat, int model)
 {
    int i;
 

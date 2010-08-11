@@ -5,6 +5,7 @@
 ################################################################################
 set -u
 set -e
+shopt -s extglob
 
 TMPDIR=.
 
@@ -174,8 +175,6 @@ function convert {
    local rscript=".convert.R"
    
    cat > $rscript <<EOF
-   #hgfile <- "$DIR/$xfileshuf"
-   #hgyfile <- "$DIR/$yfileshuf"
    hgfile <- "$DIR/$xfile"
    hgyfile <- "$DIR/$yfile"
    outfile <- "$DIR/$binfile"
@@ -414,7 +413,7 @@ EOF
    
    # See previous comment
    /bin/cp $DIR/sim1.y $DIR/sim.y
-   /bin/rm -rf $DIR/sim*.all.g
+   /bin/rm -rf $DIR/sim+([0-9]).all.g
    
    
    echo "####################################"
@@ -436,6 +435,8 @@ EOF
    hapgen2ped("$DIR/sim.all.g", "$DIR/sim.y", "$DIR/sim.ped")
 EOF
    Rscript $RSCRIPT
+
+   rm $DIR/sim.all.g
 
    # plink, binary bed format
    $PLINK --ped "$DIR/sim.ped" --map "$LEGEND.map" --make-bed --out "$DIR/sim"
@@ -475,14 +476,14 @@ EOF
 
 ################################################################################
 
-for ((J=1 ; J<=50; J++));
+for ((J=6 ; J<=10; J++));
 do
-   DIR="sim6.$J"
+   DIR="sim7.$J"
    if ! [ -d "$DIR" ]; then
       mkdir $DIR
    fi
    prefix="sim"
-   N=2000
+   N=5000
    K=20
    HAPLO=HapMap/genotypes_chr1_JPT+CHB_r22_nr.b36_fwd.phased
    LEGEND=HapMap/genotypes_chr1_JPT+CHB_r22_nr.b36_fwd_legend.txt
