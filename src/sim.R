@@ -29,7 +29,7 @@ run <- function(n, p, nsim=50)
       {
          beta.z <- 0
          while(all(beta.z == 0))
-            beta.z <- sample(0:1, p + 1, replace=TRUE, prob=c(0.9, 0.1)) 
+            beta.z <- sample(0:1, p + 1, replace=TRUE, prob=c(0.8, 0.2)) 
          beta <- rnorm(p + 1, 0, 0.5) * beta.z
          
          x <- matrix(sample(c(0, 1, 2), size=n * p, replace=TRUE), n, p)

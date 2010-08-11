@@ -181,7 +181,7 @@ int cd_gmatrix(gmatrix *g,
       double lambda2, double threshold, int verbose,
       int *trainf, double trunc)
 {
-   int maxiter = 10;
+   const int maxiter = 100;
    int i, j, epoch = 1, numconverged = 0, numiter;
    double s, beta_new;
    short *converged = NULL;
@@ -248,6 +248,8 @@ int cd_gmatrix(gmatrix *g,
 
 	    beta[j] = beta_new;
 	 }
+	 if(numiter > maxiter)
+	    printf("maximum number of internal iterations reached\n");
       }
 
       /* count number of zero variables */
