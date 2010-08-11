@@ -32,8 +32,6 @@ typedef struct sample {
 typedef struct gmatrix {
    char* filename;
    FILE* file;
-   /*dtype *y;
-   dtype **x;*/
    double *y;
    double **x;
    int n;
@@ -42,6 +40,8 @@ typedef struct gmatrix {
    int j;
    double *mean, *sd;
    double *lookup, *lookup2;
+   double *lp, *ylp, *ylp_neg, *lp_invlogit;
+   double *beta;
    double *intercept;
    int *active;
    dtype *buffer;
@@ -54,11 +54,13 @@ typedef struct gmatrix {
    char *scalefile;
    dtype *tmp;
    short yformat;
+   int model;
 } gmatrix;
 
 int sample_init(sample *, int, short);
 void sample_free(sample *);
-int gmatrix_init(gmatrix *, char *, int, int, short, short, char*, short);
+int gmatrix_init(gmatrix *, char *, int, int, short, short, char*, short,
+      int);
 int gmatrix_reset(gmatrix *);
 void gmatrix_free(gmatrix *);
 int gmatrix_disk_nextcol(gmatrix *, sample *);

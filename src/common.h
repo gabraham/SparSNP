@@ -29,6 +29,16 @@ typedef DTYPE dtype;
 #define DTYPE_DEF 1
 #endif
 
+#define MODEL_LINEAR 1
+#define MODEL_PCOR 2
+#define MODEL_LOGISTIC 3
+#define MODEL_SQRHINGE 4
+
+#define MODEL_NAME_LINEAR "linear"
+#define MODEL_NAME_PCOR "pcor"
+#define MODEL_NAME_LOGISTIC "logistic"
+#define MODEL_NAME_SQRHINGE "sqrhinge"
+
 
 /* Macros with built in error checking */
 
