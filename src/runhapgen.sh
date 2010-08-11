@@ -5,6 +5,7 @@
 ################################################################################
 set -u
 set -e
+shopt -s extglob
 
 TMPDIR=.
 
@@ -412,6 +413,7 @@ EOF
    
    # See previous comment
    /bin/cp $DIR/sim1.y $DIR/sim.y
+   /bin/rm -rf $DIR/sim+([0-9]).all.g
    
    
    echo "####################################"
@@ -433,6 +435,8 @@ EOF
    hapgen2ped("$DIR/sim.all.g", "$DIR/sim.y", "$DIR/sim.ped")
 EOF
    Rscript $RSCRIPT
+
+   rm $DIR/sim.all.g
 
    # plink, binary bed format
    $PLINK --ped "$DIR/sim.ped" --map "$LEGEND.map" --make-bed --out "$DIR/sim"

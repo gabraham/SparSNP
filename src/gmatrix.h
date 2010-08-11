@@ -54,13 +54,13 @@ typedef struct gmatrix {
    char *scalefile;
    dtype *tmp;
    short yformat;
-   short model;
+   int model;
 } gmatrix;
 
 int sample_init(sample *, int, short);
 void sample_free(sample *);
 int gmatrix_init(gmatrix *, char *, int, int, short, short, char*, short,
-      short);
+      int);
 int gmatrix_reset(gmatrix *);
 void gmatrix_free(gmatrix *);
 int gmatrix_disk_nextcol(gmatrix *, sample *);
