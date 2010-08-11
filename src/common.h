@@ -39,6 +39,8 @@ typedef DTYPE dtype;
 #define MODEL_NAME_LOGISTIC "logistic"
 #define MODEL_NAME_SQRHINGE "sqrhinge"
 
+#define MODE_TRAIN 0
+#define MODE_PREDICT 1
 
 /* Macros with built in error checking */
 

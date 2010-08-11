@@ -78,7 +78,8 @@ int scale(gmatrix *g, char* filename)
    return SUCCESS;
 }
 
-int writescale(char* filename, double *mean, double *sd, int p, short ascii)
+int writescale(char* filename, double *mean, double *sd,
+      int p, short ascii)
 {
    FILE *out;
 

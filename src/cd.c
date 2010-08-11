@@ -110,7 +110,7 @@ double step_regular(sample *s, gmatrix *g,
  * always N since it is the sum of squares \sum_{i=1}^N x_{ij}^2 =
  * \sum_{i=1}^N 1 = N
  */
-double step_regular_l2(sample *s, gmatrix *g,
+double step_regular_linear(sample *s, gmatrix *g,
       phi1 phi1_func, phi2 phi2_func)
 {
    int i, n = g->n;

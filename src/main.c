@@ -23,222 +23,6 @@ int cvsplit(Opt *opt)
    return writevectorl(opt->subsetfile, opt->trainf, opt->n);
 }
 
-void opt_free(Opt *opt)
-{
-   if(opt->lambda1path)
-   {
-      free(opt->lambda1path);
-      opt->lambda1path = NULL;
-   }
-
-   if(opt->trainf)
-   {
-      free(opt->trainf);
-      opt->trainf = NULL;
-   }
-}
-
-void opt_defaults(Opt *opt)
-{
-   opt->model = 0;
-   opt->nlambda1 = 100;
-   opt->l1minratio = 1e-2;
-   opt->maxepochs = 100;
-   opt->lambda1 = -1;
-   opt->lambda2 = 0;
-   opt->threshold = 1e-4;
-   opt->trunc = 1e-15;
-   opt->nzmax = 0;
-   opt->betafile = "beta.csv";
-   opt->n = 0;
-   opt->p = 0;
-   opt->warmrestarts = FALSE;
-   opt->nofit = FALSE;
-   opt->filename = NULL;
-   opt->lambda1path = NULL;
-   opt->verbose = FALSE;
-   opt->lambda1max = opt->lambda1min = 1;
-   opt->cv = 1;
-   opt->seed = time(NULL);
-   opt->nzmax = 0;
-   opt->trainf = NULL;
-   opt->ntrain = opt->n;
-   opt->subsetfile = "subset.csv";
-   opt->lambda1pathfile = "lambda1path.csv";
-   opt->step_func = NULL;
-   opt->inmemory = FALSE;
-   opt->tabulate = FALSE;
-   opt->scalefile = NULL;
-   opt->yformat = YFORMAT01;
-}
-
-int opt_parse(int argc, char* argv[], Opt* opt)
-{
-   int i;
-
-   for(i = 1 ; i < argc ; i++)
-   {
-      if(strcmp2(argv[i], "-f"))
-      {
-	 i++;
-	 opt->filename = argv[i];
-      }
-      else if(strcmp2(argv[i], "-model"))
-      {
-	 i++;
-	 if(strcmp2(argv[i], MODEL_NAME_LOGISTIC))
-	 {
-	    opt->inv_func = &loginv;
-	    opt->step_func = &step_regular_logistic;
-	    opt->model = MODEL_LOGISTIC;
-	 }
-	 else if(strcmp2(argv[i], MODEL_NAME_SQRHINGE))
-	 {
-	    opt->inv_func = &sqrhingeinv;
-	    opt->step_func = &step_regular_sqrhinge;
-	    opt->yformat = YFORMAT11;
-	    opt->model = MODEL_SQRHINGE;
-	 }
-	 else if(strcmp2(argv[i], MODEL_NAME_LINEAR))
-	 {
-	    opt->inv_func = &l2inv;
-	    opt->step_func = &step_regular_l2;
-	    opt->model = MODEL_LINEAR;
-	 }
-	 else if(strcmp2(argv[i], MODEL_NAME_PCOR))
-	 {
-	    opt->inv_func = &l2inv;
-	    opt->step_func = &step_regular_l2;
-	    opt->model = MODEL_LINEAR;
-	 }
-	 else
-	 {
-	    printf("model not available\n");
-	    return FAILURE;
-	 }
-      }
-      else if(strcmp2(argv[i], "-nofit"))
-      {
-	 opt->nofit = TRUE;
-      }
-      else if(strcmp2(argv[i], "-n"))
-      {
-	 i++;
-	 opt->n = (int)atof(argv[i]);
-      }
-      else if(strcmp2(argv[i], "-p"))
-      {
-	 i++;
-	 opt->p = (int)atof(argv[i]);
-      }
-      else if(strcmp2(argv[i], "-epochs"))
-      {
-	 i++;
-	 opt->maxepochs = (int)atof(argv[i]);
-      }
-      else if(strcmp2(argv[i], "-l1"))
-      {
-	 i++;
-	 opt->lambda1 = atof(argv[i]);
-	 opt->nlambda1 = 1;
-      }
-      else if(strcmp2(argv[i], "-l2"))
-      {
-	 i++;
-	 opt->lambda2 = atof(argv[i]);
-      }
-      else if(strcmp2(argv[i], "-l1min"))
-      {
-	 i++;
-	 opt->l1minratio = atof(argv[i]);
-      }
-      else if(strcmp2(argv[i], "-thresh"))
-      {
-	 i++;
-	 opt->threshold = atof(argv[i]);
-      }
-      else if(strcmp2(argv[i], "-nl1"))
-      {
-	 i++;
-	 opt->nlambda1 = atoi(argv[i]);
-      }
-      else if(strcmp2(argv[i], "-v"))
-      {
-	 opt->verbose = TRUE;
-      }
-      else if(strcmp2(argv[i], "-vv"))
-      {
-	 opt->verbose = 2;
-      }
-      else if(strcmp2(argv[i], "-vvv"))
-      {
-	 opt->verbose = 3;
-      }
-      else if(strcmp2(argv[i], "-beta"))
-      {
-	 i++;
-	 opt->betafile = argv[i];
-      }
-      else if(strcmp2(argv[i], "-scale"))
-      {
-	 i++;
-	 opt->scalefile = argv[i];
-      }
-      else if(strcmp2(argv[i], "-cv"))
-      {
-	 i++;
-	 opt->cv = atoi(argv[i]);
-      }
-      else if(strcmp2(argv[i], "-seed"))
-      {
-	 i++;
-	 opt->seed = atol(argv[i]);
-      }
-      else if(strcmp2(argv[i], "-nzmax"))
-      {
-	 i++;
-	 opt->nzmax = atol(argv[i]);
-      }
-      else if(strcmp2(argv[i], "-warm"))
-      {
-	 opt->warmrestarts = TRUE;
-      }
-      else if(strcmp2(argv[i], "-inmemory"))
-      {
-	 opt->inmemory = TRUE;
-	 printf("-inmemory not working currently\n");
-	 return FAILURE;
-      }
-      else if(strcmp2(argv[i], "-tabulate"))
-      {
-	 opt->tabulate = TRUE;
-      }
-   }
-
-
-   if(opt->filename == NULL || opt->model == 0
-	 || opt->n == 0 || opt->p == 0)
-   {
-      printf("usage: cd -model <model> -f <filename> -n <#samples> -p \
-<#variables> | -beta <beta filename> -pred <pred filename> \
--epoch <maxepochs> -l1 <lambda1> -l2 <lambda2> -thresh <threshold> \
--pred <prediction file> -cv <cvfolds> -seed <seed> -v -vv\n");
-      return FAILURE;
-   }
-
-   if(!opt->nzmax)
-      opt->nzmax = (int)fmin(opt->n, opt->p); 
-
-   srand(opt->seed);
-
-   CALLOCTEST2(opt->lambda1path, opt->nlambda1, sizeof(double))
-   
-   if(opt->cv > 1)
-      cvsplit(opt);
-
-   return SUCCESS; 
-}
-
 /*
  * Creates a vector of lambda1 penalties
  */
@@ -271,17 +55,18 @@ int make_lambda1path(Opt *opt, gmatrix *g)
    for(i = 1 ; i < opt->nlambda1 ; i++)
       opt->lambda1path[i] = exp(log(opt->lambda1max) - s * i);
 
-   snprintf(tmp, MAX_STR_LEN, "%s.%d", opt->betafile, 0);
+   snprintf(tmp, MAX_STR_LEN, "%s.%d", opt->beta_files[0], 0);
    if(!writevectorf(tmp, g->beta, opt->p + 1))
       return FAILURE;
 
-   return writevectorf(opt->lambda1pathfile, opt->lambda1path, opt->nlambda1);
+   return writevectorf(opt->lambda1pathfile,
+	 opt->lambda1path, opt->nlambda1);
 }
 
 /*
  * Run coordinate descent for each lambda1 penalty
  */
-int run(Opt *opt, gmatrix *g)
+int run_train(Opt *opt, gmatrix *g)
 {
    int i, j, ret;
    char tmp[MAX_STR_LEN];
@@ -313,7 +98,7 @@ int run(Opt *opt, gmatrix *g)
 	 break;
       } 
 
-      snprintf(tmp, MAX_STR_LEN, "%s.%d", opt->betafile, i);
+      snprintf(tmp, MAX_STR_LEN, "%s.%d", opt->beta_files[0], i);
       if(!writevectorf(tmp, g->beta, opt->p + 1))
 	 return FAILURE;
 
@@ -340,6 +125,81 @@ int run(Opt *opt, gmatrix *g)
 	       opt->nzmax);
 	 break;
       }
+   }
+
+   return SUCCESS;
+}
+
+/*
+ * For each beta file, predict outcome using the chosen model
+ */
+int run_predict_beta(gmatrix *g, predict predict_func,
+      char* predict_file)
+{
+   unsigned int i, j;
+   sample sm;
+   double *yhat;
+   double *restrict lp = g->lp;
+   double *restrict x;
+   double *restrict beta = g->beta;
+
+   if(!sample_init(&sm, g->n, g->inmemory))
+      return FAILURE;
+
+   MALLOCTEST(yhat, sizeof(double) * g->n)
+
+   for(j = 0 ; j < g->p + 1 ; j++)
+   {
+      g->nextcol(g, &sm);
+      x = sm.x;
+      for(i = 0 ; i < g->n ; i++)
+	 lp[i] += x[i] * beta[j];
+   }
+   
+   for(i = 0 ; i < g->n ; i++)
+      yhat[i] = predict_func(lp[i]);
+
+   if(!writevectorf(predict_file, yhat, g->n))
+      return FAILURE;
+
+   free(yhat);
+   sample_free(&sm);
+   
+   return SUCCESS;
+}
+
+/* Assumes ascii, one value per line */
+int load_beta(double *beta, char *filename, int p)
+{
+   int i = 0;
+   FILE *in = NULL;
+   FOPENTEST(in, filename, "rt");
+
+   while(!feof(in))
+   {
+      if(fscanf(in, "%lf", beta + i) == EOF)
+	 break;
+      i++;
+   } 
+   fclose(in);
+   return SUCCESS;
+}
+
+int run_predict(gmatrix *g, predict predict_func, char **beta_files,
+      int n_beta_files)
+{
+   int i;
+   char tmp[MAX_STR_LEN];
+
+   for(i = 0 ; i < n_beta_files ; i++)
+   {
+      printf("Reading %s\n", beta_files[i]);
+      if(!load_beta(g->beta, beta_files[i], g->p + 1))
+	 return FAILURE;
+
+      snprintf(tmp, MAX_STR_LEN, "%s_pred.%d", beta_files[i], i);
+      if(!run_predict_beta(g, predict_func, tmp))
+	 return FAILURE;
    }
 
    return SUCCESS;
@@ -410,28 +270,42 @@ int run(Opt *opt, gmatrix *g)
 
 int main(int argc, char* argv[])
 {
+   int ret = 0;
    Opt opt;
    gmatrix g;
 
    setbuf(stdout, NULL);
 
-   opt_defaults(&opt);
-   if(!opt_parse(argc, argv, &opt))
+   if(!opt_defaults(&opt) || !opt_parse(argc, argv, &opt))
+   {
+      opt_free(&opt);
       return EXIT_FAILURE;
+   }
 
-   if(!gmatrix_init(&g, opt.filename, opt.n, opt.p, opt.inmemory,
-	    opt.tabulate, opt.scalefile, opt.yformat, opt.model))
+   if(!gmatrix_init(&g, opt.filename, opt.n, opt.p,
+	    opt.inmemory, opt.tabulate, opt.scalefile,
+	    opt.yformat, opt.model))
+   {
+      gmatrix_free(&g);
+      opt_free(&opt);
       return EXIT_FAILURE;
+   }
   
-   make_lambda1path(&opt, &g);
-   gmatrix_reset(&g);
-
-   if(!opt.nofit)
-      run(&opt, &g);
+   if(opt.mode == MODE_TRAIN && !opt.nofit)
+   {
+      make_lambda1path(&opt, &g);
+      gmatrix_reset(&g);
+      ret = run_train(&opt, &g);
+   }
+   else if(opt.mode == MODE_PREDICT)
+      ret = run_predict(&g, opt.predict_func, opt.beta_files,
+	    opt.n_beta_files);
 
    gmatrix_free(&g);
    opt_free(&opt);
 
+   if(ret == FAILURE)
+      return EXIT_FAILURE;
    return EXIT_SUCCESS;
 }
 
