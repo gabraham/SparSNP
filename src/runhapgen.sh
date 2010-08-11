@@ -11,160 +11,6 @@ TMPDIR=.
 
 PLINK="p-link"
 
-# Row major ordering
-#Line 1: m d
-#Line 2: i1 v1 i2 v2 ...
-#Line d+1: i1 v1 i2 v2 ...
-function formatsmidas {
-   local DIR=$1
-   local binfile=$2
-   local N=$3
-   local P=$4
-   local RSCRIPT=formatsmidas.R
-   local FILEX=smidas_x.dat
-   local FILEY=smidas_y.dat
-   echo "formatsmidas: $DIR $binfile $N $P"
-
-   cat > $DIR/$RSCRIPT <<EOF
-   n2 <- $N * 2
-   p <- $P
-   xin <- file("$DIR/$binfile", "rb")
-   cat(n2, p + 1, "\n", file="$DIR/$FILEX")
-   cat("", file="$DIR/$FILEY")
-
-   for(i in 1:n2)
-   {
-      r <- as.numeric(readBin(con=xin, what="raw", n=p + 1))
-      cat(p + 1, paste(0:p, c(1, r[-1])), "\n",
-	    file="$DIR/$FILEX", append=TRUE)
-      cat(ifelse(r[1] == 1, 1, -1), "\n",
-	    file="$DIR/$FILEY", append=TRUE)
-   }
-   close(xin)
-
-EOF
-
-   Rscript $DIR/$RSCRIPT
-   /bin/rm $DIR/$RSCRIPT
-
-}
-
-# Column-major ordering
-function formatscd {
-   local DIR=$1
-   local binfile=$2
-   local N=$3
-   local P=$4
-   local RSCRIPT=formatscd.R
-   local FILEX=scd_x.dat
-   local FILEY=scd_y.dat
-   echo "formatscd: $DIR $binfile $N $P"
-
-   cat > $DIR/$RSCRIPT <<EOF
-   n2 <- $N * 2
-   p <- $P
-   xin <- file("$DIR/$binfile", "rb")
-   cat(n2, p + 1, "\n", file="$DIR/$FILEX")
-   cat("", file="$DIR/$FILEY")
-
-   cat(paste(1:n2 - 1, rep(1, n2)), "\n", file="$DIR/$FILEX", append=TRUE)
-
-   for(j in 1:p)
-   {
-      for(i in 1:n2)
-      {
-         r <- as.numeric(readBin(con=xin, what="raw", n=p + 1))
-
-         cat(i - 1, r[j + 1], file="$DIR/$FILEX", append=TRUE)
-	 if(i < n2) {
-	    cat(" ", file="$DIR/$FILEX", append=TRUE)
-	 } else {
-	    cat("\n", file="$DIR/$FILEX", append=TRUE)
-	 }
-
-	 if(j == 1)
-	 {
-	    cat(r[1], "\n")
-	    cat(ifelse(r[1] == 1, 1, -1), "\n",
-               file="$DIR/$FILEY", append=TRUE)
-	 }
-      }
-      close(xin)
-      xin <- file("$DIR/$binfile", "rb")
-   }
-   close(xin)
-
-EOF
-
-   Rscript $DIR/$RSCRIPT
-   /bin/rm $DIR/$RSCRIPT
-
-}
-
-function formatsvmlight {
-   local DIR=$1
-   local binfile=$2
-   local N=$3
-   local P=$4
-   local RSCRIPT=formatsvmlight.R
-   local FILEX=svmlight_x.dat
-   echo "formatsvmlight: $DIR $binfile $N $P"
-
-   cat > $DIR/$RSCRIPT <<EOF
-   n2 <- $N * 2
-   p <- $P
-   xin <- file("$DIR/$binfile", "rb")
-   cat("", file="$DIR/$FILEX")
-
-   k <- 1:(p+1)
-   for(i in 1:n2)
-   {
-      r <- as.numeric(readBin(con=xin, what="raw", n=p + 1))
-      y <- ifelse(r[1] == 1, 1, -1) 
-      v <- c(1, r[-1])
-      w <- which(v != 0)
-
-      cat(y, paste(k[w], v[w], sep=":"), "\n",
-	    file="$DIR/$FILEX", append=TRUE)
-   }
-   close(xin)
-
-EOF
-
-   Rscript $DIR/$RSCRIPT
-   /bin/rm $DIR/$RSCRIPT
-
-}
-
-function testscd {
-   local DIR=testscd
-   local RSCRIPT=testscd.R
-   local binfile=test.bin
-   local n=6
-   local p=$((2*6))
-   
-   if ! [ -d "$DIR" ]; then
-      mkdir $DIR
-   fi
-
-   cat > $DIR/$RSCRIPT <<EOF
-   n <- $n * 2
-   p <- $p
-   y <- as.raw(rep(c(0, 1), each=n/2))
-   x <- t(matrix(as.raw(rep(c(0, 1, 0), each=n, times=4)), n, p))
-   f <- file("$DIR/$binfile", "wb")
-   for(i in 1:n)
-   {
-      writeBin(c(y[i], x[i,]), con=f)
-   }
-   close(f)
-EOF
-   
-   Rscript $DIR/$RSCRIPT
-
-   formatscd $DIR "$binfile" $n $p
-}
-
 function convert {
    local DIR=$1
    local prefix=$2
@@ -411,7 +257,7 @@ EOF
 
    Rscript $RSCRIPT
    
-   # See previous comment
+  # See previous comment
    /bin/cp $DIR/sim1.y $DIR/sim.y
    /bin/rm -rf $DIR/sim+([0-9]).all.g
    
@@ -487,7 +333,12 @@ do
    K=20
    HAPLO=HapMap/genotypes_chr1_JPT+CHB_r22_nr.b36_fwd.phased
    LEGEND=HapMap/genotypes_chr1_JPT+CHB_r22_nr.b36_fwd_legend.txt
-   simulate $DIR $prefix $N $K $HAPLO $LEGEND
+   if ! [ -a "$DIR/sim.bin.t" ];
+   then
+      simulate $DIR $prefix $N $K $HAPLO $LEGEND
+   else
+      echo "Skipping $DIR"
+   fi
    echo "exit:" $J $?
 done
 
