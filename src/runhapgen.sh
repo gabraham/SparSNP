@@ -174,8 +174,6 @@ function convert {
    local rscript=".convert.R"
    
    cat > $rscript <<EOF
-   #hgfile <- "$DIR/$xfileshuf"
-   #hgyfile <- "$DIR/$yfileshuf"
    hgfile <- "$DIR/$xfile"
    hgyfile <- "$DIR/$yfile"
    outfile <- "$DIR/$binfile"
@@ -414,7 +412,6 @@ EOF
    
    # See previous comment
    /bin/cp $DIR/sim1.y $DIR/sim.y
-   /bin/rm -rf $DIR/sim*.all.g
    
    
    echo "####################################"
@@ -475,14 +472,14 @@ EOF
 
 ################################################################################
 
-for ((J=1 ; J<=50; J++));
+for ((J=1 ; J<=10; J++));
 do
-   DIR="sim6.$J"
+   DIR="sim8.$J"
    if ! [ -d "$DIR" ]; then
       mkdir $DIR
    fi
    prefix="sim"
-   N=2000
+   N=25000
    K=20
    HAPLO=HapMap/genotypes_chr1_JPT+CHB_r22_nr.b36_fwd.phased
    LEGEND=HapMap/genotypes_chr1_JPT+CHB_r22_nr.b36_fwd_legend.txt
