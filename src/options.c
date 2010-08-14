@@ -28,6 +28,8 @@ void opt_free(Opt *opt)
 
 int opt_defaults(Opt *opt)
 {
+   const char *beta_default = "beta.csv";
+
    opt->mode = MODE_TRAIN;
    opt->model = 0;
    opt->nlambda1 = 100;
@@ -60,8 +62,10 @@ int opt_defaults(Opt *opt)
    opt->yformat = YFORMAT01;
    opt->predict_func = NULL;
    opt->predict_file = "predicted.csv";
-   MALLOCTEST(opt->beta_files, sizeof(char*));
-   opt->beta_files[0] = "beta.csv";
+
+   MALLOCTEST(opt->beta_files, sizeof(char*))
+   MALLOCTEST(opt->beta_files[0], sizeof(char) * (strlen(beta_default) + 1))
+   strcpy(opt->beta_files[0], beta_default);
    opt->n_beta_files = 1;
 
    return SUCCESS;
@@ -202,6 +206,7 @@ int opt_parse(int argc, char* argv[], Opt* opt)
       else if(strcmp2(argv[i], "-betafiles"))
       {
 	 /* first free the default filename */
+	 free(opt->beta_files[0]);
 	 free(opt->beta_files);
 	 opt->beta_files = NULL;
 
