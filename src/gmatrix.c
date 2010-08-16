@@ -27,7 +27,7 @@ void sample_free(sample *s)
 }
 
 int gmatrix_init(gmatrix *g, char *filename, int n, int p, short inmemory,
-      short tabulate, char *scalefile, short yformat, int model)
+      char *scalefile, short yformat, int model)
 {
    int i;
 
@@ -46,7 +46,6 @@ int gmatrix_init(gmatrix *g, char *filename, int n, int p, short inmemory,
    g->ylp_neg = NULL;
    g->lp_invlogit = NULL;
    g->inmemory = inmemory;
-   g->tab = NULL;
    g->scalefile = scalefile;
    g->lookup = NULL;
    g->lookup2 = NULL;
@@ -64,13 +63,7 @@ int gmatrix_init(gmatrix *g, char *filename, int n, int p, short inmemory,
 
    MALLOCTEST(g->tmp, sizeof(dtype) * g->n)
 
-   if(tabulate)
-   {
-      /*if(!gmatrix_tabulation_load(g))
-	 return FAILURE;
-      g->nextcol = gmatrix_tabulation_nextcol;*/
-   }
-   else if(inmemory)
+   if(inmemory)
    {
       if(!gmatrix_load(g))
 	 return FAILURE;

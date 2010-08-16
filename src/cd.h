@@ -48,7 +48,6 @@ typedef struct Opt {
    char *lambda1pathfile;
    step step_func;
    short inmemory;
-   short tabulate;
    char *scalefile;
    short yformat;
    predict predict_func;

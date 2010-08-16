@@ -283,7 +283,7 @@ int main(int argc, char* argv[])
    }
 
    if(!gmatrix_init(&g, opt.filename, opt.n, opt.p,
-	    opt.inmemory, opt.tabulate, opt.scalefile,
+	    opt.inmemory, opt.scalefile,
 	    opt.yformat, opt.model))
    {
       gmatrix_free(&g);

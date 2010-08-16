@@ -17,7 +17,7 @@ debug: $(targets)
 
 LIBRARIES = -lm
 
-cd: common.c tabulation.c gmatrix.c loss.c util.c options.c main.c cd.c
+cd: common.c gmatrix.c loss.c util.c options.c main.c cd.c
 	$(CC) $(CCFLAGS) $(LIBRARIES) $^ -o cd
 
 scale: common.c gmatrix.c util.c cd.c scale.c

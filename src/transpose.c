@@ -2,32 +2,70 @@
 #include <stdlib.h>
 #include "cd.h"
 
-int transpose(char *filename_in, char *filename_out, const int n, const int p)
+int transpose(char *filename_in, char *filename_out, const unsigned int n,
+   const unsigned int p, const unsigned int bufsize)
 {
-   unsigned long long i, j;
+   unsigned long i, j = 0, k, bufs = 0, arrlen;
    FILE *in = NULL, *out = NULL;
-   dtype *buf = NULL;
+   dtype **buf = NULL, *arr = NULL;
+   size_t *ret;
 
-   MALLOCTEST(buf, sizeof(dtype) * n);
+   MALLOCTEST(buf, sizeof(dtype*) * n)
+   for(i = 0 ; i < n ; i++)
+      MALLOCTEST(buf[i], sizeof(dtype) * bufsize)
+
+   MALLOCTEST(ret, sizeof(size_t) * n)
+   MALLOCTEST(arr, sizeof(dtype) * bufsize * n);
 
    FOPENTEST(in, filename_in, "rb");
    FOPENTEST(out, filename_out, "wb");
 
-   for(j = 0 ; j < p ; j++)
+   while(j < p)
    {
-      /* read one datum and skip one row of variables */
+      /* read an (n by bufsize) block */
       for(i = 0 ; i < n ; i++)
       {
-	 FSEEKOTEST(in, p * i + j, SEEK_SET)
-	 FREADTEST(buf + i, sizeof(dtype), 1, in)
+	 /* seek to first variable in the block */
+	 FSEEKOTEST(in, (unsigned long long)(p * i + bufsize * bufs), SEEK_SET)
+	 ret[i] = fread(buf[i], sizeof(dtype),
+	       fminl(bufsize, p - bufsize * bufs), in);
+
+	 if(ret[i] == 0 && !feof(in))
+	 {
+	    fprintf(stderr, "error %d reading file %s",
+		  ferror(in), filename_in);
+	    return FAILURE;
+	 }
       }
-      FWRITETEST(buf, sizeof(dtype), n, out)
+
+      /* unroll block into contiguous array */
+      arrlen = 0;
+      for(k = 0 ; k < bufsize ; k++)
+      {
+	 for(i = 0 ; i < n ; i++)
+	    if(k < ret[i])
+	    {
+	       arr[arrlen] = buf[i][k];
+	       arrlen++;
+	    }
+      }
+
+      FWRITETEST(arr, sizeof(dtype), arrlen, out);
+
+      j += bufsize;
+      bufs++;
+      printf("%lu\r", j);
    }
+   printf("\n");
 
    fclose(in);
    fflush(out);
    fclose(out);
+   for(i = 0 ; i < n ; i++)
+      free(buf[i]);
    free(buf);
+   free(ret);
+   free(arr);
 
    return SUCCESS;
 }
@@ -37,6 +75,9 @@ int main(int argc, char *argv[])
 {
    int i, n = 0, p = 0;
    char *filename_in = NULL, *filename_out = NULL;
+   /* bufsize is measured in number of variables, so it's size
+    * is sizeof(dtype) * bufsize * n bytes*/
+   unsigned int bufsize = 0;
 
    MALLOCTEST(filename_in, sizeof(char) * MAX_STR_LEN)
    MALLOCTEST(filename_out, sizeof(char) * MAX_STR_LEN)
@@ -63,6 +104,11 @@ int main(int argc, char *argv[])
 	 i++;
 	 p = (int)atof(argv[i]);
       }
+      else if(strcmp2(argv[i], "-bufsize"))
+      {
+	 i++;
+	 bufsize = (int)atol(argv[i]);
+      }
    }
 
    if(!filename_in || !filename_out || n == 0 || p == 0)
@@ -72,10 +118,12 @@ int main(int argc, char *argv[])
       return EXIT_FAILURE;
    }
 
-
+   /* Will use about 256MB of RAM: 128MB of buffer + 128MB for output array */
+   if(bufsize == 0)
+      bufsize = fminl(134217728 * sizeof(dtype) / n, p + 1);
 
    /* don't forget y is a row too */
-   if(!transpose(filename_in, filename_out, n, p + 1))
+   if(!transpose(filename_in, filename_out, n, p + 1, bufsize))
       return EXIT_FAILURE;
 
    free(filename_in);

@@ -57,7 +57,6 @@ int opt_defaults(Opt *opt)
    opt->lambda1pathfile = "lambda1path.csv";
    opt->step_func = NULL;
    opt->inmemory = FALSE;
-   opt->tabulate = FALSE;
    opt->scalefile = NULL;
    opt->yformat = YFORMAT01;
    opt->predict_func = NULL;
