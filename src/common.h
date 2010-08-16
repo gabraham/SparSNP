@@ -80,9 +80,9 @@ fprintf(stderr, "can't open file %s\n", filename); \
 return FAILURE; \
 }
 
-#define FSEEKTEST(x, offset, whence) \
-if(fseek(x, offset, whence) != 0) { \
-fprintf(stderr, "can't seek offset %ld\n", (long int)offset); \
+#define FSEEKOTEST(x, offset, whence) \
+if(fseeko(x, offset, whence) != 0) { \
+fprintf(stderr, "can't seek offset %lld\n", (unsigned long long)offset); \
 return FAILURE; \
 }
 

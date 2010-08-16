@@ -1,14 +1,18 @@
 
 .PHONY: all
 
+# Allow large file access with fseeko
+LONG_BIT = $(shell getconf LONG_BIT)
+
 CCFLAGS = -std=gnu99 -Wall -ggdb3 -O2 -ftree-vectorize -fno-omit-frame-pointer \
 	  -funroll-loops -Winline \
-	  -ffast-math -fstrict-aliasing
+	  -ffast-math -fstrict-aliasing \
+	  -D_FILE_OFFSET_BITS=$(LONG_BIT)
 
 targets = cd scale transpose
 all: $(targets)
 
-debug: CCFLAGS = -Wall -ggdb3 -std=gnu99
+debug: CCFLAGS = -Wall -ggdb3 -std=gnu99 -D_FILE_OFFSET_BITS=$(LONG_BIT)
 debug: $(targets)
 
 LIBRARIES = -lm

@@ -4,7 +4,7 @@
 
 int transpose(char *filename_in, char *filename_out, const int n, const int p)
 {
-   int i, j;
+   unsigned long long i, j;
    FILE *in = NULL, *out = NULL;
    dtype *buf = NULL;
 
@@ -18,7 +18,7 @@ int transpose(char *filename_in, char *filename_out, const int n, const int p)
       /* read one datum and skip one row of variables */
       for(i = 0 ; i < n ; i++)
       {
-	 FSEEKTEST(in, p * i + j, SEEK_SET)
+	 FSEEKOTEST(in, p * i + j, SEEK_SET)
 	 FREADTEST(buf + i, sizeof(dtype), 1, in)
       }
       FWRITETEST(buf, sizeof(dtype), n, out)
