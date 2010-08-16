@@ -8,7 +8,7 @@
 #define SUCCESS 1
 #define FAILURE 0
 
-#define MAX_STR_LEN 100
+#define MAX_STR_LEN 101
 
 /* Value below which std dev is considered zero */
 #define SDTHRESH 1e-10
@@ -82,7 +82,7 @@ return FAILURE; \
 
 #define FSEEKTEST(x, offset, whence) \
 if(fseek(x, offset, whence) != 0) { \
-fprintf(stderr, "can't seek offset %ld\n", offset); \
+fprintf(stderr, "can't seek offset %ld\n", (long int)offset); \
 return FAILURE; \
 }
 

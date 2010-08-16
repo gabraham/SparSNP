@@ -1,6 +1,6 @@
 source runhapgen.sh
 
-for ((J=1 ; J<=10; J++));
+for ((J=1 ; J<=30; J++));
 do
    DIR="sim8.$J"
    if ! [ -d "$DIR" ]; then

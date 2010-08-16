@@ -7,7 +7,7 @@ p <- 185805
 legend <- sprintf(
    "%s/HapMap/genotypes_chr1_JPT+CHB_r22_nr.b36_fwd_legend.txt",
    dir)
-nexpers <- c(10, 50)
+nexpers <- c(30, 50)
 
 runperf <- function(f)
 {

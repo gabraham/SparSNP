@@ -2,7 +2,7 @@
 #include <stdlib.h>
 #include "cd.h"
 
-int transpose(char *filename_in, char *filename_out, int n, int p)
+int transpose(char *filename_in, char *filename_out, const int n, const int p)
 {
    int i, j;
    FILE *in = NULL, *out = NULL;
@@ -11,18 +11,22 @@ int transpose(char *filename_in, char *filename_out, int n, int p)
    MALLOCTEST(buf, sizeof(dtype) * n);
 
    FOPENTEST(in, filename_in, "rb");
-   FOPENTEST(out, filename_in, "wb");
+   FOPENTEST(out, filename_out, "wb");
 
-   for(i = 0 ; i < n ; i++)
+   for(j = 0 ; j < p ; j++)
    {
-      for(j = 0 ; j < p ; j++)
+      /* read one datum and skip one row of variables */
+      for(i = 0 ; i < n ; i++)
       {
-	/* FREADTEST(buf[i]) */
+	 FSEEKTEST(in, p * i + j, SEEK_SET)
+	 FREADTEST(buf + i, sizeof(dtype), 1, in)
       }
+      FWRITETEST(buf, sizeof(dtype), n, out)
    }
 
    fclose(in);
-   fclose(out)
+   fflush(out);
+   fclose(out);
    free(buf);
 
    return SUCCESS;
@@ -31,20 +35,23 @@ int transpose(char *filename_in, char *filename_out, int n, int p)
 /* Transpose a row-wise file to a column-wise file */
 int main(int argc, char *argv[])
 {
-   int i, n, p;
-   char *filename_in, filename_out;
+   int i, n = 0, p = 0;
+   char *filename_in = NULL, *filename_out = NULL;
+
+   MALLOCTEST(filename_in, sizeof(char) * MAX_STR_LEN)
+   MALLOCTEST(filename_out, sizeof(char) * MAX_STR_LEN)
 
    for(i = 1 ; i < argc ; i++)
    {
       if(strcmp2(argv[i], "-fin"))
       {
 	 i++;
-	 filename_in = argv[i];
+	 strncpy(filename_in, argv[i], MAX_STR_LEN);
       }
       else if(strcmp2(argv[i], "-fout"))
       {
 	 i++;
-	 filename_out = argv[i];
+	 strncpy(filename_out, argv[i], MAX_STR_LEN);
       }
       else if(strcmp2(argv[i], "-n"))
       {
@@ -58,9 +65,21 @@ int main(int argc, char *argv[])
       }
    }
 
+   if(!filename_in || !filename_out || n == 0 || p == 0)
+   {
+      printf("usage: transpose -fin <filename_in> -fout <filename_out> \
+-n #n -p #p\n");
+      return EXIT_FAILURE;
+   }
+
+
+
    /* don't forget y is a row too */
    if(!transpose(filename_in, filename_out, n, p + 1))
       return EXIT_FAILURE;
+
+   free(filename_in);
+   free(filename_out);
 
    return EXIT_SUCCESS;
 }

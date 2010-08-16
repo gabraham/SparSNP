@@ -228,6 +228,8 @@ int opt_parse(int argc, char* argv[], Opt* opt)
 
 	 if(j < argc && argv[j][0] == '-')
 	    i = j - 1;
+
+	 printf(">>>%s\n", opt->beta_files[0]);
       }
    }
 
@@ -237,7 +239,7 @@ int opt_parse(int argc, char* argv[], Opt* opt)
    {
       printf("usage: cd [-train|-predict] -model <model> \
 -f <filename> -n <#samples> -p \
-<#variables> | -beta <beta filename/s> -pred <pred filename> \
+<#variables> | -betafiles <beta filename/s> -pred <pred filename> \
 -epoch <maxepochs> -l1 <lambda1> \
 -l2 <lambda2> -thresh <threshold> \
 -pred <prediction file> -cv <cvfolds> -seed <seed> -v -vv\n");
