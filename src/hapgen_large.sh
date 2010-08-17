@@ -10,7 +10,7 @@ do
       mkdir $DIR
    fi  
    prefix="sim"
-   N=50
+   N=25000
    K=20
    HAPLO=HapMap/genotypes_chr1_JPT+CHB_r22_nr.b36_fwd.phased
    LEGEND=HapMap/genotypes_chr1_JPT+CHB_r22_nr.b36_fwd_legend.txt

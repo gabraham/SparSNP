@@ -11,55 +11,7 @@ TMPDIR=.
 
 PLINK="p-link"
 TRANSPOSE="~/Code/cd/src/transpose"
-
-function convert {
-   local DIR=$1
-   local prefix=$2
-   local N=$3
-   local binfile="$prefix.bin"
-   local xfile="$prefix.all.g"
-   local yfile="$prefix.y"
-   local rscript=".convert.R"
-   
-   cat > $rscript <<EOF
-   hgfile <- "$DIR/$xfile"
-   hgyfile <- "$DIR/$yfile"
-   outfile <- "$DIR/$binfile"
-   sep <- " "
-
-   fin <- file(hgfile, "rt")
-   yin <- file(hgyfile, "rt")
-   out <- file(outfile, "wb")
-
-   i <- 1
-   while(TRUE)
-   {
-      y <- as.integer(readLines(yin, n=1))
-      if(length(y) == 0)
-	 break
-      r <- readLines(fin, n=1)
-      r <- strsplit(r, split=sep)[[1]]
-
-      cat("read", length(r), "fields\n")
-
-      x <- as.raw(c(y, r))
-      cat(i, "y=", y, length(x), "following: x:", x[1:21], "...\n")
-      writeBin(x, con=out)
-      flush(out)
-      i <- i + 1
-   }
-
-   close(fin)
-   close(yin)
-   warnings()
-   
-EOF
-
-   Rscript $rscript
-
-   #/bin/rm -f $DIR/$xfileshuf $rscript
- 
-}
+HAPGEN2BIN="~/Code/cd/src/hapgen2bin"
 
 # Cut the HapMap data into $num$ regions in different files
 function hapmapcut {
@@ -251,13 +203,15 @@ EOF
    echo "####################################"
    
    # For coordinate descent 
-   convert $DIR $prefix $((N*2))
+   #convert $DIR $prefix $((N*2))
+   eval "$HAPGEN2BIN" -finx "$DIR/sim.all.g" -finy "$DIR/sim.y" \
+   -fout "$DIR/sim.bin" -n $((N*2)) -p $P
 
    echo "####################################"
    echo "Transposing ..."
    eval "$TRANSPOSE" -fin "$DIR/sim.bin" -fout "$DIR/sim.bin.t" \
    -n $((N*2)) -p $P 
-   #/bin/rm "$DIR/sim.bin"
+   /bin/rm "$DIR/sim.bin"
    echo "####################################"
 
    echo "####################################"
@@ -271,7 +225,7 @@ EOF
 EOF
    Rscript $RSCRIPT
 
-   #rm $DIR/sim.all.g
+   rm $DIR/sim.all.g
 
    # plink, binary bed format
    $PLINK --ped "$DIR/sim.ped" --map "$LEGEND.map" --make-bed --out "$DIR/sim"
