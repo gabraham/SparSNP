@@ -10,6 +10,7 @@ shopt -s extglob
 TMPDIR=.
 
 PLINK="p-link"
+TRANSPOSE="~/Code/cd/src/transpose"
 
 function convert {
    local DIR=$1
@@ -144,23 +145,6 @@ function randomline {
    print $line;' $1`
 }
 
-function transpose {
-   local infile="$1"
-   local outfile="$infile.t"
-   local n=$2
-   local p=$3
-   local rscript=.transpose.R
-
-   cat > $rscript <<EOF
-   x <- matrix(readBin("$infile", what="raw",
-	 n=$n * ($p + 1)), nrow=$n, byrow=TRUE)
-   gc()
-   writeBin(as.raw(x), con="$outfile")
-EOF
-   Rscript $rscript
-   /bin/rm $rscript
-}
-
 function simulate {
    local DIR=$1
    local prefix=$2
@@ -168,6 +152,8 @@ function simulate {
    local K=$4
    local HAPLO=$5
    local LEGEND=$6
+   local rr1=$7
+   local rr2=$8
 
    local LOCI=$DIR/loci.txt
    local CUTFILE=$DIR/cut.txt
@@ -216,7 +202,7 @@ EOF
       echo $SNP >> $LOCI
    
       CMD="./hapgen -h $HAPLO""_$i -l $LEGEND""_$i \
-      -o "$DIR/sim$i" -n $N $N -gen -rr 1.5 2.25  -dl $SNP"
+      -o "$DIR/sim$i" -n $N $N -gen -rr $rr1 $rr2  -dl $SNP"
       echo $CMD
       set +e # hapgen returns 1 on exit
       eval $CMD
@@ -251,13 +237,11 @@ EOF
    }
 
    close(fout)
-   #for(f in files)
-   #   close(f)
 EOF
 
    Rscript $RSCRIPT
    
-  # See previous comment
+   # See previous comment re column wise
    /bin/cp $DIR/sim1.y $DIR/sim.y
    /bin/rm -rf $DIR/sim+([0-9]).all.g
    
@@ -268,8 +252,13 @@ EOF
    
    # For coordinate descent 
    convert $DIR $prefix $((N*2))
-   transpose "$DIR/sim.bin" $((N*2)) $P 
-   /bin/rm "$DIR/sim.bin"
+
+   echo "####################################"
+   echo "Transposing ..."
+   eval "$TRANSPOSE" -fin "$DIR/sim.bin" -fout "$DIR/sim.bin.t" \
+   -n $((N*2)) -p $P 
+   #/bin/rm "$DIR/sim.bin"
+   echo "####################################"
 
    echo "####################################"
    echo "Converting to plink PED format"
@@ -282,7 +271,7 @@ EOF
 EOF
    Rscript $RSCRIPT
 
-   rm $DIR/sim.all.g
+   #rm $DIR/sim.all.g
 
    # plink, binary bed format
    $PLINK --ped "$DIR/sim.ped" --map "$LEGEND.map" --make-bed --out "$DIR/sim"
@@ -293,5 +282,4 @@ EOF
    echo "DONE"
    echo "####################################"
 }
-
 

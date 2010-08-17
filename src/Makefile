@@ -9,7 +9,7 @@ CCFLAGS = -std=gnu99 -Wall -ggdb3 -O2 -ftree-vectorize -fno-omit-frame-pointer \
 	  -ffast-math -fstrict-aliasing \
 	  -D_FILE_OFFSET_BITS=$(LONG_BIT)
 
-targets = cd scale transpose
+targets = cd scale transpose hapgen2bin
 all: $(targets)
 
 debug: CCFLAGS = -Wall -ggdb3 -std=gnu99 -D_FILE_OFFSET_BITS=$(LONG_BIT)
@@ -25,6 +25,9 @@ scale: common.c gmatrix.c util.c cd.c scale.c
 
 transpose: common.c transpose.c
 	$(CC) $(CCFLAGS) $(LIBRARIES) $^ -o transpose
+
+hapgen2bin: common.c hapgen2bin.c
+	$(CC) $(CCFLAGS) $(LIBRARIES) $^ -o hapgen2bin
 
 #pcor: common.c gmatrix.c loss.c util.c cd.c pcor.c
 #	$(CC) -Dintype=double $(CCFLAGS) $(LIBRARIES) $^ -o pcor
