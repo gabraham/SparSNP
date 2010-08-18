@@ -32,8 +32,6 @@ typedef struct sample {
 typedef struct gmatrix {
    char* filename;
    FILE* file;
-   /*dtype *y;
-   dtype **x;*/
    double *y;
    double **x;
    int n;
