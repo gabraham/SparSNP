@@ -14,149 +14,77 @@ int hapgen2bin(char *x_filename_in, char *y_filename_in, char *filename_out,
    const unsigned int n, const unsigned int p, const unsigned int bufsize,
    const short encodeflag)
 {
-   unsigned long i, j = 0, k, bufs = 0, arrlen = 0, len;
-   FILE *x_in = NULL,
-        *y_in = NULL,
+   const unsigned int ASCII_SHIFT = 48;
+   unsigned int i, j,
+	        numencb = (unsigned int)ceil(n / (double)PACK_DENSITY),
+		p21 = 2 * p + 1;
+   FILE *in_x = NULL,
+	*in_y = NULL,
 	*out = NULL;
-   unsigned char *buf_hg = NULL,
-		 **buf_bin = NULL,
-		 **buf_bin_enc = NULL,
-		 *arr = NULL,
-		 *buf = NULL,
-		 **buf_ptr = NULL,
-		 *y_bin = NULL,
-		 *y_bin_enc = NULL;
-   const unsigned int p1 = p + 1, /* genotypes without spaces, and EOL */
-		      p2 = 2 * p + 1, /* genotypes with spaces, and EOL */
-		      ncoded = (unsigned int)
-			    (ceil(n / (double)PACK_DENSITY));
-   size_t *nread = NULL;
-   const unsigned char ASCII_DIFF = 48;
+   unsigned char *y_buf = NULL,
+	         *y_bin = NULL,
+		 *enc_buf = NULL,
+		 *hg_buf = NULL;
+   unsigned long long skip;
 
-   MALLOCTEST(buf_hg, sizeof(unsigned char) * bufsize);
-
-   /* n buffers of size bufsize */
-   MALLOCTEST(buf_bin, sizeof(unsigned char*) * n);
-   for(i = 0 ; i < n ; i++)
-      MALLOCTEST(buf_bin[i], sizeof(unsigned char) * bufsize);
-
-   if(encodeflag)
-   {
-      /* Encode across the columns. buf_bin_enc is an array of bufsize
-       * buffers, each representing one encoded variable of length ncoded
-       */
-      MALLOCTEST(buf_bin_enc, sizeof(unsigned char*) * bufsize);
-      for(i = 0 ; i < ncoded ; i++)
-         MALLOCTEST(buf_bin_enc[i], sizeof(unsigned char) * ncoded);
-
-      /* arr is an unrolled buffer, to enable bulk writing to disk */
-      MALLOCTEST(arr, sizeof(unsigned char) * bufsize * ncoded);
-   }
-   else
-      MALLOCTEST(arr, sizeof(unsigned char) * bufsize * n);
-   
-   /* return value from reading x data, used to check we don't try to write
-    * too many values to the buffer when EOF happens mid-buffer */
-   MALLOCTEST(nread, sizeof(size_t) * n);
-
-   FOPENTEST(x_in, x_filename_in, "rt");
-   FOPENTEST(y_in, y_filename_in, "rt");
+   FOPENTEST(in_x, x_filename_in, "rt");
+   FOPENTEST(in_y, y_filename_in, "rt");
    FOPENTEST(out, filename_out, "wb");
 
-   /* read y and EOL */
-   FREADTEST(buf_hg, sizeof(unsigned char), bufsize, y_in);
-   for(i = 0 ; i < n ; i++)
-      y_bin[i] = buf_hg[2 * i] - ASCII_DIFF;
+   MALLOCTEST(y_buf, sizeof(unsigned char) * 2 * n);
+   MALLOCTEST(y_bin, sizeof(unsigned char) * n);
+   MALLOCTEST(hg_buf, n * sizeof(unsigned char));
+   MALLOCTEST(enc_buf, sizeof(unsigned char) * numencb);
 
    /* process y */
+   FREADTEST(y_buf, sizeof(unsigned char), 2 * n, in_y);
+   for(i = 0 ; i < n ; i++)
+      y_bin[i] = y_buf[2 * i] - ASCII_SHIFT;
+
    if(encodeflag)
    {
-      MALLOCTEST(y_bin_enc, sizeof(unsigned char) * ncoded);
-      encode(y_bin_enc, y_bin, n);
-      FWRITETEST(y_bin_enc, sizeof(unsigned char), ncoded, out);
-      free(y_bin_enc);
-      y_bin_enc = NULL;
+      encode(enc_buf, y_bin, n);
+      FWRITETEST(enc_buf, sizeof(unsigned char), numencb, out);
    }
    else
       FWRITETEST(y_bin, sizeof(unsigned char), n, out);
-
    free(y_bin);
-   y_bin = NULL;
+   free(y_buf);
+   y_bin = y_buf = NULL;
 
-   /* process the x variables */
-   while(j < p)
+   for(j = 0 ; j < p ; j++)
    {
+      printf("%d", j);
+      fflush(stdout);
       for(i = 0 ; i < n ; i++)
       {
-         printf("%ld\r", i);
- 
-	 /* seek to first variable in the (n by bufsize) buffer, then fill the
-	  * buffer as much as possible */
-	 FSEEKOTEST(x_in, (unsigned long long)(p2 * i + bufsize * bufs),
-	       SEEK_SET);
-	 nread[i] = fread(buf_hg, sizeof(unsigned char),
-	       fminl(bufsize, p2 - bufsize * bufs), x_in);
- 
-	 if(nread[i] == 0 && !feof(x_in))
-	 {
-	    fprintf(stderr, "error %d reading file %s",
-		  ferror(x_in), x_filename_in);
-	    return FAILURE;
-	 }
-
-	 /* convert to genotypes, dropping spaces */
-         for(k = 0 ; k < p ; k++)
-	    buf_bin[i][k + 1] = (dtype)(buf_hg[2 * k] - ASCII_DIFF);
-   
-	 arrlen = 0;
-	 buf_ptr = buf_bin;
-	 len = n;
-	 
-         /* encode each column *separately*, slighly space-inefficient
-          * but easier to decode */ 
-	 if(encodeflag)
-	 {
-	    for(k = 0 ; k < bufsize ; k++)
-	       encode(buf_bin_enc[k], buf_bin[k], p1);
-
-	    buf_ptr = buf_bin_enc;
-	    len = ncoded;
-	 }
-  
-	 /* unroll block into contiguous array */
-	 for(k = 0 ; k < bufsize ; k++)
-	    for(i = 0 ; i < len ; i++)
-	       if(k < nread[i])
-	       {
-		  arr[arrlen] = buf_ptr[i][k];
-		  arrlen++;
-	       }
-
-	 FWRITETEST(arr, sizeof(dtype), arrlen, out);
-
-	 j += bufsize;
-	 bufs++;
-
+         /* read one hapgen *column*, ignoring spaces */
+	 skip = (unsigned long long)i * p21 + 2 * j;
+         FSEEKOTEST(in_x, skip, SEEK_SET);
+         FREADTEST(hg_buf + i, sizeof(unsigned char), 1, in_x);
       }
+
+      /* convert to binary */
+      for(i = 0 ; i < n ; i++)
+	 hg_buf[i] -= ASCII_SHIFT;
+
+      /* encode */
+      if(encodeflag)
+      {
+	 encode(enc_buf, hg_buf, n);
+	 FWRITETEST(enc_buf, sizeof(unsigned char), numencb, out);
+      }
+      else
+	 FWRITETEST(hg_buf, sizeof(unsigned char), n, out);
+      printf("\r");
    }
    printf("\n");
 
-   fclose(x_in);
-   fclose(y_in);
-   fflush(out);
+   fclose(in_x);
+   fclose(in_y);
    fclose(out);
-   free(buf_hg);
-
-   for(i = 0 ; i < n ; i++)
-      free(buf_bin[i]);
-   free(buf_bin);
-
-   if(buf_bin_enc)
-   {
-      for(i = 0 ; i < ncoded ; i++)
-         free(buf_bin_enc[i]);
-      free(buf_bin_enc);
-   }
+   free(enc_buf);
+   free(hg_buf);
 
    return SUCCESS;
 }
