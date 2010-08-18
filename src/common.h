@@ -21,7 +21,7 @@
 
 /* The size for each datum in the binary input file */
 #ifndef DTYPE
-#define DTYPE char
+#define DTYPE unsigned char
 #endif
 
 #ifndef DTYPE_DEF

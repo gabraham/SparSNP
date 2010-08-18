@@ -2,6 +2,7 @@
 #include <stdlib.h>
 
 #include "gmatrix.h"
+#include "coder.h"
 
 int sample_init(sample *s, int n, short inmemory)
 {
@@ -27,7 +28,7 @@ void sample_free(sample *s)
 }
 
 int gmatrix_init(gmatrix *g, char *filename, int n, int p, short inmemory,
-      char *scalefile, short yformat, int model)
+      char *scalefile, short yformat, int model, short encoded)
 {
    int i;
 
@@ -56,6 +57,7 @@ int gmatrix_init(gmatrix *g, char *filename, int n, int p, short inmemory,
    g->active = NULL;
    g->yformat = yformat;
    g->beta = NULL;
+   g->encoded = encoded;
 
    MALLOCTEST(g->intercept, sizeof(double) * g->n)
    for(i = 0 ; i < n ; i++)

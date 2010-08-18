@@ -104,11 +104,12 @@ int writescale(char* filename, double *mean, double *sd,
 int main(int argc, char* argv[])
 {
    int i, n = 0, p = 0;
-   char *filename_in = NULL;
-   char *filename_out = NULL;
-   char *filename_scale = "scale.bin";
-   short inmemory = FALSE;
-   short ascii = FALSE;
+   char *filename_in = NULL,
+        *filename_out = NULL,
+        *filename_scale = "scale.bin";
+   short inmemory = FALSE,
+	 ascii = FALSE,
+	 encoded = FALSE;
    gmatrix g;
 
    for(i = 1 ; i < argc ; i++)
@@ -137,15 +138,20 @@ int main(int argc, char* argv[])
 	 inmemory = TRUE;
       else if(strcmp2(argv[i], "-ascii"))
 	 ascii = TRUE;
+      else if(strcmp2(argv[i], "-encoded"))
+	 encoded = TRUE;
+
    }
 
    if(filename_in == NULL || n == 0 || p == 0)
    {
-      printf("scale: -fin <filein> [-fout <fileout>] [-fscale <scalefile>]-n #n -p #p\n");
+      printf("scale: -fin <filein> [-fout <fileout>] [-fscale <scalefile>] \
+[-encoded] -n #n -p #p\n");
       return EXIT_FAILURE;
    }
 
-   if(!gmatrix_init(&g, filename_in, n, p, inmemory, NULL, YFORMAT01, 0))
+   if(!gmatrix_init(&g, filename_in, n, p, inmemory, NULL, YFORMAT01, 0,
+	    encoded))
       return EXIT_FAILURE;
 
    if(!scale(&g, filename_out))

@@ -106,6 +106,7 @@ function simulate {
    local LEGEND=$6
    local rr1=$7
    local rr2=$8
+   local clean=$9
 
    local LOCI=$DIR/loci.txt
    local CUTFILE=$DIR/cut.txt
@@ -141,7 +142,10 @@ EOF
    echo "Simulating genotypes"
    echo "####################################"
    
-   /bin/rm -f $LOCI
+   if [ $clean == 1 ];
+   then
+      /bin/rm -f $LOCI
+   fi
    
    # Simulate genotypes using each of the causal SNPs
    for ((i = 1 ; i <= $K ; i++));
@@ -195,7 +199,10 @@ EOF
    
    # See previous comment re column wise
    /bin/cp $DIR/sim1.y $DIR/sim.y
-   /bin/rm -rf $DIR/sim+([0-9]).all.g
+   if [ $clean == 1 ];
+   then
+      /bin/rm -rf $DIR/sim+([0-9]).all.g
+   fi
    
    
    echo "####################################"
@@ -210,8 +217,11 @@ EOF
    echo "####################################"
    echo "Transposing ..."
    eval "$TRANSPOSE" -fin "$DIR/sim.bin" -fout "$DIR/sim.bin.t" \
-   -n $((N*2)) -p $P 
-   /bin/rm "$DIR/sim.bin"
+   -n $((N*2)) -p $((P+1)) 
+   if [ $clean == 1 ];
+   then
+      /bin/rm "$DIR/sim.bin"
+   fi
    echo "####################################"
 
    echo "####################################"
@@ -219,17 +229,25 @@ EOF
    echo "####################################"
 
    # For plink, text ped format
-   cat > $RSCRIPT <<EOF
-   source("~/Code/cd/R/convert.R")
-   hapgen2ped("$DIR/sim.all.g", "$DIR/sim.y", "$DIR/sim.ped")
-EOF
-   Rscript $RSCRIPT
+#   cat > $RSCRIPT <<EOF
+#   source("~/Code/cd/R/convert.R")
+#   hapgen2ped("$DIR/sim.all.g", "$DIR/sim.y", "$DIR/sim.ped")
+#EOF
+#   Rscript $RSCRIPT
+   eval "$HAPGEN2PED" -finx "$DIR/sim.all.g" -finy "$DIR/sim.y" \
+   -fout "$DIR/sim.ped" -n $((N*2)) -p $P
 
-   rm $DIR/sim.all.g
+   if [ $clean == 1 ];
+   then
+      /bin/rm $DIR/sim.all.g
+   fi
 
    # plink, binary bed format
    $PLINK --ped "$DIR/sim.ped" --map "$LEGEND.map" --make-bed --out "$DIR/sim"
-   /bin/rm "./$DIR/sim.ped"
+   if [ $clean == 1 ];
+   then
+      /bin/rm "./$DIR/sim.ped"
+   fi
 
    echo
    echo "####################################"
