@@ -47,12 +47,13 @@ typedef struct gmatrix {
    dtype *tmp;
    short yformat;
    int model;
+   short encoded;
 } gmatrix;
 
 int sample_init(sample *, int, short);
 void sample_free(sample *);
 int gmatrix_init(gmatrix *, char *, int, int, short, char*, short,
-      int);
+      int, short);
 int gmatrix_reset(gmatrix *);
 void gmatrix_free(gmatrix *);
 int gmatrix_disk_nextcol(gmatrix *, sample *);

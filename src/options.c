@@ -61,6 +61,7 @@ int opt_defaults(Opt *opt)
    opt->yformat = YFORMAT01;
    opt->predict_func = NULL;
    opt->predict_file = "predicted.csv";
+   opt->encoded = FALSE;
 
    MALLOCTEST(opt->beta_files, sizeof(char*))
    MALLOCTEST(opt->beta_files[0], sizeof(char) * (strlen(beta_default) + 1))
@@ -230,6 +231,10 @@ int opt_parse(int argc, char* argv[], Opt* opt)
 
 	 printf(">>>%s\n", opt->beta_files[0]);
       }
+      else if(strcmp2(argv[i], "-encoded"))
+      {
+	 opt->encoded = TRUE;
+      }
    }
 
 
@@ -239,7 +244,7 @@ int opt_parse(int argc, char* argv[], Opt* opt)
       printf("usage: cd [-train|-predict] -model <model> \
 -f <filename> -n <#samples> -p \
 <#variables> | -betafiles <beta filename/s> -pred <pred filename> \
--epoch <maxepochs> -l1 <lambda1> \
+-epoch <maxepochs> -l1 <lambda1> [-encoded] \
 -l2 <lambda2> -thresh <threshold> \
 -pred <prediction file> -cv <cvfolds> -seed <seed> -v -vv\n");
       return FAILURE;

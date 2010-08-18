@@ -284,7 +284,7 @@ int main(int argc, char* argv[])
 
    if(!gmatrix_init(&g, opt.filename, opt.n, opt.p,
 	    opt.inmemory, opt.scalefile,
-	    opt.yformat, opt.model))
+	    opt.yformat, opt.model, opt.encoded))
    {
       gmatrix_free(&g);
       opt_free(&opt);

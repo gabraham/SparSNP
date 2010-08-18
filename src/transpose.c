@@ -1,13 +1,17 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include "cd.h"
+#include "coder.h"
 
 int transpose(char *filename_in, char *filename_out, const unsigned int n,
    const unsigned int p, const unsigned int bufsize)
 {
-   unsigned long i, j = 0, k, bufs = 0, arrlen;
-   FILE *in = NULL, *out = NULL;
-   dtype **buf = NULL, *arr = NULL;
+   unsigned long i, j = 0, k,
+	         bufs = 0, arrlen;
+   FILE *in = NULL,
+        *out = NULL;
+   dtype **buf = NULL,
+         *arr = NULL;
    size_t *ret;
 
    MALLOCTEST(buf, sizeof(dtype*) * n)
@@ -70,11 +74,20 @@ int transpose(char *filename_in, char *filename_out, const unsigned int n,
    return SUCCESS;
 }
 
-/* Transpose a row-wise file to a column-wise file */
+/* Transpose a row-wise file to a column-wise file 
+ *
+ * transpose is compression/coding agnostic, as long as the original matrix
+ * row structure is kept intact.
+ *
+ * The number of columns p should be *all* columns, i.e., inclusive of
+ * the y column
+ * */
 int main(int argc, char *argv[])
 {
    int i, n = 0, p = 0;
-   char *filename_in = NULL, *filename_out = NULL;
+   char *filename_in = NULL,
+        *filename_out = NULL;
+
    /* bufsize is measured in number of variables, so it's size
     * is sizeof(dtype) * bufsize * n bytes*/
    unsigned int bufsize = 0;
@@ -120,10 +133,10 @@ int main(int argc, char *argv[])
 
    /* Will use about 256MB of RAM: 128MB of buffer + 128MB for output array */
    if(bufsize == 0)
-      bufsize = fminl(134217728 * sizeof(dtype) / n, p + 1);
+      bufsize = fminl(134217728 * sizeof(dtype) / n, p);
 
    /* don't forget y is a row too */
-   if(!transpose(filename_in, filename_out, n, p + 1, bufsize))
+   if(!transpose(filename_in, filename_out, n, p, bufsize))
       return EXIT_FAILURE;
 
    free(filename_in);

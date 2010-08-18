@@ -54,6 +54,7 @@ typedef struct Opt {
    char **beta_files;
    int n_beta_files;
    char *predict_file;
+   short encoded;
 } Opt;
 
 int cd_gmatrix(gmatrix *g,
