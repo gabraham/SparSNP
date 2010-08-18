@@ -78,7 +78,8 @@ int scale(gmatrix *g, char* filename)
    return SUCCESS;
 }
 
-int writescale(double *mean, double *sd, int p, short ascii)
+int writescale(char* filename, double *mean, double *sd,
+      int p, short ascii)
 {
    FILE *out;
 
@@ -93,7 +94,7 @@ int writescale(double *mean, double *sd, int p, short ascii)
       return SUCCESS;
    }
    
-   FOPENTEST(out, "scale.bin", "wb")
+   FOPENTEST(out, filename, "wb")
    FWRITETEST(mean, sizeof(double), p, out);
    FWRITETEST(sd, sizeof(double), p, out);
    fclose(out);
@@ -105,6 +106,7 @@ int main(int argc, char* argv[])
    int i, n = 0, p = 0;
    char *filename_in = NULL;
    char *filename_out = NULL;
+   char *filename_scale = "scale.bin";
    short inmemory = FALSE;
    short ascii = FALSE;
    gmatrix g;
@@ -139,17 +141,17 @@ int main(int argc, char* argv[])
 
    if(filename_in == NULL || n == 0 || p == 0)
    {
-      printf("scale: -fin <filein> [-fout <fileout>] -n #n -p #p\n");
+      printf("scale: -fin <filein> [-fout <fileout>] [-fscale <scalefile>]-n #n -p #p\n");
       return EXIT_FAILURE;
    }
 
-   if(!gmatrix_init(&g, filename_in, n, p, inmemory, FALSE, NULL, YFORMAT01))
+   if(!gmatrix_init(&g, filename_in, n, p, inmemory, NULL, YFORMAT01, 0))
       return EXIT_FAILURE;
 
    if(!scale(&g, filename_out))
       return EXIT_FAILURE;
 
-   if(!writescale(g.mean, g.sd, p + 1, ascii))
+   if(!writescale(filename_scale, g.mean, g.sd, p + 1, ascii))
       return EXIT_FAILURE;
   
    gmatrix_free(&g);

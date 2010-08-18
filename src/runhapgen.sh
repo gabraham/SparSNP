@@ -5,257 +5,13 @@
 ################################################################################
 set -u
 set -e
+shopt -s extglob
 
 TMPDIR=.
 
-
-# Row major ordering
-#Line 1: m d
-#Line 2: i1 v1 i2 v2 ...
-#Line d+1: i1 v1 i2 v2 ...
-function formatsmidas {
-   local DIR=$1
-   local binfile=$2
-   local N=$3
-   local P=$4
-   local RSCRIPT=formatsmidas.R
-   local FILEX=smidas_x.dat
-   local FILEY=smidas_y.dat
-   echo "formatsmidas: $DIR $binfile $N $P"
-
-   cat > $DIR/$RSCRIPT <<EOF
-   n2 <- $N * 2
-   p <- $P
-   xin <- file("$DIR/$binfile", "rb")
-   cat(n2, p + 1, "\n", file="$DIR/$FILEX")
-   cat("", file="$DIR/$FILEY")
-
-   for(i in 1:n2)
-   {
-      r <- as.numeric(readBin(con=xin, what="raw", n=p + 1))
-      cat(p + 1, paste(0:p, c(1, r[-1])), "\n",
-	    file="$DIR/$FILEX", append=TRUE)
-      cat(ifelse(r[1] == 1, 1, -1), "\n",
-	    file="$DIR/$FILEY", append=TRUE)
-   }
-   close(xin)
-
-EOF
-
-   Rscript $DIR/$RSCRIPT
-   /bin/rm $DIR/$RSCRIPT
-
-}
-
-# Column-major ordering
-function formatscd {
-   local DIR=$1
-   local binfile=$2
-   local N=$3
-   local P=$4
-   local RSCRIPT=formatscd.R
-   local FILEX=scd_x.dat
-   local FILEY=scd_y.dat
-   echo "formatscd: $DIR $binfile $N $P"
-
-   cat > $DIR/$RSCRIPT <<EOF
-   n2 <- $N * 2
-   p <- $P
-   xin <- file("$DIR/$binfile", "rb")
-   cat(n2, p + 1, "\n", file="$DIR/$FILEX")
-   cat("", file="$DIR/$FILEY")
-
-   cat(paste(1:n2 - 1, rep(1, n2)), "\n", file="$DIR/$FILEX", append=TRUE)
-
-   for(j in 1:p)
-   {
-      for(i in 1:n2)
-      {
-         r <- as.numeric(readBin(con=xin, what="raw", n=p + 1))
-
-         cat(i - 1, r[j + 1], file="$DIR/$FILEX", append=TRUE)
-	 if(i < n2) {
-	    cat(" ", file="$DIR/$FILEX", append=TRUE)
-	 } else {
-	    cat("\n", file="$DIR/$FILEX", append=TRUE)
-	 }
-
-	 if(j == 1)
-	 {
-	    cat(r[1], "\n")
-	    cat(ifelse(r[1] == 1, 1, -1), "\n",
-               file="$DIR/$FILEY", append=TRUE)
-	 }
-      }
-      close(xin)
-      xin <- file("$DIR/$binfile", "rb")
-   }
-   close(xin)
-
-EOF
-
-   Rscript $DIR/$RSCRIPT
-   /bin/rm $DIR/$RSCRIPT
-
-}
-
-function formatsvmlight {
-   local DIR=$1
-   local binfile=$2
-   local N=$3
-   local P=$4
-   local RSCRIPT=formatsvmlight.R
-   local FILEX=svmlight_x.dat
-   echo "formatsvmlight: $DIR $binfile $N $P"
-
-   cat > $DIR/$RSCRIPT <<EOF
-   n2 <- $N * 2
-   p <- $P
-   xin <- file("$DIR/$binfile", "rb")
-   cat("", file="$DIR/$FILEX")
-
-   k <- 1:(p+1)
-   for(i in 1:n2)
-   {
-      r <- as.numeric(readBin(con=xin, what="raw", n=p + 1))
-      y <- ifelse(r[1] == 1, 1, -1) 
-      v <- c(1, r[-1])
-      w <- which(v != 0)
-
-      cat(y, paste(k[w], v[w], sep=":"), "\n",
-	    file="$DIR/$FILEX", append=TRUE)
-   }
-   close(xin)
-
-EOF
-
-   Rscript $DIR/$RSCRIPT
-   /bin/rm $DIR/$RSCRIPT
-
-}
-
-function testscd {
-   local DIR=testscd
-   local RSCRIPT=testscd.R
-   local binfile=test.bin
-   local n=6
-   local p=$((2*6))
-   
-   if ! [ -d "$DIR" ]; then
-      mkdir $DIR
-   fi
-
-   cat > $DIR/$RSCRIPT <<EOF
-   n <- $n * 2
-   p <- $p
-   y <- as.raw(rep(c(0, 1), each=n/2))
-   x <- t(matrix(as.raw(rep(c(0, 1, 0), each=n, times=4)), n, p))
-   f <- file("$DIR/$binfile", "wb")
-   for(i in 1:n)
-   {
-      writeBin(c(y[i], x[i,]), con=f)
-   }
-   close(f)
-EOF
-   
-   Rscript $DIR/$RSCRIPT
-
-   formatscd $DIR "$binfile" $n $p
-}
-
-## Randomly shuffle the samples
-#function shuffle {
-#   local DIR=$1
-#   local prefix=$2
-#   local N=$3
-#   local binfile="$prefix.bin"
-#   local xfile="$prefix.all.g"
-#   local xfileshuf="$xfile.shuffled"
-#   local yfile="$prefix.y"
-#   local yfileshuf="$yfile.shuffled"
-#   local tmp1=".tmp1"
-#   local tmp2=".tmp2"
-#   local rscript=".shuffle.R"
-#   
-#   echo -n "Shuffling ... "
-#   # Shuffle samples 
-#   cat > $rscript <<EOF
-#   n2 <- $N
-#   s <- sample(n2)
-#   y <- read.csv("$DIR/$yfile", header=FALSE)[,1]
-#   write.table(y[order(s)], "$DIR/$yfileshuf", col.names=FALSE, row.names=FALSE)
-#   f <- file("$DIR/$xfile", "rt")
-#   tmp <- file("$DIR/$tmp1", "wt")
-#   for(i in 1:n2)
-#   {
-#      r <- readLines(f, n=1)
-#      writeLines(paste(s[i], r, sep=" "), tmp)
-#   }
-#   close(tmp)
-#   close(f)
-#EOF
-#   
-#   Rscript $rscript
-#   
-#   sort -T $TMPDIR -n -k 1,1 $DIR/$tmp1 > $DIR/$tmp2
-#   /bin/rm $DIR/$tmp1
-#
-#   cut -f2- -d ' ' $DIR/$tmp2 > $DIR/$xfileshuf
-#   /bin/rm $DIR/$tmp2 $rscript
-#}
-
-function convert {
-   local DIR=$1
-   local prefix=$2
-   local N=$3
-   local binfile="$prefix.bin"
-   local xfile="$prefix.all.g"
-   local xfileshuf="$xfile.shuffled"
-   local yfile="$prefix.y"
-   local yfileshuf="$yfile.shuffled"
-   local rscript=".convert.R"
-   
-   cat > $rscript <<EOF
-   #hgfile <- "$DIR/$xfileshuf"
-   #hgyfile <- "$DIR/$yfileshuf"
-   hgfile <- "$DIR/$xfile"
-   hgyfile <- "$DIR/$yfile"
-   outfile <- "$DIR/$binfile"
-   sep <- " "
-
-   fin <- file(hgfile, "rt")
-   yin <- file(hgyfile, "rt")
-   out <- file(outfile, "wb")
-
-   i <- 1
-   while(TRUE)
-   {
-      y <- as.integer(readLines(yin, n=1))
-      if(length(y) == 0)
-	 break
-      r <- readLines(fin, n=1)
-      r <- strsplit(r, split=sep)[[1]]
-
-      cat("read", length(r), "fields\n")
-
-      x <- as.raw(c(y, r))
-      cat(i, "y=", y, length(x), "following: x:", x[1:21], "...\n")
-      writeBin(x, con=out)
-      flush(out)
-      i <- i + 1
-   }
-
-   close(fin)
-   close(yin)
-   warnings()
-   
-EOF
-
-   Rscript $rscript
-
-   #/bin/rm -f $DIR/$xfileshuf $rscript
- 
-}
+PLINK="p-link"
+TRANSPOSE="~/Code/cd/src/transpose"
+HAPGEN2BIN="~/Code/cd/src/hapgen2bin"
 
 # Cut the HapMap data into $num$ regions in different files
 function hapmapcut {
@@ -341,23 +97,6 @@ function randomline {
    print $line;' $1`
 }
 
-function transpose {
-   local infile="$1"
-   local outfile="$infile.t"
-   local n=$2
-   local p=$3
-   local rscript=.transpose.R
-
-   cat > $rscript <<EOF
-   x <- matrix(readBin("$infile", what="raw",
-	 n=$n * ($p + 1)), nrow=$n, byrow=TRUE)
-   gc()
-   writeBin(as.raw(x), con="$outfile")
-EOF
-   Rscript $rscript
-   /bin/rm $rscript
-}
-
 function simulate {
    local DIR=$1
    local prefix=$2
@@ -365,6 +104,8 @@ function simulate {
    local K=$4
    local HAPLO=$5
    local LEGEND=$6
+   local rr1=$7
+   local rr2=$8
 
    local LOCI=$DIR/loci.txt
    local CUTFILE=$DIR/cut.txt
@@ -413,7 +154,7 @@ EOF
       echo $SNP >> $LOCI
    
       CMD="./hapgen -h $HAPLO""_$i -l $LEGEND""_$i \
-      -o "$DIR/sim$i" -n $N $N -gen -rr 1.5 2.25  -dl $SNP"
+      -o "$DIR/sim$i" -n $N $N -gen -rr $rr1 $rr2  -dl $SNP"
       echo $CMD
       set +e # hapgen returns 1 on exit
       eval $CMD
@@ -448,14 +189,13 @@ EOF
    }
 
    close(fout)
-   #for(f in files)
-   #   close(f)
 EOF
 
    Rscript $RSCRIPT
    
-   # See previous comment
+   # See previous comment re column wise
    /bin/cp $DIR/sim1.y $DIR/sim.y
+   /bin/rm -rf $DIR/sim+([0-9]).all.g
    
    
    echo "####################################"
@@ -463,87 +203,37 @@ EOF
    echo "####################################"
    
    # For coordinate descent 
-   #shuffle $DIR $prefix $((N*2))
-   convert $DIR $prefix $((N*2))
-   transpose $DIR/sim.bin $((N*2)) $P 
+   #convert $DIR $prefix $((N*2))
+   eval "$HAPGEN2BIN" -finx "$DIR/sim.all.g" -finy "$DIR/sim.y" \
+   -fout "$DIR/sim.bin" -n $((N*2)) -p $P
+
+   echo "####################################"
+   echo "Transposing ..."
+   eval "$TRANSPOSE" -fin "$DIR/sim.bin" -fout "$DIR/sim.bin.t" \
+   -n $((N*2)) -p $P 
+   /bin/rm "$DIR/sim.bin"
+   echo "####################################"
 
    echo "####################################"
    echo "Converting to plink PED format"
    echo "####################################"
 
-   # For plink
+   # For plink, text ped format
    cat > $RSCRIPT <<EOF
    source("~/Code/cd/R/convert.R")
    hapgen2ped("$DIR/sim.all.g", "$DIR/sim.y", "$DIR/sim.ped")
 EOF
-
    Rscript $RSCRIPT
+
+   rm $DIR/sim.all.g
+
+   # plink, binary bed format
+   $PLINK --ped "$DIR/sim.ped" --map "$LEGEND.map" --make-bed --out "$DIR/sim"
+   /bin/rm "./$DIR/sim.ped"
 
    echo
    echo "####################################"
    echo "DONE"
    echo "####################################"
 }
-
-#################################################################################
-
-
-# HapMap data, one strong SNP
-
-#DIR=sim1
-#prefix="sim"
-#N=1000 # No. samples in each group
-#HAPLO=HapMap/genotypes_chr1_JPT+CHB_r22_nr.b36_fwd.phased
-#LEGEND=HapMap/genotypes_chr1_JPT+CHB_r22_nr.b36_fwd_legend.txt
-#SNP=72434
-#
-#if ! [ -d "$DIR" ]; then
-#   mkdir $DIR
-#fi
-#
-#set +e
-#./hapgen -h $HAPLO -l $LEGEND \
-#-o $DIR/$prefix -n $N $N -gen -rr 1.5 2.25 -dl $SNP
-#set -e
-#
-##shuffle $DIR $prefix $((2*N))
-##convert $DIR $prefix $((2*N))
-#
-#exit 1
-
-
-################################################################################
-
-for ((J=1 ; J<=10; J++));
-do
-   DIR="sim6.$J"
-   if ! [ -d "$DIR" ]; then
-      mkdir $DIR
-   fi
-   prefix="sim"
-   N=1000
-   K=20
-   HAPLO=HapMap/genotypes_chr1_JPT+CHB_r22_nr.b36_fwd.phased
-   LEGEND=HapMap/genotypes_chr1_JPT+CHB_r22_nr.b36_fwd_legend.txt
-   simulate $DIR $prefix $N $K $HAPLO $LEGEND
-   echo "exit:" $J $?
-done
-
-exit 1
-
-## HapMap data, several strong SNPs
-#DIR=sim7
-#prefix="sim"
-#N=1000
-#K=20
-#HAPLO=HapMap/genotypes_chr1_JPT+CHB_r22_nr.b36_fwd.phased
-#LEGEND=HapMap/genotypes_chr1_JPT+CHB_r22_nr.b36_fwd_legend.txt
-#simulate $DIR $prefix $N $K $HAPLO $LEGEND
-
-##
-## Several strong SNPs, lots of weak SNPs
-##
-#
-
-
 

@@ -8,7 +8,7 @@
 #define SUCCESS 1
 #define FAILURE 0
 
-#define MAX_STR_LEN 100
+#define MAX_STR_LEN 101
 
 /* Value below which std dev is considered zero */
 #define SDTHRESH 1e-10
@@ -29,6 +29,18 @@ typedef DTYPE dtype;
 #define DTYPE_DEF 1
 #endif
 
+#define MODEL_LINEAR 1
+#define MODEL_PCOR 2
+#define MODEL_LOGISTIC 3
+#define MODEL_SQRHINGE 4
+
+#define MODEL_NAME_LINEAR "linear"
+#define MODEL_NAME_PCOR "pcor"
+#define MODEL_NAME_LOGISTIC "logistic"
+#define MODEL_NAME_SQRHINGE "sqrhinge"
+
+#define MODE_TRAIN 0
+#define MODE_PREDICT 1
 
 /* Macros with built in error checking */
 
@@ -68,21 +80,21 @@ fprintf(stderr, "can't open file %s\n", filename); \
 return FAILURE; \
 }
 
-#define FSEEKTEST(x, offset, whence) \
-if(fseek(x, offset, whence) != 0) { \
-fprintf(stderr, "can't seek offset %ld\n", offset); \
+#define FSEEKOTEST(x, offset, whence) \
+if(fseeko(x, offset, whence) != 0) { \
+fprintf(stderr, "can't seek offset %lld\n", (unsigned long long)offset); \
 return FAILURE; \
 }
 
 #define FREADTEST(x, size, count, stream) \
 if(fread(x, size, count, stream) < count) { \
-fprintf(stderr, "read fewer items than expected (%d)\n", count); \
+fprintf(stderr, "read fewer items than expected (%lu)\n", (unsigned long)count); \
 return FAILURE; \
 }
 
 #define FWRITETEST(x, size, count, stream) \
 if(fwrite(x, size, count, stream) < count) { \
-fprintf(stderr, "wrote fewer items than expected (%d)\n", count); \
+fprintf(stderr, "wrote fewer items than expected (%lu)\n", (unsigned long)count); \
 return FAILURE; \
 }
 

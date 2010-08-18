@@ -46,34 +46,34 @@ double logd2loss_pt_j(dtype x, double P)
    return P * (1 - P);
 }
 
-double l2loss_pt(double d, dtype y)
+double linearloss_pt(double d, dtype y)
 {
    double z = y - d;
    return z * z;
 }
 
-double l2loss(double *d, dtype *y, int n)
+double linearloss(double *d, dtype *y, int n)
 {
    int i;
    double loss = 0;
    for(i = 0 ; i < n ; i++)
-      loss += l2loss_pt(d[i], y[i]);
+      loss += linearloss_pt(d[i], y[i]);
    return loss;
 }
 
-void l2dloss_pt(dtype *x, double d, dtype y, int p, double* grad)
+void lineardloss_pt(dtype *x, double d, dtype y, int p, double* grad)
 {
    int j;
    for(j = 0 ; j < p ; j++)
       grad[j] = x[j] * (d - (double)y);
 }
 
-double l2phi1(double lp)
+double linearphi1(double lp)
 {
    return lp;
 }
 
-double l2phi2(double lp)
+double linearphi2(double lp)
 {
    return 1;
 }
@@ -90,7 +90,7 @@ double logphi2(double p)
 }
 
 /* linear link function */
-double l2inv(double lp)
+double linearinv(double lp)
 {
    return lp;
 }
