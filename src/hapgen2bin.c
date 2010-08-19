@@ -38,7 +38,6 @@ int hapgen2bin(char *x_filename_in, char *y_filename_in, char *filename_out,
    MALLOCTEST(enc_buf, sizeof(unsigned char) * numencb * bufsize);
    MALLOCTEST(buf, sizeof(unsigned char) * bufsize * 2);
 
-   printf("numencb:%d bufsize:%d\n", numencb, bufsize);
    /* process y */
    FREADTEST(y_buf, sizeof(unsigned char), 2 * n, in_y);
    for(i = 0 ; i < n ; i++)
@@ -156,7 +155,9 @@ int main(int argc, char *argv[])
       return EXIT_FAILURE;
    }
 
-   if(bufsize == 0 || bufsize > p)
+   if(bufsize == 0)
+      bufsize = 1024;
+   else if(bufsize > p)
       bufsize = p;
 
    /* don't forget y is a row too */
