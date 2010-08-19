@@ -19,7 +19,6 @@ void encode(unsigned char *out, const unsigned char *in, const unsigned int n)
 
    for(i = 0 ; i < n ; i += PACK_DENSITY)
    {  
-      printf("n:%d i:%d k:%d\n", n, i, k);
       out[k] = 0;
       for(j = 0 ; j < PACK_DENSITY ; j++)
 	 if(i + j < n)

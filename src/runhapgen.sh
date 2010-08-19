@@ -10,7 +10,6 @@ shopt -s extglob
 TMPDIR=.
 
 PLINK="p-link"
-TRANSPOSE="~/Code/cd/src/transpose"
 HAPGEN2BIN="~/Code/cd/src/hapgen2bin"
 HAPGEN2PED="~/Code/cd/src/hapgen2ped"
 
@@ -212,7 +211,7 @@ EOF
    # For coordinate descent 
    #convert $DIR $prefix $((N*2))
    cmd="$HAPGEN2BIN -finx $DIR/sim.all.g -finy $DIR/sim.y \
-   -fout $DIR/sim.bin -n $((N*2)) -p $P"
+   -fout $DIR/sim.bin -n $((N*2)) -p $P -encode"
    echo $cmd
    eval $cmd
 
