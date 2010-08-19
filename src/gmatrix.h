@@ -45,9 +45,11 @@ typedef struct gmatrix {
    int (*nextcol)(struct gmatrix*, sample*);
    char *scalefile;
    dtype *tmp;
+   unsigned char *encbuf;
    short yformat;
    int model;
    short encoded;
+   int nencb;
 } gmatrix;
 
 int sample_init(sample *, int, short);

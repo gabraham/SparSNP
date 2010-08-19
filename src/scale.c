@@ -1,9 +1,12 @@
 #include "cd.h"
 #include "util.h"
+#include "coder.h"
 
 /*
  * Converts a matrix encoded as chars (one byte per entry), scales it, and
  * saves it as a matrix of doubles (8 bytes per entry).
+ *
+ * Expects data in column major ordering
  */
 int scale(gmatrix *g, char* filename)
 {
@@ -27,7 +30,12 @@ int scale(gmatrix *g, char* filename)
       FOPENTEST(fout, filename, "w")
 
    /* read y but do not scale it */
-   FREADTEST(tmp, sizeof(dtype), g->n, fin)
+   if(g->encoded) {
+      FREADTEST(g->encbuf, sizeof(dtype), g->nencb, fin);
+      decode(tmp, g->encbuf, g->nencb);
+   } else {
+      FREADTEST(tmp, sizeof(dtype), g->n, fin);
+   }
 
    if(filename)
    {
@@ -40,7 +48,12 @@ int scale(gmatrix *g, char* filename)
    for(j = 1 ; j < g->p + 1 ; j++)
    {
       printf("%d of %d\r", j, g->p);
-      FREADTEST(tmp, sizeof(dtype), g->n, fin)
+      if(g->encoded) {
+	 FREADTEST(g->encbuf, sizeof(dtype), g->nencb, fin);
+	 decode(tmp, g->encbuf, g->nencb);
+      } else {
+	 FREADTEST(tmp, sizeof(dtype), g->n, fin);
+      }
 
       g->mean[j] = g->sd[j] = 0;
       for(i = 0 ; i < g->n ; i++)
