@@ -15,7 +15,7 @@ int hapgen2bin(char *x_filename_in, char *y_filename_in, char *filename_out,
    const short encodeflag)
 {
    const unsigned int ASCII_SHIFT = 48;
-   unsigned int i, j,
+   unsigned int i, j, k, nbufs, nbufb,
 	        numencb = (unsigned int)ceil(n / (double)PACK_DENSITY),
 		p21 = 2 * p + 1;
    FILE *in_x = NULL,
@@ -23,6 +23,7 @@ int hapgen2bin(char *x_filename_in, char *y_filename_in, char *filename_out,
 	*out = NULL;
    unsigned char *y_buf = NULL,
 	         *y_bin = NULL,
+		 *buf = NULL,
 		 *enc_buf = NULL,
 		 *hg_buf = NULL;
    unsigned long long skip;
@@ -33,50 +34,63 @@ int hapgen2bin(char *x_filename_in, char *y_filename_in, char *filename_out,
 
    MALLOCTEST(y_buf, sizeof(unsigned char) * 2 * n);
    MALLOCTEST(y_bin, sizeof(unsigned char) * n);
-   MALLOCTEST(hg_buf, n * sizeof(unsigned char));
-   MALLOCTEST(enc_buf, sizeof(unsigned char) * numencb);
+   MALLOCTEST(hg_buf, sizeof(unsigned char*) * n * bufsize);
+   MALLOCTEST(enc_buf, sizeof(unsigned char) * numencb * bufsize);
+   MALLOCTEST(buf, sizeof(unsigned char) * bufsize);
 
    /* process y */
    FREADTEST(y_buf, sizeof(unsigned char), 2 * n, in_y);
    for(i = 0 ; i < n ; i++)
       y_bin[i] = y_buf[2 * i] - ASCII_SHIFT;
 
-   if(encodeflag)
-   {
+   if(encodeflag) {
       encode(enc_buf, y_bin, n);
       FWRITETEST(enc_buf, sizeof(unsigned char), numencb, out);
-   }
-   else
+   } else {
       FWRITETEST(y_bin, sizeof(unsigned char), n, out);
+   }
+
    free(y_bin);
    free(y_buf);
    y_bin = y_buf = NULL;
 
-   for(j = 0 ; j < p ; j++)
+   printf("bufsize: %d\n", bufsize);
+   nbufs = 0;
+   for(j = 0 ; j < p ; j += bufsize)
    {
-      printf("%d", j);
+      printf("j:%d\n", j);
       fflush(stdout);
+      nbufb = (unsigned int)fmin(bufsize, p21 - bufsize * nbufs);
+      printf("foo:%d\n", p21 - bufsize * nbufs);
       for(i = 0 ; i < n ; i++)
       {
-         /* read one hapgen *column*, ignoring spaces */
-	 skip = (unsigned long long)i * p21 + 2 * j;
+         /* read one block of genotypes, skipping over spaces and EOL */
+	 skip = (unsigned long long)i * p21 
+	       + (unsigned long long)j * 2 * bufsize;
          FSEEKOTEST(in_x, skip, SEEK_SET);
-         FREADTEST(hg_buf + i, sizeof(unsigned char), 1, in_x);
+         FREADTEST(buf, sizeof(unsigned char), nbufb, in_x);
+	 printf("%d:%llu:%d\n", i,skip, nbufb);
+	 fflush(stdout);
+	 for(k = 0 ; k < bufsize ; k++)
+	    hg_buf[k * n + i] = buf[k] - ASCII_SHIFT;
       }
 
       /* convert to binary */
-      for(i = 0 ; i < n ; i++)
-	 hg_buf[i] -= ASCII_SHIFT;
+  /*    for(i = 0 ; i < n ; i++)
+	 hg_buf[i] -= ASCII_SHIFT;*/
 
       /* encode */
-      if(encodeflag)
-      {
-	 encode(enc_buf, hg_buf, n);
-	 FWRITETEST(enc_buf, sizeof(unsigned char), numencb, out);
+      if(encodeflag) {
+	 /* encode each variable separately to prevent two falling into the
+	  * same encoded byte */
+	 for(k = 0 ; k < bufsize ; k++)
+	    encode(enc_buf + k * n, hg_buf + k * n, n);
+	 FWRITETEST(enc_buf, sizeof(unsigned char), numencb * bufsize, out);
+      } else {
+	 FWRITETEST(hg_buf, sizeof(unsigned char), n * bufsize, out);
       }
-      else
-	 FWRITETEST(hg_buf, sizeof(unsigned char), n, out);
-      printf("\r");
+      printf("----\n");
+      nbufs++;
    }
    printf("\n");
 

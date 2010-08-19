@@ -30,7 +30,7 @@ void sample_free(sample *s)
 int gmatrix_init(gmatrix *g, char *filename, int n, int p, short inmemory,
       char *scalefile, short yformat, int model, short encoded)
 {
-   int i;
+   unsigned int i, j;
 
    if(filename)
       FOPENTEST(g->file, filename, "rb")
@@ -58,12 +58,17 @@ int gmatrix_init(gmatrix *g, char *filename, int n, int p, short inmemory,
    g->yformat = yformat;
    g->beta = NULL;
    g->encoded = encoded;
+   g->nencb = (int)ceil((double)n / PACK_DENSITY);
+   g->encbuf = NULL;
 
-   MALLOCTEST(g->intercept, sizeof(double) * g->n)
+   MALLOCTEST(g->intercept, sizeof(double) * g->n);
    for(i = 0 ; i < n ; i++)
       g->intercept[i] = 1.0;
 
-   MALLOCTEST(g->tmp, sizeof(dtype) * g->n)
+   MALLOCTEST(g->tmp, sizeof(dtype) * g->n);
+
+   if(encoded)
+      MALLOCTEST(g->encbuf, sizeof(unsigned char) * g->nencb);
 
    if(inmemory)
    {
@@ -74,6 +79,9 @@ int gmatrix_init(gmatrix *g, char *filename, int n, int p, short inmemory,
    else
       g->nextcol = gmatrix_disk_nextcol;
 
+   MALLOCTEST(g->active, sizeof(int) * (g->p + 1))
+   for(j = 0 ; j < p + 1 ; j++)
+      g->active[j] = TRUE;
    if(scalefile && !gmatrix_read_scaling(g, scalefile))
       return FAILURE;
 
@@ -165,6 +173,10 @@ void gmatrix_free(gmatrix *g)
    if(g->beta)
       free(g->beta);
    g->beta = NULL;
+
+   if(g->encbuf)
+      free(g->encbuf);
+   g->encbuf = NULL;
 }
 
 /* Expects the binary data column to be y, x_1, x_2, x_3, ..., x_p */
@@ -181,19 +193,28 @@ int gmatrix_disk_nextcol(gmatrix *g, sample *s)
       s->intercept = TRUE;
 
       /* read y the first time we see it */
-      if(!g->y)
-      {
-	 MALLOCTEST(g->y, sizeof(double) * g->n)
-	 FREADTEST(g->tmp, sizeof(dtype), g->n, g->file)
+      if(!g->y) {
+	 MALLOCTEST(g->y, sizeof(double) * g->n);
+
+	 if(g->encoded) {
+	    FREADTEST(g->encbuf, sizeof(dtype), g->nencb, g->file);
+	    decode(g->tmp, g->encbuf, g->nencb);
+	 } else {
+	    FREADTEST(g->tmp, sizeof(dtype), g->n, g->file);
+	 }
+
 	 if(g->yformat == YFORMAT01)
 	    for(i = 0 ; i < g->n ; i++)
 	       g->y[i] = (double)g->tmp[i];
 	 else
 	    for(i = 0 ; i < g->n ; i++)
 	       g->y[i] = 2.0 * g->tmp[i] - 1.0;
+
+      } else if(g->encoded) {/* don't read y again */
+      	 FSEEKOTEST(g->file, sizeof(dtype) * g->nencb, SEEK_CUR);
+      } else {
+      	 FSEEKOTEST(g->file, sizeof(dtype) * g->n, SEEK_CUR);
       }
-      else /* don't read y again */
-	 FSEEKOTEST(g->file, sizeof(dtype) * g->n, SEEK_CUR)
       
       /* No need to copy values, just assign the intercept vector,
        * but first, free any old data we have from previous
@@ -204,44 +225,63 @@ int gmatrix_disk_nextcol(gmatrix *g, sample *s)
 	 free(s->x2);
       s->x = g->intercept;
       s->x2 = g->intercept;
-   }
-   else
-   {
-      /* not intercept, need to copy values */
-      s->intercept = FALSE;
-      if(g->j == 1)
-      {
-	 MALLOCTEST(s->x, sizeof(double) * g->n)
-	 MALLOCTEST(s->x2, sizeof(double) * g->n)
-      }
       
-      if(g->scalefile)
-      {
-         s->intercept = FALSE;
-         FREADTEST(g->tmp, sizeof(dtype), g->n, g->file)
+      g->j++;
+      return SUCCESS;
+   }
 
-         /* Get the scaled value instead of the original value */
-	 l1 = g->j * NUM_X_LEVELS;
-         for(i = 0 ; i < g->n ; i++)
-	 {
-	    l2 = l1 + g->tmp[i];
-            s->x[i] = g->lookup[l2];
-            s->x2[i] = g->lookup2[l2];
-	 }
+   /* not intercept, need to copy values */
+   s->intercept = FALSE;
+   if(g->j == 1)
+   {
+      MALLOCTEST(s->x, sizeof(double) * g->n);
+      MALLOCTEST(s->x2, sizeof(double) * g->n);
+   }
+
+   /* Get the scaled versions of the genotypes */
+   if(g->scalefile)
+   {
+      s->intercept = FALSE;
+      /*FREADTEST(g->tmp, sizeof(dtype), g->n, g->file);*/
+
+      if(g->encoded)
+      {
+	 FREADTEST(g->encbuf, sizeof(dtype), g->nencb, g->file);
+	 decode(g->tmp, g->encbuf, g->nencb);
       }
       else
-      {
-         FREADTEST(g->tmp, sizeof(dtype), g->n, g->file)
-         for(i = 0 ; i < g->n ; i++)
-	 {
-            s->x[i] = (double)g->tmp[i];
-            s->x2[i] = s->x[i] * s->x[i];
-	 }
-      }
-   }
-   
-   g->j++;
+	 FREADTEST(g->tmp, sizeof(dtype), g->n, g->file);
 
+      /* Get the scaled value instead of the original value */
+      l1 = g->j * NUM_X_LEVELS;
+      for(i = 0 ; i < g->n ; i++)
+      {
+	 l2 = l1 + g->tmp[i];
+	 s->x[i] = g->lookup[l2];
+	 s->x2[i] = g->lookup2[l2];
+      }
+      
+      g->j++;
+      return SUCCESS;
+   }
+
+    /*FREADTEST(g->tmp, sizeof(dtype), g->n, g->file);*/
+   if(g->encoded)
+   {
+      FREADTEST(g->encbuf, sizeof(dtype), g->nencb, g->file);
+      decode(g->tmp, g->encbuf, g->nencb);
+   }
+   else
+      FREADTEST(g->tmp, sizeof(dtype), g->n, g->file);
+
+   for(i = 0 ; i < g->n ; i++)
+   {
+      s->x[i] = (double)g->tmp[i];
+      s->x2[i] = s->x[i] * s->x[i];
+   }
+
+
+   g->j++;
    return SUCCESS;
 }
 
@@ -327,7 +367,6 @@ int gmatrix_read_scaling(gmatrix *g, char *file_scale)
    CALLOCTEST(g->lookup2, NUM_X_LEVELS * (g->p + 1), sizeof(double))
    MALLOCTEST(g->mean, sizeof(double) * (g->p + 1))
    MALLOCTEST(g->sd, sizeof(double) * (g->p + 1))
-   MALLOCTEST(g->active, sizeof(int) * (g->p + 1))
 
    FOPENTEST(in, file_scale, "rb")
 

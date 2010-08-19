@@ -12,6 +12,7 @@ TMPDIR=.
 PLINK="p-link"
 TRANSPOSE="~/Code/cd/src/transpose"
 HAPGEN2BIN="~/Code/cd/src/hapgen2bin"
+HAPGEN2PED="~/Code/cd/src/hapgen2ped"
 
 # Cut the HapMap data into $num$ regions in different files
 function hapmapcut {
