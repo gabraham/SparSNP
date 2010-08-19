@@ -168,7 +168,7 @@ EOF
       /bin/rm -f "$f"".tmp"
    done
    
-   # Concatenate the hapgen files *column-wise*
+   # Concatenate the hapgen files *column-wise* (same as cbind in R)
    #
    # This depends on hapgen always generating the same response classes
    # for the same samples (which it does)
@@ -204,7 +204,6 @@ EOF
    then
       /bin/rm -rf $DIR/sim+([0-9]).all.g
    fi
-   
    
    echo "####################################"
    echo "Postprocessing genotypes"

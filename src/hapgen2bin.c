@@ -38,6 +38,7 @@ int hapgen2bin(char *x_filename_in, char *y_filename_in, char *filename_out,
    MALLOCTEST(enc_buf, sizeof(unsigned char) * numencb * bufsize);
    MALLOCTEST(buf, sizeof(unsigned char) * bufsize * 2);
 
+   printf("numencb:%d bufsize:%d\n", numencb, bufsize);
    /* process y */
    FREADTEST(y_buf, sizeof(unsigned char), 2 * n, in_y);
    for(i = 0 ; i < n ; i++)
@@ -75,8 +76,8 @@ int hapgen2bin(char *x_filename_in, char *y_filename_in, char *filename_out,
       if(encodeflag) {
 	 /* encode each variable separately to prevent two falling into the
 	  * same encoded byte */
-	 for(k = 0 ; k < bufsize ; k++)
-	    encode(enc_buf + k * n, hg_buf + k * n, n);
+	 for(k = 0 ; k < nbufb ; k++)
+	    encode(enc_buf + k * numencb, hg_buf + k * n, n);
 	 FWRITETEST(enc_buf, sizeof(unsigned char), numencb * nbufb, out);
       } else {
 	 FWRITETEST(hg_buf, sizeof(unsigned char), n * nbufb, out);
