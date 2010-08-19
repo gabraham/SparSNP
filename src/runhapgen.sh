@@ -212,18 +212,20 @@ EOF
    
    # For coordinate descent 
    #convert $DIR $prefix $((N*2))
-   eval "$HAPGEN2BIN" -finx "$DIR/sim.all.g" -finy "$DIR/sim.y" \
-   -fout "$DIR/sim.bin" -n $((N*2)) -p $P
+   cmd="$HAPGEN2BIN -finx $DIR/sim.all.g -finy $DIR/sim.y \
+   -fout $DIR/sim.bin -n $((N*2)) -p $P"
+   echo $cmd
+   eval $cmd
 
-   echo "####################################"
-   echo "Transposing ..."
-   eval "$TRANSPOSE" -fin "$DIR/sim.bin" -fout "$DIR/sim.bin.t" \
-   -n $((N*2)) -p $((P+1)) 
-   if [ $clean == 1 ];
-   then
-      /bin/rm "$DIR/sim.bin"
-   fi
-   echo "####################################"
+   #echo "####################################"
+   #echo "Transposing ..."
+   #eval "$TRANSPOSE" -fin "$DIR/sim.bin" -fout "$DIR/sim.bin.t" \
+   #-n $((N*2)) -p $((P+1)) 
+   #if [ $clean == 1 ];
+   #then
+   #   /bin/rm "$DIR/sim.bin"
+   #fi
+   #echo "####################################"
 
    echo "####################################"
    echo "Converting to plink PED format"

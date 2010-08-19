@@ -36,7 +36,7 @@ int hapgen2bin(char *x_filename_in, char *y_filename_in, char *filename_out,
    MALLOCTEST(y_bin, sizeof(unsigned char) * n);
    MALLOCTEST(hg_buf, sizeof(unsigned char*) * n * bufsize);
    MALLOCTEST(enc_buf, sizeof(unsigned char) * numencb * bufsize);
-   MALLOCTEST(buf, sizeof(unsigned char) * bufsize);
+   MALLOCTEST(buf, sizeof(unsigned char) * bufsize * 2);
 
    /* process y */
    FREADTEST(y_buf, sizeof(unsigned char), 2 * n, in_y);
@@ -54,30 +54,22 @@ int hapgen2bin(char *x_filename_in, char *y_filename_in, char *filename_out,
    free(y_buf);
    y_bin = y_buf = NULL;
 
-   printf("bufsize: %d\n", bufsize);
    nbufs = 0;
    for(j = 0 ; j < p ; j += bufsize)
    {
-      printf("j:%d\n", j);
       fflush(stdout);
-      nbufb = (unsigned int)fmin(bufsize, p21 - bufsize * nbufs);
-      printf("foo:%d\n", p21 - bufsize * nbufs);
+      nbufb = (unsigned int)fmin(bufsize, p - bufsize * nbufs);
       for(i = 0 ; i < n ; i++)
       {
          /* read one block of genotypes, skipping over spaces and EOL */
 	 skip = (unsigned long long)i * p21 
-	       + (unsigned long long)j * 2 * bufsize;
+	       + (unsigned long long)j * 2;
          FSEEKOTEST(in_x, skip, SEEK_SET);
-         FREADTEST(buf, sizeof(unsigned char), nbufb, in_x);
-	 printf("%d:%llu:%d\n", i,skip, nbufb);
+         FREADTEST(buf, sizeof(unsigned char), 2 * nbufb, in_x);
 	 fflush(stdout);
-	 for(k = 0 ; k < bufsize ; k++)
-	    hg_buf[k * n + i] = buf[k] - ASCII_SHIFT;
+	 for(k = 0 ; k < nbufb ; k++)
+	    hg_buf[k * n + i] = buf[2 * k] - ASCII_SHIFT;
       }
-
-      /* convert to binary */
-  /*    for(i = 0 ; i < n ; i++)
-	 hg_buf[i] -= ASCII_SHIFT;*/
 
       /* encode */
       if(encodeflag) {
@@ -85,20 +77,19 @@ int hapgen2bin(char *x_filename_in, char *y_filename_in, char *filename_out,
 	  * same encoded byte */
 	 for(k = 0 ; k < bufsize ; k++)
 	    encode(enc_buf + k * n, hg_buf + k * n, n);
-	 FWRITETEST(enc_buf, sizeof(unsigned char), numencb * bufsize, out);
+	 FWRITETEST(enc_buf, sizeof(unsigned char), numencb * nbufb, out);
       } else {
-	 FWRITETEST(hg_buf, sizeof(unsigned char), n * bufsize, out);
+	 FWRITETEST(hg_buf, sizeof(unsigned char), n * nbufb, out);
       }
-      printf("----\n");
       nbufs++;
    }
-   printf("\n");
 
    fclose(in_x);
    fclose(in_y);
    fclose(out);
    free(enc_buf);
    free(hg_buf);
+   free(buf);
 
    return SUCCESS;
 }
@@ -164,9 +155,8 @@ int main(int argc, char *argv[])
       return EXIT_FAILURE;
    }
 
-   /* bufsize is a multiple of rows (p+1 values) */
-   if(bufsize == 0)
-      bufsize = fminl(134217728 * sizeof(dtype) / p, n);
+   if(bufsize == 0 || bufsize > p)
+      bufsize = p;
 
    /* don't forget y is a row too */
    if(!hapgen2bin(x_filename_in, y_filename_in,

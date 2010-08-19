@@ -85,7 +85,8 @@ return FAILURE; \
 
 #define FSEEKOTEST(x, offset, whence) \
 if(fseeko(x, offset, whence) != 0) { \
-fprintf(stderr, "can't seek offset %lld\n", (unsigned long long)offset); \
+fprintf(stderr, "can't seek offset %lld\n", \
+(unsigned long long)offset); \
 return FAILURE; \
 }
 
