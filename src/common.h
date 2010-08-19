@@ -1,4 +1,5 @@
-
+#include <stdlib.h>
+ 
 #define VERBOSE 1
 
 #define sign(x) ((x > 0) - (x < 0))
@@ -44,6 +45,8 @@ typedef DTYPE dtype;
 
 /* Macros with built in error checking */
 
+size_t retval;
+
 #define MALLOCTEST(x, size) \
 if(!(x = malloc(size))) { \
 fprintf(stderr, "can't malloc\n"); \
@@ -87,14 +90,16 @@ return FAILURE; \
 }
 
 #define FREADTEST(x, size, count, stream) \
-if(fread(x, size, count, stream) < count) { \
-fprintf(stderr, "read fewer items than expected (%lu)\n", (unsigned long)count); \
-return FAILURE; \
+if((retval = fread(x, size, count, stream)) < count) { \
+fprintf(stderr, "read fewer items (%lu) than expected (%lu)\n", \
+retval, (unsigned long)count); \
+fflush(stderr); return FAILURE; \
 }
 
 #define FWRITETEST(x, size, count, stream) \
-if(fwrite(x, size, count, stream) < count) { \
-fprintf(stderr, "wrote fewer items than expected (%lu)\n", (unsigned long)count); \
+if((retval = fwrite(x, size, count, stream)) < count) { \
+fprintf(stderr, "wrote fewer items (%lu) than expected (%lu)\n", \
+retval, (unsigned long)count); \
 return FAILURE; \
 }
 

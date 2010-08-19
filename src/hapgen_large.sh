@@ -14,9 +14,10 @@ do
    K=20
    HAPLO=HapMap/genotypes_chr1_JPT+CHB_r22_nr.b36_fwd.phased
    LEGEND=HapMap/genotypes_chr1_JPT+CHB_r22_nr.b36_fwd_legend.txt
+   CLEAN=1
    if ! [ -a "$DIR/sim.bin.t" ];
    then
-      simulate $DIR $prefix $N $K $HAPLO $LEGEND $RR1 $RR2
+      simulate $DIR $prefix $N $K $HAPLO $LEGEND $RR1 $RR2 $CLEAN
    else
       echo "Skipping $DIR"
    fi  
