@@ -19,6 +19,7 @@ void encode(unsigned char *out, const unsigned char *in, const unsigned int n)
 
    for(i = 0 ; i < n ; i += PACK_DENSITY)
    {  
+      printf("n:%d i:%d k:%d\n", n, i, k);
       out[k] = 0;
       for(j = 0 ; j < PACK_DENSITY ; j++)
 	 if(i + j < n)
@@ -35,7 +36,7 @@ void decode(unsigned char *out, const unsigned char *in, const unsigned int n)
    unsigned int i, j;
    unsigned char val, tmp;
    const unsigned char masks[PACK_DENSITY] = {
-      3 << 2 * 0,
+      3 << 2 * 0, /* 3 is 11 in binary */
       3 << 2 * 1,
       3 << 2 * 2,
       3 << 2 * 3,

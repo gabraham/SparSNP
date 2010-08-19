@@ -168,7 +168,7 @@ EOF
       /bin/rm -f "$f"".tmp"
    done
    
-   # Concatenate the hapgen files *column-wise*
+   # Concatenate the hapgen files *column-wise* (same as cbind in R)
    #
    # This depends on hapgen always generating the same response classes
    # for the same samples (which it does)
@@ -205,25 +205,26 @@ EOF
       /bin/rm -rf $DIR/sim+([0-9]).all.g
    fi
    
-   
    echo "####################################"
    echo "Postprocessing genotypes"
    echo "####################################"
    
    # For coordinate descent 
    #convert $DIR $prefix $((N*2))
-   eval "$HAPGEN2BIN" -finx "$DIR/sim.all.g" -finy "$DIR/sim.y" \
-   -fout "$DIR/sim.bin" -n $((N*2)) -p $P
+   cmd="$HAPGEN2BIN -finx $DIR/sim.all.g -finy $DIR/sim.y \
+   -fout $DIR/sim.bin -n $((N*2)) -p $P"
+   echo $cmd
+   eval $cmd
 
-   echo "####################################"
-   echo "Transposing ..."
-   eval "$TRANSPOSE" -fin "$DIR/sim.bin" -fout "$DIR/sim.bin.t" \
-   -n $((N*2)) -p $((P+1)) 
-   if [ $clean == 1 ];
-   then
-      /bin/rm "$DIR/sim.bin"
-   fi
-   echo "####################################"
+   #echo "####################################"
+   #echo "Transposing ..."
+   #eval "$TRANSPOSE" -fin "$DIR/sim.bin" -fout "$DIR/sim.bin.t" \
+   #-n $((N*2)) -p $((P+1)) 
+   #if [ $clean == 1 ];
+   #then
+   #   /bin/rm "$DIR/sim.bin"
+   #fi
+   #echo "####################################"
 
    echo "####################################"
    echo "Converting to plink PED format"
