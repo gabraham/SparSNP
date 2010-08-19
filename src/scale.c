@@ -41,7 +41,7 @@ int scale(gmatrix *g, char* filename)
    {
       for(i = 0 ; i < g->n ; i++)
 	 tmp2[i] = (double)tmp[i];
-      FWRITETEST(tmp2, sizeof(double), g->n, fout)
+      FWRITETEST(tmp2, sizeof(double), g->n, fout);
    }
 
    /* read the data and scale each variable */
@@ -59,7 +59,6 @@ int scale(gmatrix *g, char* filename)
       for(i = 0 ; i < g->n ; i++)
       {
 	 tmp2[i] = (double)tmp[i];
-
 	 delta = tmp2[i] - g->mean[j];
 	 g->mean[j] += delta / (i + 1);
 	 g->sd[j] += delta * (tmp2[i] - g->mean[j]);
@@ -76,7 +75,7 @@ int scale(gmatrix *g, char* filename)
       	       tmp2[i] /= g->sd[j];
       	 }
       	   
-      	 FWRITETEST(tmp2, sizeof(double), g->n, fout)
+      	 FWRITETEST(tmp2, sizeof(double), g->n, fout);
       }
    }
    printf("\n");

@@ -30,7 +30,7 @@ void sample_free(sample *s)
 int gmatrix_init(gmatrix *g, char *filename, int n, int p, short inmemory,
       char *scalefile, short yformat, int model, short encoded)
 {
-   int i;
+   unsigned int i, j;
 
    if(filename)
       FOPENTEST(g->file, filename, "rb")
@@ -79,6 +79,9 @@ int gmatrix_init(gmatrix *g, char *filename, int n, int p, short inmemory,
    else
       g->nextcol = gmatrix_disk_nextcol;
 
+   MALLOCTEST(g->active, sizeof(int) * (g->p + 1))
+   for(j = 0 ; j < p + 1 ; j++)
+      g->active[j] = TRUE;
    if(scalefile && !gmatrix_read_scaling(g, scalefile))
       return FAILURE;
 
@@ -190,17 +193,13 @@ int gmatrix_disk_nextcol(gmatrix *g, sample *s)
       s->intercept = TRUE;
 
       /* read y the first time we see it */
-      if(!g->y)
-      {
-	 MALLOCTEST(g->y, sizeof(double) * g->n)
+      if(!g->y) {
+	 MALLOCTEST(g->y, sizeof(double) * g->n);
 
-	 if(g->encoded)
-	 {
+	 if(g->encoded) {
 	    FREADTEST(g->encbuf, sizeof(dtype), g->nencb, g->file);
 	    decode(g->tmp, g->encbuf, g->nencb);
-	 }
-	 else
-	 {
+	 } else {
 	    FREADTEST(g->tmp, sizeof(dtype), g->n, g->file);
 	 }
 
@@ -210,11 +209,10 @@ int gmatrix_disk_nextcol(gmatrix *g, sample *s)
 	 else
 	    for(i = 0 ; i < g->n ; i++)
 	       g->y[i] = 2.0 * g->tmp[i] - 1.0;
-      }
-      else if(g->encoded) {/* don't read y again */
+
+      } else if(g->encoded) {/* don't read y again */
       	 FSEEKOTEST(g->file, sizeof(dtype) * g->nencb, SEEK_CUR);
-      }
-      else {
+      } else {
       	 FSEEKOTEST(g->file, sizeof(dtype) * g->n, SEEK_CUR);
       }
       
@@ -369,7 +367,6 @@ int gmatrix_read_scaling(gmatrix *g, char *file_scale)
    CALLOCTEST(g->lookup2, NUM_X_LEVELS * (g->p + 1), sizeof(double))
    MALLOCTEST(g->mean, sizeof(double) * (g->p + 1))
    MALLOCTEST(g->sd, sizeof(double) * (g->p + 1))
-   MALLOCTEST(g->active, sizeof(int) * (g->p + 1))
 
    FOPENTEST(in, file_scale, "rb")
 
