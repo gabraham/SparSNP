@@ -215,16 +215,6 @@ EOF
    echo $cmd
    eval $cmd
 
-   #echo "####################################"
-   #echo "Transposing ..."
-   #eval "$TRANSPOSE" -fin "$DIR/sim.bin" -fout "$DIR/sim.bin.t" \
-   #-n $((N*2)) -p $((P+1)) 
-   #if [ $clean == 1 ];
-   #then
-   #   /bin/rm "$DIR/sim.bin"
-   #fi
-   #echo "####################################"
-
    echo "####################################"
    echo "Converting to plink PED format"
    echo "####################################"
@@ -239,12 +229,12 @@ EOF
       /bin/rm $DIR/sim.all.g
    fi
 
-   # plink, binary bed format
-   $PLINK --ped "$DIR/sim.ped" --map "$LEGEND.map" --make-bed --out "$DIR/sim"
-   if [ $clean == 1 ];
-   then
-      /bin/rm "./$DIR/sim.ped"
-   fi
+   ## plink, binary bed format
+   #$PLINK --ped "$DIR/sim.ped" --map "$LEGEND.map" --make-bed --out "$DIR/sim"
+   #if [ $clean == 1 ];
+   #then
+   #   /bin/rm "./$DIR/sim.ped"
+   #fi
 
    echo
    echo "####################################"

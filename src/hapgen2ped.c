@@ -12,7 +12,7 @@
 int hapgen2ped(char *x_filename_in, char *y_filename_in, char *filename_out,
    const unsigned int n, const unsigned int p, const unsigned int bufsize)
 {
-   unsigned long i, j, k;
+   unsigned int i, j, k;
    FILE *x_in = NULL, *y_in = NULL, *out = NULL;
    char **buf_in = NULL,
         **buf_out = NULL,
@@ -58,7 +58,7 @@ int hapgen2ped(char *x_filename_in, char *y_filename_in, char *filename_out,
 
    for(i = 0 ; i < n ; )
    {
-      printf("%ld", i);
+      printf("%d of %d", i, n);
       fflush(stdout);
 
       for(k = 0 ; k < bufsize ; k++)
@@ -78,7 +78,7 @@ int hapgen2ped(char *x_filename_in, char *y_filename_in, char *filename_out,
 	 
       for(k = 0 ; k < bufsize ; k++)
       {
-	 fprintf(out, "%c %lu %c %c %c %c ", constfields[0], i + k + 1,
+	 fprintf(out, "%c %d %c %c %c %c ", constfields[0], i + k + 1,
 	       constfields[1], constfields[2], constfields[3],
 	       affected[buf_y[k][0] - ASCII_DIFF]);
       	 fprintf(out, "%s\n", buf_out[k]);
@@ -163,7 +163,7 @@ int main(int argc, char *argv[])
 
    /* bufsize is a multiple of rows (p+1 values)  */
    if(bufsize == 0)
-      bufsize = fminl(268435456 / p, n);
+      bufsize = fminl(100, n);
 
    /* don't forget y is a row too */
    if(!hapgen2ped(x_filename_in, y_filename_in,
