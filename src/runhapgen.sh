@@ -230,13 +230,9 @@ EOF
    echo "####################################"
 
    # For plink, text ped format
-#   cat > $RSCRIPT <<EOF
-#   source("~/Code/cd/R/convert.R")
-#   hapgen2ped("$DIR/sim.all.g", "$DIR/sim.y", "$DIR/sim.ped")
-#EOF
-#   Rscript $RSCRIPT
-   eval "$HAPGEN2PED" -finx "$DIR/sim.all.g" -finy "$DIR/sim.y" \
-   -fout "$DIR/sim.ped" -n $((N*2)) -p $P
+   #cmd="$HAPGEN2PED -finx $DIR/sim.all.g -finy $DIR/sim.y \
+   #-fout $DIR/sim.ped -n $((N*2)) -p $P"
+   #eval $cmd"
 
    if [ $clean == 1 ];
    then

@@ -35,6 +35,7 @@ int opt_defaults(Opt *opt)
    opt->nlambda1 = 100;
    opt->l1minratio = 1e-2;
    opt->maxepochs = 100;
+   opt->maxiters = 1000;
    opt->lambda1 = -1;
    opt->lambda2 = 0;
    opt->threshold = 1e-4;
@@ -136,10 +137,15 @@ int opt_parse(int argc, char* argv[], Opt* opt)
 	 i++;
 	 opt->p = (int)atof(argv[i]);
       }
-      else if(strcmp2(argv[i], "-epochs"))
+      else if(strcmp2(argv[i], "-maxepochs"))
       {
 	 i++;
 	 opt->maxepochs = (int)atof(argv[i]);
+      }
+      else if(strcmp2(argv[i], "-maxiters"))
+      {
+	 i++;
+	 opt->maxiters = (int)atof(argv[i]);
       }
       else if(strcmp2(argv[i], "-l1"))
       {
@@ -228,8 +234,6 @@ int opt_parse(int argc, char* argv[], Opt* opt)
 
 	 if(j < argc && argv[j][0] == '-')
 	    i = j - 1;
-
-	 printf(">>>%s\n", opt->beta_files[0]);
       }
       else if(strcmp2(argv[i], "-encoded"))
       {
@@ -244,7 +248,7 @@ int opt_parse(int argc, char* argv[], Opt* opt)
       printf("usage: cd [-train|-predict] -model <model> \
 -f <filename> -n <#samples> -p \
 <#variables> | -betafiles <beta filename/s> -pred <pred filename> \
--epoch <maxepochs> -l1 <lambda1> [-encoded] \
+-maxepochs <maxepochs> -maxiters <maxiters> -l1 <lambda1> [-encoded] \
 -l2 <lambda2> -thresh <threshold> \
 -pred <prediction file> -cv <cvfolds> -seed <seed> -v -vv\n");
       return FAILURE;

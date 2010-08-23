@@ -21,6 +21,7 @@ typedef struct Opt {
    short mode;
    short model;
    int maxepochs;
+   int maxiters;
    double lambda1;
    double lambda2;
    double threshold;
@@ -63,9 +64,10 @@ int cd_gmatrix(gmatrix *g,
       loss_pt loss_pt_func,    /* loss for one sample */
       inv inv_func,
       step step_func,
-      int maxepoch,
-      double lambda1, double lambda2,
-      double threshold, int verbose, int *trainf, double trunc);
+      const int maxepochs, const int maxiters,
+      const double lambda1, const double lambda2,
+      const double threshold, const int verbose, const int *trainf,
+      const double trunc);
 
 double get_lambda1max_gmatrix(gmatrix *g,
       phi1 phi1_func,

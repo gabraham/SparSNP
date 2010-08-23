@@ -163,7 +163,7 @@ int main(int argc, char *argv[])
 
    /* bufsize is a multiple of rows (p+1 values)  */
    if(bufsize == 0)
-      bufsize = fminl(268435456 * sizeof(char) * 4 / p, n);
+      bufsize = fminl(268435456 / p, n);
 
    /* don't forget y is a row too */
    if(!hapgen2ped(x_filename_in, y_filename_in,

@@ -173,11 +173,16 @@ int cd_gmatrix(gmatrix *g,
       loss_pt loss_pt_func,    /* loss for one sample */
       inv inv_func,
       step step_func,
-      int maxepoch, double lambda1,
-      double lambda2, double threshold, int verbose,
-      int *trainf, double trunc)
+      const int maxepochs,
+      const int maxiters,
+      const double lambda1,
+      const double lambda2,
+      const double threshold,
+      const int verbose,
+      const int *trainf,
+      const double trunc)
 {
-   const int maxiter = 1000, CONVERGED = 2;
+   const int CONVERGED = 2;
    int i, j, numiter,
        epoch = 1, numconverged = 0,
        allconverged = 0, zeros = 0;
@@ -193,7 +198,7 @@ int cd_gmatrix(gmatrix *g,
 
    CALLOCTEST(converged, g->p + 1, sizeof(short));
 
-   while(epoch <= maxepoch)
+   while(epoch <= maxepochs)
    {
       for(j = 0 ; j < g->p + 1; j++)
       {
@@ -211,7 +216,7 @@ int cd_gmatrix(gmatrix *g,
 	 x = sm.x;
 	 numiter = 0;
 
-	 while(!converged[j] && numiter <= maxiter)
+	 while(!converged[j] && numiter <= maxiters)
 	 {
 	    numiter++;
 
@@ -259,9 +264,9 @@ int cd_gmatrix(gmatrix *g,
 
 	    g->beta[j] = beta_new;
 	 }
-	 if(numiter > maxiter)
-	    printf("max number of internal iterations reached for variable: %d\n",
-	       j);
+	 if(numiter > maxiters)
+	    printf("max number of internal iterations (%d) \
+reached for variable: %d\n", maxiters, j);
       }
 
       /* count number of zero variables */
@@ -280,10 +285,8 @@ int cd_gmatrix(gmatrix *g,
 
 #ifdef VERBOSE
       if(verbose == 1)
-      {
 	 printf("Epoch %d  converged: %d zeros: %d  non-zeros: %d\n",
 	       epoch, numconverged, zeros, g->p - zeros);
-      }
 #endif
 
       /* All vars must converge in two consecutive epochs 
@@ -327,7 +330,6 @@ int cd_gmatrix(gmatrix *g,
 
    if(allconverged == CONVERGED)
       return g->p - zeros + 1;
-   else
-      return FAILURE;
+   return FAILURE;
 }
 
