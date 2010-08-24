@@ -25,17 +25,18 @@ int cbind(const unsigned int nfiles, char **filenames_in,
       printf("%d of %d", i, n);
       for(j = 0 ; j < nfiles ; j++)
       {
-        /* FREADTEST(buf, sizeof(char), p21, in[j]);
-         FWRITETEST(buf, sizeof(char), p2, out);*/
 	 if(!(buf = fgets(buf, p22, in[j])))
 	 {
 	    fprintf(stderr, "error reading from input file");
 	    return FAILURE;
 	 }
-	 fprintf(out, "%s\n", buf);
+	 buf[strlen(buf) - 1] = '\0';
+	 fprintf(out, "%s", buf);
       }
+      fprintf(out, "\n");
       printf("\r");
    }
+
 
    for(j = 0 ; j < nfiles ; j++)
       fclose(in[j]);
