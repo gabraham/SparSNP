@@ -12,17 +12,17 @@
 int hapgen2ped(char *x_filename_in, char *y_filename_in, char *filename_out,
    const unsigned int n, const unsigned int p, const unsigned int bufsize)
 {
-   unsigned int i, j, k;
+   unsigned int i, j, k, m, rem, bufctr;
    FILE *x_in = NULL, *y_in = NULL, *out = NULL;
    char **buf_in = NULL,
         **buf_out = NULL,
         **buf_y = NULL;
    const unsigned int p2 = 2 * p + 1;
    const short ASCII_DIFF = 48;
-   char *ptr = NULL;
+   char const *restrict ptr = NULL;
 
    /* The spaces are important */
-   char *alleles[3] = {
+   const char *alleles[3] = {
       "A A ", /* 0 */
       "A B ", /* 1 */
       "B B "  /* 2 */
@@ -38,6 +38,7 @@ int hapgen2ped(char *x_filename_in, char *y_filename_in, char *filename_out,
       '2'  /* affected */
    };
 
+
    /* make room for spaces as well, including the EOL*/
    MALLOCTEST(buf_in, sizeof(char*) * bufsize)
    MALLOCTEST(buf_out, sizeof(char*) * bufsize)
@@ -45,9 +46,9 @@ int hapgen2ped(char *x_filename_in, char *y_filename_in, char *filename_out,
 
    for(k = 0 ; k < bufsize ; k++)
    {
-      MALLOCTEST(buf_in[k], sizeof(char) * p2)
-      MALLOCTEST(buf_out[k], sizeof(char) * (4 * p + 1))
-      MALLOCTEST(buf_y[k], sizeof(char) * 2)
+      MALLOCTEST(buf_in[k], sizeof(char) * p2);
+      MALLOCTEST(buf_out[k], sizeof(char) * (4 * p + 1));
+      MALLOCTEST(buf_y[k], sizeof(char) * 2);
       buf_out[k][4 * p] = '\0';
    }
 
@@ -55,24 +56,26 @@ int hapgen2ped(char *x_filename_in, char *y_filename_in, char *filename_out,
    FOPENTEST(y_in, y_filename_in, "rt");
    FOPENTEST(out, filename_out, "wt");
 
-
+   bufctr = 0;
    for(i = 0 ; i < n ; )
    {
       printf("%d of %d", i, n);
       fflush(stdout);
 
-      for(k = 0 ; k < bufsize ; k++)
+      rem = FMIN(bufsize, n - bufctr * bufsize);
+      for(k = 0 ; k < rem ; k++)
       {
-	 FREADTEST(buf_y[k], sizeof(char), 2, y_in)
-      	 FREADTEST(buf_in[k], sizeof(char), p2, x_in)
+	 FREADTEST(buf_y[k], sizeof(char), 2, y_in);
+      	 FREADTEST(buf_in[k], sizeof(char), p2, x_in);
 
       	 for(j = 0 ; j < p ; j++)
       	 {
       	    ptr = alleles[buf_in[k][2 * j] - ASCII_DIFF];
-      	    buf_out[k][4 * j] = ptr[0];
-      	    buf_out[k][4 * j + 1] = ptr[1];
-      	    buf_out[k][4 * j + 2] = ptr[2];
-      	    buf_out[k][4 * j + 3] = ptr[3];
+	    m = 4 * j;
+      	    buf_out[k][m] = ptr[0];
+      	    buf_out[k][m + 1] = ptr[1];
+      	    buf_out[k][m + 2] = ptr[2];
+      	    buf_out[k][m + 3] = ptr[3];
       	 }
       }
 	 
@@ -83,9 +86,9 @@ int hapgen2ped(char *x_filename_in, char *y_filename_in, char *filename_out,
 	       affected[buf_y[k][0] - ASCII_DIFF]);
       	 fprintf(out, "%s\n", buf_out[k]);
       }
-      printf("\r");
 
       i += bufsize;
+      bufctr++;
    }
    printf("\n");
 
@@ -161,9 +164,9 @@ int main(int argc, char *argv[])
       return EXIT_FAILURE;
    }
 
-   /* bufsize is a multiple of rows (p+1 values)  */
+   /* bufsize is a multiple of rows (2 * p + 1 values)  */
    if(bufsize == 0)
-      bufsize = fminl(100, n);
+      bufsize = fminl(3, n);
 
    /* don't forget y is a row too */
    if(!hapgen2ped(x_filename_in, y_filename_in,

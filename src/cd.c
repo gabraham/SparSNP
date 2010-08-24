@@ -1,10 +1,6 @@
 #include "common.h"
 #include "cd.h"
 
-#define MAX_SHOW_NOTCONV 100
-#define FMAX(a, b) (a < b ? b : a) 
-#define FMIN(a, b) (a < b ? a : b)
-
 short convergetest(double a, double b, double threshold)
 {
    /* absolute convergence */
