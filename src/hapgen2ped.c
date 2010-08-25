@@ -90,7 +90,7 @@ int hapgen2ped(char *x_filename_in, char *y_filename_in, char *filename_out,
       i += bufsize;
       bufctr++;
    }
-   printf("\n");
+   printf("\r");
 
    fclose(x_in);
    fclose(y_in);

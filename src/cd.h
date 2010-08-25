@@ -84,7 +84,7 @@ int opt_parse(int argc, char* argv[], Opt* opt);
 int make_lambda1path(Opt *opt, gmatrix *g);
 int run(Opt *opt, gmatrix *g);
 
-double step_regular(sample *s, gmatrix *g,
+double step_generic(sample *s, gmatrix *g,
       phi1 phi1_func, phi2 phi2_func);
 
 double step_regular_linear(sample *s, gmatrix *g,

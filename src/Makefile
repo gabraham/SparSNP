@@ -1,7 +1,7 @@
 
 .PHONY: all
 
-CC=gcc
+#CC=gcc
 
 # Allow large-file seeking with fseeko
 LONG_BIT = $(shell getconf LONG_BIT)

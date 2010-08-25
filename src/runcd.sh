@@ -15,7 +15,7 @@ SCALE="~/Code/cd/src/scale -fin $bin -n $N -p $P $enc"
 scale="scale.bin"
 results="results"
 
-for i in $(seq 31 31);
+for i in $(seq 31 35);
 do
    dir="$DIR_STEM""$i"
    while ! [[ -d "$dir" && -a "$dir/$bin" ]];
@@ -32,10 +32,10 @@ do
       eval "$SCALE"   
    fi
    pushd "$results"
-   #if ! [ -a "lambda1path.csv" ];
-   #then
-      echo eval "time $CD" 2>&1 | tee > log
-   #fi
+   if ! [ -a "lambda1path.csv" ];
+   then
+      eval "time $CD" 2>&1 | tee > log
+   fi
    popd
    popd
 done
