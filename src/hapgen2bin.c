@@ -57,6 +57,7 @@ int hapgen2bin(char *x_filename_in, char *y_filename_in, char *filename_out,
    nbufs = 0;
    for(j = 0 ; j < p ; j += bufsize)
    {
+      printf("%d of %d", j, p);
       fflush(stdout);
       nbufb = (unsigned int)fmin(bufsize, p - bufsize * nbufs);
       for(i = 0 ; i < n ; i++)
@@ -82,6 +83,7 @@ int hapgen2bin(char *x_filename_in, char *y_filename_in, char *filename_out,
 	 FWRITETEST(hg_buf, sizeof(unsigned char), n * nbufb, out);
       }
       nbufs++;
+      printf("\r");
    }
 
    fclose(in_x);

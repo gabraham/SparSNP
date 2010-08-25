@@ -12,6 +12,7 @@ TMPDIR=.
 PLINK="p-link"
 HAPGEN2BIN="~/Code/cd/src/hapgen2bin"
 HAPGEN2PED="~/Code/cd/src/hapgen2ped"
+CBIND="~/Code/cd/src/cbind"
 
 # Cut the HapMap data into $num$ regions in different files
 function hapmapcut {
@@ -40,7 +41,7 @@ function hapmapcut {
       file(sprintf("%s_%s", hap, i), open="w+")
    })
 
-   # Approximate split into n blocks
+   # Split into n blocks of approximately same size
    s <- 1
    while(length(unique(s)) < n)
       s <- sort(sample(n, size=w, replace=TRUE))
@@ -170,32 +171,11 @@ EOF
    # Concatenate the hapgen files *column-wise* (same as cbind in R)
    #
    # This depends on hapgen always generating the same response classes
-   # for the same samples (which it does)
-   #
-   RSCRIPT=".Rscript.R"
-   cat > $RSCRIPT <<EOF
-   sp <- $K
-   
-   fout <- file("$DIR/sim.all.g", "wt")
-   nrow <- 2 * $N
-
-   files <- lapply(1:sp, function(i) {
-      file(sprintf("$DIR/sim%s.all.g", i), open="r")
-   })
-
-   for(i in 1:nrow)
-   {
-      cat("row:", i, "\n")
-      r <- lapply(files, readLines, n=1)
-      r2 <- paste(r, collapse=" ")
-      r3 <- gsub("  ", " ", r2)
-      writeLines(r3, con=fout)
-   }
-
-   close(fout)
-EOF
-
-   Rscript $RSCRIPT
+   # for the same samples (which it should...)
+   files=$(ls -v $DIR/sim[0-9]*.all.g) # order here is important
+   cmd="$CBIND -in $files -out $DIR/sim.all.g -n $((N*2)) -p $P"
+   echo $cmd
+   eval $cmd
    
    # See previous comment re column wise
    /bin/cp $DIR/sim1.y $DIR/sim.y
@@ -215,28 +195,15 @@ EOF
    echo $cmd
    eval $cmd
 
-   #echo "####################################"
-   #echo "Transposing ..."
-   #eval "$TRANSPOSE" -fin "$DIR/sim.bin" -fout "$DIR/sim.bin.t" \
-   #-n $((N*2)) -p $((P+1)) 
-   #if [ $clean == 1 ];
-   #then
-   #   /bin/rm "$DIR/sim.bin"
-   #fi
-   #echo "####################################"
-
    echo "####################################"
    echo "Converting to plink PED format"
    echo "####################################"
 
    # For plink, text ped format
-#   cat > $RSCRIPT <<EOF
-#   source("~/Code/cd/R/convert.R")
-#   hapgen2ped("$DIR/sim.all.g", "$DIR/sim.y", "$DIR/sim.ped")
-#EOF
-#   Rscript $RSCRIPT
-   eval "$HAPGEN2PED" -finx "$DIR/sim.all.g" -finy "$DIR/sim.y" \
-   -fout "$DIR/sim.ped" -n $((N*2)) -p $P
+   cmd="$HAPGEN2PED -finx $DIR/sim.all.g -finy $DIR/sim.y \
+   -fout $DIR/sim.ped -n $((N*2)) -p $P"
+   echo $cmd
+   eval $cmd
 
    if [ $clean == 1 ];
    then
@@ -244,7 +211,9 @@ EOF
    fi
 
    # plink, binary bed format
-   $PLINK --ped "$DIR/sim.ped" --map "$LEGEND.map" --make-bed --out "$DIR/sim"
+   cmd="$PLINK --ped $DIR/sim.ped --map $LEGEND.map --make-bed --out $DIR/sim"
+   echo $cmd
+   eval $cmd
    if [ $clean == 1 ];
    then
       /bin/rm "./$DIR/sim.ped"

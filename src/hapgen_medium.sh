@@ -3,14 +3,14 @@ source runhapgen.sh
 RR1=1.5
 RR2=2.25
 
-for ((J=1 ; J<=20; J++));
+for ((J=31 ; J<=40; J++));
 do
-   DIR="sim8.$J"
+   DIR="sim7.$J"
    if ! [ -d "$DIR" ]; then
       mkdir $DIR
    fi  
    prefix="sim"
-   N=25000
+   N=5000
    K=20
    HAPLO=HapMap/genotypes_chr1_JPT+CHB_r22_nr.b36_fwd.phased
    LEGEND=HapMap/genotypes_chr1_JPT+CHB_r22_nr.b36_fwd_legend.txt

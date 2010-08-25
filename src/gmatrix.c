@@ -32,9 +32,6 @@ int gmatrix_init(gmatrix *g, char *filename, int n, int p, short inmemory,
 {
    unsigned int i, j;
 
-   if(filename)
-      FOPENTEST(g->file, filename, "rb")
-
    g->model = model;
    g->filename = filename;
    g->i = g-> j = 0;
@@ -60,6 +57,9 @@ int gmatrix_init(gmatrix *g, char *filename, int n, int p, short inmemory,
    g->encoded = encoded;
    g->nencb = (int)ceil((double)n / PACK_DENSITY);
    g->encbuf = NULL;
+
+   if(filename)
+      FOPENTEST(g->file, filename, "rb")
 
    MALLOCTEST(g->intercept, sizeof(double) * g->n);
    for(i = 0 ; i < n ; i++)
@@ -179,7 +179,6 @@ void gmatrix_free(gmatrix *g)
    g->encbuf = NULL;
 }
 
-/* Expects the binary data column to be y, x_1, x_2, x_3, ..., x_p */
 int gmatrix_disk_nextcol(gmatrix *g, sample *s)
 {
    int i, l1, l2;
@@ -196,6 +195,7 @@ int gmatrix_disk_nextcol(gmatrix *g, sample *s)
       if(!g->y) {
 	 MALLOCTEST(g->y, sizeof(double) * g->n);
 
+	 /* The vector of samples may be byte packed */
 	 if(g->encoded) {
 	    FREADTEST(g->encbuf, sizeof(dtype), g->nencb, g->file);
 	    decode(g->tmp, g->encbuf, g->nencb);
@@ -242,7 +242,6 @@ int gmatrix_disk_nextcol(gmatrix *g, sample *s)
    if(g->scalefile)
    {
       s->intercept = FALSE;
-      /*FREADTEST(g->tmp, sizeof(dtype), g->n, g->file);*/
 
       if(g->encoded)
       {
@@ -265,7 +264,6 @@ int gmatrix_disk_nextcol(gmatrix *g, sample *s)
       return SUCCESS;
    }
 
-    /*FREADTEST(g->tmp, sizeof(dtype), g->n, g->file);*/
    if(g->encoded)
    {
       FREADTEST(g->encbuf, sizeof(dtype), g->nencb, g->file);

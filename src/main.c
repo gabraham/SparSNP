@@ -87,7 +87,8 @@ int run_train(Opt *opt, gmatrix *g)
       ret = cd_gmatrix(
 	    g, opt->phi1_func, opt->phi2_func,
 	    opt->loss_pt_func, opt->inv_func, opt->step_func,
-	    opt->maxepochs, opt->lambda1path[i], opt->lambda2,
+	    opt->maxepochs, opt->maxiters,
+	    opt->lambda1path[i], opt->lambda2,
 	    opt->threshold, opt->verbose, opt->trainf, opt->trunc);
 
       gmatrix_reset(g);
@@ -288,6 +289,7 @@ int main(int argc, char* argv[])
    {
       gmatrix_free(&g);
       opt_free(&opt);
+      fflush(stdout);
       return EXIT_FAILURE;
    }
   

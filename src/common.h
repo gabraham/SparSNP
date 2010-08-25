@@ -43,6 +43,9 @@ typedef DTYPE dtype;
 #define MODE_TRAIN 0
 #define MODE_PREDICT 1
 
+#define FMAX(a, b) (a < b ? b : a) 
+#define FMIN(a, b) (a < b ? a : b)
+
 /* Macros with built in error checking */
 
 size_t retval;

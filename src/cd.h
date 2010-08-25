@@ -4,8 +4,9 @@
 #include <string.h>
 #include "gmatrix.h"
 
-/* This will affect the error of the exponential approximation */
 #define MAXLP 7
+
+#define MAX_SHOW_NOTCONV 100
 
 typedef double (*loss_pt)(double, dtype);
 typedef double (*predict_pt)(double);
@@ -21,6 +22,7 @@ typedef struct Opt {
    short mode;
    short model;
    int maxepochs;
+   int maxiters;
    double lambda1;
    double lambda2;
    double threshold;
@@ -63,9 +65,10 @@ int cd_gmatrix(gmatrix *g,
       loss_pt loss_pt_func,    /* loss for one sample */
       inv inv_func,
       step step_func,
-      int maxepoch,
-      double lambda1, double lambda2,
-      double threshold, int verbose, int *trainf, double trunc);
+      const int maxepochs, const int maxiters,
+      const double lambda1, const double lambda2,
+      const double threshold, const int verbose, const int *trainf,
+      const double trunc);
 
 double get_lambda1max_gmatrix(gmatrix *g,
       phi1 phi1_func,
@@ -81,7 +84,7 @@ int opt_parse(int argc, char* argv[], Opt* opt);
 int make_lambda1path(Opt *opt, gmatrix *g);
 int run(Opt *opt, gmatrix *g);
 
-double step_regular(sample *s, gmatrix *g,
+double step_generic(sample *s, gmatrix *g,
       phi1 phi1_func, phi2 phi2_func);
 
 double step_regular_linear(sample *s, gmatrix *g,
