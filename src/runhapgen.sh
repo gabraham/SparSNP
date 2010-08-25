@@ -211,7 +211,9 @@ EOF
    fi
 
    # plink, binary bed format
-   $PLINK --ped "$DIR/sim.ped" --map "$LEGEND.map" --make-bed --out "$DIR/sim"
+   cmd="$PLINK --ped $DIR/sim.ped --map $LEGEND.map --make-bed --out $DIR/sim"
+   echo $cmd
+   eval $cmd
    if [ $clean == 1 ];
    then
       /bin/rm "./$DIR/sim.ped"
