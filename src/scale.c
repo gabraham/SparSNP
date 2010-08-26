@@ -1,3 +1,4 @@
+#include "common.h"
 #include "cd.h"
 #include "util.h"
 #include "coder.h"
@@ -8,7 +9,7 @@
  *
  * Expects data in column major ordering
  */
-int scale(gmatrix *g, char* filename)
+int scale2(gmatrix *g, char* filename)
 {
    int i, j;
    FILE *fout = NULL, *fin = NULL;
@@ -90,6 +91,48 @@ int scale(gmatrix *g, char* filename)
    return SUCCESS;
 }
 
+int scale(gmatrix *g, char* filename)
+{
+   unsigned int i, j, p1 = g->p + 1;
+   sample sm;
+   double *tmp = NULL, delta;
+
+   if(!sample_init(&sm, g->n, g->inmemory))
+      return FAILURE;
+
+   MALLOCTEST(g->mean, sizeof(double) * p1);
+   MALLOCTEST(g->sd, sizeof(double) * p1);
+   g->mean[0] = 0;
+   g->sd[0] = 1;
+
+   MALLOCTEST(tmp, sizeof(double) * g->n);
+   
+   /* read intercept and ignore it*/
+   g->nextcol(g, &sm);
+
+   for(j = 1 ; j < p1 ; j++)
+   {
+      printf("%d of %d", j, p1);
+      g->nextcol(g, &sm);
+      g->mean[j] = g->sd[j] = 0;
+      for(i = 0 ; i < g->n ; i++)
+      {
+	 delta = sm.x[i] - g->mean[j];
+	 g->mean[j] += delta / (i + 1);
+	 g->sd[j] += delta * (sm.x[i] - g->mean[j]);
+      }
+
+      g->sd[j] = sqrt(g->sd[j] / (g->n - 1));
+      printf("\r");
+   }
+   printf("\n");
+
+   free(tmp);
+   sample_free(&sm);
+
+   return SUCCESS;
+}
+
 int writescale(char* filename, double *mean, double *sd,
       int p, short ascii)
 {
@@ -121,7 +164,8 @@ int main(int argc, char* argv[])
         *filename_scale = "scale.bin";
    short inmemory = FALSE,
 	 ascii = FALSE,
-	 encoded = FALSE;
+	 encoded = FALSE,
+	 binformat = BINFORMAT_BIN;
    gmatrix g;
 
    for(i = 1 ; i < argc ; i++)
@@ -152,18 +196,19 @@ int main(int argc, char* argv[])
 	 ascii = TRUE;
       else if(strcmp2(argv[i], "-encoded"))
 	 encoded = TRUE;
-
+      else if(strcmp2(argv[i], "-plink"))
+	 binformat = BINFORMAT_PLINK;
    }
 
    if(filename_in == NULL || n == 0 || p == 0)
    {
-      printf("scale: -fin <filein> [-fout <fileout>] [-fscale <scalefile>] \
-[-encoded] -n #n -p #p\n");
+      printf("scale: -fin <filein> [-fout <fileout>] \
+[-fscale <scalefile>] [-encoded] [-plink] -n #n -p #p\n");
       return EXIT_FAILURE;
    }
 
-   if(!gmatrix_init(&g, filename_in, n, p, inmemory, NULL, YFORMAT01, 0,
-	    encoded))
+   if(!gmatrix_init(&g, filename_in, n, p,
+	 inmemory, NULL, YFORMAT01, MODE_TRAIN, encoded, binformat))
       return EXIT_FAILURE;
 
    if(!scale(&g, filename_out))

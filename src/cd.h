@@ -57,6 +57,7 @@ typedef struct Opt {
    int n_beta_files;
    char *predict_file;
    short encoded;
+   short binformat;
 } Opt;
 
 int cd_gmatrix(gmatrix *g,
@@ -95,4 +96,8 @@ double step_regular_logistic(sample *s, gmatrix *g,
 
 double step_regular_sqrhinge(sample *s, gmatrix *g,
       phi1 phi1_func, phi2 phi2_func);
+
+double clip(const double x, const double min, const double max);
+double zero(const double x, const double thresh);
+
 

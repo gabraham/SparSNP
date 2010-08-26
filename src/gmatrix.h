@@ -50,12 +50,16 @@ typedef struct gmatrix {
    int model;
    short encoded;
    int nencb;
+   short binformat;
+   void (*decode)(unsigned char *out,
+	 const unsigned char *in,
+	 const unsigned int n);
 } gmatrix;
 
 int sample_init(sample *, int, short);
 void sample_free(sample *);
 int gmatrix_init(gmatrix *, char *, int, int, short, char*, short,
-      int, short);
+      int, short, short);
 int gmatrix_reset(gmatrix *);
 void gmatrix_free(gmatrix *);
 int gmatrix_disk_nextcol(gmatrix *, sample *);

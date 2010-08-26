@@ -1,10 +1,11 @@
+
 PLINK="p-link"
 
 DIR_STEM="sim7."
 HAPMAP="$PWD/HapMap/genotypes_chr1_JPT+CHB_r22_nr.b36_fwd_legend.txt.map"
 
 results="results"
-for i in $(seq 31 31);
+for i in $(seq 31 40);
 do
    dir="$DIR_STEM""$i"
    while ! [[ -d "$dir" && -a "$dir/sim.bed" ]];
@@ -20,7 +21,7 @@ do
    pushd "$dir/$results"
    if ! [ -a "plink.assoc.logistic" ];
    then
-      $PLINK --bfile ../sim --logistic
+      eval "$PLINK --bfile ../sim --logistic"
    fi
    popd
 done

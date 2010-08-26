@@ -9,7 +9,7 @@ shopt -s extglob
 
 TMPDIR=.
 
-PLINK="p-link"
+PLINK="~/bin/plink"
 HAPGEN2BIN="~/Code/cd/src/hapgen2bin"
 HAPGEN2PED="~/Code/cd/src/hapgen2ped"
 CBIND="~/Code/cd/src/cbind"
