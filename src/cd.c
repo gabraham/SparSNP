@@ -71,7 +71,7 @@ double get_lambda1max_gmatrix(
       step step_func
       )
 {
-   unsigned int i, j, n = g->n;
+   unsigned int i, j, n = g->n, p1 = g->p + 1;
    double s, zmax = 0, beta_new;
    sample sm;
 
@@ -95,7 +95,7 @@ double get_lambda1max_gmatrix(
    /* find smallest lambda1 that makes all coefficients zero, by
     * finding the largest z, but let the intercept affect lp
     * first because it's not penalised. */
-   for(j = 1 ; j < g->p + 1; j++)
+   for(j = 1 ; j < p1; j++)
    {
       g->nextcol(g, &sm);
       if(!g->active[j])
@@ -148,7 +148,7 @@ double step_regular_linear(sample *s, gmatrix *g,
 	  *restrict y_tmp = g->y;
 
    /* compute gradient */
-   for(i = 0 ; i < n ; i++)
+   for(i = 0 ; i < g-> n ; i++)
       grad += x_tmp[i] * (lp_tmp[i] - y_tmp[i]);
 
    return grad / n;
@@ -208,7 +208,6 @@ int cd_gmatrix(gmatrix *g,
       const double lambda2,
       const double threshold,
       const int verbose,
-      const int *trainf,
       const double trunc)
 {
    const int CONVERGED = 2;

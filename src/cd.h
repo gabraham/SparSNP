@@ -68,7 +68,7 @@ int cd_gmatrix(gmatrix *g,
       step step_func,
       const int maxepochs, const int maxiters,
       const double lambda1, const double lambda2,
-      const double threshold, const int verbose, const int *trainf,
+      const double threshold, const int verbose,
       const double trunc);
 
 double get_lambda1max_gmatrix(gmatrix *g,

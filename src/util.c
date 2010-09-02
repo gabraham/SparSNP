@@ -53,3 +53,20 @@ int writematrixf(double **x, int n, int p, char* file)
    return SUCCESS;
 }
 
+/* Assumes ascii, one value per line */
+int load_beta(double *beta, char *filename, int p)
+{
+   int i = 0;
+   FILE *in = NULL;
+   FOPENTEST(in, filename, "rt");
+
+   while(!feof(in))
+   {
+      if(fscanf(in, "%lf", beta + i) == EOF)
+	 break;
+      i++;
+   } 
+   fclose(in);
+   return SUCCESS;
+}
+

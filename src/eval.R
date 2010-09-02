@@ -1,13 +1,14 @@
 library(ggplot2)
 
 dir <- "~/Software/hapgen_1.3"
-roots <- c("sim7", "sim6")
-nums <- c(10000, 4000)
+roots <- c("sim8", "sim7", "sim6")
+resdirs <- c("./", "/mnt", "/mnt")
+nums <- c(30000, 10000, 4000)
 p <- 185805
 legend <- sprintf(
    "%s/HapMap/genotypes_chr1_JPT+CHB_r22_nr.b36_fwd_legend.txt",
    dir)
-nexpers <- c(30, 50)
+nexpers <- c(20, 30, 50)
 
 runperf <- function(f)
 {
@@ -25,7 +26,7 @@ for(k in seq(along=roots))
    root <- roots[k]
    n <- nums[k]
    nexper <- nexpers[k]
-   exper <- paste(root, ".", 1:nexper, sep="")
+   exper <- paste(resdirs[k], paste(root, ".", 1:nexper, sep=""), sep="/")
    
    # Get indices of causal SNPs
    cat("Getting true SNP loci ... ")
@@ -50,7 +51,7 @@ for(k in seq(along=roots))
    	 path=dir, full.names=TRUE)
       if(length(files) == 0)
          stop("no files found")
-      id <- sapply(strsplit(files, "\\."), function(x) x[4])
+      id <- sapply(strsplit(files, "\\."), tail, n=1)
       files <- files[order(as.numeric(id))]
    
       b.cd <- sapply(files, function(f) {
@@ -102,13 +103,16 @@ for(k in seq(along=roots))
    
    # Both -log10(pval) and STAT yield same AROC/APRC, so take one
    m.pl <- data.frame(t(sapply(res.pl, function(x) x[[1]][,1])))
-   m.pl$df <- 300 # fake DF, to make the point plot nicely
+   # fake DF, to make the point plot nicely
+   pl.df <- 300
+   m.pl$df <- pl.df
    m.pl$Sim <- 1
    m.pl$nsim <- 1
    m.pl$Method <- "logistic"
    
    m.cd$Method <- "lasso"
    
+   # cutoff, don't show the long tail
    m.cd.2 <- m.cd[m.cd$df > 0 & m.cd$df < 256 ,]
    m.comb <- rbind(m.cd.2, m.pl)
    m.comb$Method <- factor(m.comb$Method)
@@ -116,24 +120,20 @@ for(k in seq(along=roots))
    maxdf <- round(max(m.comb$df / 10))
    m.comb$df_bin <- cut(m.comb$df, breaks=(0:maxdf) * 10,
          labels=(1:maxdf - 1) * 10 + 5)
+   l <- levels(m.comb$df_bin)
+   l[length(l)] <- ""
+   levels(m.comb$df_bin) <- l
    
    b <- 2^sort(unique(round(log2(m.comb$df[m.comb$df > 0]))))
-   g <- ggplot(m.comb, aes(x=df_bin, y=APR, shape=Method)) + geom_boxplot() + geom_point()
-   #gg <- lapply(c("APR", "ROC"), function(nm) {
-   #   g <- ggplot(m.comb, aes_string(x="df", y=nm, shape="Method"))
-   #   g <- g + scale_x_log2(labels=b, breaks=b)
-   #   g <- g + stat_smooth(method="loess")
-   #   g <- g + stat_summary(data=subset(m.comb, Method=="logistic"),
-   #         fun.data=mean_cl_normal, geom="pointrange", colour="blue")
-   #   g <- g + stat_summary(data=subset(m.comb, Method=="logistic"),
-   #         fun.data=mean_cl_normal, geom="errorbar", colour="blue")
-   #   g + geom_point(colour="black")
-   #})
+   g <- ggplot(m.comb, aes(x=df_bin, y=APR, shape=Method))
+   g <- g + geom_boxplot(outlier.size=0)
+   g <- g + geom_point(size=3)
+   g <- g + ylim(0, 0.42)
    
-   pdf(sprintf("results_%s.pdf", root), width=11)
+   pdf(sprintf("%s/results_%s.pdf", resdirs[k], root), width=11)
    print(g)
    dev.off()
    
-   save.image(file=sprintf("eval_%s.RData", root))
+   save.image(file=sprintf("%s/eval_%s.RData", resdirs[k], root))
 }
 

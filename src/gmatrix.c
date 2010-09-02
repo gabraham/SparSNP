@@ -29,7 +29,7 @@ void sample_free(sample *s)
 
 int gmatrix_init(gmatrix *g, char *filename, int n, int p, short inmemory,
       char *scalefile, short yformat, int model, short encoded,
-      short binformat)
+      short binformat, int *trainf)
 {
    unsigned int i, j;
 
@@ -60,6 +60,7 @@ int gmatrix_init(gmatrix *g, char *filename, int n, int p, short inmemory,
    g->encbuf = NULL;
    g->decode = &decode;
    g->binformat = binformat;
+   g->trainf = trainf;
 
    if(filename)
       FOPENTEST(g->file, filename, "rb")
@@ -185,6 +186,8 @@ void gmatrix_free(gmatrix *g)
    g->encbuf = NULL;
 }
 
+/* big ugly function
+ */
 int gmatrix_disk_nextcol(gmatrix *g, sample *s)
 {
    int i, l1, l2;
@@ -210,6 +213,7 @@ int gmatrix_disk_nextcol(gmatrix *g, sample *s)
       	       FREADTEST(g->tmp, sizeof(dtype), g->n, g->file);
       	    }
 
+	    /* represent y as 0/1 or -1/1 */
       	    if(g->yformat == YFORMAT01) {
       	       for(i = 0 ; i < g->n ; i++)
       	          g->y[i] = (double)g->tmp[i];
@@ -241,7 +245,7 @@ int gmatrix_disk_nextcol(gmatrix *g, sample *s)
       return SUCCESS;
    }
 
-   /* not intercept, need to copy values */
+   /* this isn't an intercept, we need to copy actual values */
    s->intercept = FALSE;
    if(g->j == 1)
    {
@@ -275,13 +279,12 @@ int gmatrix_disk_nextcol(gmatrix *g, sample *s)
       return SUCCESS;
    }
 
-   if(g->encoded)
-   {
+   if(g->encoded) {
       FREADTEST(g->encbuf, sizeof(dtype), g->nencb, g->file);
       g->decode(g->tmp, g->encbuf, g->nencb);
-   }
-   else
+   } else {
       FREADTEST(g->tmp, sizeof(dtype), g->n, g->file);
+   }
 
    for(i = 0 ; i < g->n ; i++)
    {

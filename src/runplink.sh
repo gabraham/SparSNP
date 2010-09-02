@@ -1,11 +1,11 @@
 
-PLINK="p-link"
+PLINK="~/bin/plink"
 
-DIR_STEM="sim7."
+DIR_STEM="sim8."
 HAPMAP="$PWD/HapMap/genotypes_chr1_JPT+CHB_r22_nr.b36_fwd_legend.txt.map"
 
 results="results"
-for i in $(seq 31 40);
+for((i=1;i<=20;i++));
 do
    dir="$DIR_STEM""$i"
    while ! [[ -d "$dir" && -a "$dir/sim.bed" ]];
