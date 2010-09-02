@@ -35,7 +35,7 @@ int opt_defaults(Opt *opt)
    opt->nlambda1 = 100;
    opt->l1minratio = 1e-2;
    opt->maxepochs = 100;
-   opt->maxiters = 1000;
+   opt->maxiters = 20;
    opt->lambda1 = -1;
    opt->lambda2 = 0;
    opt->threshold = 1e-4;
@@ -271,9 +271,6 @@ only using the first one\n");
 
    CALLOCTEST2(opt->lambda1path, opt->nlambda1, sizeof(double))
    
-   if(opt->cv > 1)
-      cvsplit(opt);
-
    return SUCCESS; 
 }
 

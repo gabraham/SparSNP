@@ -141,14 +141,14 @@ double step_generic(sample *s, gmatrix *g,
 double step_regular_linear(sample *s, gmatrix *g,
       phi1 phi1_func, phi2 phi2_func)
 {
-   unsigned int i, n = g->n;
+   int i, n = g->n;
    double grad = 0;
    double *restrict x_tmp = s->x, 
           *restrict lp_tmp = g->lp,
 	  *restrict y_tmp = g->y;
 
    /* compute gradient */
-   for(i = 0 ; i < g-> n ; i++)
+   for(i = n - 1 ; i >= 0 ; --i)
       grad += x_tmp[i] * (lp_tmp[i] - y_tmp[i]);
 
    return grad / n;
@@ -199,8 +199,6 @@ double step_regular_sqrhinge(sample *s, gmatrix *g,
 int cd_gmatrix(gmatrix *g,
       phi1 phi1_func,
       phi2 phi2_func,
-      loss_pt loss_pt_func,    /* loss for one sample */
-      inv inv_func,
       step step_func,
       const int maxepochs,
       const int maxiters,

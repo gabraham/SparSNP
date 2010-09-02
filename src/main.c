@@ -4,26 +4,6 @@
 #include "util.h"
 
 /*
- * Split data into training and test set
- */
-int cvsplit(Opt *opt)
-{
-   int i;
-
-   MALLOCTEST2(opt->trainf, sizeof(int) * opt->n)
-
-   for(i = 0 ; i < opt->n ; i++)
-   {
-      if(opt->cv > 1)
-	 opt->trainf[i] = drand48() >= (1.0 / opt->cv);
-      else
-	 opt->trainf[i] = TRUE;
-      opt->ntrain += opt->trainf[i];
-   }
-   return writevectorl(opt->subsetfile, opt->trainf, opt->n);
-}
-
-/*
  * Creates a vector of lambda1 penalties
  */
 int make_lambda1path(Opt *opt, gmatrix *g)
@@ -86,7 +66,7 @@ int run_train(Opt *opt, gmatrix *g)
        * including the intercept */
       ret = cd_gmatrix(
 	    g, opt->phi1_func, opt->phi2_func,
-	    opt->loss_pt_func, opt->inv_func, opt->step_func,
+	    opt->step_func,
 	    opt->maxepochs, opt->maxiters,
 	    opt->lambda1path[i], opt->lambda2,
 	    opt->threshold, opt->verbose, opt->trunc);

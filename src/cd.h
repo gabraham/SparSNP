@@ -63,8 +63,6 @@ typedef struct Opt {
 int cd_gmatrix(gmatrix *g,
       phi1 phi1_func,
       phi2 phi2_func,
-      loss_pt loss_pt_func,    /* loss for one sample */
-      inv inv_func,
       step step_func,
       const int maxepochs, const int maxiters,
       const double lambda1, const double lambda2,

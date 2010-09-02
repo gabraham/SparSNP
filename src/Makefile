@@ -6,10 +6,14 @@
 # Allow large-file seeking with fseeko
 LONG_BIT = $(shell getconf LONG_BIT)
 
-CCFLAGS = -std=gnu99 -Wall -ggdb3 -O2 \
-	  -ftree-vectorize -fno-omit-frame-pointer \
+CCFLAGS = -std=gnu99 -Wall -ggdb3 \
+	  -O2 \
+	  -ftree-vectorize \
+	  -fno-omit-frame-pointer \
 	  -funroll-loops -Winline \
-	  -ffast-math -fstrict-aliasing \
+	  -ffast-math \
+	  -Wextra \
+	  -fstrict-aliasing \
 	  -D_FILE_OFFSET_BITS=$(LONG_BIT)
 
 targets = cd scale transpose hapgen2bin hapgen2ped cbind
