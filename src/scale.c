@@ -11,7 +11,7 @@
  */
 int scale(gmatrix *g)
 {
-   unsigned int i, j, p1 = g->p + 1;
+   int i, j, p1 = g->p + 1;
    sample sm;
    double *tmp = NULL, delta;
 
@@ -54,7 +54,7 @@ int scale(gmatrix *g)
 /* unscales the vector of coefficients */
 void unscale_coef(gmatrix *g)
 {
-   unsigned int j, p = g-> p + 1;
+   int j, p = g-> p + 1;
 
    g->beta[0] = 1.0;
 

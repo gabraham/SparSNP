@@ -13,9 +13,9 @@
  * n: length of in
  *
  */
-void encode(unsigned char *out, const unsigned char *in, const unsigned int n)
+void encode(unsigned char *out, const unsigned char *in, const int n)
 {
-   unsigned int i, j, k = 0;
+   int i, j, k = 0;
 
    for(i = 0 ; i < n ; i += PACK_DENSITY)
    {  
@@ -32,9 +32,9 @@ void encode(unsigned char *out, const unsigned char *in, const unsigned int n)
  *
  * out must be a pointer of length sizeof(char) * n * PACK_DENSITY
  */
-void decode(unsigned char *out, const unsigned char *in, const unsigned int n)
+void decode(unsigned char *out, const unsigned char *in, const int n)
 {
-   unsigned int i, j;
+   int i, j;
    unsigned char val, tmp;
 
    /* 3 is 11 in binary, we need a 2 bit mask for each of the 4 positions */
@@ -69,9 +69,9 @@ void decode(unsigned char *out, const unsigned char *in, const unsigned int n)
  * it as '2'.
  *
  */
-void decode_plink(unsigned char *out, const unsigned char *in, const unsigned int n)
+void decode_plink(unsigned char *out, const unsigned char *in, const int n)
 {
-   unsigned int i, j;
+   int i, j;
    unsigned char val, tmp;
 
    /* 3 is 11 in binary, we need a 2 bit mask for each of the 4 positions */

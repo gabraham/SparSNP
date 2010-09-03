@@ -22,10 +22,10 @@ double zero(const double x, const double thresh)
 }
 
 /* update linear predictor and clip it if it's too large */
-void updatelp(gmatrix *g, const double beta_new, const unsigned int j,
+void updatelp(gmatrix *g, const double beta_new, const int j,
       const double *restrict x)
 {
-   unsigned int i, n = g->n;
+   int i, n = g->n;
    const double beta = g->beta[j];
    double *restrict lp_invlogit = g->lp_invlogit,
 	  *restrict lp = g->lp,
@@ -71,7 +71,7 @@ double get_lambda1max_gmatrix(
       step step_func
       )
 {
-   unsigned int i, j, n = g->n, p1 = g->p + 1;
+   int i, j, n = g->n, p1 = g->p + 1;
    double s, zmax = 0, beta_new;
    sample sm;
 
@@ -114,7 +114,7 @@ double get_lambda1max_gmatrix(
 double step_generic(sample *s, gmatrix *g,
       phi1 phi1_func, phi2 phi2_func)
 {
-   unsigned int i, n = g->n;
+   int i, n = g->n;
    double lphi1;
    double grad = 0, d2 = 0;
    double *restrict x_tmp = s->x,
@@ -157,7 +157,7 @@ double step_regular_linear(sample *s, gmatrix *g,
 double step_regular_logistic(sample *s, gmatrix *g,
       phi1 phi1_func, phi2 phi2_func)
 {
-   unsigned int i, n = g->n;
+   int i, n = g->n;
    double grad = 0, d2 = 0;
    double *restrict y_tmp = g->y,
 	  *restrict lp_invlogit_tmp = g->lp_invlogit,
@@ -182,7 +182,7 @@ double step_regular_logistic(sample *s, gmatrix *g,
 double step_regular_sqrhinge(sample *s, gmatrix *g,
       phi1 phi1_func, phi2 phi2_func)
 {
-   unsigned int i, n = g->n;
+   int i, n = g->n;
    double grad = 0;
    const double *restrict x_tmp = s->x,
 	        *restrict y_tmp = g->y,
@@ -209,7 +209,7 @@ int cd_gmatrix(gmatrix *g,
       const double trunc)
 {
    const int CONVERGED = 2;
-   unsigned int j, numiter,
+   int j, numiter,
        epoch = 1, numconverged = 0,
        allconverged = 0, zeros = 0;
    short *converged = NULL;

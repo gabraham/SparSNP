@@ -3,11 +3,11 @@
 #include "cd.h"
 #include "coder.h"
 
-int transpose(char *filename_in, char *filename_out, const unsigned int n,
-   const unsigned int p, const unsigned int bufsize)
+int transpose(char *filename_in, char *filename_out, const int n,
+   const int p, const unsigned int bufsize)
 {
-   unsigned long i, j = 0, k,
-	         bufs = 0, arrlen;
+   long i, j = 0, bufs = 0;
+   unsigned long k, arrlen;
    FILE *in = NULL,
         *out = NULL;
    dtype **buf = NULL,
@@ -90,7 +90,7 @@ int main(int argc, char *argv[])
 
    /* bufsize is measured in number of variables, so it's size
     * is sizeof(dtype) * bufsize * n bytes*/
-   unsigned int bufsize = 0;
+   int bufsize = 0;
 
    MALLOCTEST(filename_in, sizeof(char) * MAX_STR_LEN)
    MALLOCTEST(filename_out, sizeof(char) * MAX_STR_LEN)

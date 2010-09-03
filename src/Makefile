@@ -12,7 +12,6 @@ CCFLAGS = -std=gnu99 -Wall -ggdb3 \
 	  -fno-omit-frame-pointer \
 	  -funroll-loops -Winline \
 	  -ffast-math \
-	  -Wextra \
 	  -fstrict-aliasing \
 	  -D_FILE_OFFSET_BITS=$(LONG_BIT)
 

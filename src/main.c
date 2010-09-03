@@ -117,7 +117,7 @@ int run_train(Opt *opt, gmatrix *g)
 int run_predict_beta(gmatrix *g, predict predict_func,
       char* predict_file)
 {
-   unsigned int i, j;
+   int i, j;
    sample sm;
    double *yhat;
    double *restrict lp = g->lp;

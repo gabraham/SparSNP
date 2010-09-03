@@ -53,7 +53,7 @@ typedef struct gmatrix {
    short binformat;
    void (*decode)(unsigned char *out,
 	 const unsigned char *in,
-	 const unsigned int n);
+	 const int n);
    int *trainf;
 } gmatrix;
 

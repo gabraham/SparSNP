@@ -10,14 +10,14 @@
  * - after the final space there is a new line
  */
 int hapgen2ped(char *x_filename_in, char *y_filename_in, char *filename_out,
-   const unsigned int n, const unsigned int p, const unsigned int bufsize)
+   const int n, const int p, const int bufsize)
 {
-   unsigned int i, j, k, m, rem, bufctr;
+   int i, j, k, m, rem, bufctr;
    FILE *x_in = NULL, *y_in = NULL, *out = NULL;
    char **buf_in = NULL,
         **buf_out = NULL,
         **buf_y = NULL;
-   const unsigned int p2 = 2 * p + 1;
+   const int p2 = 2 * p + 1;
    const short ASCII_DIFF = 48;
    char const *restrict ptr = NULL;
 
@@ -118,7 +118,7 @@ int main(int argc, char *argv[])
         *y_filename_in = NULL,
 	*filename_out = NULL;
 
-   unsigned int bufsize = 0;
+   int bufsize = 0;
 
    MALLOCTEST(x_filename_in, sizeof(char) * MAX_STR_LEN)
    MALLOCTEST(y_filename_in, sizeof(char) * MAX_STR_LEN)

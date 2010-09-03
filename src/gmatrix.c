@@ -27,11 +27,11 @@ void sample_free(sample *s)
    s->x2 = NULL;
 }
 
-int gmatrix_init(gmatrix *g, char *filename, int n, int p, short inmemory,
-      char *scalefile, short yformat, int model, short encoded,
+int gmatrix_init(gmatrix *g, char *filename, int n, int p,
+      short inmemory,  char *scalefile, short yformat, int model, short encoded,
       short binformat, int *trainf)
 {
-   unsigned int i, j;
+   int i, j;
 
    g->model = model;
    g->filename = filename;

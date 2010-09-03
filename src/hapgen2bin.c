@@ -11,12 +11,12 @@
  * - byte coding: encodes the rows (p+1 bytes)
  */
 int hapgen2bin(char *x_filename_in, char *y_filename_in, char *filename_out,
-   const unsigned int n, const unsigned int p, const unsigned int bufsize,
+   const int n, const int p, const int bufsize,
    const short encodeflag)
 {
-   const unsigned int ASCII_SHIFT = 48;
-   unsigned int i, j, k, nbufs, nbufb,
-	        numencb = (unsigned int)ceil(n / (double)PACK_DENSITY),
+   const int ASCII_SHIFT = 48;
+   int i, j, k, nbufs, nbufb,
+	        numencb = (int)ceil(n / (double)PACK_DENSITY),
 		p21 = 2 * p + 1;
    FILE *in_x = NULL,
 	*in_y = NULL,
@@ -59,7 +59,7 @@ int hapgen2bin(char *x_filename_in, char *y_filename_in, char *filename_out,
    {
       printf("%d of %d", j, p);
       fflush(stdout);
-      nbufb = (unsigned int)fmin(bufsize, p - bufsize * nbufs);
+      nbufb = (int)fmin(bufsize, p - bufsize * nbufs);
       for(i = 0 ; i < n ; i++)
       {
          /* read one block of genotypes, skipping over spaces and EOL */
@@ -106,7 +106,7 @@ int main(int argc, char *argv[])
 
    short encodeflag = FALSE;
 
-   unsigned int bufsize = 0;
+   int bufsize = 0;
 
    MALLOCTEST(x_filename_in, sizeof(char) * MAX_STR_LEN)
    MALLOCTEST(y_filename_in, sizeof(char) * MAX_STR_LEN)
@@ -158,7 +158,7 @@ int main(int argc, char *argv[])
    }
 
    if(bufsize == 0)
-      bufsize = 1024;
+      bufsize = 1;
    else if(bufsize > p)
       bufsize = p;
 

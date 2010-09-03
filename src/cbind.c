@@ -5,11 +5,11 @@
 
 /* Concatenates *text* files by columns 
  */
-int cbind(const unsigned int nfiles, char **filenames_in,
-      const char *filename_out, const unsigned int n,
-      const unsigned int p)
+int cbind(const int nfiles, char **filenames_in,
+      const char *filename_out, const int n,
+      const int p)
 {
-   unsigned int i, j, p2 = 2 * p, p22 = p2 + 2;
+   int i, j, p2 = 2 * p, p22 = p2 + 2;
    FILE **in = NULL, *out = NULL;
    char *buf = NULL;
 
@@ -50,7 +50,7 @@ int cbind(const unsigned int nfiles, char **filenames_in,
 
 int main(int argc, char *argv[])
 {
-   unsigned int i, j, k, n = 0, p = 0, nfiles = 0;
+   int i, j, k, n = 0, p = 0, nfiles = 0;
    char **filenames_in = NULL,
 	 *filename_out = NULL;
 
