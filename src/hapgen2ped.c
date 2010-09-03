@@ -79,7 +79,7 @@ int hapgen2ped(char *x_filename_in, char *y_filename_in, char *filename_out,
       	 }
       }
 	 
-      for(k = 0 ; k < bufsize ; k++)
+      for(k = 0 ; k < rem ; k++)
       {
 	 fprintf(out, "%c %d %c %c %c %c ", constfields[0], i + k + 1,
 	       constfields[1], constfields[2], constfields[3],
@@ -89,8 +89,9 @@ int hapgen2ped(char *x_filename_in, char *y_filename_in, char *filename_out,
 
       i += bufsize;
       bufctr++;
+      printf("\r");
    }
-   printf("\r");
+   printf("\n");
 
    fclose(x_in);
    fclose(y_in);

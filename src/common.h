@@ -43,6 +43,13 @@ typedef DTYPE dtype;
 #define MODE_TRAIN 0
 #define MODE_PREDICT 1
 
+/* format of binary input */
+#define BINFORMAT_BIN 1
+#define BINFORMAT_PLINK 2
+	  
+/* number of byts in plink BED header */
+#define PLINK_HEADER_SIZE 3
+
 #define FMAX(a, b) (a < b ? b : a) 
 #define FMIN(a, b) (a < b ? a : b)
 

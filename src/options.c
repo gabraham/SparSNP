@@ -35,7 +35,7 @@ int opt_defaults(Opt *opt)
    opt->nlambda1 = 100;
    opt->l1minratio = 1e-2;
    opt->maxepochs = 100;
-   opt->maxiters = 1000;
+   opt->maxiters = 20;
    opt->lambda1 = -1;
    opt->lambda2 = 0;
    opt->threshold = 1e-4;
@@ -63,6 +63,7 @@ int opt_defaults(Opt *opt)
    opt->predict_func = NULL;
    opt->predict_file = "predicted.csv";
    opt->encoded = FALSE;
+   opt->binformat = BINFORMAT_BIN;
 
    MALLOCTEST(opt->beta_files, sizeof(char*))
    MALLOCTEST(opt->beta_files[0], sizeof(char) * (strlen(beta_default) + 1))
@@ -236,9 +237,9 @@ int opt_parse(int argc, char* argv[], Opt* opt)
 	    i = j - 1;
       }
       else if(strcmp2(argv[i], "-encoded"))
-      {
 	 opt->encoded = TRUE;
-      }
+      else if(strcmp2(argv[i], "-plink"))
+	 opt->binformat = BINFORMAT_PLINK;
    }
 
 
@@ -249,7 +250,7 @@ int opt_parse(int argc, char* argv[], Opt* opt)
 -f <filename> -n <#samples> -p \
 <#variables> | -betafiles <beta filename/s> -pred <pred filename> \
 -maxepochs <maxepochs> -maxiters <maxiters> -l1 <lambda1> [-encoded] \
--l2 <lambda2> -thresh <threshold> \
+[-plink] -l2 <lambda2> -thresh <threshold> \
 -pred <prediction file> -cv <cvfolds> -seed <seed> -v -vv\n");
       return FAILURE;
    }
@@ -270,9 +271,6 @@ only using the first one\n");
 
    CALLOCTEST2(opt->lambda1path, opt->nlambda1, sizeof(double))
    
-   if(opt->cv > 1)
-      cvsplit(opt);
-
    return SUCCESS; 
 }
 

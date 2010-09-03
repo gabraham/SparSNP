@@ -11,12 +11,12 @@ int convergetest(double a, double b, double threshold)
    return (fabs(a - b) / (fabs(a) + fabs(b))) < threshold;
 }
 
-inline double clip(const double x, const double min, const double max)
+double clip(const double x, const double min, const double max)
 {
    return (x > max) ? max : ((x < min) ? min : x);
 }
 
-inline double zero(const double x, const double thresh)
+double zero(const double x, const double thresh)
 {
    return (fabs(x) < thresh) ? 0 : x;
 }
@@ -71,7 +71,7 @@ double get_lambda1max_gmatrix(
       step step_func
       )
 {
-   unsigned int i, j, n = g->n;
+   unsigned int i, j, n = g->n, p1 = g->p + 1;
    double s, zmax = 0, beta_new;
    sample sm;
 
@@ -95,7 +95,7 @@ double get_lambda1max_gmatrix(
    /* find smallest lambda1 that makes all coefficients zero, by
     * finding the largest z, but let the intercept affect lp
     * first because it's not penalised. */
-   for(j = 1 ; j < g->p + 1; j++)
+   for(j = 1 ; j < p1; j++)
    {
       g->nextcol(g, &sm);
       if(!g->active[j])
@@ -141,14 +141,14 @@ double step_generic(sample *s, gmatrix *g,
 double step_regular_linear(sample *s, gmatrix *g,
       phi1 phi1_func, phi2 phi2_func)
 {
-   unsigned int i, n = g->n;
+   int i, n = g->n;
    double grad = 0;
    double *restrict x_tmp = s->x, 
           *restrict lp_tmp = g->lp,
 	  *restrict y_tmp = g->y;
 
    /* compute gradient */
-   for(i = 0 ; i < n ; i++)
+   for(i = n - 1 ; i >= 0 ; --i)
       grad += x_tmp[i] * (lp_tmp[i] - y_tmp[i]);
 
    return grad / n;
@@ -199,8 +199,6 @@ double step_regular_sqrhinge(sample *s, gmatrix *g,
 int cd_gmatrix(gmatrix *g,
       phi1 phi1_func,
       phi2 phi2_func,
-      loss_pt loss_pt_func,    /* loss for one sample */
-      inv inv_func,
       step step_func,
       const int maxepochs,
       const int maxiters,
@@ -208,7 +206,6 @@ int cd_gmatrix(gmatrix *g,
       const double lambda2,
       const double threshold,
       const int verbose,
-      const int *trainf,
       const double trunc)
 {
    const int CONVERGED = 2;
@@ -216,10 +213,9 @@ int cd_gmatrix(gmatrix *g,
        epoch = 1, numconverged = 0,
        allconverged = 0, zeros = 0;
    short *converged = NULL;
-   double s, beta_new,
-	  truncl = log2((1 - trunc) / trunc),
-	  l2recip = 1 / (1 + lambda2);
-   double *restrict x;
+   double s, beta_new;
+   const double truncl = log2((1 - trunc) / trunc),
+	        l2recip = 1 / (1 + lambda2);
    sample sm;
 
    if(!sample_init(&sm, g->n, g->inmemory))
@@ -242,7 +238,6 @@ int cd_gmatrix(gmatrix *g,
 	    continue;
 	 }
 
-	 x = sm.x;
 	 numiter = 0;
 
 	 while(!converged[j] && numiter <= maxiters)
@@ -267,7 +262,7 @@ int cd_gmatrix(gmatrix *g,
 	    beta_new = clip(beta_new, -truncl, truncl);
 	    beta_new = zero(beta_new, ZERO_THRESH);
 
-	    updatelp(g, beta_new, j, x);
+	    updatelp(g, beta_new, j, sm.x);
 	    g->beta[j] = beta_new;
 	 }
 	 if(numiter > maxiters)
@@ -289,7 +284,7 @@ reached for variable: %d\n", maxiters, j);
 	 }
       }
 
-      if(verbose == 1)
+      if(verbose)
 	 printf("Epoch %d  converged: %d zeros: %d  non-zeros: %d\n",
 	       epoch, numconverged, zeros, g->p - zeros);
 

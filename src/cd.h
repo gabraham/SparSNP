@@ -57,17 +57,16 @@ typedef struct Opt {
    int n_beta_files;
    char *predict_file;
    short encoded;
+   short binformat;
 } Opt;
 
 int cd_gmatrix(gmatrix *g,
       phi1 phi1_func,
       phi2 phi2_func,
-      loss_pt loss_pt_func,    /* loss for one sample */
-      inv inv_func,
       step step_func,
       const int maxepochs, const int maxiters,
       const double lambda1, const double lambda2,
-      const double threshold, const int verbose, const int *trainf,
+      const double threshold, const int verbose,
       const double trunc);
 
 double get_lambda1max_gmatrix(gmatrix *g,
@@ -95,4 +94,8 @@ double step_regular_logistic(sample *s, gmatrix *g,
 
 double step_regular_sqrhinge(sample *s, gmatrix *g,
       phi1 phi1_func, phi2 phi2_func);
+
+double clip(const double x, const double min, const double max);
+double zero(const double x, const double thresh);
+
 
