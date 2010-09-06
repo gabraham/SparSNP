@@ -141,7 +141,8 @@ int main(int argc, char* argv[])
    }
 
    if((doscale && (filename_bin == NULL || n == 0 || p == 0))
-      || (filename_scale == NULL || p == 0 || filename_beta == NULL))
+      || (!doscale && 
+	    (filename_scale == NULL || p == 0 || filename_beta == NULL)))
    {
       printf("scale: [-unscale] -bin <filein> [-scale <fileout>] [-betafile] \
 [-encoded] [-plink] -n #n -p #p\n");
