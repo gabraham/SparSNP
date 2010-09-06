@@ -161,7 +161,7 @@ int run_predict(gmatrix *g, predict predict_func, char **beta_files,
       if(!load_beta(g->beta, beta_files[i], g->p + 1))
 	 return FAILURE;
 
-      snprintf(tmp, MAX_STR_LEN, "%s_pred.%d", beta_files[i], i);
+      snprintf(tmp, MAX_STR_LEN, "%s.pred", beta_files[i]);
       if(!run_predict_beta(g, predict_func, tmp))
 	 return FAILURE;
    }
