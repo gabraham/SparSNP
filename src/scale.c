@@ -89,11 +89,12 @@ int readscale(char* filename, double *mean, double *sd, int p)
 
 int main(int argc, char* argv[])
 {
-   int i, n = 0, p = 0, len;
+   int i, n = 0, p = 0, len, nfolds = 1;
    char *filename_bin = NULL,
         *filename_scale = "scale.bin",
 	*filename_beta = NULL,
-	*filename_beta_out = NULL;
+	*filename_beta_out = NULL,
+	*filename_folds_ind = NULL;
    short doscale = TRUE,
 	 inmemory = FALSE,
 	 encoded = FALSE,
@@ -138,6 +139,16 @@ int main(int argc, char* argv[])
 	 encoded = TRUE;
       else if(strcmp2(argv[i], "-plink"))
 	 binformat = BINFORMAT_PLINK;
+      else if(strcmp2(argv[i], "-ind"))
+      {
+	 i++;
+	 filename_folds_ind = argv[i];
+      }
+      else if(strcmp2(argv[i], "-nfolds"))
+      {
+	 i++;
+	 nfolds = atoi(argv[i]);
+      }
    }
 
    if((doscale && (filename_bin == NULL || n == 0 || p == 0))
@@ -145,14 +156,15 @@ int main(int argc, char* argv[])
 	    (filename_scale == NULL || p == 0 || filename_beta == NULL)))
    {
       printf("scale: [-unscale] -bin <filein> [-scale <fileout>] [-betafile] \
-[-encoded] [-plink] -n #n -p #p\n");
+[-encoded] [-plink] -n #n -p #p [-ind <folds ind file>] [-nfolds <#cvfolds>]\n");
       return EXIT_FAILURE;
    }
 
    if(doscale)
    {
       if(!gmatrix_init(&g, filename_bin, n, p,
-	    inmemory, NULL, YFORMAT01, MODE_TRAIN, encoded, binformat, NULL))
+	    inmemory, NULL, YFORMAT01, MODE_TRAIN, encoded, binformat,
+	    filename_folds_ind, nfolds))
 	 return EXIT_FAILURE;
 
       if(!scale(&g))

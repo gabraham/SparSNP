@@ -41,7 +41,7 @@ typedef struct Opt {
    double lambda1max;
    double lambda1min;
    int verbose;
-   int cv;
+   int nfolds;
    long seed;
    int nzmax;
    int ntrain;
@@ -58,6 +58,7 @@ typedef struct Opt {
    char *predict_file;
    short encoded;
    short binformat;
+   char *folds_ind_file;
 } Opt;
 
 int cd_gmatrix(gmatrix *g,

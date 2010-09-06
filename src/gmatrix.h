@@ -28,6 +28,10 @@ typedef struct gmatrix {
    double *y;
    double **x;
    int n;
+   int *ntrain;
+   int *ntest;
+   double *ntrainrecip;
+   double *ntestrecip;
    int p;
    int i;
    int j;
@@ -54,13 +58,16 @@ typedef struct gmatrix {
    void (*decode)(unsigned char *out,
 	 const unsigned char *in,
 	 const int n);
-   int *trainf;
+   char *folds_ind_file;
+   int nfolds;
+   int *folds;
+   int fold;
 } gmatrix;
 
 int sample_init(sample *, int, short);
 void sample_free(sample *);
 int gmatrix_init(gmatrix *, char *, int, int, short, char*, short,
-      int, short, short, int*);
+      int, short, short, char *folds_ind_file, int nfolds);
 int gmatrix_reset(gmatrix *);
 void gmatrix_free(gmatrix *);
 int gmatrix_disk_nextcol(gmatrix *, sample *);
@@ -69,4 +76,7 @@ int gmatrix_disk_nextcol2(gmatrix *, sample *);
 int gmatrix_load(gmatrix *g);
 int gmatrix_disk_skipcol(gmatrix *g);
 int gmatrix_read_scaling(gmatrix *g, char *file_scale);
+void count_fold_samples(int *ntrain, int *ntest, double *ntrainrecip,
+      double *ntestrecip, int *folds, int nfolds, int n);
+int gmatrix_setup_folds(gmatrix *g);
 

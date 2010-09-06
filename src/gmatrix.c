@@ -3,6 +3,7 @@
 
 #include "gmatrix.h"
 #include "coder.h"
+#include "ind.h"
 
 int sample_init(sample *s, int n, short inmemory)
 {
@@ -28,8 +29,8 @@ void sample_free(sample *s)
 }
 
 int gmatrix_init(gmatrix *g, char *filename, int n, int p,
-      short inmemory,  char *scalefile, short yformat, int model, short encoded,
-      short binformat, int *trainf)
+      short inmemory,  char *scalefile, short yformat, int model,
+      short encoded, short binformat, char *folds_ind_file, int nfolds)
 {
    int i, j;
 
@@ -60,11 +61,21 @@ int gmatrix_init(gmatrix *g, char *filename, int n, int p,
    g->encbuf = NULL;
    g->decode = &decode;
    g->binformat = binformat;
-   g->trainf = trainf;
+   g->folds_ind_file = folds_ind_file;
+   g->nfolds = nfolds;
+   g->folds = NULL;
+   g->fold = 0; 
+   g->ntrain = NULL;
+   g->ntest = NULL;
+   g->ntrainrecip = NULL;
+   g->ntestrecip = NULL;
 
    if(filename)
-      FOPENTEST(g->file, filename, "rb")
+      FOPENTEST(g->file, filename, "rb");
 
+   if(!gmatrix_setup_folds(g))
+      return FAILURE;
+  
    MALLOCTEST(g->intercept, sizeof(double) * g->n);
    for(i = 0 ; i < n ; i++)
       g->intercept[i] = 1.0;
@@ -92,19 +103,44 @@ int gmatrix_init(gmatrix *g, char *filename, int n, int p,
    if(scalefile && !gmatrix_read_scaling(g, scalefile))
       return FAILURE;
 
-   CALLOCTEST(g->beta, g->p + 1, sizeof(double))
-   
-   CALLOCTEST(g->lp, g->n, sizeof(double))
+   CALLOCTEST(g->beta, g->p + 1, sizeof(double));
+   CALLOCTEST(g->lp, g->n, sizeof(double));
+
    if(g->model == MODEL_LOGISTIC)
    {
-      CALLOCTEST(g->lp_invlogit, g->n, sizeof(double))
+      CALLOCTEST(g->lp_invlogit, g->n, sizeof(double));
    }
    else if(g->model == MODEL_SQRHINGE)
    {
-      CALLOCTEST(g->ylp, g->n, sizeof(double))
-      CALLOCTEST(g->ylp_neg, g->n, sizeof(double))
+      CALLOCTEST(g->ylp, g->n, sizeof(double));
+      CALLOCTEST(g->ylp_neg, g->n, sizeof(double));
    }
 
+   return SUCCESS;
+}
+
+int gmatrix_setup_folds(gmatrix *g)
+{
+   MALLOCTEST(g->folds, sizeof(int) * g->n * g->nfolds);
+   if(g->folds_ind_file && g->nfolds > 1 && 
+	 !read_ind(g->folds_ind_file, g->folds, g->n, g->nfolds))
+      return FAILURE;
+
+   MALLOCTEST(g->ntrain, sizeof(int) * g->nfolds);
+   MALLOCTEST(g->ntest, sizeof(int) * g->nfolds);
+   MALLOCTEST(g->ntrainrecip, sizeof(double) * g->nfolds);
+   MALLOCTEST(g->ntestrecip, sizeof(double) * g->nfolds);
+   
+   if(g->folds_ind_file && g->nfolds > 1)
+      count_fold_samples(g->ntrain, g->ntest, g->ntrainrecip, g->ntestrecip,
+	    g->folds, g->nfolds, g->n);
+   else
+   {
+      g->ntrain[0] = g->n;
+      g->ntest[0] = 0;
+      g->ntrainrecip[0] = 1.0 / g->n;
+      g->ntestrecip[0] = 0;
+   }
    return SUCCESS;
 }
 
@@ -184,6 +220,18 @@ void gmatrix_free(gmatrix *g)
    if(g->encbuf)
       free(g->encbuf);
    g->encbuf = NULL;
+
+   if(g->folds)
+      free(g->folds);
+   g->folds = NULL;
+
+   if(g->ntrain)
+      free(g->ntrain);
+   g->ntrain = NULL;
+
+   if(g->ntest)
+      free(g->ntest);
+   g->ntest = NULL;
 }
 
 /* big ugly function
@@ -371,18 +419,18 @@ int gmatrix_reset(gmatrix *g)
  */
 int gmatrix_read_scaling(gmatrix *g, char *file_scale)
 {
-   int j, k, l1, l2;
+   int j, k, l1, l2, p1 = g->p + 1;
    FILE *in;
 
-   CALLOCTEST(g->lookup, NUM_X_LEVELS * (g->p + 1), sizeof(double))
-   CALLOCTEST(g->lookup2, NUM_X_LEVELS * (g->p + 1), sizeof(double))
-   MALLOCTEST(g->mean, sizeof(double) * (g->p + 1))
-   MALLOCTEST(g->sd, sizeof(double) * (g->p + 1))
+   CALLOCTEST(g->lookup, NUM_X_LEVELS * p1, sizeof(double));
+   CALLOCTEST(g->lookup2, NUM_X_LEVELS * p1, sizeof(double));
+   MALLOCTEST(g->mean, sizeof(double) * p1);
+   MALLOCTEST(g->sd, sizeof(double) * p1);
 
    FOPENTEST(in, file_scale, "rb")
 
-   FREADTEST(g->mean, sizeof(double), g->p + 1, in);
-   FREADTEST(g->sd, sizeof(double), g->p + 1, in);
+   FREADTEST(g->mean, sizeof(double), p1, in);
+   FREADTEST(g->sd, sizeof(double), p1, in);
 
    /* intercept */
    for(k = 0 ; k < NUM_X_LEVELS ; k++)
@@ -393,7 +441,7 @@ int gmatrix_read_scaling(gmatrix *g, char *file_scale)
    
    g->active[0] = TRUE;
 
-   for(j = 1 ; j < g->p + 1; j++)
+   for(j = 1 ; j < p1 ; j++)
    {
       if((g->active[j] = (g->sd[j] != 0)))
       {
@@ -410,5 +458,26 @@ int gmatrix_read_scaling(gmatrix *g, char *file_scale)
    fclose(in);
 
    return SUCCESS;
+}
+
+/* number of training and test samples per fold */
+void count_fold_samples(int *ntrain, int *ntest,
+      double *ntrainrecip, double *ntestrecip, int *folds, int nfolds, int n)
+{
+   int i, j;
+
+   for(i = 0 ; i < nfolds ; i++)
+   {
+      ntrain[i] = 0;
+      for(j = 0 ; j < n ; j++)
+	 ntrain[i] += (folds[n * i + j] > 0);
+      ntest[i] = n - ntrain[i];
+      ntrainrecip[i] = 0;
+      if(ntrain[i] > 0)
+	 ntrainrecip[i] = 1.0 / ntrain[i];
+      ntestrecip[i] = 0;
+      if(ntest[i] > 0)
+	 ntestrecip[i] = 1.0 / ntest[i];
+   }
 }
 

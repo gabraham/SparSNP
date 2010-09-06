@@ -11,12 +11,6 @@ void opt_free(Opt *opt)
       opt->lambda1path = NULL;
    }
 
-   if(opt->trainf)
-   {
-      free(opt->trainf);
-      opt->trainf = NULL;
-   }
-
    if(opt->beta_files)
    {
       for(i = 0 ; i < opt->n_beta_files ; i++)
@@ -49,10 +43,10 @@ int opt_defaults(Opt *opt)
    opt->lambda1path = NULL;
    opt->verbose = FALSE;
    opt->lambda1max = opt->lambda1min = 1;
-   opt->cv = 1;
+   opt->nfolds = 1;
+   opt->folds_ind_file = NULL;
    opt->seed = time(NULL);
    opt->nzmax = 0;
-   opt->trainf = NULL;
    opt->ntrain = opt->n;
    opt->subsetfile = "subset.csv";
    opt->lambda1pathfile = "lambda1path.csv";
@@ -65,8 +59,8 @@ int opt_defaults(Opt *opt)
    opt->encoded = FALSE;
    opt->binformat = BINFORMAT_BIN;
 
-   MALLOCTEST(opt->beta_files, sizeof(char*))
-   MALLOCTEST(opt->beta_files[0], sizeof(char) * (strlen(beta_default) + 1))
+   MALLOCTEST(opt->beta_files, sizeof(char*));
+   MALLOCTEST(opt->beta_files[0], sizeof(char) * (strlen(beta_default) + 1));
    strcpy(opt->beta_files[0], beta_default);
    opt->n_beta_files = 1;
 
@@ -185,11 +179,11 @@ int opt_parse(int argc, char* argv[], Opt* opt)
 	 i++;
 	 opt->scalefile = argv[i];
       }
-      else if(strcmp2(argv[i], "-cv"))
+      /*else if(strcmp2(argv[i], "-cv"))
       {
 	 i++;
 	 opt->cv = atoi(argv[i]);
-      }
+      }*/
       else if(strcmp2(argv[i], "-seed"))
       {
 	 i++;
@@ -240,6 +234,11 @@ int opt_parse(int argc, char* argv[], Opt* opt)
 	 opt->encoded = TRUE;
       else if(strcmp2(argv[i], "-plink"))
 	 opt->binformat = BINFORMAT_PLINK;
+      else if(strcmp2(argv[i], "-ind"))
+      {
+	 i++;
+	 opt->folds_ind_file = argv[i];
+      }
    }
 
 
@@ -251,7 +250,7 @@ int opt_parse(int argc, char* argv[], Opt* opt)
 <#variables> | -betafiles <beta filename/s> -pred <pred filename> \
 -maxepochs <maxepochs> -maxiters <maxiters> -l1 <lambda1> [-encoded] \
 [-plink] -l2 <lambda2> -thresh <threshold> \
--pred <prediction file> -cv <cvfolds> -seed <seed> -v -vv\n");
+-pred <prediction file> -cv <nfolds> -seed <seed> -v -vv\n");
       return FAILURE;
    }
    else if(opt->n_beta_files > 1 && opt->mode == MODE_TRAIN)

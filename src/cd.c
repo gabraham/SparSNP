@@ -11,12 +11,12 @@ int convergetest(double a, double b, double threshold)
    return (fabs(a - b) / (fabs(a) + fabs(b))) < threshold;
 }
 
-double clip(const double x, const double min, const double max)
+inline double clip(const double x, const double min, const double max)
 {
    return (x > max) ? max : ((x < min) ? min : x);
 }
 
-double zero(const double x, const double thresh)
+inline double zero(const double x, const double thresh)
 {
    return (fabs(x) < thresh) ? 0 : x;
 }
@@ -25,8 +25,8 @@ double zero(const double x, const double thresh)
 void updatelp(gmatrix *g, const double beta_new, const int j,
       const double *restrict x)
 {
-   int i, n = g->n;
-   const double beta = g->beta[j];
+   int i, n = g->ntrain[g->fold];
+   const double beta_diff = beta_new - g->beta[j];
    double *restrict lp_invlogit = g->lp_invlogit,
 	  *restrict lp = g->lp,
 	  *restrict y = g->y,
@@ -35,24 +35,26 @@ void updatelp(gmatrix *g, const double beta_new, const int j,
 
    if(x)
    {
-      for(i = 0 ; i < n ; i++)
-	 g->lp[i] = clip(g->lp[i] + x[i] * (beta_new - beta), -MAXLP, MAXLP);
+      for(i = n - 1 ; i >= 0 ; --i)
+	 /*g->lp[i] = clip(g->lp[i] + x[i] * (beta_new - beta), -MAXLP,
+	  * MAXLP);*/
+	  g->lp[i] = g->lp[i] + x[i] * beta_diff;
    }
    else /* update from intercept */
    {
-      for(i = 0 ; i < n ; i++)
+      for(i = n - 1 ; i >= 0 ; --i)
 	 lp[i] = beta_new;
    }
 
    /* update functions of linear predictor */
    if(g->model == MODEL_LOGISTIC)
    {
-      for(i = 0 ; i < n ; i++)
+      for(i = n - 1 ; i >= 0 ; --i)
 	 lp_invlogit[i] = 1 / (1 + exp(-lp[i]));
    }
    else if(g->model == MODEL_SQRHINGE)
    {
-      for(i = 0 ; i < n ; i++)
+      for(i = n - 1 ; i >= 0 ; --i)
       {
 	 ylp[i] = y[i] * lp[i] - 1;
 	 ylp_neg[i] = (ylp[i] < 0);
@@ -71,11 +73,13 @@ double get_lambda1max_gmatrix(
       step step_func
       )
 {
-   int i, j, n = g->n, p1 = g->p + 1;
+   int i, j, n = g->ntrain[g->fold], p1 = g->p + 1;
    double s, zmax = 0, beta_new;
    sample sm;
 
-   if(!sample_init(&sm, g->n, g->inmemory))
+   printf("n:%d\n", n);
+
+   if(!sample_init(&sm, n, g->inmemory))
       return FAILURE;
 
    g->nextcol(g, &sm);
@@ -87,10 +91,8 @@ double get_lambda1max_gmatrix(
    for(i = 0 ; i < n ; i++)
       s += g->y[i];
 
-   beta_new = inv_func(s / g->n);
+   beta_new = inv_func(s / n);
    updatelp(g, beta_new, 0, NULL);
-
-   printf("beta[0]: %.10f\n", beta_new);
 
    /* find smallest lambda1 that makes all coefficients zero, by
     * finding the largest z, but let the intercept affect lp
@@ -102,8 +104,7 @@ double get_lambda1max_gmatrix(
 	 continue;
 
       s = fabs(step_func(&sm, g, phi1_func, phi2_func));
-      if(zmax < s)
-	 zmax = s;
+      zmax = (zmax < s) ? s : zmax;
    } 
 
    sample_free(&sm);
@@ -114,7 +115,7 @@ double get_lambda1max_gmatrix(
 double step_generic(sample *s, gmatrix *g,
       phi1 phi1_func, phi2 phi2_func)
 {
-   int i, n = g->n;
+   int i, n = g->ntrain[g->fold];
    double lphi1;
    double grad = 0, d2 = 0;
    double *restrict x_tmp = s->x,
@@ -141,7 +142,7 @@ double step_generic(sample *s, gmatrix *g,
 double step_regular_linear(sample *s, gmatrix *g,
       phi1 phi1_func, phi2 phi2_func)
 {
-   int i, n = g->n;
+   int i, n = g->ntrain[g->fold];
    double grad = 0;
    double *restrict x_tmp = s->x, 
           *restrict lp_tmp = g->lp,
@@ -151,13 +152,13 @@ double step_regular_linear(sample *s, gmatrix *g,
    for(i = n - 1 ; i >= 0 ; --i)
       grad += x_tmp[i] * (lp_tmp[i] - y_tmp[i]);
 
-   return grad / n;
+   return grad * g->ntrainrecip[g->fold];
 }
 
 double step_regular_logistic(sample *s, gmatrix *g,
       phi1 phi1_func, phi2 phi2_func)
 {
-   int i, n = g->n;
+   int i, n = g->ntrain[g->fold];
    double grad = 0, d2 = 0;
    double *restrict y_tmp = g->y,
 	  *restrict lp_invlogit_tmp = g->lp_invlogit,
@@ -165,7 +166,7 @@ double step_regular_logistic(sample *s, gmatrix *g,
 	  *restrict x2_tmp = s->x2;
 
    /* compute gradient */
-   for(i = 0 ; i < n ; i++)
+   for(i = n - 1 ; i >= 0 ; i--)
    {
       grad += x_tmp[i] * (lp_invlogit_tmp[i] - y_tmp[i]);
       d2 += x2_tmp[i] * lp_invlogit_tmp[i] * (1 - lp_invlogit_tmp[i]);
@@ -182,7 +183,7 @@ double step_regular_logistic(sample *s, gmatrix *g,
 double step_regular_sqrhinge(sample *s, gmatrix *g,
       phi1 phi1_func, phi2 phi2_func)
 {
-   int i, n = g->n;
+   int i, n = g->ntrain[g->fold];
    double grad = 0;
    const double *restrict x_tmp = s->x,
 	        *restrict y_tmp = g->y,
@@ -190,9 +191,9 @@ double step_regular_sqrhinge(sample *s, gmatrix *g,
 		*restrict ylp_neg_tmp = g->ylp_neg;
 
    /* compute gradient */
-   for(i = 0 ; i < n ; i++)
+   for(i = n - 1 ; i >= 0 ; i--)
       grad += ylp_neg_tmp[i] * y_tmp[i] * x_tmp[i] * ylp_tmp[i];
-   return grad / n;
+   return grad * g->ntrainrecip[g->fold];
 }
 
 /* coordinate descent */
@@ -209,7 +210,7 @@ int cd_gmatrix(gmatrix *g,
       const double trunc)
 {
    const int CONVERGED = 2;
-   int j, numiter,
+   int j, numiter, n = g->ntrain[g->fold], p1 = g->p + 1,
        epoch = 1, numconverged = 0,
        allconverged = 0, zeros = 0;
    short *converged = NULL;
@@ -218,14 +219,14 @@ int cd_gmatrix(gmatrix *g,
 	        l2recip = 1 / (1 + lambda2);
    sample sm;
 
-   if(!sample_init(&sm, g->n, g->inmemory))
+   if(!sample_init(&sm, n, g->inmemory))
       return FAILURE;
 
-   CALLOCTEST(converged, g->p + 1, sizeof(short));
+   CALLOCTEST(converged, p1, sizeof(short));
 
    while(epoch <= maxepochs)
    {
-      for(j = 0 ; j < g->p + 1; j++)
+      for(j = 0 ; j < p1; j++)
       {
 	 g->nextcol(g, &sm);
 	 if(!g->active[j])
@@ -274,7 +275,7 @@ reached for variable: %d\n", maxiters, j);
       if(epoch > 1)
       {
 	 zeros = 0;
-	 for(j = 1 ; j < g->p + 1 ; j++)
+	 for(j = 1 ; j < p1 ; j++)
 	 {
 	    if(fabs(g->beta[j]) < ZERO_THRESH)
 	    {
@@ -290,7 +291,7 @@ reached for variable: %d\n", maxiters, j);
 
       /* All vars must converge in two consecutive epochs 
        * in order to stop */
-      if(numconverged == g->p + 1)
+      if(numconverged == p1)
       {
 	 if(verbose)
 	    printf("all converged\n");
@@ -305,7 +306,7 @@ reached for variable: %d\n", maxiters, j);
 	 }
 
 	 /* reset convergence for next epoch */
-	 for(j = 0 ; j < g->p + 1 ; j++)
+	 for(j = 0 ; j < p1 ; j++)
 	    converged[j] = FALSE;
 	 numconverged = 0;
       }
