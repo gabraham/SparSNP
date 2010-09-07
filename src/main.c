@@ -48,7 +48,7 @@ int make_lambda1path(Opt *opt, gmatrix *g)
  */
 int run_train(Opt *opt, gmatrix *g)
 {
-   int i, j, ret;
+   int i, ret;
    char tmp[MAX_STR_LEN];
 
    if(opt->verbose)
@@ -57,7 +57,7 @@ int run_train(Opt *opt, gmatrix *g)
    
    /* The maximum lambda1 has already been run by make_lambda1path, and the
     * the linear predictor and its related vectors have already been updated */
-   for(i = 1 ; i < opt->nlambda1 ; i++)
+   for(i = 0 ; i < opt->nlambda1 ; i++)
    {
       if(opt->verbose)
 	 printf("\nFitting with lambda1=%.20f\n", opt->lambda1path[i]);
@@ -84,21 +84,7 @@ int run_train(Opt *opt, gmatrix *g)
 	 return FAILURE;
 
       if(!opt->warmrestarts)
-      {
-	 for(j = 0 ; j < opt->p + 1; j++)
-	    g->beta[j] = 0;
-	 for(j = 0 ; j < opt->n; j++)
-	    g->lp[j] = 0;
-	 if(opt->model == MODEL_LOGISTIC)
-	    for(j = 0 ; j < opt->n; j++)
-	       g->lp_invlogit[j] = 0.5; /* 0.5 = 1 / (1 + exp(-0)) */
-	 else if(opt->model == MODEL_SQRHINGE)
-	    for(j = 0 ; j < opt->n; j++)
-	    {
-	       g->ylp[j] = -1;    /* y * 0 - 1 = -1  */
-	       g->ylp_neg[j] = 1; /* ylp < 0 => true */
-	    }
-      }
+	 zero_model(g);
 
       if(opt->nzmax != 0 && opt->nzmax <= ret - 1)
       {
@@ -109,6 +95,26 @@ int run_train(Opt *opt, gmatrix *g)
    }
 
    return SUCCESS;
+}
+
+/* zero the lp and adjust the lp-functions */
+void zero_model(gmatrix *g)
+{
+   int i, j, n = g->ntrain[g->fold], p1 = g->p + 1;
+
+   for(j = p1 - 1 ; j >= 0 ; --j)
+      g->beta[j] = 0;
+   for(i = n - 1 ; i >= 0 ; --i)
+      g->lp[i] = 0;
+   if(g->model == MODEL_LOGISTIC)
+      for(i = n - 1 ; i >= 0 ; --i)
+	 g->lp_invlogit[i] = 0.5; /* 0.5 = 1 / (1 + exp(-0)) */
+   else if(g->model == MODEL_SQRHINGE)
+      for(i = n - 1 ; j >= 0 ; --i)
+      {
+	 g->ylp[i] = -1;    /* y * 0 - 1 = -1  */
+	 g->ylp_neg[i] = 1; /* ylp < 0 => true */
+      }
 }
 
 /*
@@ -259,6 +265,7 @@ int main(int argc, char* argv[])
    if(opt.mode == MODE_TRAIN && !opt.nofit)
    {
       make_lambda1path(&opt, &g);
+      zero_model(&g);
       gmatrix_reset(&g);
       ret = run_train(&opt, &g);
    }

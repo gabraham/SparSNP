@@ -77,8 +77,6 @@ double get_lambda1max_gmatrix(
    double s, zmax = 0, beta_new;
    sample sm;
 
-   printf("n:%d\n", n);
-
    if(!sample_init(&sm, n, g->inmemory))
       return FAILURE;
 
@@ -93,6 +91,7 @@ double get_lambda1max_gmatrix(
 
    beta_new = inv_func(s / n);
    updatelp(g, beta_new, 0, NULL);
+   printf("intercept: %.10f\n", beta_new);
 
    /* find smallest lambda1 that makes all coefficients zero, by
     * finding the largest z, but let the intercept affect lp
@@ -142,7 +141,8 @@ double step_generic(sample *s, gmatrix *g,
 double step_regular_linear(sample *s, gmatrix *g,
       phi1 phi1_func, phi2 phi2_func)
 {
-   int i, n = g->ntrain[g->fold];
+   /*int i, n = g->ntrain[g->fold];*/
+   int i, n = g->n;
    double grad = 0;
    double *restrict x_tmp = s->x, 
           *restrict lp_tmp = g->lp,
@@ -152,7 +152,8 @@ double step_regular_linear(sample *s, gmatrix *g,
    for(i = n - 1 ; i >= 0 ; --i)
       grad += x_tmp[i] * (lp_tmp[i] - y_tmp[i]);
 
-   return grad * g->ntrainrecip[g->fold];
+/*   return grad * g->ntrainrecip[g->fold];*/
+   return grad / n;
 }
 
 double step_regular_logistic(sample *s, gmatrix *g,
@@ -231,17 +232,17 @@ int cd_gmatrix(gmatrix *g,
 	 g->nextcol(g, &sm);
 	 if(!g->active[j])
 	 {
-	    if(!converged[j])
+/*	    if(!converged[j])
 	    {
 	       converged[j] = TRUE;
 	       numconverged++;
-	    }
+	    }*/
 	    continue;
 	 }
 
 	 numiter = 0;
 
-	 while(!converged[j] && numiter <= maxiters)
+	 while(/*!converged[j] && */numiter <= maxiters)
 	 {
 	    numiter++;
 
@@ -260,8 +261,8 @@ int cd_gmatrix(gmatrix *g,
 	    }
 
 	    /* clip very large coefs to limit divergence */
-	    beta_new = clip(beta_new, -truncl, truncl);
-	    beta_new = zero(beta_new, ZERO_THRESH);
+	    /*beta_new = clip(beta_new, -truncl, truncl);
+	    beta_new = zero(beta_new, ZERO_THRESH);*/
 
 	    updatelp(g, beta_new, j, sm.x);
 	    g->beta[j] = beta_new;
@@ -275,7 +276,7 @@ reached for variable: %d\n", maxiters, j);
       if(epoch > 1)
       {
 	 zeros = 0;
-	 for(j = 1 ; j < p1 ; j++)
+	 for(j = p1 - 1 ; j > 0 ; --j)
 	 {
 	    if(fabs(g->beta[j]) < ZERO_THRESH)
 	    {
@@ -322,7 +323,7 @@ reached for variable: %d\n", maxiters, j);
    free(converged);
    sample_free(&sm);
 
-   if(allconverged == CONVERGED)
+/*   if(allconverged == CONVERGED)*/
       return g->p - zeros + 1;
    return FAILURE;
 }

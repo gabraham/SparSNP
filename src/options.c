@@ -259,6 +259,10 @@ int opt_parse(int argc, char* argv[], Opt* opt)
 only using the first one\n");
    }
 
+   if(!opt->scalefile)
+      printf("warning: not scaling inputs will lead to unstable \
+optimisation\n");
+
    if(opt->verbose)
       printf("Mode: %s\n",
 	    (opt->mode == MODE_TRAIN) ? "train" : "predict");

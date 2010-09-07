@@ -83,6 +83,7 @@ int opt_defaults(Opt *opt);
 int opt_parse(int argc, char* argv[], Opt* opt);
 int make_lambda1path(Opt *opt, gmatrix *g);
 int run(Opt *opt, gmatrix *g);
+void zero_model(gmatrix *g);
 
 double step_generic(sample *s, gmatrix *g,
       phi1 phi1_func, phi2 phi2_func);
