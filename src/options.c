@@ -32,7 +32,7 @@ int opt_defaults(Opt *opt)
    opt->maxiters = 20;
    opt->lambda1 = -1;
    opt->lambda2 = 0;
-   opt->threshold = 1e-4;
+   opt->threshold = 1e-5;
    opt->trunc = 1e-15;
    opt->nzmax = 0;
    opt->n = 0;

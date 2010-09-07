@@ -86,12 +86,12 @@ int run_train(Opt *opt, gmatrix *g)
       if(!opt->warmrestarts)
 	 zero_model(g);
 
-      if(opt->nzmax != 0 && opt->nzmax <= ret - 1)
+  /*    if(opt->nzmax != 0 && opt->nzmax <= ret - 1)
       {
 	 printf("maximum number of non-zero variables reached: %d\n", 
 	       opt->nzmax);
 	 break;
-      }
+      }*/
    }
 
    return SUCCESS;

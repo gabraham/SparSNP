@@ -36,9 +36,7 @@ void updatelp(gmatrix *g, const double beta_new, const int j,
    if(x)
    {
       for(i = n - 1 ; i >= 0 ; --i)
-	 /*g->lp[i] = clip(g->lp[i] + x[i] * (beta_new - beta), -MAXLP,
-	  * MAXLP);*/
-	  g->lp[i] = g->lp[i] + x[i] * beta_diff;
+	 g->lp[i] = clip(g->lp[i] + x[i] * beta_diff, -MAXLP, MAXLP);
    }
    else /* update from intercept */
    {
@@ -167,7 +165,7 @@ double step_regular_logistic(sample *s, gmatrix *g,
 	  *restrict x2_tmp = s->x2;
 
    /* compute gradient */
-   for(i = n - 1 ; i >= 0 ; i--)
+   for(i = n - 1 ; i >= 0 ; --i)
    {
       grad += x_tmp[i] * (lp_invlogit_tmp[i] - y_tmp[i]);
       d2 += x2_tmp[i] * lp_invlogit_tmp[i] * (1 - lp_invlogit_tmp[i]);
@@ -192,7 +190,7 @@ double step_regular_sqrhinge(sample *s, gmatrix *g,
 		*restrict ylp_neg_tmp = g->ylp_neg;
 
    /* compute gradient */
-   for(i = n - 1 ; i >= 0 ; i--)
+   for(i = n - 1 ; i >= 0 ; --i)
       grad += ylp_neg_tmp[i] * y_tmp[i] * x_tmp[i] * ylp_tmp[i];
    return grad * g->ntrainrecip[g->fold];
 }
@@ -210,8 +208,9 @@ int cd_gmatrix(gmatrix *g,
       const int verbose,
       const double trunc)
 {
-   const int CONVERGED = 2;
-   int j, numiter, n = g->ntrain[g->fold], p1 = g->p + 1,
+   const int CONVERGED = 20;
+   const int n = g->ntrain[g->fold], p = g->p, p1 = g->p + 1;
+   int j, numiter,
        epoch = 1, numconverged = 0,
        allconverged = 0, zeros = 0;
    short *converged = NULL;
@@ -232,17 +231,17 @@ int cd_gmatrix(gmatrix *g,
 	 g->nextcol(g, &sm);
 	 if(!g->active[j])
 	 {
-/*	    if(!converged[j])
+	    if(!converged[j])
 	    {
 	       converged[j] = TRUE;
 	       numconverged++;
-	    }*/
+	    }
 	    continue;
 	 }
 
 	 numiter = 0;
 
-	 while(/*!converged[j] && */numiter <= maxiters)
+	 while(!converged[j] && numiter <= maxiters)
 	 {
 	    numiter++;
 
@@ -261,8 +260,8 @@ int cd_gmatrix(gmatrix *g,
 	    }
 
 	    /* clip very large coefs to limit divergence */
-	    /*beta_new = clip(beta_new, -truncl, truncl);
-	    beta_new = zero(beta_new, ZERO_THRESH);*/
+	    beta_new = clip(beta_new, -truncl, truncl);
+	    beta_new = zero(beta_new, ZERO_THRESH);
 
 	    updatelp(g, beta_new, j, sm.x);
 	    g->beta[j] = beta_new;
@@ -270,13 +269,14 @@ int cd_gmatrix(gmatrix *g,
 	 if(numiter > maxiters)
 	    printf("max number of internal iterations (%d) \
 reached for variable: %d\n", maxiters, j);
+
       }
 
       /* count number of zero variables, excluding the intercept */
       if(epoch > 1)
       {
 	 zeros = 0;
-	 for(j = p1 - 1 ; j > 0 ; --j)
+	 for(j = p ; j > 0 ; --j)
 	 {
 	    if(fabs(g->beta[j]) < ZERO_THRESH)
 	    {
@@ -294,9 +294,9 @@ reached for variable: %d\n", maxiters, j);
        * in order to stop */
       if(numconverged == p1)
       {
-	 if(verbose)
-	    printf("all converged\n");
 	 allconverged++;
+	 if(verbose)
+	    printf("all converged: %d\n", allconverged);
 	 
 	 if(allconverged == CONVERGED)
 	 {
@@ -306,8 +306,7 @@ reached for variable: %d\n", maxiters, j);
 	    break;
 	 }
 
-	 /* reset convergence for next epoch */
-	 for(j = 0 ; j < p1 ; j++)
+	 for(j = p ; j >= 0 ; --j)
 	    converged[j] = FALSE;
 	 numconverged = 0;
       }
@@ -323,7 +322,7 @@ reached for variable: %d\n", maxiters, j);
    free(converged);
    sample_free(&sm);
 
-/*   if(allconverged == CONVERGED)*/
+   if(allconverged == CONVERGED)
       return g->p - zeros + 1;
    return FAILURE;
 }
