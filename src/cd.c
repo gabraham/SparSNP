@@ -229,9 +229,8 @@ int cd_gmatrix(gmatrix *g,
       return FAILURE;
 
    CALLOCTEST(converged, p1, sizeof(int));
-   CALLOCTEST(active, p1, sizeof(int));
-   CALLOCTEST(zero_new, p1, sizeof(int));
-   CALLOCTEST(zero_old, p1, sizeof(int));
+/*   CALLOCTEST(zero_new, p1, sizeof(int));
+   CALLOCTEST(zero_old, p1, sizeof(int));*/
    CALLOCTEST(active_new, p1, sizeof(int));
    CALLOCTEST(active_old, p1, sizeof(int));
 
@@ -296,11 +295,15 @@ nonzeros: %d  zero_same: %d\n", epoch, numconverged, zeros,
 	 allconverged++;
 
 	 /* prepare for another iteration over all
-	  * non-ignored variables */
+	  * non-ignored variables, store a copy of the active set
+	  * for later */
 	 if(allconverged == 1)
 	 {
 	    for(j = p ; j >= 0 ; --j)
+	    {
+	       active_old[j] = active_new[j];
 	       active_new[j] = !g->ignore[j];
+	    }
 	 }
 	 else /* 2nd iteration done, check
 		 whether active set has changed */
@@ -317,9 +320,9 @@ nonzeros: %d  zero_same: %d\n", epoch, numconverged, zeros,
 	       break;
 	    }
 
-	    /* active set has changed, copy the state */
-	    for( ; j >= 0 ; --j)
-	       active_new[j] = active_old[j];
+	    /* active set has changed, copy the new state */
+	    /*for( ; j >= 0 ; --j)
+	       active_new[j] = active_old[j];*/
 	    allconverged = 0;
 	 }
       }
@@ -333,9 +336,8 @@ nonzeros: %d  zero_same: %d\n", epoch, numconverged, zeros,
 
    sample_free(&sm);
    free(converged);
-   free(active);
-   free(zero_old);
-   free(zero_new);
+   free(active_old);
+   free(active_new);
 
    if(zero_same == p1)
    {
