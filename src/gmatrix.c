@@ -441,7 +441,7 @@ int gmatrix_read_scaling(gmatrix *g, char *file_scale)
 
    for(j = 1 ; j < p1 ; j++)
    {
-      if((g->ignore[j] = (g->sd[j] == 0)))
+      if(!(g->ignore[j] = (g->sd[j] == 0)))
       {
 	 l1 = j * NUM_X_LEVELS;
 	 for(k = 0 ; k < NUM_X_LEVELS ; k++)
