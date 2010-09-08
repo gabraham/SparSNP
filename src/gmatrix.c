@@ -32,7 +32,7 @@ int gmatrix_init(gmatrix *g, char *filename, int n, int p,
       short inmemory,  char *scalefile, short yformat, int model,
       short encoded, short binformat, char *folds_ind_file, int nfolds)
 {
-   int i, j;
+   int i;
 
    g->model = model;
    g->filename = filename;
@@ -53,7 +53,7 @@ int gmatrix_init(gmatrix *g, char *filename, int n, int p,
    g->mean = NULL;
    g->sd = NULL;
    g->tmp = NULL;
-   g->active = NULL;
+   g->ignore = NULL;
    g->yformat = yformat;
    g->beta = NULL;
    g->encoded = encoded;
@@ -97,9 +97,7 @@ int gmatrix_init(gmatrix *g, char *filename, int n, int p,
    else
       g->nextcol = gmatrix_disk_nextcol;
 
-   MALLOCTEST(g->active, sizeof(int) * (g->p + 1))
-   for(j = 0 ; j < p + 1 ; j++)
-      g->active[j] = TRUE;
+   CALLOCTEST(g->ignore, g->p + 1, sizeof(int));
    if(scalefile && !gmatrix_read_scaling(g, scalefile))
       return FAILURE;
 
@@ -177,9 +175,9 @@ void gmatrix_free(gmatrix *g)
       g->x = NULL;
    }
 
-   if(g->active)
-      free(g->active);
-   g->active = NULL;
+   if(g->ignore)
+      free(g->ignore);
+   g->ignore = NULL;
 
    if(g->tmp)
       free(g->tmp);
@@ -439,11 +437,11 @@ int gmatrix_read_scaling(gmatrix *g, char *file_scale)
       g->lookup2[k] = 1;
    }
    
-   g->active[0] = TRUE;
+   g->ignore[0] = FALSE;
 
    for(j = 1 ; j < p1 ; j++)
    {
-      if((g->active[j] = (g->sd[j] != 0)))
+      if((g->ignore[j] = (g->sd[j] == 0)))
       {
 	 l1 = j * NUM_X_LEVELS;
 	 for(k = 0 ; k < NUM_X_LEVELS ; k++)

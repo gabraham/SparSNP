@@ -1,6 +1,8 @@
 #include "common.h"
 #include "cd.h"
 
+#define printfverb(...) if(verbose) printf(__VA_ARGS__)
+
 int convergetest(double a, double b, double threshold)
 {
    /* absolute convergence */
@@ -36,7 +38,8 @@ void updatelp(gmatrix *g, const double beta_new, const int j,
    if(x)
    {
       for(i = n - 1 ; i >= 0 ; --i)
-	 g->lp[i] = clip(g->lp[i] + x[i] * beta_diff, -MAXLP, MAXLP);
+	 /*g->lp[i] = clip(g->lp[i] + x[i] * beta_diff, -MAXLP, MAXLP);*/
+	 g->lp[i] = lp[i] + x[i] * beta_diff;
    }
    else /* update from intercept */
    {
@@ -68,8 +71,7 @@ double get_lambda1max_gmatrix(
       phi1 phi1_func,
       phi2 phi2_func,
       inv inv_func,
-      step step_func
-      )
+      step step_func)
 {
    int i, j, n = g->ntrain[g->fold], p1 = g->p + 1;
    double s, zmax = 0, beta_new;
@@ -97,7 +99,7 @@ double get_lambda1max_gmatrix(
    for(j = 1 ; j < p1; j++)
    {
       g->nextcol(g, &sm);
-      if(!g->active[j])
+      if(g->ignore[j])
 	 continue;
 
       s = fabs(step_func(&sm, g, phi1_func, phi2_func));
@@ -204,126 +206,142 @@ int cd_gmatrix(gmatrix *g,
       const int maxiters,
       const double lambda1,
       const double lambda2,
-      const double threshold,
+      const double thresh,
       const int verbose,
       const double trunc)
 {
-   const int CONVERGED = 20;
    const int n = g->ntrain[g->fold], p = g->p, p1 = g->p + 1;
-   int j, numiter,
+   int j, iter, allconverged = 0,
        epoch = 1, numconverged = 0,
-       allconverged = 0, zeros = 0;
-   short *converged = NULL;
+       zeros = 0;
+   int *converged = NULL,
+       *active_old = NULL,
+       *active_new = NULL,
+       *zero_old = NULL,
+       *zero_new = NULL;
    double s, beta_new;
    const double truncl = log2((1 - trunc) / trunc),
 	        l2recip = 1 / (1 + lambda2);
    sample sm;
+   int zero_same = 0;
 
    if(!sample_init(&sm, n, g->inmemory))
       return FAILURE;
 
-   CALLOCTEST(converged, p1, sizeof(short));
+   CALLOCTEST(converged, p1, sizeof(int));
+   CALLOCTEST(active, p1, sizeof(int));
+   CALLOCTEST(zero_new, p1, sizeof(int));
+   CALLOCTEST(zero_old, p1, sizeof(int));
+   CALLOCTEST(active_new, p1, sizeof(int));
+   CALLOCTEST(active_old, p1, sizeof(int));
+
+   /* start off with all variables marked active
+    * even though they're all zero, unless they're
+    * marked as ignore */
+   for(j = p ; j >= 0 ; --j)
+      active_new[j] = active_old[j] = !g->ignore[j];
 
    while(epoch <= maxepochs)
    {
+      zero_same = zeros = 0;
       for(j = 0 ; j < p1; j++)
       {
 	 g->nextcol(g, &sm);
-	 if(!g->active[j])
+	 iter = 0;
+
+	 if(active_new[j])
 	 {
-	    if(!converged[j])
-	    {
-	       converged[j] = TRUE;
-	       numconverged++;
-	    }
-	    continue;
+	    /* iterate over jth variable */
+      	    while(iter < maxiters)
+      	    {
+      	       s = step_func(&sm, g, phi1_func, phi2_func);
+      	       beta_new = g->beta[j] - s;
+      	       if(j > 0) /* don't penalise intercept */
+      	          beta_new = soft_threshold(beta_new, lambda1) * l2recip;
+      	       beta_new = clip(beta_new, -truncl, truncl);
+      	       beta_new = zero(beta_new, ZERO_THRESH);
+      
+      	       converged[j] = convergetest(g->beta[j], beta_new, thresh);
+      	       updatelp(g, beta_new, j, sm.x);
+      	       g->beta[j] = beta_new;
+	       if(converged[j])
+		  break;
+      	       iter++;
+      	    }
 	 }
 
-	 numiter = 0;
+	 /* update zero-pattern */
+/*	 zero_new[j] = (g->beta[j] == 0);*/
+	 active_new[j] = (g->beta[j] != 0);
+	 /*zeros += zero_new[j];
+	 zero_same += (zero_old[j] == zero_new[j]);
+	 zero_old[j] = zero_new[j];*/
 
-	 while(!converged[j] && numiter <= maxiters)
-	 {
-	    numiter++;
-
-	    s = step_func(&sm, g, phi1_func, phi2_func);
-
-	    /* don't penalise intercept */
-	    beta_new = g->beta[j] - s;
-	    if(j > 0)
-	       beta_new = soft_threshold(beta_new, lambda1) * l2recip;
-
-	    /* check for convergence */
-	    if(numiter > 1 && convergetest(g->beta[j], beta_new, threshold))
-	    {
-	       converged[j] = TRUE;
-	       numconverged++;
-	    }
-
-	    /* clip very large coefs to limit divergence */
-	    beta_new = clip(beta_new, -truncl, truncl);
-	    beta_new = zero(beta_new, ZERO_THRESH);
-
-	    updatelp(g, beta_new, j, sm.x);
-	    g->beta[j] = beta_new;
-	 }
-	 if(numiter > maxiters)
-	    printf("max number of internal iterations (%d) \
+	 if(iter > maxiters)
+	    printfverb("max number of internal iterations (%d) \
 reached for variable: %d\n", maxiters, j);
-
       }
 
-      /* count number of zero variables, excluding the intercept */
-      if(epoch > 1)
-      {
-	 zeros = 0;
-	 for(j = p ; j > 0 ; --j)
-	 {
-	    if(fabs(g->beta[j]) < ZERO_THRESH)
-	    {
-	       g->beta[j] = 0;
-	       zeros++;
-	    }
-	 }
-      }
+     
+      printfverb("Epoch %d  converged: %d zeros: %d  \
+nonzeros: %d  zero_same: %d\n", epoch, numconverged, zeros,
+	    g->p - zeros, zero_same);
 
-      if(verbose)
-	 printf("Epoch %d  converged: %d zeros: %d  non-zeros: %d\n",
-	       epoch, numconverged, zeros, g->p - zeros);
+      numconverged = 0;
+      for(j = p ; j >= 0; --j)
+	 numconverged += converged[j];
 
-      /* All vars must converge in two consecutive epochs 
-       * in order to stop */
-      if(numconverged == p1)
+      if(numconverged == p1) 
       {
 	 allconverged++;
-	 if(verbose)
-	    printf("all converged: %d\n", allconverged);
-	 
-	 if(allconverged == CONVERGED)
-	 {
-	    if(verbose)
-	       printf("terminating with %d non-zero coefs\n\n",
-		     g->p - zeros);
-	    break;
-	 }
 
-	 for(j = p ; j >= 0 ; --j)
-	    converged[j] = FALSE;
-	 numconverged = 0;
+	 /* prepare for another iteration over all
+	  * non-ignored variables */
+	 if(allconverged == 1)
+	 {
+	    for(j = p ; j >= 0 ; --j)
+	       active_new[j] = !g->ignore[j];
+	 }
+	 else /* 2nd iteration done, check
+		 whether active set has changed */
+	 {
+	    for(j = p ; j >= 0 ; )
+	    {
+	       if(active_new[j] != active_old[j])
+		  break;
+	       --j;
+	    }
+	    if(j == 0)
+	    {
+	       printf("terminating, active set is the same\n");
+	       break;
+	    }
+
+	    /* active set has changed, copy the state */
+	    for( ; j >= 0 ; --j)
+	       active_new[j] = active_old[j];
+	    allconverged = 0;
+	 }
       }
-      else
+      else /* reset to first state */
 	 allconverged = 0;
 
-      if(verbose)
-	 printf("\n");
+      printfverb("\n");
 
       epoch++;
    }
 
-   free(converged);
    sample_free(&sm);
+   free(converged);
+   free(active);
+   free(zero_old);
+   free(zero_new);
 
-   if(allconverged == CONVERGED)
+   if(zero_same == p1)
+   {
+      printfverb("terminating with %d nonzero vars\n", g->p - zeros + 1);
       return g->p - zeros + 1;
+   }
    return FAILURE;
 }
 

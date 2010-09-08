@@ -40,7 +40,7 @@ typedef struct gmatrix {
    double *lp, *ylp, *ylp_neg, *lp_invlogit;
    double *beta;
    double *intercept;
-   int *active;
+   int *ignore;
    dtype *buffer;
    int bufsize;
    int bufidx;
