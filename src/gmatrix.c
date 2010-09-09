@@ -230,6 +230,14 @@ void gmatrix_free(gmatrix *g)
    if(g->ntest)
       free(g->ntest);
    g->ntest = NULL;
+
+   if(g->ntrainrecip)
+      free(g->ntrainrecip);
+   g->ntrainrecip = NULL;
+
+   if(g->ntestrecip)
+      free(g->ntestrecip);
+   g->ntestrecip = NULL;
 }
 
 /* big ugly function
