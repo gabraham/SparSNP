@@ -28,11 +28,11 @@ int opt_defaults(Opt *opt)
    opt->model = 0;
    opt->nlambda1 = 100;
    opt->l1minratio = 1e-2;
-   opt->maxepochs = 100;
+   opt->maxepochs = 200;
    opt->maxiters = 100;
    opt->lambda1 = -1;
    opt->lambda2 = 0;
-   opt->threshold = 1e-5;
+   opt->threshold = 1e-4;
    opt->trunc = 1e-15;
    opt->nzmax = 0;
    opt->n = 0;

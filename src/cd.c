@@ -307,7 +307,8 @@ reached for variable: %d\n", maxiters, j);
 	    /* all equal, terminate */
 	    if(j > p)
 	    {
-	       printf("terminating with %d active vars\n", numactive);
+	       printf("terminating at epoch %d with %d active vars\n",
+		     epoch, numactive);
 	       good = TRUE;
 	       break;
 	    }
@@ -315,10 +316,7 @@ reached for variable: %d\n", maxiters, j);
 	    /* active set has changed, copy the new state and
 	     * iterate over new active set */
 	    for(j = p ; j >= 0 ; --j)
-	    {
 	       active_old[j] = active_new[j];
-	       active_new[j] = !g->ignore[j];
-	    }
 	    allconverged = 1;
 	 }
       }
