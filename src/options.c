@@ -37,7 +37,7 @@ int opt_defaults(Opt *opt)
    opt->nzmax = 0;
    opt->n = 0;
    opt->p = 0;
-   opt->warmrestarts = FALSE;
+   opt->warmrestarts = TRUE;
    opt->nofit = FALSE;
    opt->filename = NULL;
    opt->lambda1path = NULL;
