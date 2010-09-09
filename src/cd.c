@@ -211,26 +211,21 @@ int cd_gmatrix(gmatrix *g,
       const double trunc)
 {
    const int n = g->ntrain[g->fold], p = g->p, p1 = g->p + 1;
-   int j, iter, allconverged = 0,
+   int j, iter, allconverged = 0, numactive = 0,
        epoch = 1, numconverged = 0,
-       zeros = 0;
+       good = FALSE;
    int *converged = NULL,
        *active_old = NULL,
-       *active_new = NULL,
-       *zero_old = NULL,
-       *zero_new = NULL;
+       *active_new = NULL;
    double s, beta_new;
    const double truncl = log2((1 - trunc) / trunc),
 	        l2recip = 1 / (1 + lambda2);
    sample sm;
-   int zero_same = 0;
 
    if(!sample_init(&sm, n, g->inmemory))
       return FAILURE;
 
    CALLOCTEST(converged, p1, sizeof(int));
-/*   CALLOCTEST(zero_new, p1, sizeof(int));
-   CALLOCTEST(zero_old, p1, sizeof(int));*/
    CALLOCTEST(active_new, p1, sizeof(int));
    CALLOCTEST(active_old, p1, sizeof(int));
 
@@ -242,17 +237,20 @@ int cd_gmatrix(gmatrix *g,
 
    while(epoch <= maxepochs)
    {
-      zero_same = zeros = 0;
+      printf(">>> start epoch %d <<<\n", epoch);
       for(j = 0 ; j < p1; j++)
       {
 	 g->nextcol(g, &sm);
 	 iter = 0;
 
+	 printf("active[%d]: %d; ", j, active_new[j]);
 	 if(active_new[j])
 	 {
+	    printf("iterating over %d ", j);
 	    /* iterate over jth variable */
       	    while(iter < maxiters)
       	    {
+	       printf(".");
       	       s = step_func(&sm, g, phi1_func, phi2_func);
       	       beta_new = g->beta[j] - s;
       	       if(j > 0) /* don't penalise intercept */
@@ -268,69 +266,78 @@ int cd_gmatrix(gmatrix *g,
       	       iter++;
       	    }
 	 }
+	 else
+	    printf("skipping %d, ", j);
 
-	 /* update zero-pattern */
-/*	 zero_new[j] = (g->beta[j] == 0);*/
 	 active_new[j] = (g->beta[j] != 0);
-	 /*zeros += zero_new[j];
-	 zero_same += (zero_old[j] == zero_new[j]);
-	 zero_old[j] = zero_new[j];*/
+	 printf(" ; active[%d]: %d; converged[%d]: %d; beta: %.20f\n",
+	       j, active_new[j], j, converged[j], g->beta[j]);
+
 
 	 if(iter > maxiters)
 	    printfverb("max number of internal iterations (%d) \
 reached for variable: %d\n", maxiters, j);
       }
 
-     
-      printfverb("Epoch %d  converged: %d zeros: %d  \
+      /*printfverb("Epoch %d  converged: %d zeros: %d  \
 nonzeros: %d  zero_same: %d\n", epoch, numconverged, zeros,
-	    g->p - zeros, zero_same);
+	    g->p - zeros, ); */
 
       numconverged = 0;
       for(j = p ; j >= 0; --j)
 	 numconverged += converged[j];
 
+      /* state machine for active set convergence */ 
       if(numconverged == p1) 
       {
-	 allconverged++;
-
 	 /* prepare for another iteration over all
 	  * non-ignored variables, store a copy of the active set
 	  * for later */
-	 if(allconverged == 1)
+	 if(allconverged == 0)
 	 {
+	    printf("all converged\n");
 	    for(j = p ; j >= 0 ; --j)
 	    {
 	       active_old[j] = active_new[j];
 	       active_new[j] = !g->ignore[j];
 	    }
+	    allconverged++;
 	 }
 	 else /* 2nd iteration done, check
 		 whether active set has changed */
 	 {
-	    for(j = p ; j >= 0 ; )
+	    numactive = 0;
+	    for(j = 0 ; j <= p ; j++)
 	    {
+	       numactive += active_new[j];
+	       printf("%d ", j);
 	       if(active_new[j] != active_old[j])
 		  break;
-	       --j;
 	    }
-	    if(j == 0)
+	    printf("\n");
+
+	    /* all equal, terminate */
+	    if(j > p)
 	    {
-	       printf("terminating, active set is the same\n");
+	       printf("terminating with %d active vars, active set is the same\n",
+		     numactive);
+	       good = TRUE;
 	       break;
 	    }
 
-	    /* active set has changed, copy the new state */
-	    /*for( ; j >= 0 ; --j)
-	       active_new[j] = active_old[j];*/
+	    printf("active set changed: %d\n", j);
+
+	    /* active set has changed, copy the new state and
+	     * iterate over new active set */
+	    for(j = p ; j >= 0 ; --j)
+	       active_old[j] = active_new[j];
 	    allconverged = 0;
 	 }
       }
       else /* reset to first state */
 	 allconverged = 0;
 
-      printfverb("\n");
-
+      printf(">>> end epoch %d <<<\n\n", epoch);
       epoch++;
    }
 
@@ -339,11 +346,8 @@ nonzeros: %d  zero_same: %d\n", epoch, numconverged, zeros,
    free(active_old);
    free(active_new);
 
-   if(zero_same == p1)
-   {
-      printfverb("terminating with %d nonzero vars\n", g->p - zeros + 1);
-      return g->p - zeros + 1;
-   }
+   if(good)
+      return numactive;
    return FAILURE;
 }
 
