@@ -2,10 +2,10 @@ library(glmnet)
 
 options(digits=9)
 
-set.seed(123456)
+#set.seed(123456)
 
 n <- 100
-p <- 30
+p <- 50
 x <- scale(matrix(rnorm(n * p), n, p))
 x1 <- cbind(1, x)
 beta <- rnorm(p + 1, 0, 0.5)
@@ -100,6 +100,8 @@ cd.activeset <- function(x, y, lambda1=0, beta=numeric(ncol(x)),
             allconverged <- 1
          }
       }
+      else
+	 allconverged <- 0 
 
       beta_old <- beta
    }
