@@ -240,7 +240,7 @@ int cd_gmatrix(gmatrix *g,
 
    while(epoch <= maxepochs)
    {
-      printf("epoch %d", epoch);
+      printf("epoch %d\n", epoch);
       for(j = 0 ; j < p1; j++)
       {
 	 g->nextcol(g, &sm);
@@ -278,9 +278,12 @@ reached for variable: %d\n", maxiters, j);
       for(j = p ; j >= 0; --j)
 	 numconverged += (fabs(beta_old[j] - g->beta[j]) <= thresh);
 
+      printf("numconverged: %d\n", numconverged);
+
       /* state machine for active set convergence */ 
       if(numconverged == p1) 
       {
+	 printf("all converged\n");
 	 allconverged++;
 
 	 /* prepare for another iteration over all
@@ -288,10 +291,11 @@ reached for variable: %d\n", maxiters, j);
 	  * for later */
 	 if(allconverged == 1)
 	 {
+	    printf("prepare for final epoch\n");
 	    for(j = p ; j >= 0 ; --j)
 	    {
 	       active_old[j] = active_new[j];
-	       active_new[j] = !g->ignore[j];
+	  /*     active_new[j] = !g->ignore[j];*/
 	    }
 	 }
 	 else /* 2nd iteration done, check
@@ -314,6 +318,8 @@ reached for variable: %d\n", maxiters, j);
 	       break;
 	    }
 
+	    printf("active set changed\n");
+
 	    /* active set has changed, copy the new state and
 	     * iterate over new active set */
 	    for(j = p ; j >= 0 ; --j)
@@ -327,7 +333,6 @@ reached for variable: %d\n", maxiters, j);
       for(j = p ; j >= 0 ; --j)
 	 beta_old[j] = g->beta[j];
 
-      printf("\r");
       epoch++;
    }
    printf("\n");
