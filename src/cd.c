@@ -240,6 +240,7 @@ int cd_gmatrix(gmatrix *g,
 
    while(epoch <= maxepochs)
    {
+      printf("epoch %d", epoch);
       for(j = 0 ; j < p1; j++)
       {
 	 g->nextcol(g, &sm);
@@ -307,7 +308,7 @@ reached for variable: %d\n", maxiters, j);
 	    /* all equal, terminate */
 	    if(j > p)
 	    {
-	       printf("terminating at epoch %d with %d active vars\n",
+	       printf("\nterminating at epoch %d with %d active vars\n",
 		     epoch, numactive);
 	       good = TRUE;
 	       break;
@@ -326,8 +327,10 @@ reached for variable: %d\n", maxiters, j);
       for(j = p ; j >= 0 ; --j)
 	 beta_old[j] = g->beta[j];
 
+      printf("\r");
       epoch++;
    }
+   printf("\n");
 
    sample_free(&sm);
    free(beta_old);
