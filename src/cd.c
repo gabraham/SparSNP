@@ -24,11 +24,10 @@ inline double zero(const double x, const double thresh)
 }
 
 /* update linear predictor and clip it if it's too large */
-void updatelp(gmatrix *g, const double beta_new, const int j,
+void updatelp(gmatrix *g, const double update, const int j,
       const double *restrict x)
 {
    int i, n = g->ntrain[g->fold];
-   const double beta_diff = beta_new - g->beta[j];
    double *restrict lp_invlogit = g->lp_invlogit,
 	  *restrict lp = g->lp,
 	  *restrict y = g->y,
@@ -39,12 +38,12 @@ void updatelp(gmatrix *g, const double beta_new, const int j,
    {
       for(i = n - 1 ; i >= 0 ; --i)
 	 /*g->lp[i] = clip(g->lp[i] + x[i] * beta_diff, -MAXLP, MAXLP);*/
-	 g->lp[i] = lp[i] + x[i] * beta_diff;
+	 g->lp[i] = lp[i] + x[i] * update;
    }
-   else /* update from intercept */
+   else /* update from intercept, lp[i] is zero and x[i] is one */
    {
       for(i = n - 1 ; i >= 0 ; --i)
-	 lp[i] = beta_new;
+	 lp[i] = update;
    }
 
    /* update functions of linear predictor */
@@ -241,6 +240,7 @@ int cd_gmatrix(gmatrix *g,
    while(epoch <= maxepochs)
    {
       printf("epoch %d\n", epoch);
+      numactive = 0;
       for(j = 0 ; j < p1; j++)
       {
 	 g->nextcol(g, &sm);
@@ -258,7 +258,7 @@ int cd_gmatrix(gmatrix *g,
       	       beta_new = clip(beta_new, -truncl, truncl);
       	       beta_new = zero(beta_new, ZERO_THRESH);
       
-      	       updatelp(g, beta_new, j, sm.x);
+      	       updatelp(g, beta_new - g->beta[j], j, sm.x);
       	       g->beta[j] = beta_new;
 	       if(fabs(s) <= thresh)
 		  break;
@@ -267,6 +267,7 @@ int cd_gmatrix(gmatrix *g,
 	 }
 
 	 active_new[j] = (g->beta[j] != 0);
+	 numactive += active_new[j];
 
 	 if(iter > maxiters)
 	    printfverb("max number of internal iterations (%d) \
@@ -278,7 +279,7 @@ reached for variable: %d\n", maxiters, j);
       for(j = p ; j >= 0; --j)
 	 numconverged += (fabs(beta_old[j] - g->beta[j]) <= thresh);
 
-      printf("numconverged: %d\n", numconverged);
+      printf("numactive: %d  numconverged: %d\n", numactive, numconverged);
 
       /* state machine for active set convergence */ 
       if(numconverged == p1) 
@@ -301,10 +302,10 @@ reached for variable: %d\n", maxiters, j);
 	 else /* 2nd iteration done, check
 		 whether active set has changed */
 	 {
-	    numactive = 0;
+	   /* numactive = 0; */
 	    for(j = 0 ; j <= p ; j++)
 	    {
-	       numactive += active_new[j];
+/*	       numactive += active_new[j];*/
 	       if(active_new[j] != active_old[j])
 		  break;
 	    }
@@ -318,7 +319,7 @@ reached for variable: %d\n", maxiters, j);
 	       break;
 	    }
 
-	    printf("active set changed\n");
+	    printf("active set changed, %d active vars\n", numactive);
 
 	    /* active set has changed, copy the new state and
 	     * iterate over new active set */
