@@ -198,6 +198,10 @@ int opt_parse(int argc, char* argv[], Opt* opt)
       {
 	 opt->warmrestarts = TRUE;
       }
+      else if(strcmp2(argv[i], "-cold"))
+      {
+	 opt->warmrestarts = FALSE;
+      }
       else if(strcmp2(argv[i], "-inmemory"))
       {
 	 opt->inmemory = TRUE;
