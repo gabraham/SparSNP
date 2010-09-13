@@ -247,7 +247,7 @@ int cd_gmatrix(gmatrix *g,
       {
 	 g->nextcol(g, &sm);
 
-	 printf("%d", j);
+	 /*printf("%d", j);*/
 	 iter = 0;
 	 if(active_new[j])
 	 {
@@ -274,13 +274,13 @@ int cd_gmatrix(gmatrix *g,
 	 numconverged += convergetest(beta_old[j], g->beta[j], thresh);
 	 beta_old[j] = g->beta[j];
 
-	 printf("\r");
+/*	 printf("\r");*/
 
 	 if(iter > maxiters)
 	    printfverb("max number of internal iterations (%d) \
 reached for variable: %d\n", maxiters, j);
       }
-      printf("\n");
+ /*     printf("\n");*/
 
       /* check convergence across epochs */
 /*      numconverged = 0;
@@ -353,6 +353,6 @@ reached for variable: %d\n", maxiters, j);
 
    if(good)
       return numactive;
-   return FAILURE;
+   return CDFAILURE;
 }
 

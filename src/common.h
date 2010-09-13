@@ -20,6 +20,8 @@
 
 #define ONE 1.0
 
+#define CDFAILURE -1
+
 /* The size for each datum in the binary input file */
 #ifndef DTYPE
 #define DTYPE unsigned char

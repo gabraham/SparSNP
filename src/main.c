@@ -73,7 +73,7 @@ int run_train(Opt *opt, gmatrix *g)
 
       gmatrix_reset(g);
 
-      if(ret == FAILURE)
+      if(ret == CDFAILURE)
       {
 	 printf("failed to converge after %d epochs\n", opt->maxepochs);
 	 break;
