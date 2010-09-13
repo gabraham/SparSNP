@@ -3,7 +3,10 @@
 
 #define printfverb(...) if(verbose) printf(__VA_ARGS__)
 
-int convergetest(double a, double b, double threshold)
+static double clip(const double x, const double min, const double max);
+static double zero(const double x, const double thresh);
+
+inline static int convergetest(double a, double b, double threshold)
 {
    /* absolute convergence */
    if(fabs(a) <= ZERO_THRESH && fabs(b) <= ZERO_THRESH)
@@ -13,12 +16,12 @@ int convergetest(double a, double b, double threshold)
    return (fabs(a - b) / (fabs(a) + fabs(b))) < threshold;
 }
 
-inline double clip(const double x, const double min, const double max)
+inline static double clip(const double x, const double min, const double max)
 {
    return (x > max) ? max : ((x < min) ? min : x);
 }
 
-inline double zero(const double x, const double thresh)
+inline static double zero(const double x, const double thresh)
 {
    return (fabs(x) < thresh) ? 0 : x;
 }
@@ -38,7 +41,7 @@ void updatelp(gmatrix *g, const double update, const int j,
    {
       for(i = n - 1 ; i >= 0 ; --i)
 	 /*g->lp[i] = clip(g->lp[i] + x[i] * beta_diff, -MAXLP, MAXLP);*/
-	 g->lp[i] = lp[i] + x[i] * update;
+	 lp[i] = lp[i] + x[i] * update;
    }
    else /* update from intercept, lp[i] is zero and x[i] is one */
    {
@@ -110,7 +113,7 @@ double get_lambda1max_gmatrix(
    return zmax;
 }
 
-double step_generic(sample *s, gmatrix *g,
+/*double step_generic(sample *s, gmatrix *g,
       phi1 phi1_func, phi2 phi2_func)
 {
    int i, n = g->ntrain[g->fold];
@@ -121,8 +124,7 @@ double step_generic(sample *s, gmatrix *g,
 	  *restrict lp_tmp = g->lp,
 	  *restrict y_tmp = g->y;
 
-   /* compute gradient */
-   for(i = 0 ; i < n ; i++)
+   for(i = n - 1 ; i >= 0 ; --i)
    {
       lphi1 = phi1_func(lp_tmp[i]);
       grad += x_tmp[i] * (lphi1 - y_tmp[i]);
@@ -131,7 +133,7 @@ double step_generic(sample *s, gmatrix *g,
    if(d2 == 0)
       return 0;
    return grad / d2;
-}
+}*/
 
 /* In linear regression, for standardised inputs x, the 2nd derivative is
  * always N since it is the sum of squares \sum_{i=1}^N x_{ij}^2 =
@@ -141,18 +143,17 @@ double step_regular_linear(sample *s, gmatrix *g,
       phi1 phi1_func, phi2 phi2_func)
 {
    /*int i, n = g->ntrain[g->fold];*/
-   int i, n = g->n;
+   int i;
    double grad = 0;
    double *restrict x_tmp = s->x, 
           *restrict lp_tmp = g->lp,
 	  *restrict y_tmp = g->y;
 
    /* compute gradient */
-   for(i = n - 1 ; i >= 0 ; --i)
+   for(i = g->n - 1 ; i >= 0 ; --i)
       grad += x_tmp[i] * (lp_tmp[i] - y_tmp[i]);
 
-/*   return grad * g->ntrainrecip[g->fold];*/
-   return grad / n;
+   return grad * g->ntrainrecip[g->fold];
 }
 
 double step_regular_logistic(sample *s, gmatrix *g,
@@ -218,8 +219,8 @@ int cd_gmatrix(gmatrix *g,
    double s, beta_new;
    const double truncl = log2((1 - trunc) / trunc),
 	        l2recip = 1 / (1 + lambda2);
-   sample sm;
    double *beta_old = NULL;
+   sample sm;
 
    if(!sample_init(&sm, n, g->inmemory))
       return FAILURE;
@@ -239,8 +240,9 @@ int cd_gmatrix(gmatrix *g,
 
    while(epoch <= maxepochs)
    {
-      printf("epoch %d\n", epoch);
+      printf("[%ld] epoch %d\n", time(NULL), epoch);
       numactive = 0;
+      numconverged = 0;
       for(j = 0 ; j < p1; j++)
       {
 	 g->nextcol(g, &sm);
@@ -268,6 +270,8 @@ int cd_gmatrix(gmatrix *g,
 
 	 active_new[j] = (g->beta[j] != 0);
 	 numactive += active_new[j];
+	 numconverged += convergetest(beta_old[j], g->beta[j], thresh);
+	 beta_old[j] = g->beta[j];
 
 	 if(iter > maxiters)
 	    printfverb("max number of internal iterations (%d) \
@@ -275,11 +279,12 @@ reached for variable: %d\n", maxiters, j);
       }
 
       /* check convergence across epochs */
-      numconverged = 0;
+/*      numconverged = 0;
       for(j = p ; j >= 0; --j)
-	 numconverged += (fabs(beta_old[j] - g->beta[j]) <= thresh);
+	 numconverged += (fabs(beta_old[j] - g->beta[j]) <= thresh);*/
 
-      printf("numactive: %d  numconverged: %d\n", numactive, numconverged);
+      printf("[%ld] numactive: %d  numconverged: %d\n", time(NULL),
+	    numactive, numconverged);
 
       /* state machine for active set convergence */ 
       if(numconverged == p1) 
@@ -321,8 +326,7 @@ reached for variable: %d\n", maxiters, j);
 
 	    printf("active set changed, %d active vars\n", numactive);
 
-	    /* active set has changed, copy the new state and
-	     * iterate over new active set */
+	    /* active set has changed, iterate over new active variables */
 	    for(j = p ; j >= 0 ; --j)
 	       active_old[j] = active_new[j];
 	    allconverged = 1;
@@ -331,8 +335,8 @@ reached for variable: %d\n", maxiters, j);
       else /* reset to first state */
 	 allconverged = 0;
 
-      for(j = p ; j >= 0 ; --j)
-	 beta_old[j] = g->beta[j];
+    /*  for(j = p ; j >= 0 ; --j)
+	 beta_old[j] = g->beta[j]; */
 
       epoch++;
    }

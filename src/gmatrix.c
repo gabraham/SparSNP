@@ -9,7 +9,7 @@ int sample_init(sample *s, int n, short inmemory)
 {
    s->inmemory = inmemory;
    s->x = NULL;
-   s->x2 = NULL;
+   /*s->x2 = NULL;*/
    s->intercept = FALSE;
    return SUCCESS;
 }
@@ -23,8 +23,8 @@ void sample_free(sample *s)
       free(s->x);
    s->x = NULL;
 
-   if(s->x2)
-      free(s->x2);
+   /*if(s->x2)
+      free(s->x2);*/
    s->x2 = NULL;
 }
 
@@ -290,10 +290,10 @@ int gmatrix_disk_nextcol(gmatrix *g, sample *s)
        * iterations*/
       if(s->x)
 	 free(s->x);
-      if(s->x2)
-	 free(s->x2);
+      /*if(s->x2)
+	 free(s->x2);*/
       s->x = g->intercept;
-      s->x2 = g->intercept;
+      /*s->x2 = g->intercept;*/
       
       g->j++;
       return SUCCESS;
@@ -304,7 +304,7 @@ int gmatrix_disk_nextcol(gmatrix *g, sample *s)
    if(g->j == 1)
    {
       MALLOCTEST(s->x, sizeof(double) * g->n);
-      MALLOCTEST(s->x2, sizeof(double) * g->n);
+      /*MALLOCTEST(s->x2, sizeof(double) * g->n);*/
    }
 
    /* Get the scaled versions of the genotypes */
@@ -326,7 +326,7 @@ int gmatrix_disk_nextcol(gmatrix *g, sample *s)
       {
 	 l2 = l1 + g->tmp[i];
 	 s->x[i] = g->lookup[l2];
-	 s->x2[i] = g->lookup2[l2];
+/*	 s->x2[i] = g->lookup2[l2]; */
       }
       
       g->j++;
@@ -343,7 +343,7 @@ int gmatrix_disk_nextcol(gmatrix *g, sample *s)
    for(i = 0 ; i < g->n ; i++)
    {
       s->x[i] = (double)g->tmp[i];
-      s->x2[i] = s->x[i] * s->x[i];
+ /*     s->x2[i] = s->x[i] * s->x[i]; */
    }
 
    g->j++;

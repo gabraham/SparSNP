@@ -247,10 +247,10 @@ int opt_parse(int argc, char* argv[], Opt* opt)
 
 
    if(opt->filename == NULL || opt->model == 0
-	 || opt->n == 0 || opt->p == 0)
+	 || opt->n == 0 || opt->p == 0 || !opt->scalefile)
    {
       printf("usage: cd [-train|-predict] -model <model> \
--f <filename> -n <#samples> -p \
+-f <filename> -n <#samples> -p -scale <scalefile> \
 <#variables> | -betafiles <beta filename/s> -pred <pred filename> \
 -maxepochs <maxepochs> -maxiters <maxiters> -l1 <lambda1> [-encoded] \
 [-plink] -l2 <lambda2> -thresh <threshold> \
@@ -262,10 +262,6 @@ int opt_parse(int argc, char* argv[], Opt* opt)
       printf("warning: multiple beta filenames provided in training mode, \
 only using the first one\n");
    }
-
-   if(!opt->scalefile)
-      printf("warning: not scaling inputs will lead to unstable \
-optimisation\n");
 
    if(opt->verbose)
       printf("Mode: %s\n",
