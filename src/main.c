@@ -103,7 +103,11 @@ void zero_model(gmatrix *g)
    int i, j, n = g->ntrain[g->fold], p1 = g->p + 1;
 
    for(j = p1 - 1 ; j >= 0 ; --j)
+   {
       g->beta[j] = 0;
+      g->active[j] = !g->ignore[j];
+   }
+
    for(i = n - 1 ; i >= 0 ; --i)
       g->lp[i] = 0;
    if(g->model == MODEL_LOGISTIC)
@@ -257,7 +261,8 @@ int main(int argc, char* argv[])
 
    if(!gmatrix_init(&g, opt.filename, opt.n, opt.p,
 	    opt.inmemory, opt.scalefile, opt.yformat, opt.model,
-	    opt.encoded, opt.binformat, opt.folds_ind_file, opt.nfolds))
+	    opt.encoded, opt.binformat, opt.folds_ind_file, opt.nfolds,
+	    opt.mode))
    {
       gmatrix_free(&g);
       opt_free(&opt);

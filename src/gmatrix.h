@@ -39,6 +39,7 @@ typedef struct gmatrix {
    double *lookup, *lookup2;
    double *lp, *ylp, *ylp_neg, *lp_invlogit;
    double *beta;
+   int *active;
    double *intercept;
    int *ignore;
    dtype *buffer;
@@ -62,12 +63,13 @@ typedef struct gmatrix {
    int nfolds;
    int *folds;
    int fold;
+   short mode;
 } gmatrix;
 
 int sample_init(sample *, int, short);
 void sample_free(sample *);
 int gmatrix_init(gmatrix *, char *, int, int, short, char*, short,
-      int, short, short, char *folds_ind_file, int nfolds);
+      int, short, short, char *folds_ind_file, int nfolds, short);
 int gmatrix_reset(gmatrix *);
 void gmatrix_free(gmatrix *);
 int gmatrix_disk_nextcol(gmatrix *, sample *);

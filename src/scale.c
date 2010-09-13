@@ -163,8 +163,8 @@ int main(int argc, char* argv[])
    if(doscale)
    {
       if(!gmatrix_init(&g, filename_bin, n, p,
-	    inmemory, NULL, YFORMAT01, MODE_TRAIN, encoded, binformat,
-	    filename_folds_ind, nfolds))
+	    inmemory, NULL, YFORMAT01, MODEL_LINEAR,
+	    encoded, binformat, filename_folds_ind, nfolds, MODE_TRAIN))
 	 return EXIT_FAILURE;
 
       if(!scale(&g))

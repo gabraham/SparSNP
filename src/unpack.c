@@ -71,7 +71,7 @@ int main(int argc, char *argv[])
    }
 
    if(!gmatrix_init(&g, filename_bin, n, p, FALSE, NULL,
-	 YFORMAT01, MODE_TRAIN, TRUE, binformat, NULL, 1))
+	 YFORMAT01, MODEL_LINEAR, TRUE, binformat, NULL, 1, MODE_TRAIN))
       return EXIT_FAILURE;
 
    if(!unpack(&g, filename_out))

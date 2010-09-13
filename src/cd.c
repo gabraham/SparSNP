@@ -194,8 +194,7 @@ int cd_gmatrix(gmatrix *g,
    int j, iter, allconverged = 0, numactive = 0,
        epoch = 1, numconverged = 0,
        good = FALSE;
-   int *active_old = NULL,
-       *active_new = NULL;
+   int *active_old = NULL;
    double s, beta_new;
    const double truncl = log2((1 - trunc) / trunc),
 	        l2recip = 1 / (1 + lambda2);
@@ -206,7 +205,6 @@ int cd_gmatrix(gmatrix *g,
       return FAILURE;
 
    CALLOCTEST(beta_old, p1, sizeof(double));
-   CALLOCTEST(active_new, p1, sizeof(int));
    CALLOCTEST(active_old, p1, sizeof(int));
 
    /* start off with all variables marked active
@@ -214,7 +212,8 @@ int cd_gmatrix(gmatrix *g,
     * marked as ignore */
    for(j = p ; j >= 0 ; --j)
    {
-      active_new[j] = active_old[j] = !g->ignore[j];
+      active_old[j] = g->active[j];
+      /*active_old[j] = g->active[j] = !g->ignore[j];*/
       beta_old[j] = g->beta[j];
    }
 
@@ -228,7 +227,7 @@ int cd_gmatrix(gmatrix *g,
 	 g->nextcol(g, &sm);
 
 	 iter = 0;
-	 if(active_new[j])
+	 if(g->active[j])
 	 {
 	    /* iterate over jth variable */
       	    while(iter < maxiters)
@@ -240,7 +239,9 @@ int cd_gmatrix(gmatrix *g,
       	       beta_new = clip(beta_new, -truncl, truncl);
       	       beta_new = zero(beta_new, ZERO_THRESH);
       
-      	       updatelp(g, beta_new - g->beta[j], j, sm.x);
+	       /* beta_new may have changed */
+	       s = beta_new - g->beta[j];
+      	       updatelp(g, s, j, sm.x);
       	       g->beta[j] = beta_new;
 	       if(fabs(s) <= thresh)
 		  break;
@@ -248,12 +249,12 @@ int cd_gmatrix(gmatrix *g,
       	    }
 	 }
 
-	 active_new[j] = (g->beta[j] != 0);
-	 numactive += active_new[j];
+	 g->active[j] = (g->beta[j] != 0);
+	 numactive += g->active[j];
 	 numconverged += convergetest(beta_old[j], g->beta[j], thresh);
 	 beta_old[j] = g->beta[j];
 
-	 if(iter > maxiters)
+	 if(iter >= maxiters)
 	    printfverb("max number of internal iterations (%d) \
 reached for variable: %d\n", maxiters, j);
       }
@@ -268,27 +269,29 @@ reached for variable: %d\n", maxiters, j);
 	 allconverged++;
 
 	 /* prepare for another iteration over all
-	  * non-ignored variables, store a copy of the active set
-	  * for later */
+	  * (non-ignored) variables, store a copy of the
+	  * current active set for later */
 	 if(allconverged == 1)
 	 {
 	    printfverb("prepare for final epoch\n");
 	    for(j = p ; j >= 0 ; --j)
-	       active_old[j] = active_new[j];
+	    {
+	       active_old[j] = g->active[j];
+	       g->active[j] = !g->ignore[j];
+	    }
 	 }
 	 else /* 2nd iteration done, check
 		 whether active set has changed */
 	 {
-	    for(j = 0 ; j <= p ; j++)
-	       if(active_new[j] != active_old[j])
+	    for(j = p ; j >= 0 ; --j)
+	       if(g->active[j] != active_old[j])
 		  break;
 
 	    /* all equal, terminate */
-	    if(j > p)
+	    if(j < 0)
 	    {
-	       printfverb("\nterminating at epoch %d \
-with %d active vars\n",
-		     epoch, numactive);
+	       printfverb("\n[%ld] terminating at epoch %d \
+with %d active vars\n", time(NULL), epoch, numactive);
 	       good = TRUE;
 	       break;
 	    }
@@ -299,7 +302,7 @@ with %d active vars\n",
 	    /* active set has changed, iterate over
 	     * new active variables */
 	    for(j = p ; j >= 0 ; --j)
-	       active_old[j] = active_new[j];
+	       active_old[j] = g->active[j];
 	    allconverged = 1;
 	 }
       }
@@ -313,7 +316,6 @@ with %d active vars\n",
    sample_free(&sm);
    free(beta_old);
    free(active_old);
-   free(active_new);
 
    return good ? numactive : CDFAILURE;
 }
