@@ -35,6 +35,7 @@ int make_lambda1path(Opt *opt, gmatrix *g)
    for(i = 1 ; i < opt->nlambda1 ; i++)
       opt->lambda1path[i] = exp(log(opt->lambda1max) - s * i);
 
+   /* Write the coefs for model with intercept only */
    snprintf(tmp, MAX_STR_LEN, "%s.%d", opt->beta_files[0], 0);
    if(!writevectorf(tmp, g->beta, opt->p + 1))
       return FAILURE;
@@ -55,9 +56,8 @@ int run_train(Opt *opt, gmatrix *g)
       printf("%d training samples, %d test samples\n",
 	    opt->ntrain, opt->n - opt->ntrain);
    
-   /* The maximum lambda1 has already been run by make_lambda1path, and the
-    * the linear predictor and its related vectors have already been updated */
-   for(i = 0 ; i < opt->nlambda1 ; i++)
+   /* don't start from zero, getlambda1max already computed that */
+   for(i = 1 ; i < opt->nlambda1 ; i++)
    {
       if(opt->verbose)
 	 printf("\nFitting with lambda1=%.20f\n", opt->lambda1path[i]);

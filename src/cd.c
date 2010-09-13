@@ -108,32 +108,12 @@ double get_lambda1max_gmatrix(
       zmax = (zmax < s) ? s : zmax;
    } 
 
+   g->beta[0] = beta_new;
+
    sample_free(&sm);
 
    return zmax;
 }
-
-/*double step_generic(sample *s, gmatrix *g,
-      phi1 phi1_func, phi2 phi2_func)
-{
-   int i, n = g->ntrain[g->fold];
-   double lphi1;
-   double grad = 0, d2 = 0;
-   double *restrict x_tmp = s->x,
-	  *restrict x2_tmp = s->x2,
-	  *restrict lp_tmp = g->lp,
-	  *restrict y_tmp = g->y;
-
-   for(i = n - 1 ; i >= 0 ; --i)
-   {
-      lphi1 = phi1_func(lp_tmp[i]);
-      grad += x_tmp[i] * (lphi1 - y_tmp[i]);
-      d2 += x2_tmp[i] * phi2_func(lphi1);
-   }
-   if(d2 == 0)
-      return 0;
-   return grad / d2;
-}*/
 
 /* In linear regression, for standardised inputs x, the 2nd derivative is
  * always N since it is the sum of squares \sum_{i=1}^N x_{ij}^2 =
@@ -240,14 +220,13 @@ int cd_gmatrix(gmatrix *g,
 
    while(epoch <= maxepochs)
    {
-      printf("[%ld] epoch %d\n", time(NULL), epoch);
+/*      printf("[%ld] epoch %d\n", time(NULL), epoch);*/
       numactive = 0;
       numconverged = 0;
       for(j = 0 ; j < p1; j++)
       {
 	 g->nextcol(g, &sm);
 
-	 /*printf("%d", j);*/
 	 iter = 0;
 	 if(active_new[j])
 	 {
@@ -274,26 +253,19 @@ int cd_gmatrix(gmatrix *g,
 	 numconverged += convergetest(beta_old[j], g->beta[j], thresh);
 	 beta_old[j] = g->beta[j];
 
-/*	 printf("\r");*/
 
 	 if(iter > maxiters)
 	    printfverb("max number of internal iterations (%d) \
 reached for variable: %d\n", maxiters, j);
       }
- /*     printf("\n");*/
 
-      /* check convergence across epochs */
-/*      numconverged = 0;
-      for(j = p ; j >= 0; --j)
-	 numconverged += (fabs(beta_old[j] - g->beta[j]) <= thresh);*/
-
-      printf("[%ld] numactive: %d  numconverged: %d\n", time(NULL),
+      printfverb("numactive: %d  numconverged: %d\n", 
 	    numactive, numconverged);
 
-      /* state machine for active set convergence */ 
+      /* 3-state machine for active set convergence */ 
       if(numconverged == p1) 
       {
-	 printf("all converged\n");
+	 printfverb("all converged\n");
 	 allconverged++;
 
 	 /* prepare for another iteration over all
@@ -301,36 +273,32 @@ reached for variable: %d\n", maxiters, j);
 	  * for later */
 	 if(allconverged == 1)
 	 {
-	    printf("prepare for final epoch\n");
+	    printfverb("prepare for final epoch\n");
 	    for(j = p ; j >= 0 ; --j)
-	    {
 	       active_old[j] = active_new[j];
-	  /*     active_new[j] = !g->ignore[j];*/
-	    }
 	 }
 	 else /* 2nd iteration done, check
 		 whether active set has changed */
 	 {
-	   /* numactive = 0; */
 	    for(j = 0 ; j <= p ; j++)
-	    {
-/*	       numactive += active_new[j];*/
 	       if(active_new[j] != active_old[j])
 		  break;
-	    }
 
 	    /* all equal, terminate */
 	    if(j > p)
 	    {
-	       printf("\nterminating at epoch %d with %d active vars\n",
+	       printfverb("\nterminating at epoch %d \
+with %d active vars\n",
 		     epoch, numactive);
 	       good = TRUE;
 	       break;
 	    }
 
-	    printf("active set changed, %d active vars\n", numactive);
+	    printfverb("active set changed, %d active vars\n",
+		  numactive);
 
-	    /* active set has changed, iterate over new active variables */
+	    /* active set has changed, iterate over
+	     * new active variables */
 	    for(j = p ; j >= 0 ; --j)
 	       active_old[j] = active_new[j];
 	    allconverged = 1;
@@ -339,20 +307,15 @@ reached for variable: %d\n", maxiters, j);
       else /* reset to first state */
 	 allconverged = 0;
 
-    /*  for(j = p ; j >= 0 ; --j)
-	 beta_old[j] = g->beta[j]; */
-
       epoch++;
    }
-   printf("\n");
+   printfverb("\n");
 
    sample_free(&sm);
    free(beta_old);
    free(active_old);
    free(active_new);
 
-   if(good)
-      return numactive;
-   return CDFAILURE;
+   return good ? numactive : CDFAILURE;
 }
 
