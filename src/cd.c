@@ -213,13 +213,11 @@ int cd_gmatrix(gmatrix *g,
    for(j = p ; j >= 0 ; --j)
    {
       active_old[j] = g->active[j];
-      /*active_old[j] = g->active[j] = !g->ignore[j];*/
       beta_old[j] = g->beta[j];
    }
 
    while(epoch <= maxepochs)
    {
-/*      printf("[%ld] epoch %d\n", time(NULL), epoch);*/
       numactive = 0;
       numconverged = 0;
       for(j = 0 ; j < p1; j++)
@@ -243,7 +241,7 @@ int cd_gmatrix(gmatrix *g,
 	       s = beta_new - g->beta[j];
       	       updatelp(g, s, j, sm.x);
       	       g->beta[j] = beta_new;
-	       if(fabs(s) <= thresh)
+	       if(convergetest(g->beta[j], beta_new, thresh))
 		  break;
       	       iter++;
       	    }
@@ -268,7 +266,7 @@ reached for variable: %d\n", maxiters, j);
 	 printfverb("all converged\n");
 	 allconverged++;
 
-	 /* prepare for another iteration over all
+	 /* prepare for another iteration over *all*
 	  * (non-ignored) variables, store a copy of the
 	  * current active set for later */
 	 if(allconverged == 1)
@@ -280,7 +278,7 @@ reached for variable: %d\n", maxiters, j);
 	       g->active[j] = !g->ignore[j];
 	    }
 	 }
-	 else /* 2nd iteration done, check
+	 else /* 2nd iteration over all variables done, check
 		 whether active set has changed */
 	 {
 	    for(j = p ; j >= 0 ; --j)

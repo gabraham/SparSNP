@@ -28,7 +28,7 @@ int opt_defaults(Opt *opt)
    opt->model = 0;
    opt->nlambda1 = 100;
    opt->l1minratio = 1e-2;
-   opt->maxepochs = 200;
+   opt->maxepochs = 1000;
    opt->maxiters = 100;
    opt->lambda1 = -1;
    opt->lambda2 = 0;
