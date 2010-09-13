@@ -34,26 +34,16 @@ void encode(unsigned char *out, const unsigned char *in, const int n)
  */
 void decode(unsigned char *out, const unsigned char *in, const int n)
 {
-   int i, j;
-   unsigned char val, tmp;
-
-   /* 3 is 11 in binary, we need a 2 bit mask for each of the 4 positions */
-   const unsigned char masks[PACK_DENSITY] = {
-      3 << 2 * 0,
-      3 << 2 * 1,
-      3 << 2 * 2,
-      3 << 2 * 3
-   };
+   int i;
+   unsigned char tmp;
 
    for(i = 0 ; i < n ; i++)
    {
       tmp = in[i];
-      for(j = 0; j < PACK_DENSITY ; j++)
-      {
-	 val = (in[i] & masks[j]) >> (2 * j);
-	 out[PACK_DENSITY * i + j] = val; 
-	 tmp -= val;
-      }
+      out[PACK_DENSITY * i]     = (tmp & MASK0); 
+      out[PACK_DENSITY * i + 1] = (tmp & MASK1) >> 2; 
+      out[PACK_DENSITY * i + 2] = (tmp & MASK2) >> 4;; 
+      out[PACK_DENSITY * i + 3] = (tmp & MASK3) >> 6; 
    }
 }
 
