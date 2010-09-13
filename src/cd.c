@@ -41,7 +41,7 @@ void updatelp(gmatrix *g, const double update, const int j,
    {
       for(i = n - 1 ; i >= 0 ; --i)
 	 /*g->lp[i] = clip(g->lp[i] + x[i] * beta_diff, -MAXLP, MAXLP);*/
-	 lp[i] = lp[i] + x[i] * update;
+	 lp[i] += x[i] * update;
    }
    else /* update from intercept, lp[i] is zero and x[i] is one */
    {
@@ -150,7 +150,7 @@ double step_regular_linear(sample *s, gmatrix *g,
 	  *restrict y_tmp = g->y;
 
    /* compute gradient */
-   for(i = g->n - 1 ; i >= 0 ; --i)
+   for(i = g->ntrain[g->fold] - 1 ; i >= 0 ; --i)
       grad += x_tmp[i] * (lp_tmp[i] - y_tmp[i]);
 
    return grad * g->ntrainrecip[g->fold];
@@ -247,6 +247,7 @@ int cd_gmatrix(gmatrix *g,
       {
 	 g->nextcol(g, &sm);
 
+	 printf("%d", j);
 	 iter = 0;
 	 if(active_new[j])
 	 {
@@ -273,10 +274,13 @@ int cd_gmatrix(gmatrix *g,
 	 numconverged += convergetest(beta_old[j], g->beta[j], thresh);
 	 beta_old[j] = g->beta[j];
 
+	 printf("\r");
+
 	 if(iter > maxiters)
 	    printfverb("max number of internal iterations (%d) \
 reached for variable: %d\n", maxiters, j);
       }
+      printf("\n");
 
       /* check convergence across epochs */
 /*      numconverged = 0;
