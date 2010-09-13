@@ -123,31 +123,33 @@ void zero_model(gmatrix *g)
 int run_predict_beta(gmatrix *g, predict predict_func,
       char* predict_file)
 {
-   int i, j;
+   int i, j, n = g->ntest[g->fold];
    sample sm;
    double *yhat;
    double *restrict lp = g->lp;
    double *restrict x;
    double *restrict beta = g->beta;
 
-   if(!sample_init(&sm, g->n, g->inmemory))
+   if(!sample_init(&sm, n, g->inmemory))
       return FAILURE;
 
-   MALLOCTEST(yhat, sizeof(double) * g->n)
+   MALLOCTEST(yhat, sizeof(double) * n)
 
    for(j = 0 ; j < g->p + 1 ; j++)
    {
       g->nextcol(g, &sm);
       x = sm.x;
-      for(i = 0 ; i < g->n ; i++)
+      for(i = 0 ; i < n ; i++)
 	 lp[i] += x[i] * beta[j];
    }
    
-   for(i = 0 ; i < g->n ; i++)
+   for(i = 0 ; i < n ; i++)
       yhat[i] = predict_func(lp[i]);
 
-   if(!writevectorf(predict_file, yhat, g->n))
+   printf("writing %s (%d) ... ", predict_file, n);
+   if(!writevectorf(predict_file, yhat, n))
       return FAILURE;
+   printf("done\n");
 
    free(yhat);
    sample_free(&sm);
@@ -163,7 +165,8 @@ int run_predict(gmatrix *g, predict predict_func, char **beta_files,
 
    for(i = 0 ; i < n_beta_files ; i++)
    {
-      printf("Reading %s\n", beta_files[i]);
+      zero_model(g);
+      printf("reading %s\n", beta_files[i]);
       if(!load_beta(g->beta, beta_files[i], g->p + 1))
 	 return FAILURE;
 
@@ -276,8 +279,6 @@ int main(int argc, char* argv[])
    gmatrix_free(&g);
    opt_free(&opt);
 
-   if(ret == FAILURE)
-      return EXIT_FAILURE;
-   return EXIT_SUCCESS;
+   return ret == FAILURE ? EXIT_FAILURE : EXIT_SUCCESS;
 }
 

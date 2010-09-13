@@ -253,7 +253,6 @@ int cd_gmatrix(gmatrix *g,
 	 numconverged += convergetest(beta_old[j], g->beta[j], thresh);
 	 beta_old[j] = g->beta[j];
 
-
 	 if(iter > maxiters)
 	    printfverb("max number of internal iterations (%d) \
 reached for variable: %d\n", maxiters, j);

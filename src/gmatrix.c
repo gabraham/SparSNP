@@ -130,14 +130,13 @@ int gmatrix_setup_folds(gmatrix *g)
    MALLOCTEST(g->ntestrecip, sizeof(double) * g->nfolds);
    
    if(g->folds_ind_file && g->nfolds > 1)
-      count_fold_samples(g->ntrain, g->ntest, g->ntrainrecip, g->ntestrecip,
+      count_fold_samples(g->ntrain, g->ntest,
+	    g->ntrainrecip, g->ntestrecip,
 	    g->folds, g->nfolds, g->n);
-   else
+   else /* train and test sets are the same */
    {
-      g->ntrain[0] = g->n;
-      g->ntest[0] = 0;
-      g->ntrainrecip[0] = 1.0 / g->n;
-      g->ntestrecip[0] = 0;
+      g->ntrain[0] = g->ntest[0] = g->n;
+      g->ntrainrecip[0] = g->ntestrecip[0] = 1.0 / g->n;
    }
    return SUCCESS;
 }
@@ -282,7 +281,8 @@ int gmatrix_disk_nextcol(gmatrix *g, sample *s)
 	    FSEEKOTEST(g->file, sizeof(dtype) * g->n, SEEK_CUR);
       	 }
       } else { /* skip plink headers */
-	 FSEEKOTEST(g->file, sizeof(dtype) * PLINK_HEADER_SIZE, SEEK_CUR);
+	 FSEEKOTEST(g->file,
+	       sizeof(dtype) * PLINK_HEADER_SIZE, SEEK_CUR);
       }
       
       /* No need to copy values, just assign the intercept vector,
@@ -312,13 +312,12 @@ int gmatrix_disk_nextcol(gmatrix *g, sample *s)
    {
       s->intercept = FALSE;
 
-      if(g->encoded)
-      {
+      if(g->encoded) {
 	 FREADTEST(g->encbuf, sizeof(dtype), g->nencb, g->file);
 	 g->decode(g->tmp, g->encbuf, g->nencb);
-      }
-      else
+      } else {
 	 FREADTEST(g->tmp, sizeof(dtype), g->n, g->file);
+      }
 
       /* Get the scaled value instead of the original value */
       l1 = g->j * NUM_X_LEVELS;
@@ -468,7 +467,8 @@ int gmatrix_read_scaling(gmatrix *g, char *file_scale)
 
 /* number of training and test samples per fold */
 void count_fold_samples(int *ntrain, int *ntest,
-      double *ntrainrecip, double *ntestrecip, int *folds, int nfolds, int n)
+      double *ntrainrecip, double *ntestrecip,
+      int *folds, int nfolds, int n)
 {
    int i, j;
 
