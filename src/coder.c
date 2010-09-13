@@ -34,16 +34,17 @@ void encode(unsigned char *out, const unsigned char *in, const int n)
  */
 void decode(unsigned char *out, const unsigned char *in, const int n)
 {
-   int i;
+   int i, k;
    unsigned char tmp;
 
-   for(i = 0 ; i < n ; i++)
+   for(i = 0 ; i < n ; ++i)
    {
       tmp = in[i];
-      out[PACK_DENSITY * i]     = (tmp & MASK0); 
-      out[PACK_DENSITY * i + 1] = (tmp & MASK1) >> 2; 
-      out[PACK_DENSITY * i + 2] = (tmp & MASK2) >> 4;; 
-      out[PACK_DENSITY * i + 3] = (tmp & MASK3) >> 6; 
+      k = PACK_DENSITY * i;
+      out[k++] = (tmp & MASK0); 
+      out[k++] = (tmp & MASK1) >> 2; 
+      out[k++] = (tmp & MASK2) >> 4;; 
+      out[k]   = (tmp & MASK3) >> 6; 
    }
 }
 
