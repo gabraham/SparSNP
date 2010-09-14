@@ -267,9 +267,6 @@ only using the first one\n");
       printf("Mode: %s\n",
 	    (opt->mode == MODE_TRAIN) ? "train" : "predict");
 
-   if(!opt->nzmax)
-      opt->nzmax = (int)fmin(opt->n, opt->p); 
-
    srand(opt->seed);
 
    CALLOCTEST2(opt->lambda1path, opt->nlambda1, sizeof(double))

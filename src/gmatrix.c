@@ -264,6 +264,43 @@ void gmatrix_free(gmatrix *g)
    g->ca = NULL;
 }
 
+int gmatrix_disk_nexty(gmatrix *g)
+{
+   int i, n = g->n, n1 = g->n - 1;
+   
+   if(g->binformat == BINFORMAT_BIN) {
+      /* read y the first time we see it */
+      if(!g->y) {
+	 MALLOCTEST(g->y, sizeof(double) * n);
+
+	 /* The y vector may be byte packed */
+	 if(g->encoded) {
+	    FREADTEST(g->encbuf, sizeof(dtype), g->nencb, g->file);
+	    g->decode(g->tmp, g->encbuf, g->nencb);
+	 } else {
+	    FREADTEST(g->tmp, sizeof(dtype), n, g->file);
+	 }
+
+	 /* represent y as 0/1 or -1/1 */
+	 if(g->yformat == YFORMAT01) {
+	    for(i = n1 ; i >= 0 ; --i)
+	       g->y[i] = (double)g->tmp[i];
+	 } else { /*  -1/1  */
+	    for(i = n1 ; i >= 0 ; --i)
+	       g->y[i] = 2.0 * g->tmp[i] - 1.0;
+	 }
+
+      } else { /* don't read y again */
+	 FSEEKOTEST(g->file, g->nseek, SEEK_CUR);
+      }
+   } else { /* skip plink headers */
+      FSEEKOTEST(g->file,
+	    sizeof(dtype) * PLINK_HEADER_SIZE, SEEK_CUR);
+   }
+
+   return SUCCESS;
+}
+
 /* big ugly function
  */
 int gmatrix_disk_nextcol(gmatrix *g, sample *s, int skip)
@@ -278,40 +315,9 @@ int gmatrix_disk_nextcol(gmatrix *g, sample *s, int skip)
    if(g->j == 0)
    {
       s->intercept = TRUE;
+      if(!gmatrix_disk_nexty(g))
+	 return FAILURE;
 
-      if(g->binformat == BINFORMAT_BIN) {
-	 /* read y the first time we see it */
-      	 if(!g->y) {
-      	    MALLOCTEST(g->y, sizeof(double) * n);
-
-      	    /* The y vector may be byte packed */
-      	    if(g->encoded) {
-      	       FREADTEST(g->encbuf, sizeof(dtype), g->nencb, g->file);
-      	       g->decode(g->tmp, g->encbuf, g->nencb);
-      	    } else {
-      	       FREADTEST(g->tmp, sizeof(dtype), n, g->file);
-      	    }
-
-	    /* represent y as 0/1 or -1/1 */
-      	    if(g->yformat == YFORMAT01) {
-      	       for(i = n1 ; i >= 0 ; --i)
-      	          g->y[i] = (double)g->tmp[i];
-	    } else { /*  -1/1  */
-      	       for(i = n1 ; i >= 0 ; --i)
-      	          g->y[i] = 2.0 * g->tmp[i] - 1.0;
-	    }
-
-      	 }  /* don't read y again */
-	 else if(g->encoded) {
-	    FSEEKOTEST(g->file, sizeof(dtype) * g->nencb, SEEK_CUR);
-	 } else {
-	    FSEEKOTEST(g->file, sizeof(dtype) * n, SEEK_CUR);
-	 }
-      } else { /* skip plink headers */
-	 FSEEKOTEST(g->file,
-	       sizeof(dtype) * PLINK_HEADER_SIZE, SEEK_CUR);
-      }
-      
       /* No need to copy values, just assign the intercept vector,
        * but first, free any old data we have from previous
        * iterations */
@@ -332,26 +338,26 @@ int gmatrix_disk_nextcol(gmatrix *g, sample *s, int skip)
 
    if(skip)
    {
-      if(g->encoded) {
-	 FSEEKOTEST(g->file, sizeof(dtype) * g->nencb, SEEK_CUR);
-      } else {
-	 FSEEKOTEST(g->file, sizeof(dtype) * n, SEEK_CUR);
-      }
-
+      FSEEKOTEST(g->file, g->nseek, SEEK_CUR);
       g->j++;
       return SUCCESS;
    }
 
+   /* read the data, unpack if necessary */
+   if(g->encoded) {
+      FREADTEST(g->encbuf, sizeof(dtype), g->nencb, g->file);
+      g->decode(g->tmp, g->encbuf, g->nencb);
+   } else {
+      FREADTEST(g->tmp, sizeof(dtype), n, g->file);
+   }
+
    /* Get the scaled versions of the genotypes */
-   if(g->scalefile)
-   {
+   if(g->scalefile) {
       /* Get the scaled value instead of the original value */
       l1 = g->j * NUM_X_LEVELS;
       for(i = n1 ; i >= 0 ; --i)
 	 s->x[i] = g->lookup[l1 + g->tmp[i]];
-   }
-   else
-   {
+   } else {
       for(i = n1 ; i >= 0 ; --i)
 	 s->x[i] = (double)g->tmp[i];
    }
