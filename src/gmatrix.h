@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <math.h>
+
 #include "common.h"
 
 #define BUFSIZE 10
@@ -10,6 +11,24 @@
 
 #define YFORMAT01 1
 #define YFORMAT11 2
+
+#define HASH_SIZE 16
+
+typedef struct bucket {
+   int key;
+   double *value;
+   unsigned int active;
+   struct bucket *next;
+} bucket;
+
+typedef struct cache {
+   unsigned int size;
+   unsigned int active;
+   bucket *buckets;
+   int *keys;
+   int nkeys;
+   int64_t *weights;
+} cache;
 
 typedef struct sample {
    double *x;
@@ -64,6 +83,7 @@ typedef struct gmatrix {
    int *folds;
    int fold;
    short mode;
+   cache *ca;
 } gmatrix;
 
 int sample_init(sample *, int, short);
@@ -81,4 +101,10 @@ int gmatrix_read_scaling(gmatrix *g, char *file_scale);
 void count_fold_samples(int *ntrain, int *ntest, double *ntrainrecip,
       double *ntestrecip, int *folds, int nfolds, int n);
 int gmatrix_setup_folds(gmatrix *g);
+
+int cache_init(cache *ht, int nkeys);
+void cache_free(cache *ht);
+int cache_put(cache *ht, int key, double *value);
+double* cache_get(cache *ht, int key);
+int hash(int key);
 

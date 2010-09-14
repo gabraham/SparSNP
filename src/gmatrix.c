@@ -73,6 +73,12 @@ int gmatrix_init(gmatrix *g, char *filename, int n, int p,
    g->ntestrecip = NULL;
    g->mode = mode;
 
+   MALLOCTEST(g->ca, sizeof(cache));
+   if(!cache_init(g->ca, g->p + 1)) /* +1 not for intercept, which isn't
+				       stored but we need to maintain
+				       indexing consistency */
+      return FAILURE;
+
    if(filename)
       FOPENTEST(g->file, filename, "rb");
 
@@ -245,13 +251,20 @@ void gmatrix_free(gmatrix *g)
    if(g->active)
       free(g->active);
    g->active = NULL;
+
+   if(g->ca)
+   {
+      cache_free(g->ca);
+      free(g->ca);
+   }
+   g->ca = NULL;
 }
 
 /* big ugly function
  */
 int gmatrix_disk_nextcol(gmatrix *g, sample *s)
 {
-   int i, l1, l2;
+   int i, l1;/*, l2;*/
    int n = g->n, n1 = g->n - 1;
    
    if(g->j == g->p + 1 && !gmatrix_reset(g))
@@ -310,10 +323,8 @@ int gmatrix_disk_nextcol(gmatrix *g, sample *s)
 
    /* this isn't an intercept, so we need to copy actual values */
    s->intercept = FALSE;
-   if(g->j == 1)
-   {
+   if(g->j == 1) {
       MALLOCTEST(s->x, sizeof(double) * n);
-      /*MALLOCTEST(s->x2, sizeof(double) * g->n);*/
    }
 
    /* Get the scaled versions of the genotypes */
@@ -321,20 +332,29 @@ int gmatrix_disk_nextcol(gmatrix *g, sample *s)
    {
       s->intercept = FALSE;
 
-      if(g->encoded) {
-	 FREADTEST(g->encbuf, sizeof(dtype), g->nencb, g->file);
-	 g->decode(g->tmp, g->encbuf, g->nencb);
+      /* check cache */
+      if(g->ca->keys[g->j]) {
+	 if(!(s->x = cache_get(g->ca, g->j)))
+	 {
+	    fprintf(stderr, "j=%d in keys but not in cache\n", g->j);
+	    return FAILURE;
+	 }
+	 printf("cache hit: %d\n", g->j);
       } else {
-	 FREADTEST(g->tmp, sizeof(dtype), n, g->file);
-      }
+	 printf("cache miss: %d\n", g->j);
+	 if(g->encoded) {
+      	    FREADTEST(g->encbuf, sizeof(dtype), g->nencb, g->file);
+      	    g->decode(g->tmp, g->encbuf, g->nencb);
+      	 } else {
+      	    FREADTEST(g->tmp, sizeof(dtype), n, g->file);
+      	 }
 
-      /* Get the scaled value instead of the original value */
-      l1 = g->j * NUM_X_LEVELS;
-      for(i = n1 ; i >= 0 ; --i)
-      {
-	 l2 = l1 + g->tmp[i];
-	 s->x[i] = g->lookup[l2];
-/*	 s->x2[i] = g->lookup2[l2]; */
+      	 /* Get the scaled value instead of the original value */
+      	 l1 = g->j * NUM_X_LEVELS;
+      	 for(i = n1 ; i >= 0 ; --i)
+      	    s->x[i] = g->lookup[l1 + g->tmp[i]];
+
+	 cache_put(g->ca, g->j, s->x);
       }
       
       g->j++;
@@ -349,10 +369,7 @@ int gmatrix_disk_nextcol(gmatrix *g, sample *s)
    }
 
    for(i = n1 ; i >= 0 ; --i)
-   {
       s->x[i] = (double)g->tmp[i];
- /*     s->x2[i] = s->x[i] * s->x[i]; */
-   }
 
    g->j++;
    return SUCCESS;
@@ -494,5 +511,85 @@ void count_fold_samples(int *ntrain, int *ntest,
       if(ntest[i] > 0)
 	 ntestrecip[i] = 1.0 / ntest[i];
    }
+}
+
+int cache_init(cache *ca, int nkeys)
+{
+   int i;
+   ca->nkeys = nkeys;
+   ca->size = HASH_SIZE;
+   ca->active = 0;
+
+   MALLOCTEST(ca->buckets, sizeof(bucket) * ca->size);
+   CALLOCTEST(ca->weights, nkeys, sizeof(ca->weights));
+   CALLOCTEST(ca->keys, nkeys, sizeof(ca->keys));
+
+   for(i = 0 ; i < ca->size ; i++)
+   {
+      ca->buckets[i].active = FALSE;
+      ca->buckets[i].key = 0.0;
+   }
+
+   return SUCCESS;
+}
+
+void cache_free(cache *ca)
+{
+   if(ca->buckets)
+      free(ca->buckets);
+   ca->buckets = NULL;
+   ca->active = 0;
+
+   if(ca->weights)
+      free(ca->weights);
+   ca->weights = NULL;
+
+   if(ca->keys)
+      free(ca->keys);
+   ca->keys = NULL;
+}
+
+int cache_put(cache *ca, int key, double *value)
+{
+   bucket *bk = NULL;
+   int hval = hash(key);
+
+   bk = &ca->buckets[hval];
+  
+   printf("key: %d\n", ca->weights[key]);
+   printf("bk->key: %d\n", ca->weights[bk->key]);
+   if(!bk->active || ca->weights[key] > ca->weights[bk->key])
+   {
+      ca->keys[bk->key] = FALSE;
+      bk->key = key;
+      bk->value = value;
+      ca->keys[key] = TRUE;
+      if(!bk->active)
+      {
+         bk->active = TRUE;
+         ca->active++;
+      }
+   }
+
+   return SUCCESS;
+}
+
+double* cache_get(cache *ca, int key)
+{
+   bucket *bk;
+   int hval = hash(key);
+
+  /* ca->weights[key]++; */
+
+   bk = &ca->buckets[hval];
+   if(bk && bk->active)
+      return bk->value;
+
+   return NULL;
+}
+
+int hash(int key)
+{
+   return key >> 28;
 }
 

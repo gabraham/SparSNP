@@ -5,7 +5,7 @@ RR2=2.25
 
 for ((J=1 ; J<=1; J++));
 do
-   DIR="sim2.$J"
+   DIR="sim7.$J"
    if ! [ -d "$DIR" ]; then
       mkdir $DIR
    fi  

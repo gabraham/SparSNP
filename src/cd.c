@@ -195,7 +195,7 @@ int cd_gmatrix(gmatrix *g,
        epoch = 1, numconverged = 0,
        good = FALSE;
    int *active_old = NULL;
-   double s, beta_new;
+   double s = 0, beta_new;
    const double truncl = log2((1 - trunc) / trunc),
 	        l2recip = 1 / (1 + lambda2);
    double *beta_old = NULL;
@@ -241,7 +241,9 @@ int cd_gmatrix(gmatrix *g,
 	       s = beta_new - g->beta[j];
       	       updatelp(g, s, j, sm.x);
       	       g->beta[j] = beta_new;
-	       if(convergetest(g->beta[j], beta_new, thresh))
+	       /*if(convergetest(g->beta[j], beta_new, thresh))
+		  break;*/
+	       if(fabs(s) <= thresh)
 		  break;
       	       iter++;
       	    }
