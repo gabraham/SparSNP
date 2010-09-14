@@ -265,7 +265,7 @@ void gmatrix_free(gmatrix *g)
 
 /* big ugly function
  */
-int gmatrix_disk_nextcol(gmatrix *g, sample *s)
+int gmatrix_disk_nextcol(gmatrix *g, sample *s, int skip)
 {
    int i, l1;
    int n = g->n, n1 = g->n - 1;
@@ -321,43 +321,39 @@ int gmatrix_disk_nextcol(gmatrix *g, sample *s)
       return SUCCESS;
    }
 
-   /* this isn't an intercept, so we need to copy actual values, but first
-    * allocated the memory we previously freed */
+   /* this isn't an intercept, so we need to copy actual values but first make
+    * room for them */
    s->intercept = FALSE;
    if(g->j == 1) {
       MALLOCTEST(s->x, sizeof(double) * n);
    }
 
+   if(skip)
+   {
+      if(g->encoded) {
+	 FSEEKOTEST(g->file, sizeof(dtype) * g->nencb, SEEK_CUR);
+      } else {
+	 FSEEKOTEST(g->file, sizeof(dtype) * n, SEEK_CUR);
+      }
+
+      g->j++;
+      return SUCCESS;
+   }
+
    /* Get the scaled versions of the genotypes */
    if(g->scalefile)
    {
-      s->intercept = FALSE;
-
-      /* check cache */
-      /*if(g->ca->keys[g->j]) {
-	 if(!(s->x = cache_get(g->ca, g->j)))
-	 {
-	    fprintf(stderr, "j=%d in keys but not in cache\n", g->j);
-	    return FAILURE;
-	 }
-	 printf("cache hit: %d\n", g->j);
-	 s->cached = TRUE;
-      } else */{
-/*	 printf("cache miss: %d\n", g->j);*/
-	 if(g->encoded) {
-      	    FREADTEST(g->encbuf, sizeof(dtype), g->nencb, g->file);
-      	    g->decode(g->tmp, g->encbuf, g->nencb);
-      	 } else {
-      	    FREADTEST(g->tmp, sizeof(dtype), n, g->file);
-      	 }
-
-      	 /* Get the scaled value instead of the original value */
-      	 l1 = g->j * NUM_X_LEVELS;
-      	 for(i = n1 ; i >= 0 ; --i)
-      	    s->x[i] = g->lookup[l1 + g->tmp[i]];
-
-	 /*s->cached = cache_put(g->ca, g->j, s->x);*/
+      if(g->encoded) {
+	 FREADTEST(g->encbuf, sizeof(dtype), g->nencb, g->file);
+	 g->decode(g->tmp, g->encbuf, g->nencb);
+      } else {
+	 FREADTEST(g->tmp, sizeof(dtype), n, g->file);
       }
+
+      /* Get the scaled value instead of the original value */
+      l1 = g->j * NUM_X_LEVELS;
+      for(i = n1 ; i >= 0 ; --i)
+	 s->x[i] = g->lookup[l1 + g->tmp[i]];
       
       g->j++;
       return SUCCESS;
@@ -377,7 +373,7 @@ int gmatrix_disk_nextcol(gmatrix *g, sample *s)
    return SUCCESS;
 }
 
-int gmatrix_mem_nextcol(gmatrix *g, sample *s)
+int gmatrix_mem_nextcol(gmatrix *g, sample *s, int skip)
 {
    if(g->j == g->p + 1)
    {
@@ -403,7 +399,7 @@ int gmatrix_load(gmatrix *g)
    for(j = 0 ; j < g->p + 1 ; j++)
    {
       MALLOCTEST(g->x[j], sizeof(double) * g->n)
-      if(!gmatrix_disk_nextcol(g, &s))
+      if(!gmatrix_disk_nextcol(g, &s, FALSE))
 	 return FAILURE;
 
       for(i = 0 ; i < g->n ; i++)

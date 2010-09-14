@@ -141,7 +141,7 @@ int run_predict_beta(gmatrix *g, predict predict_func,
 
    for(j = 0 ; j < g->p + 1 ; j++)
    {
-      g->nextcol(g, &sm);
+      g->nextcol(g, &sm, FALSE);
       x = sm.x;
       for(i = 0 ; i < n ; i++)
 	 lp[i] += x[i] * beta[j];

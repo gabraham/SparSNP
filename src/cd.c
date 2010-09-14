@@ -82,7 +82,7 @@ double get_lambda1max_gmatrix(
    if(!sample_init(&sm, n, g->inmemory))
       return FAILURE;
 
-   g->nextcol(g, &sm);
+   g->nextcol(g, &sm, FALSE);
 
    /* First compute the intercept. When all other variables
     * are zero, the intercept is just inv(mean(y)) for a suitable inv()
@@ -100,7 +100,7 @@ double get_lambda1max_gmatrix(
     * first because it's not penalised. */
    for(j = 1 ; j < p1; j++)
    {
-      g->nextcol(g, &sm);
+      g->nextcol(g, &sm, FALSE);
       if(g->ignore[j])
 	 continue;
 
@@ -222,9 +222,9 @@ int cd_gmatrix(gmatrix *g,
       numconverged = 0;
       for(j = 0 ; j < p1; j++)
       {
-	 g->nextcol(g, &sm);
-
 	 iter = 0;
+	 g->nextcol(g, &sm, !g->active[j]);
+	 /*g->nextcol(g, &sm, FALSE);*/
 	 if(g->active[j])
 	 {
 	    /* iterate over jth variable */
@@ -248,6 +248,8 @@ int cd_gmatrix(gmatrix *g,
       	       iter++;
       	    }
 	 }
+/*	 else
+	    gmatrix_disk_skipcol(g);*/
 
 	 g->active[j] = (g->beta[j] != 0);
 	 numactive += g->active[j];

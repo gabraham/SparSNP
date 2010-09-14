@@ -66,7 +66,7 @@ typedef struct gmatrix {
    int bufidx;
    int yidx; /* only used for pcor */
    short inmemory;
-   int (*nextcol)(struct gmatrix*, sample*);
+   int (*nextcol)(struct gmatrix*, sample*, int skip);
    char *scalefile;
    dtype *tmp;
    unsigned char *encbuf;
@@ -92,9 +92,10 @@ int gmatrix_init(gmatrix *, char *, int, int, short, char*, short,
       int, short, short, char *folds_ind_file, int nfolds, short);
 int gmatrix_reset(gmatrix *);
 void gmatrix_free(gmatrix *);
-int gmatrix_disk_nextcol(gmatrix *, sample *);
-int gmatrix_mem_nextcol(gmatrix *, sample *);
-int gmatrix_disk_nextcol2(gmatrix *, sample *);
+int gmatrix_disk_nextcol(gmatrix *, sample *, int skip);
+int gmatrix_disk_read_y(gmatrix *g);
+int gmatrix_disk_skipcol(gmatrix *g);
+int gmatrix_mem_nextcol(gmatrix *, sample *, int skip);
 int gmatrix_load(gmatrix *g);
 int gmatrix_disk_skipcol(gmatrix *g);
 int gmatrix_read_scaling(gmatrix *g, char *file_scale);

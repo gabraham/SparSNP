@@ -11,13 +11,13 @@ int unpack(gmatrix *g, char *filename_out)
       return FAILURE;
 
    FOPENTEST(out, filename_out, "wb");
-   g->nextcol(g, &sm);
+   g->nextcol(g, &sm, FALSE);
    FWRITETEST(g->y, sizeof(double), g->n, out);
 
    for(j = 0 ; j < g->p ; j++)
    {
       printf("%d of %d", j, g->p);
-      g->nextcol(g, &sm);
+      g->nextcol(g, &sm, FALSE);
       FWRITETEST(sm.x, sizeof(double), g->n, out);
       printf("\r");
    }
