@@ -9,8 +9,9 @@ int sample_init(sample *s, int n, short inmemory)
 {
    s->inmemory = inmemory;
    s->x = NULL;
-   /*s->x2 = NULL;*/
+   s->cached = FALSE;
    s->intercept = FALSE;
+   /*MALLOCTEST(s->x, sizeof(double) * n);*/
    return SUCCESS;
 }
 
@@ -19,9 +20,11 @@ void sample_free(sample *s)
    if(s->intercept)
       return;
    
-   if(s->x)
+   if(!s->cached && s->x)
+   {
       free(s->x);
-   s->x = NULL;
+      s->x = NULL;
+   }
 
    /*if(s->x2)
       free(s->x2);*/
@@ -264,7 +267,7 @@ void gmatrix_free(gmatrix *g)
  */
 int gmatrix_disk_nextcol(gmatrix *g, sample *s)
 {
-   int i, l1;/*, l2;*/
+   int i, l1;
    int n = g->n, n1 = g->n - 1;
    
    if(g->j == g->p + 1 && !gmatrix_reset(g))
@@ -309,19 +312,17 @@ int gmatrix_disk_nextcol(gmatrix *g, sample *s)
       
       /* No need to copy values, just assign the intercept vector,
        * but first, free any old data we have from previous
-       * iterations*/
+       * iterations */
       if(s->x)
 	 free(s->x);
-      /*if(s->x2)
-	 free(s->x2);*/
       s->x = g->intercept;
-      /*s->x2 = g->intercept;*/
       
       g->j++;
       return SUCCESS;
    }
 
-   /* this isn't an intercept, so we need to copy actual values */
+   /* this isn't an intercept, so we need to copy actual values, but first
+    * allocated the memory we previously freed */
    s->intercept = FALSE;
    if(g->j == 1) {
       MALLOCTEST(s->x, sizeof(double) * n);
@@ -333,15 +334,16 @@ int gmatrix_disk_nextcol(gmatrix *g, sample *s)
       s->intercept = FALSE;
 
       /* check cache */
-      if(g->ca->keys[g->j]) {
+      /*if(g->ca->keys[g->j]) {
 	 if(!(s->x = cache_get(g->ca, g->j)))
 	 {
 	    fprintf(stderr, "j=%d in keys but not in cache\n", g->j);
 	    return FAILURE;
 	 }
 	 printf("cache hit: %d\n", g->j);
-      } else {
-	 printf("cache miss: %d\n", g->j);
+	 s->cached = TRUE;
+      } else */{
+/*	 printf("cache miss: %d\n", g->j);*/
 	 if(g->encoded) {
       	    FREADTEST(g->encbuf, sizeof(dtype), g->nencb, g->file);
       	    g->decode(g->tmp, g->encbuf, g->nencb);
@@ -354,7 +356,7 @@ int gmatrix_disk_nextcol(gmatrix *g, sample *s)
       	 for(i = n1 ; i >= 0 ; --i)
       	    s->x[i] = g->lookup[l1 + g->tmp[i]];
 
-	 cache_put(g->ca, g->j, s->x);
+	 /*s->cached = cache_put(g->ca, g->j, s->x);*/
       }
       
       g->j++;
@@ -384,24 +386,6 @@ int gmatrix_mem_nextcol(gmatrix *g, sample *s)
       
    s->x = g->x[g->j];
    g->j++;
-
-   return SUCCESS;
-}
-
-/* Expects the binary data column to be x_1, x_2, x_3, ..., x_p */
-int gmatrix_disk_nextcol_no_y(gmatrix *g, sample *s)
-{
-   /*if(g->j == g->p + 1)
-      if(!gmatrix_reset(g))
-	 return FAILURE;
-
-   if(g->j == g->yidx) {
-      FREADTEST(g->y, sizeof(dtype), g->n, g->file)
-   } else {
-      FREADTEST(s->x, sizeof(dtype), g->n, g->file)
-   }
-
-   g->j++;*/
 
    return SUCCESS;
 }
@@ -556,8 +540,6 @@ int cache_put(cache *ca, int key, double *value)
 
    bk = &ca->buckets[hval];
   
-   printf("key: %d\n", ca->weights[key]);
-   printf("bk->key: %d\n", ca->weights[bk->key]);
    if(!bk->active || ca->weights[key] > ca->weights[bk->key])
    {
       ca->keys[bk->key] = FALSE;
@@ -569,9 +551,10 @@ int cache_put(cache *ca, int key, double *value)
          bk->active = TRUE;
          ca->active++;
       }
+      return SUCCESS;
    }
 
-   return SUCCESS;
+   return FAILURE;
 }
 
 double* cache_get(cache *ca, int key)

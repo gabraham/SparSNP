@@ -27,7 +27,7 @@ typedef struct cache {
    bucket *buckets;
    int *keys;
    int nkeys;
-   int64_t *weights;
+   unsigned int *weights;
 } cache;
 
 typedef struct sample {
@@ -35,7 +35,7 @@ typedef struct sample {
    double *x2;
    short inmemory;
    short intercept;
-
+   short cached;
    int nbins;
    int *counts;
    double *values;
