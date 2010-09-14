@@ -224,7 +224,6 @@ int cd_gmatrix(gmatrix *g,
       {
 	 iter = 0;
 	 g->nextcol(g, &sm, !g->active[j]);
-	 /*g->nextcol(g, &sm, FALSE);*/
 	 if(g->active[j])
 	 {
 	    /* iterate over jth variable */
@@ -241,15 +240,11 @@ int cd_gmatrix(gmatrix *g,
 	       s = beta_new - g->beta[j];
       	       updatelp(g, s, j, sm.x);
       	       g->beta[j] = beta_new;
-	       /*if(convergetest(g->beta[j], beta_new, thresh))
-		  break;*/
 	       if(fabs(s) <= thresh)
 		  break;
       	       iter++;
       	    }
 	 }
-/*	 else
-	    gmatrix_disk_skipcol(g);*/
 
 	 g->active[j] = (g->beta[j] != 0);
 	 numactive += g->active[j];

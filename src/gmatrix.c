@@ -75,6 +75,7 @@ int gmatrix_init(gmatrix *g, char *filename, int n, int p,
    g->ntrainrecip = NULL;
    g->ntestrecip = NULL;
    g->mode = mode;
+   g->nseek = sizeof(dtype) * (encoded ? g->nencb : g->n);
 
    MALLOCTEST(g->ca, sizeof(cache));
    if(!cache_init(g->ca, g->p + 1)) /* +1 not for intercept, which isn't
@@ -300,11 +301,12 @@ int gmatrix_disk_nextcol(gmatrix *g, sample *s, int skip)
       	          g->y[i] = 2.0 * g->tmp[i] - 1.0;
 	    }
 
-      	 } else if(g->encoded) { /* don't read y again */
+      	 }  /* don't read y again */
+	 else if(g->encoded) {
 	    FSEEKOTEST(g->file, sizeof(dtype) * g->nencb, SEEK_CUR);
-      	 } else {
+	 } else {
 	    FSEEKOTEST(g->file, sizeof(dtype) * n, SEEK_CUR);
-      	 }
+	 }
       } else { /* skip plink headers */
 	 FSEEKOTEST(g->file,
 	       sizeof(dtype) * PLINK_HEADER_SIZE, SEEK_CUR);
@@ -343,31 +345,16 @@ int gmatrix_disk_nextcol(gmatrix *g, sample *s, int skip)
    /* Get the scaled versions of the genotypes */
    if(g->scalefile)
    {
-      if(g->encoded) {
-	 FREADTEST(g->encbuf, sizeof(dtype), g->nencb, g->file);
-	 g->decode(g->tmp, g->encbuf, g->nencb);
-      } else {
-	 FREADTEST(g->tmp, sizeof(dtype), n, g->file);
-      }
-
       /* Get the scaled value instead of the original value */
       l1 = g->j * NUM_X_LEVELS;
       for(i = n1 ; i >= 0 ; --i)
 	 s->x[i] = g->lookup[l1 + g->tmp[i]];
-      
-      g->j++;
-      return SUCCESS;
    }
-
-   if(g->encoded) {
-      FREADTEST(g->encbuf, sizeof(dtype), g->nencb, g->file);
-      g->decode(g->tmp, g->encbuf, g->nencb);
-   } else {
-      FREADTEST(g->tmp, sizeof(dtype), n, g->file);
+   else
+   {
+      for(i = n1 ; i >= 0 ; --i)
+	 s->x[i] = (double)g->tmp[i];
    }
-
-   for(i = n1 ; i >= 0 ; --i)
-      s->x[i] = (double)g->tmp[i];
 
    g->j++;
    return SUCCESS;

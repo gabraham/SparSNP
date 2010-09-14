@@ -84,6 +84,7 @@ typedef struct gmatrix {
    int fold;
    short mode;
    cache *ca;
+   int nseek;
 } gmatrix;
 
 int sample_init(sample *, int, short);
