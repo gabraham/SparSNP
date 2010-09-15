@@ -56,7 +56,7 @@ int opt_defaults(Opt *opt)
    opt->yformat = YFORMAT01;
    opt->predict_func = NULL;
    opt->predict_file = "predicted.csv";
-   opt->encoded = FALSE;
+   opt->encoded = TRUE;
    opt->binformat = BINFORMAT_BIN;
 
    MALLOCTEST(opt->beta_files, sizeof(char*));
@@ -234,8 +234,8 @@ int opt_parse(int argc, char* argv[], Opt* opt)
 	 if(j < argc && argv[j][0] == '-')
 	    i = j - 1;
       }
-      else if(strcmp2(argv[i], "-encoded"))
-	 opt->encoded = TRUE;
+      else if(strcmp2(argv[i], "-notencoded"))
+	 opt->encoded = FALSE;
       else if(strcmp2(argv[i], "-plink"))
 	 opt->binformat = BINFORMAT_PLINK;
       else if(strcmp2(argv[i], "-ind"))
@@ -250,11 +250,11 @@ int opt_parse(int argc, char* argv[], Opt* opt)
 	 || opt->n == 0 || opt->p == 0 || !opt->scalefile)
    {
       printf("usage: cd [-train|-predict] -model <model> \
--f <filename> -n <#samples> -p -scale <scalefile> \
-<#variables> | -betafiles <beta filename/s> -pred <pred filename> \
--maxepochs <maxepochs> -maxiters <maxiters> -l1 <lambda1> [-encoded] \
-[-plink] -l2 <lambda2> -thresh <threshold> \
--pred <prediction file> -cv <nfolds> -seed <seed> -v -vv\n");
+-bin <filename> -n <#samples> -p <#variables> -scale <scalefile> \
+[-betafiles <beta filename/s>] [-pred <pred filename>] \
+[-maxepochs <maxepochs>] [-maxiters <maxiters>] [-l1 <lambda1>] [-notencoded] \
+[-plink] [-l2 <lambda2>] [-thresh <threshold>] \
+[-pred <prediction file>] [-cv <nfolds>] [-seed <seed>] [-v] [-vv]\n");
       return FAILURE;
    }
    else if(opt->n_beta_files > 1 && opt->mode == MODE_TRAIN)
