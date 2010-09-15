@@ -104,7 +104,7 @@ int main(int argc, char *argv[])
         *y_filename_in = NULL,
 	*filename_out = NULL;
 
-   short encodeflag = FALSE;
+   short encodeflag = TRUE;
 
    int bufsize = 0;
 
@@ -144,16 +144,14 @@ int main(int argc, char *argv[])
 	 i++;
 	 bufsize = (int)atol(argv[i]);
       }
-      else if(strcmp2(argv[i], "-encode"))
-      {
-	 encodeflag = TRUE;
-      }
+      else if(strcmp2(argv[i], "-noencode"))
+	 encodeflag = FALSE;
    }
 
    if(!x_filename_in || !y_filename_in || !filename_out || n == 0 || p == 0)
    {
       printf("usage: hapgen2bin -finx <x_filename_in> -finy <y_filename_in> \
--fout <filename_out> -n #n -p #p [-encode]\n");
+-fout <filename_out> -n #n -p #p [-noencode]\n");
       return EXIT_FAILURE;
    }
 

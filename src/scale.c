@@ -97,7 +97,7 @@ int main(int argc, char* argv[])
 	*filename_folds_ind = NULL;
    short doscale = TRUE,
 	 inmemory = FALSE,
-	 encoded = FALSE,
+	 encoded = TRUE,
 	 binformat = BINFORMAT_BIN;
    gmatrix g;
 
@@ -135,8 +135,8 @@ int main(int argc, char* argv[])
       }
       else if(strcmp2(argv[i], "-inmemory"))
 	 inmemory = TRUE;
-      else if(strcmp2(argv[i], "-encoded"))
-	 encoded = TRUE;
+      else if(strcmp2(argv[i], "-notencoded"))
+	 encoded = FALSE;
       else if(strcmp2(argv[i], "-plink"))
 	 binformat = BINFORMAT_PLINK;
       else if(strcmp2(argv[i], "-ind"))
@@ -156,7 +156,7 @@ int main(int argc, char* argv[])
 	    (filename_scale == NULL || p == 0 || filename_beta == NULL)))
    {
       printf("scale: [-unscale] -bin <filein> [-scale <fileout>] [-betafile] \
-[-encoded] [-plink] -n #n -p #p [-ind <folds ind file>] [-nfolds <#cvfolds>]\n");
+[-notencoded] [-plink] -n #n -p #p [-ind <folds ind file>] [-nfolds <#cvfolds>]\n");
       return EXIT_FAILURE;
    }
 
