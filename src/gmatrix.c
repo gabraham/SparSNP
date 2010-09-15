@@ -336,7 +336,7 @@ int gmatrix_disk_nextcol(gmatrix *g, sample *s, int skip)
       MALLOCTEST(s->x, sizeof(double) * n);
    }
 
-   if(skip)
+   if(skip) 
    {
       FSEEKOTEST(g->file, g->nseek, SEEK_CUR);
       g->j++;

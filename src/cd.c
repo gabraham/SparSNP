@@ -248,7 +248,15 @@ int cd_gmatrix(gmatrix *g,
 
 	 g->active[j] = (g->beta[j] != 0);
 	 numactive += g->active[j];
-	 numconverged += convergetest(beta_old[j], g->beta[j], thresh);
+	 /*numconverged += convergetest(beta_old[j], g->beta[j], thresh);*/
+	 numconverged += fabs(beta_old[j] - g->beta[j]) <= thresh;
+
+	 /*if(g->active[j] && fabs(beta_old[j] - g->beta[j]) > thresh
+	    && j-numconverged <= 3)
+	 {
+	    printf("%d %d %.20f %.20f %.20f\n", j, numconverged, beta_old[j],
+	    g->beta[j], fabs(beta_old[j] - g->beta[j]));
+	 }*/
 	 beta_old[j] = g->beta[j];
 
 	 if(iter >= maxiters)
@@ -258,6 +266,7 @@ reached for variable: %d\n", maxiters, j);
 
       printfverb("numactive: %d  numconverged: %d\n", 
 	    numactive, numconverged);
+      fflush(stdout);
 
       /* 3-state machine for active set convergence */ 
       if(numconverged == p1) 
