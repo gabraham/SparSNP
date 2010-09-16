@@ -51,6 +51,8 @@ typedef struct gmatrix {
    int *ntest;
    double *ntrainrecip;
    double *ntestrecip;
+   int ncurr;
+   double ncurr_recip;
    int p;
    int i;
    int j;
@@ -103,6 +105,8 @@ int gmatrix_read_scaling(gmatrix *g, char *file_scale);
 void count_fold_samples(int *ntrain, int *ntest, double *ntrainrecip,
       double *ntestrecip, int *folds, int nfolds, int n);
 int gmatrix_setup_folds(gmatrix *g);
+void gmatrix_set_ncurr(gmatrix *g);
+void gmatrix_set_fold(gmatrix *g, int fold);
 
 int cache_init(cache *ht, int nkeys);
 void cache_free(cache *ht);

@@ -3,7 +3,11 @@
 #include "common.h"
 #include "ind.h"
 
-int write_ind(char *file, int *folds, int n, int nfolds)
+/* Writes a binary indicator file. The first int is the number of cv folds.
+ * The following ints are indicator variables for each of the k folds, of
+ * length n, with 1 when the ith sample is training and 0 otherwise. 
+ */
+int ind_write(char *file, int *folds, int n, int nfolds)
 {
    FILE *out = NULL;
    FOPENTEST(out, file, "wb");
@@ -13,11 +17,19 @@ int write_ind(char *file, int *folds, int n, int nfolds)
    return SUCCESS;
 }
 
-int read_ind(char *file, int *folds, int n, int nfolds)
+int ind_getfolds(char *file)
 {
+   int nfolds;
    FILE *in = NULL;
    FOPENTEST(in, file, "rb")
    FREADTEST(&nfolds, sizeof(int), 1, in);
+   return nfolds;
+}
+
+int ind_read(char *file, int *folds, const int n, const int nfolds)
+{
+   FILE *in = NULL;
+   FOPENTEST(in, file, "rb")
    FREADTEST(folds, sizeof(int), n * nfolds, in);
    fclose(in);
    return SUCCESS;

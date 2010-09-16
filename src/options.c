@@ -179,11 +179,6 @@ int opt_parse(int argc, char* argv[], Opt* opt)
 	 i++;
 	 opt->scalefile = argv[i];
       }
-      /*else if(strcmp2(argv[i], "-cv"))
-      {
-	 i++;
-	 opt->cv = atoi(argv[i]);
-      }*/
       else if(strcmp2(argv[i], "-seed"))
       {
 	 i++;
@@ -238,7 +233,7 @@ int opt_parse(int argc, char* argv[], Opt* opt)
 	 opt->encoded = FALSE;
       else if(strcmp2(argv[i], "-plink"))
 	 opt->binformat = BINFORMAT_PLINK;
-      else if(strcmp2(argv[i], "-ind"))
+      else if(strcmp2(argv[i], "-foldind"))
       {
 	 i++;
 	 opt->folds_ind_file = argv[i];
@@ -253,14 +248,21 @@ int opt_parse(int argc, char* argv[], Opt* opt)
 -bin <filename> -n <#samples> -p <#variables> -scale <scalefile> \
 [-betafiles <beta filename/s>] [-pred <pred filename>] \
 [-maxepochs <maxepochs>] [-maxiters <maxiters>] [-l1 <lambda1>] [-notencoded] \
-[-plink] [-l2 <lambda2>] [-thresh <threshold>] \
-[-pred <prediction file>] [-cv <nfolds>] [-seed <seed>] [-v] [-vv]\n");
+[-plink] [-l2 <lambda2>] [-thresh <threshold>] [-foldind <foldsfile>] \
+[-pred <prediction file>] [-seed <seed>] [-v] [-vv]\n");
       return FAILURE;
    }
    else if(opt->n_beta_files > 1 && opt->mode == MODE_TRAIN)
    {
       printf("warning: multiple beta filenames provided in training mode, \
 only using the first one\n");
+   }
+
+   if(!opt->encoded)
+   {
+      printf("non-encoded (switch -notencoded) data not currently \
+supported\n");
+      return FAILURE;
    }
 
    if(opt->verbose)

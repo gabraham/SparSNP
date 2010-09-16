@@ -54,7 +54,7 @@ int run_train(Opt *opt, gmatrix *g)
 
    if(opt->verbose)
       printf("%d training samples, %d test samples\n",
-	    opt->ntrain, opt->n - opt->ntrain);
+	    g->ntrain[g->fold], g->ntest[g->fold]);
    
    /* don't start from zero, getlambda1max already computed that */
    for(i = 1 ; i < opt->nlambda1 ; i++)
@@ -88,8 +88,8 @@ int run_train(Opt *opt, gmatrix *g)
 
       if(opt->nzmax != 0 && opt->nzmax <= ret - 1)
       {
-	 printf("maximum number of non-zero variables reached: %d\n", 
-	       opt->nzmax);
+	 printf("maximum number of non-zero variables \
+reached or exceeded: %d\n", opt->nzmax);
 	 break;
       }
    }
@@ -100,7 +100,7 @@ int run_train(Opt *opt, gmatrix *g)
 /* zero the lp and adjust the lp-functions */
 void zero_model(gmatrix *g)
 {
-   int i, j, n = g->ntrain[g->fold], p1 = g->p + 1;
+   int i, j, n = g->ncurr, p1 = g->p + 1;
 
    for(j = p1 - 1 ; j >= 0 ; --j)
    {
@@ -127,7 +127,7 @@ void zero_model(gmatrix *g)
 int run_predict_beta(gmatrix *g, predict predict_func,
       char* predict_file)
 {
-   int i, j, n = g->ntest[g->fold];
+   int i, j, n = g->ncurr;
    sample sm;
    double *yhat;
    double *restrict lp = g->lp;

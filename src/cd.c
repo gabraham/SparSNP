@@ -30,7 +30,7 @@ inline static double zero(const double x, const double thresh)
 void updatelp(gmatrix *g, const double update, const int j,
       const double *restrict x)
 {
-   int i, n = g->ntrain[g->fold];
+   int i, n = g->ncurr;
    double *restrict lp_invlogit = g->lp_invlogit,
 	  *restrict lp = g->lp,
 	  *restrict y = g->y,
@@ -75,7 +75,7 @@ double get_lambda1max_gmatrix(
       inv inv_func,
       step step_func)
 {
-   int i, j, n = g->ntrain[g->fold], p1 = g->p + 1;
+   int i, j, n = g->ncurr, p1 = g->p + 1;
    double s, zmax = 0, beta_new;
    sample sm;
 
@@ -93,7 +93,7 @@ double get_lambda1max_gmatrix(
 
    beta_new = inv_func(s / n);
    updatelp(g, beta_new, 0, NULL);
-   printf("intercept: %.10f\n", beta_new);
+   printf("intercept: %.15f (%d samples)\n", beta_new, n);
 
    /* find smallest lambda1 that makes all coefficients zero, by
     * finding the largest z, but let the intercept affect lp
@@ -122,7 +122,6 @@ double get_lambda1max_gmatrix(
 double step_regular_linear(sample *s, gmatrix *g,
       phi1 phi1_func, phi2 phi2_func)
 {
-   /*int i, n = g->ntrain[g->fold];*/
    int i;
    double grad = 0;
    double *restrict x_tmp = s->x, 
@@ -130,16 +129,16 @@ double step_regular_linear(sample *s, gmatrix *g,
 	  *restrict y_tmp = g->y;
 
    /* compute gradient */
-   for(i = g->ntrain[g->fold] - 1 ; i >= 0 ; --i)
+   for(i = g->ncurr - 1 ; i >= 0 ; --i)
       grad += x_tmp[i] * (lp_tmp[i] - y_tmp[i]);
 
-   return grad * g->ntrainrecip[g->fold];
+   return grad * g->ncurr_recip;
 }
 
 double step_regular_logistic(sample *s, gmatrix *g,
       phi1 phi1_func, phi2 phi2_func)
 {
-   int i, n = g->ntrain[g->fold];
+   int i, n = g->ncurr;
    double grad = 0, d2 = 0;
    double *restrict y_tmp = g->y,
 	  *restrict lp_invlogit_tmp = g->lp_invlogit,
@@ -164,7 +163,7 @@ double step_regular_logistic(sample *s, gmatrix *g,
 double step_regular_sqrhinge(sample *s, gmatrix *g,
       phi1 phi1_func, phi2 phi2_func)
 {
-   int i, n = g->ntrain[g->fold];
+   int i, n = g->ncurr;
    double grad = 0;
    const double *restrict x_tmp = s->x,
 	        *restrict y_tmp = g->y,
@@ -174,7 +173,7 @@ double step_regular_sqrhinge(sample *s, gmatrix *g,
    /* compute gradient */
    for(i = n - 1 ; i >= 0 ; --i)
       grad += ylp_neg_tmp[i] * y_tmp[i] * x_tmp[i] * ylp_tmp[i];
-   return grad * g->ntrainrecip[g->fold];
+   return grad * g->ncurr_recip;
 }
 
 /* coordinate descent */
@@ -190,7 +189,7 @@ int cd_gmatrix(gmatrix *g,
       const int verbose,
       const double trunc)
 {
-   const int n = g->ntrain[g->fold], p = g->p, p1 = g->p + 1;
+   const int n = g->ncurr, p = g->p, p1 = g->p + 1;
    int j, iter, allconverged = 0, numactive = 0,
        epoch = 1, numconverged = 0,
        good = FALSE;
@@ -248,15 +247,7 @@ int cd_gmatrix(gmatrix *g,
 
 	 g->active[j] = (g->beta[j] != 0);
 	 numactive += g->active[j];
-	 /*numconverged += convergetest(beta_old[j], g->beta[j], thresh);*/
 	 numconverged += fabs(beta_old[j] - g->beta[j]) <= thresh;
-
-	 /*if(g->active[j] && fabs(beta_old[j] - g->beta[j]) > thresh
-	    && j-numconverged <= 3)
-	 {
-	    printf("%d %d %.20f %.20f %.20f\n", j, numconverged, beta_old[j],
-	    g->beta[j], fabs(beta_old[j] - g->beta[j]));
-	 }*/
 	 beta_old[j] = g->beta[j];
 
 	 if(iter >= maxiters)
@@ -264,8 +255,8 @@ int cd_gmatrix(gmatrix *g,
 reached for variable: %d\n", maxiters, j);
       }
 
-      printfverb("numactive: %d  numconverged: %d\n", 
-	    numactive, numconverged);
+      printfverb("epoch:%d  numactive: %d  numconverged: %d\n", 
+	    epoch, numactive, numconverged);
       fflush(stdout);
 
       /* 3-state machine for active set convergence */ 

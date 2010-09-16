@@ -17,13 +17,17 @@ void split(int *folds, int n, int nfolds)
       folds[i] = (int)(drand48() * nfolds);
 }
 
+/*
+ * indicator vector of length nfolds * n, each group of n int represents
+ * whether the samples in the kth fold are training (1) or testing (0)
+ */
 void make_ind(int *ind, int *folds, int n, int nfolds)
 {
-   int i, j;
+   int i, k;
 
-   for(i = 0 ; i < nfolds ; i++)
-      for(j = 0 ; j < n ; j++)
-	 ind[i * n + j] = (folds[j] == i);
+   for(k = 0 ; k < nfolds ; k++)
+      for(i = 0 ; i < n ; i++)
+	 ind[k * n + i] = (folds[i] != k);
 }
 
 int main(int argc, char *argv[])
@@ -78,15 +82,17 @@ int main(int argc, char *argv[])
 
    split(folds, n, nfolds);
 
+   /* write folds file (which fold each sample belongs to) */
    if(!writevectorl(file_folds, folds, n))
    {
       free(folds);
       return EXIT_FAILURE;
    }
 
+   /* write indicator file (in each fold, which samples are training and which
+    * are testing) */
    make_ind(ind, folds, n, nfolds);
-
-   ret = write_ind(file_ind, ind, n, nfolds);
+   ret = ind_write(file_ind, ind, n, nfolds);
 
    free(folds);
    free(ind);
