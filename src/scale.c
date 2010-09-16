@@ -2,6 +2,7 @@
 #include "cd.h"
 #include "util.h"
 #include "coder.h"
+#include "scale.h"
 
 /*
  * Converts a matrix encoded as chars (one byte per entry), scales it, and
@@ -52,18 +53,18 @@ int scale(gmatrix *g)
 }
 
 /* unscales the vector of coefficients */
-void unscale_coef(gmatrix *g)
+void unscale_beta(double *beta, double *mean, double *sd, int p)
 {
-   int j, p = g-> p + 1;
+   int j;
 
-   g->beta[0] = 1.0;
+   beta[0] = 1.0;
 
    for(j = 1 ; j < p ; j++)
    {
-      if(g->sd[j] == 0)
-	 g->beta[j] = g->beta[j] + g->mean[j];
+      if(sd[j] == 0)
+	 beta[j] = beta[j] + mean[j];
       else
-	 g->beta[j] = g->beta[j] * g->sd[j] + g->mean[j];
+	 beta[j] = beta[j] * sd[j] + mean[j];
    }
 }
 
@@ -155,8 +156,9 @@ int main(int argc, char* argv[])
       || (!doscale && 
 	    (filename_scale == NULL || p == 0 || filename_beta == NULL)))
    {
-      printf("scale: [-unscale] -bin <filein> [-scale <fileout>] [-betafile] \
-[-notencoded] [-plink] -n #n -p #p [-ind <folds ind file>] [-nfolds <#cvfolds>]\n");
+      printf("scale: [-unscale] -bin <filein> [-scale <fileout>] \
+[-betafile <betafile>] [-notencoded] [-plink] -n #n -p #p \
+[-ind <folds ind file>] [-nfolds <#cvfolds>]\n");
       return EXIT_FAILURE;
    }
 
@@ -175,7 +177,8 @@ int main(int argc, char* argv[])
 
       gmatrix_free(&g);
    }
-   else
+   else /* unscale beta coefficients, i.e., put on original scale of
+	   unstandardised data */
    {
       g.p = p;
       MALLOCTEST(g.mean, sizeof(double) * (p + 1));
@@ -188,7 +191,7 @@ int main(int argc, char* argv[])
       if(!load_beta(g.beta, filename_beta, g.p + 1))
 	 return FAILURE;
  
-      unscale_coef(&g);
+      unscale_beta(g.beta, g.mean, g.sd, g.p + 1);
 
       if(!writevectorf(filename_beta_out, g.beta, g.p + 1))
 	 return FAILURE;

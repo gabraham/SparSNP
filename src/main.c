@@ -174,6 +174,10 @@ int run_predict(gmatrix *g, predict predict_func, char **beta_files,
       if(!load_beta(g->beta, beta_files[i], g->p + 1))
 	 return FAILURE;
 
+      /* scale beta using the scales for this data (beta should already
+       * be on original scale, not scaled) */
+      scale_beta(g->beta, g->mean, g->sd, g->p + 1);
+
       snprintf(tmp, MAX_STR_LEN, "%s.pred", beta_files[i]);
       if(!run_predict_beta(g, predict_func, tmp))
 	 return FAILURE;

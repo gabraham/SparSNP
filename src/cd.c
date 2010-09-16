@@ -26,7 +26,7 @@ inline static double zero(const double x, const double thresh)
    return (fabs(x) < thresh) ? 0 : x;
 }
 
-/* update linear predictor and clip it if it's too large */
+/* update linear predictor and related variables */
 void updatelp(gmatrix *g, const double update, const int j,
       const double *restrict x)
 {

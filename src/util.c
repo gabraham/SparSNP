@@ -70,3 +70,17 @@ int load_beta(double *beta, char *filename, int p)
    return SUCCESS;
 }
 
+void scale_beta(double *beta, double *mean, double *sd, int p)
+{
+   int j;
+
+   beta[0] = 1.0;
+
+   for(j = 1 ; j < p ; j++)
+   {
+      beta[j] = beta[j] - mean[j];
+      if(sd[j] != 0)
+	 beta[j] = (beta[j] - mean[j]) / sd[j];
+   }
+}
+
