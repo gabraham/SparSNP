@@ -28,8 +28,10 @@ int ind_getfolds(char *file)
 
 int ind_read(char *file, int *folds, const int n, const int nfolds)
 {
+   int tmp;
    FILE *in = NULL;
    FOPENTEST(in, file, "rb")
+   FREADTEST(&tmp, sizeof(int), 1, in); /* ignore it */
    FREADTEST(folds, sizeof(int), n * nfolds, in);
    fclose(in);
    return SUCCESS;

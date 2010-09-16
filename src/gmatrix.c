@@ -116,15 +116,13 @@ int gmatrix_init(gmatrix *g, char *filename, int n, int p,
    CALLOCTEST(g->active, g->p + 1, sizeof(int));
    CALLOCTEST(g->ignore, g->p + 1, sizeof(int));
 
-   if(scalefile && !gmatrix_read_scaling(g, scalefile))
+   if(g->scalefile && !gmatrix_read_scaling(g, scalefile))
       return FAILURE;
 
    for(j = g->p ; j >= 0 ; --j)
       g->active[j] = !g->ignore[j];
 
    gmatrix_set_ncurr(g);
-
-   printf("ncurr: %d\n", g->ncurr);
 
    CALLOCTEST(g->lp, g->ncurr, sizeof(double));
    if(g->model == MODEL_LOGISTIC) {
@@ -146,8 +144,6 @@ int gmatrix_setup_folds(gmatrix *g)
    MALLOCTEST(g->folds, sizeof(int) * g->n * g->nfolds);
    if(!ind_read(g->folds_ind_file, g->folds, g->n, g->nfolds))
       return FAILURE;
-
-   printf("gmatrix_setup_folds: g->n: %d, g->nfolds: %d\n", g->n, g->nfolds);
 
    MALLOCTEST(g->ntrain, sizeof(int) * g->nfolds);
    MALLOCTEST(g->ntest, sizeof(int) * g->nfolds);
@@ -519,7 +515,7 @@ void count_fold_samples(int *ntrain, int *ntest,
    {
       ntrain[k] = 0;
       for(i = 0 ; i < n ; i++)
-	 ntrain[k] += (folds[n * k + i] > 0);
+	 ntrain[k] += folds[n * k + i];
       ntest[k] = n - ntrain[k];
       ntrainrecip[k] = 0;
       if(ntrain[k] > 0)
@@ -527,6 +523,8 @@ void count_fold_samples(int *ntrain, int *ntest,
       ntestrecip[k] = 0;
       if(ntest[k] > 0)
 	 ntestrecip[k] = 1.0 / ntest[k];
+
+      printf("ntrain[%d]: %d\n", k, ntrain[k]);
    }
 }
 
@@ -617,14 +615,45 @@ void gmatrix_set_ncurr(gmatrix *g)
    else
       g->ncurr = g->ntest[g->fold];
 
+   printf("gmatrix_set_ncurr ncurr: %d\n", g->ncurr);
    g->ncurr_recip = 1.0 / g->ncurr;
 }
 
-void gmatrix_set_fold(gmatrix *g, int fold)
+int gmatrix_set_fold(gmatrix *g, int fold)
 {
    g->fold = fold;
    gmatrix_set_ncurr(g);
    if(g->scalefile)
-      gmatrix_read_scaling(g, g->scalefile);
+      return gmatrix_read_scaling(g, g->scalefile);
+   return SUCCESS;
+}
+
+/* zero the lp and adjust the lp-functions */
+void gmatrix_zero_model(gmatrix *g)
+{
+   int i, j, n = g->ncurr, p1 = g->p + 1;
+
+   for(j = p1 - 1 ; j >= 0 ; --j)
+   {
+      g->beta[j] = 0;
+      g->active[j] = !g->ignore[j];
+   }
+
+   for(i = n - 1 ; i >= 0 ; --i)
+      g->lp[i] = 0;
+
+   if(g->model == MODEL_LOGISTIC)
+   {
+      for(i = n - 1 ; i >= 0 ; --i)
+	 g->lp_invlogit[i] = 0.5; /* 0.5 = 1 / (1 + exp(-0)) */
+   }
+   else if(g->model == MODEL_SQRHINGE)
+   {
+      for(i = n - 1 ; j >= 0 ; --i)
+      {
+	 g->ylp[i] = -1;    /* y * 0 - 1 = -1  */
+	 g->ylp_neg[i] = 1; /* ylp < 0 => true */
+      }
+   }
 }
 

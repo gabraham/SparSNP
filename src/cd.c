@@ -6,16 +6,6 @@
 static double clip(const double x, const double min, const double max);
 static double zero(const double x, const double thresh);
 
-inline static int convergetest(double a, double b, double threshold)
-{
-   /* absolute convergence */
-   if(fabs(a) <= ZERO_THRESH && fabs(b) <= ZERO_THRESH)
-      return TRUE;
-
-   /* relative convergence */
-   return (fabs(a - b) / (fabs(a) + fabs(b))) < threshold;
-}
-
 inline static double clip(const double x, const double min, const double max)
 {
    return (x > max) ? max : ((x < min) ? min : x);
@@ -26,7 +16,8 @@ inline static double zero(const double x, const double thresh)
    return (fabs(x) < thresh) ? 0 : x;
 }
 
-/* update linear predictor and related variables */
+/* Update linear predictor and related variables.
+ * */
 void updatelp(gmatrix *g, const double update, const int j,
       const double *restrict x)
 {
@@ -75,7 +66,7 @@ double get_lambda1max_gmatrix(
       inv inv_func,
       step step_func)
 {
-   int i, j, n = g->ncurr, p1 = g->p + 1;
+   int i, j, n = g->ncurr, n1 = g->ncurr - 1, p1 = g->p + 1;
    double s, zmax = 0, beta_new;
    sample sm;
 
@@ -88,7 +79,7 @@ double get_lambda1max_gmatrix(
     * are zero, the intercept is just inv(mean(y)) for a suitable inv()
     * function depending on the loss */
    s = 0;
-   for(i = 0 ; i < n ; i++)
+   for(i = n1 ; i >= 0 ; --i)
       s += g->y[i];
 
    beta_new = inv_func(s / n);
@@ -255,8 +246,8 @@ int cd_gmatrix(gmatrix *g,
 reached for variable: %d\n", maxiters, j);
       }
 
-      printfverb("epoch:%d  numactive: %d  numconverged: %d\n", 
-	    epoch, numactive, numconverged);
+      printfverb("fold: %d  epoch: %d  numactive: %d  numconverged: %d\n", 
+	    g->fold, epoch, numactive, numconverged);
       fflush(stdout);
 
       /* 3-state machine for active set convergence */ 

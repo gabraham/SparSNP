@@ -36,12 +36,12 @@ int make_lambda1path(Opt *opt, gmatrix *g)
       opt->lambda1path[i] = exp(log(opt->lambda1max) - s * i);
 
    /* Write the coefs for model with intercept only */
-   snprintf(tmp, MAX_STR_LEN, "%s.%d", opt->beta_files[0], 0);
+   snprintf(tmp, MAX_STR_LEN, "%s.%02d.%02d", opt->beta_files[0], g->fold, 0);
    if(!writevectorf(tmp, g->beta, opt->p + 1))
       return FAILURE;
 
-   return writevectorf(opt->lambda1pathfile,
-	 opt->lambda1path, opt->nlambda1);
+   snprintf(tmp, MAX_STR_LEN, "%s.%02d", opt->lambda1pathfile, g->fold);
+   return writevectorf(tmp, opt->lambda1path, opt->nlambda1);
 }
 
 /*
@@ -58,6 +58,7 @@ int run_train(Opt *opt, gmatrix *g)
    
    /* don't start from zero, getlambda1max already computed that */
    for(i = 1 ; i < opt->nlambda1 ; i++)
+   /*for(i = 0 ; i < 1 ; i++)*/
    {
       if(opt->verbose)
 	 printf("\nFitting with lambda1=%.20f\n", opt->lambda1path[i]);
@@ -79,12 +80,12 @@ int run_train(Opt *opt, gmatrix *g)
 	 break;
       } 
 
-      snprintf(tmp, MAX_STR_LEN, "%s.%d", opt->beta_files[0], i);
+      snprintf(tmp, MAX_STR_LEN, "%s.%02d.%02d", opt->beta_files[0], g->fold, i);
       if(!writevectorf(tmp, g->beta, opt->p + 1))
 	 return FAILURE;
 
       if(!opt->warmrestarts)
-	 zero_model(g);
+	 gmatrix_zero_model(g);
 
       if(opt->nzmax != 0 && opt->nzmax <= ret - 1)
       {
@@ -95,30 +96,6 @@ reached or exceeded: %d\n", opt->nzmax);
    }
 
    return SUCCESS;
-}
-
-/* zero the lp and adjust the lp-functions */
-void zero_model(gmatrix *g)
-{
-   int i, j, n = g->ncurr, p1 = g->p + 1;
-
-   for(j = p1 - 1 ; j >= 0 ; --j)
-   {
-      g->beta[j] = 0;
-      g->active[j] = !g->ignore[j];
-   }
-
-   for(i = n - 1 ; i >= 0 ; --i)
-      g->lp[i] = 0;
-   if(g->model == MODEL_LOGISTIC)
-      for(i = n - 1 ; i >= 0 ; --i)
-	 g->lp_invlogit[i] = 0.5; /* 0.5 = 1 / (1 + exp(-0)) */
-   else if(g->model == MODEL_SQRHINGE)
-      for(i = n - 1 ; j >= 0 ; --i)
-      {
-	 g->ylp[i] = -1;    /* y * 0 - 1 = -1  */
-	 g->ylp_neg[i] = 1; /* ylp < 0 => true */
-      }
 }
 
 /*
@@ -169,7 +146,7 @@ int run_predict(gmatrix *g, predict predict_func, char **beta_files,
 
    for(i = 0 ; i < n_beta_files ; i++)
    {
-      zero_model(g);
+      gmatrix_zero_model(g);
       printf("reading %s\n", beta_files[i]);
       if(!load_beta(g->beta, beta_files[i], g->p + 1))
 	 return FAILURE;
@@ -186,74 +163,12 @@ int run_predict(gmatrix *g, predict predict_func, char **beta_files,
    return SUCCESS;
 }
 
-/*int run_pcor(Opt *opt, gmatrix *g)
-{
-   int i, j, ret;
-   double *betahat = NULL;
-   double *lp = NULL;
-   FILE *out;
-
-   FOPENTEST(out, opt->filename, "wb");
-
-
-   for(i = 0 ; i < opt->nlambda1 ; i++)
-   {
-      if(opt->verbose)
-	 printf("\nFitting with lambda1=%.20f\n", opt->lambda1path[i]);
-
-      for(j = 0 ; j < opt->p + 1 ; j++)
-      {
-	 CALLOCTEST(betahat, opt->p + 1, sizeof(double))
-	 CALLOCTEST(lp, opt->n, sizeof(double))
-
-	 ret = cd_gmatrix(
-      	       g, opt->phi1_func, opt->phi2_func,
-	       opt->loss_pt_func, opt->inv_func, opt->step_func,
-      	       opt->maxepochs, betahat, opt->lambda1path[i], opt->lambda2,
-      	       opt->threshold, opt->verbose, opt->trainf, opt->trunc);
-
-      	 gmatrix_reset(g);
-
-      	 if(ret == FAILURE)
-      	 {
-      	    printf("failed to converge after %d\n", opt->maxepochs);
-      	    break;
-      	 }
-
-      	 *snprintf(tmp, MAX_STR_LEN, "%s.%d", opt->betafile, i);
-      	 if(!writevectorf(tmp, betahat, opt->p + 1))
-      	    return FAILURE;*
-
-      	 * if(!opt->warmrestarts)
-      	    for(k = 0 ; k < opt->p + 1 ; k++)
-      	       betahat[k] = 0; *
-
-      	 if(opt->nzmax != 0 && opt->nzmax <= ret)
-      	 {
-      	    printf("maximum number of non-zero variables reached: %d\n", 
-      	          opt->nzmax);
-      	    break;
-      	 }
-
-	 * write output incrementally *
-	 FWRITETEST(betahat, sizeof(double), opt->p + 1, out)
-
-	 free(betahat);
-	 free(lp);
-      }
-   }
-
-   fflush(out);
-   fclose(out);
-
-   return SUCCESS;
-}*/
-
 int main(int argc, char* argv[])
 {
-   int ret = 0;
+   int k, ret = 0, len;
    Opt opt;
    gmatrix g;
+   char tmp[MAX_STR_LEN];
 
    setbuf(stdout, NULL);
 
@@ -263,10 +178,14 @@ int main(int argc, char* argv[])
       return EXIT_FAILURE;
    }
 
-   if(!gmatrix_init(&g, opt.filename, opt.n, opt.p,
+   /*if(!gmatrix_init(&g, opt.filename, opt.n, opt.p,
 	    opt.inmemory, opt.scalefile, opt.yformat, opt.model,
 	    opt.encoded, opt.binformat, opt.folds_ind_file, opt.nfolds,
-	    opt.mode))
+	    opt.mode))*/
+   if(!gmatrix_init(&g, opt.filename, opt.n, opt.p,
+	    opt.inmemory, NULL, opt.yformat, opt.model,
+	    opt.encoded, opt.binformat, opt.folds_ind_file,
+	    opt.nfolds, opt.mode))
    {
       gmatrix_free(&g);
       opt_free(&opt);
@@ -276,10 +195,22 @@ int main(int argc, char* argv[])
   
    if(opt.mode == MODE_TRAIN && !opt.nofit)
    {
-      make_lambda1path(&opt, &g);
-      zero_model(&g);
-      gmatrix_reset(&g);
-      ret = run_train(&opt, &g);
+      for(k = 0 ; k < g.nfolds ; k++)
+      {
+	 len = strlen(opt.scalefile) + 1 + 3;
+	 snprintf(tmp, len, "%s.%02d", opt.scalefile, k);
+	 g.scalefile = tmp;
+	 if(!(ret = gmatrix_set_fold(&g, k)))
+	    break;
+
+	 gmatrix_zero_model(&g);
+	 make_lambda1path(&opt, &g);
+	 gmatrix_reset(&g);
+
+	/* gmatrix_zero_model(&g);*/
+	 if(!(ret = run_train(&opt, &g)))
+	    break;
+      }
    }
    else if(opt.mode == MODE_PREDICT)
       ret = run_predict(&g, opt.predict_func, opt.beta_files,

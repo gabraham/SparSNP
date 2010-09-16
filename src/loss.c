@@ -103,6 +103,6 @@ double loginv(double lp)
 
 double sqrhingeinv(double lp)
 {
-   return -lp;
+   return lp;
 }
 

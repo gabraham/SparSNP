@@ -106,7 +106,8 @@ void count_fold_samples(int *ntrain, int *ntest, double *ntrainrecip,
       double *ntestrecip, int *folds, int nfolds, int n);
 int gmatrix_setup_folds(gmatrix *g);
 void gmatrix_set_ncurr(gmatrix *g);
-void gmatrix_set_fold(gmatrix *g, int fold);
+int gmatrix_set_fold(gmatrix *g, int fold);
+void gmatrix_zero_model(gmatrix *g);
 
 int cache_init(cache *ht, int nkeys);
 void cache_free(cache *ht);
