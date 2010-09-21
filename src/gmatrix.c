@@ -89,7 +89,6 @@ int gmatrix_init(gmatrix *g, char *filename, int n, int p,
    if(filename)
       FOPENTEST(g->file, filename, "rb");
 
-   printf("gmatrix_init before gmatrix_setup_folds\n");
    if(!gmatrix_setup_folds(g))
       return FAILURE;
 
@@ -138,7 +137,6 @@ int gmatrix_init(gmatrix *g, char *filename, int n, int p,
 
 int gmatrix_setup_folds(gmatrix *g)
 {
-   printf("gmatrix_setup_folds\n");
    if(g->folds_ind_file 
 	 && !(g->nfolds = ind_getfolds(g->folds_ind_file)))
       return FAILURE;
