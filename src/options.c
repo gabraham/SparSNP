@@ -18,6 +18,13 @@ void opt_free(Opt *opt)
       free(opt->beta_files);
       opt->beta_files = NULL;
    }
+   if(opt->beta_files_fold)
+   {
+      for(i = 0 ; i < opt->n_beta_files ; i++)
+	 free(opt->beta_files_fold[i]);
+      free(opt->beta_files_fold);
+      opt->beta_files_fold = NULL;
+   }
 }
 
 int opt_defaults(Opt *opt)
@@ -58,6 +65,7 @@ int opt_defaults(Opt *opt)
    opt->predict_file = "predicted.csv";
    opt->encoded = TRUE;
    opt->binformat = BINFORMAT_BIN;
+   opt->beta_files_fold = NULL;
 
    MALLOCTEST(opt->beta_files, sizeof(char*));
    MALLOCTEST(opt->beta_files[0], sizeof(char) * (strlen(beta_default) + 1));

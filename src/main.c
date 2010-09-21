@@ -36,7 +36,7 @@ int make_lambda1path(Opt *opt, gmatrix *g)
       opt->lambda1path[i] = exp(log(opt->lambda1max) - s * i);
 
    /* Write the coefs for model with intercept only */
-   snprintf(tmp, MAX_STR_LEN, "%s.%02d.%02d", opt->beta_files[0], g->fold, 0);
+   snprintf(tmp, MAX_STR_LEN, "%s.%02d.%02d", opt->beta_files[0], 0, g->fold);
    if(!writevectorf(tmp, g->beta, opt->p + 1))
       return FAILURE;
 
@@ -58,7 +58,6 @@ int run_train(Opt *opt, gmatrix *g)
    
    /* don't start from zero, getlambda1max already computed that */
    for(i = 1 ; i < opt->nlambda1 ; i++)
-   /*for(i = 0 ; i < 1 ; i++)*/
    {
       if(opt->verbose)
 	 printf("\nFitting with lambda1=%.20f\n", opt->lambda1path[i]);
@@ -80,7 +79,7 @@ int run_train(Opt *opt, gmatrix *g)
 	 break;
       } 
 
-      snprintf(tmp, MAX_STR_LEN, "%s.%02d.%02d", opt->beta_files[0], g->fold, i);
+      snprintf(tmp, MAX_STR_LEN, "%s.%02d.%02d", opt->beta_files[0], i, g->fold);
       if(!writevectorf(tmp, g->beta, opt->p + 1))
 	 return FAILURE;
 
@@ -104,24 +103,22 @@ reached or exceeded: %d\n", opt->nzmax);
 int run_predict_beta(gmatrix *g, predict predict_func,
       char* predict_file)
 {
-   int i, j, n = g->ncurr;
+   int i, j, n = g->ncurr, p1 = g->p + 1;
    sample sm;
    double *yhat;
    double *restrict lp = g->lp;
-   double *restrict x;
    double *restrict beta = g->beta;
 
    if(!sample_init(&sm, n, g->inmemory))
       return FAILURE;
 
-   MALLOCTEST(yhat, sizeof(double) * n)
+   CALLOCTEST(yhat, n, sizeof(double));
 
-   for(j = 0 ; j < g->p + 1 ; j++)
+   for(j = 0 ; j < p1 ; j++)
    {
       g->nextcol(g, &sm, FALSE);
-      x = sm.x;
       for(i = 0 ; i < n ; i++)
-	 lp[i] += x[i] * beta[j];
+	 lp[i] += sm.x[i] * beta[j];
    }
    
    for(i = 0 ; i < n ; i++)
@@ -165,7 +162,7 @@ int run_predict(gmatrix *g, predict predict_func, char **beta_files,
 
 int main(int argc, char* argv[])
 {
-   int k, ret = 0, len;
+   int k, ret = 0, len, b;
    Opt opt;
    gmatrix g;
    char tmp[MAX_STR_LEN];
@@ -213,8 +210,41 @@ int main(int argc, char* argv[])
       }
    }
    else if(opt.mode == MODE_PREDICT)
-      ret = run_predict(&g, opt.predict_func, opt.beta_files,
-	    opt.n_beta_files);
+   {
+      if(!opt.beta_files_fold)
+	 MALLOCTEST2(opt.beta_files_fold, sizeof(char*) * opt.n_beta_files);
+      for(b = 0 ; b < opt.n_beta_files ; b++)
+	 opt.beta_files_fold[b] = NULL;
+
+      for(k = 0 ; k < g.nfolds ; k++)
+      {
+	 len = strlen(opt.scalefile) + 1 + 3;
+	 snprintf(tmp, len, "%s.%02d", opt.scalefile, k);
+	 g.scalefile = tmp;
+	 if(!(ret = gmatrix_set_fold(&g, k)))
+	    break;
+
+	 printf("main.c g.ncurr:%d\n", g.ncurr);
+
+
+	/* gmatrix_zero_model(&g); */
+	 gmatrix_reset(&g);
+
+	 for(b = 0 ; b < opt.n_beta_files ; b++)
+	 {
+	    len = strlen(opt.beta_files[b]);
+	    if(!opt.beta_files_fold[b])
+	       MALLOCTEST2(opt.beta_files_fold[b], len + 1 + 3);
+	    snprintf(opt.beta_files_fold[b], MAX_STR_LEN, "%s.%02d",
+		  opt.beta_files[b], k);
+	    printf("new opt.beta_files_fold[%d]: %s\n", b, opt.beta_files_fold[b]);
+	 }
+
+	 if(!(ret = run_predict(&g, opt.predict_func,
+	       opt.beta_files_fold, opt.n_beta_files)))
+	    break;
+      }
+   }
 
    gmatrix_free(&g);
    opt_free(&opt);

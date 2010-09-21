@@ -54,6 +54,7 @@ typedef struct Opt {
    short yformat;
    predict predict_func;
    char **beta_files;
+   char **beta_files_fold;
    int n_beta_files;
    char *predict_file;
    short encoded;

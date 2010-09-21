@@ -50,7 +50,6 @@ int gmatrix_init(gmatrix *g, char *filename, int n, int p,
    g->inmemory = inmemory;
    g->scalefile = scalefile;
    g->lookup = NULL;
-   g->lookup2 = NULL;
    g->intercept = NULL;
    g->mean = NULL;
    g->sd = NULL;
@@ -124,13 +123,8 @@ int gmatrix_init(gmatrix *g, char *filename, int n, int p,
 
    gmatrix_set_ncurr(g);
 
-   CALLOCTEST(g->lp, g->ncurr, sizeof(double));
-   if(g->model == MODEL_LOGISTIC) {
-      CALLOCTEST(g->lp_invlogit, g->ncurr, sizeof(double));
-   } else if(g->model == MODEL_SQRHINGE) {
-      CALLOCTEST(g->ylp, g->ncurr, sizeof(double));
-      CALLOCTEST(g->ylp_neg, g->ncurr, sizeof(double));
-   }
+   if(!gmatrix_init_lp(g))
+      return FAILURE;
 
    return SUCCESS;
 }
@@ -142,7 +136,7 @@ int gmatrix_setup_folds(gmatrix *g)
       return FAILURE;
 
    MALLOCTEST(g->folds, sizeof(int) * g->n * g->nfolds);
-   if(!ind_read(g->folds_ind_file, g->folds, g->n, g->nfolds))
+   if(g->nfolds > 1 && !ind_read(g->folds_ind_file, g->folds, g->n, g->nfolds))
       return FAILURE;
 
    MALLOCTEST(g->ntrain, sizeof(int) * g->nfolds);
@@ -210,10 +204,6 @@ void gmatrix_free(gmatrix *g)
    if(g->lookup)
       free(g->lookup);
    g->lookup = NULL;
-
-   if(g->lookup2)
-      free(g->lookup2);
-   g->lookup2 = NULL;
 
    if(g->lp)
       free(g->lp);
@@ -300,15 +290,27 @@ int gmatrix_disk_nexty(gmatrix *g)
 	 {
 	    if(g->yformat == YFORMAT01)
 	    {
-	       for(i = n1 ; i >= 0 ; --i)
-		  if(g->folds[g->fold * n + i])
-		     g->y[k--] = (double)g->tmp[i];
+	       if(g->mode == MODE_TRAIN) {
+		  for(i = n1 ; i >= 0 ; --i)
+		     if(g->folds[g->fold * n + i])
+			g->y[k--] = (double)g->tmp[i];
+	       } else {
+		  for(i = n1 ; i >= 0 ; --i)
+		     if(!g->folds[g->fold * n + i])
+			g->y[k--] = (double)g->tmp[i];
+	       }
 	    }
 	    else /*  y \in -1/1  */
 	    {
-	       for(i = n1 ; i >= 0 ; --i)
-		  if(g->folds[g->fold * n + i])
-		     g->y[k--] = 2.0 * g->tmp[i] - 1.0;
+	       if(g->mode == MODE_TRAIN) {
+		  for(i = n1 ; i >= 0 ; --i)
+		     if(g->folds[g->fold * n + i])
+			g->y[k--] = 2.0 * g->tmp[i] - 1.0;
+	       } else {
+		  for(i = n1 ; i >= 0 ; --i)
+		     if(!g->folds[g->fold * n + i])
+			g->y[k--] = 2.0 * g->tmp[i] - 1.0;
+	       }
 	    }
 	 }
 
@@ -381,23 +383,26 @@ int gmatrix_disk_nextcol(gmatrix *g, sample *s, int skip)
    /* Get the scaled versions of the genotypes */
    if(g->nfolds < 2) { /* no cv */
       if(g->scalefile) {
-	 /* Get the scaled value instead of the original value */
-	 l1 = g->j * NUM_X_LEVELS;
-	 for(i = n1 ; i >= 0 ; --i)
+         /* Get the scaled value instead of the original value */
+         l1 = g->j * NUM_X_LEVELS;
+         for(i = n1 ; i >= 0 ; --i)
 	    s->x[i] = g->lookup[l1 + g->tmp[i]];
-      } else
-	 for(i = n1 ; i >= 0 ; --i)
-	    s->x[i] = (double)g->tmp[i];
-   } else { /* cv */
-      if(g->scalefile) {
-	 /* Get the scaled value instead of the original value */
-	 l1 = g->j * NUM_X_LEVELS;
-	 for(i = n1 ; i >= 0 ; --i)
-	    if(g->folds[g->fold * n + i])
-	       s->x[k--] = g->lookup[l1 + g->tmp[i]];
       } else {
 	 for(i = n1 ; i >= 0 ; --i)
 	    if(g->folds[g->fold * n + i])
+	       s->x[k--] = (double)g->tmp[i];
+      }
+   } else { /* cv */
+      /* Get the scaled value instead of the original value */
+      if(g->scalefile) {
+	 l1 = g->j * NUM_X_LEVELS;
+	 for(i = n1 ; i >= 0 ; --i)
+	    /* different between train and test */
+	    if((g->mode == MODE_PREDICT) ^ g->folds[g->fold * n + i])
+	       s->x[k--] = g->lookup[l1 + g->tmp[i]];
+      } else {
+      	 for(i = n1 ; i >= 0 ; --i)
+	    if((g->mode == MODE_PREDICT) ^ g->folds[g->fold * n + i])
 	       s->x[k--] = (double)g->tmp[i];
       }
    }
@@ -452,9 +457,9 @@ int gmatrix_reset(gmatrix *g)
       g->file = NULL;
    }
 
-   FOPENTEST(g->file, g->filename, "rb")
+   FOPENTEST(g->file, g->filename, "rb");
 
-      g->i = g->j = 0;
+   g->i = g->j = 0;
 
    return SUCCESS;
 }
@@ -466,22 +471,21 @@ int gmatrix_read_scaling(gmatrix *g, char *file_scale)
    int j, k, l1, l2, p1 = g->p + 1;
    FILE *in;
 
-   CALLOCTEST(g->lookup, NUM_X_LEVELS * p1, sizeof(double));
-   CALLOCTEST(g->lookup2, NUM_X_LEVELS * p1, sizeof(double));
-   MALLOCTEST(g->mean, sizeof(double) * p1);
-   MALLOCTEST(g->sd, sizeof(double) * p1);
+   if(!g->lookup)
+      CALLOCTEST(g->lookup, NUM_X_LEVELS * p1, sizeof(double));
+   if(!g->mean)
+      MALLOCTEST(g->mean, sizeof(double) * p1);
+   if(!g->sd)
+      MALLOCTEST(g->sd, sizeof(double) * p1);
 
-   FOPENTEST(in, file_scale, "rb")
+   FOPENTEST(in, file_scale, "rb");
 
-      FREADTEST(g->mean, sizeof(double), p1, in);
+   FREADTEST(g->mean, sizeof(double), p1, in);
    FREADTEST(g->sd, sizeof(double), p1, in);
 
    /* intercept */
    for(k = 0 ; k < NUM_X_LEVELS ; k++)
-   {
       g->lookup[k] = 1;
-      g->lookup2[k] = 1;
-   }
 
    g->ignore[0] = FALSE;
 
@@ -494,7 +498,6 @@ int gmatrix_read_scaling(gmatrix *g, char *file_scale)
 	 {
 	    l2 = l1 + k;
 	    g->lookup[l2] = (k - g->mean[j]) / g->sd[j];
-	    g->lookup2[l2] = g->lookup[l2] * g->lookup[l2];
 	 }
       }
    }
@@ -523,8 +526,6 @@ void count_fold_samples(int *ntrain, int *ntest,
       ntestrecip[k] = 0;
       if(ntest[k] > 0)
 	 ntestrecip[k] = 1.0 / ntest[k];
-
-      printf("ntrain[%d]: %d\n", k, ntrain[k]);
    }
 }
 
@@ -615,7 +616,6 @@ void gmatrix_set_ncurr(gmatrix *g)
    else
       g->ncurr = g->ntest[g->fold];
 
-   printf("gmatrix_set_ncurr ncurr: %d\n", g->ncurr);
    g->ncurr_recip = 1.0 / g->ncurr;
 }
 
@@ -623,6 +623,8 @@ int gmatrix_set_fold(gmatrix *g, int fold)
 {
    g->fold = fold;
    gmatrix_set_ncurr(g);
+   if(!gmatrix_init_lp(g))
+      return FAILURE;
    if(g->scalefile)
       return gmatrix_read_scaling(g, g->scalefile);
    return SUCCESS;
@@ -657,3 +659,22 @@ void gmatrix_zero_model(gmatrix *g)
    }
 }
 
+int gmatrix_init_lp(gmatrix *g)
+{
+   if(g->lp)
+      free(g->lp);
+   CALLOCTEST(g->lp, g->ncurr, sizeof(double));
+   if(g->model == MODEL_LOGISTIC) {
+      if(g->lp_invlogit)
+	 free(g->lp_invlogit);
+      CALLOCTEST(g->lp_invlogit, g->ncurr, sizeof(double));
+   } else if(g->model == MODEL_SQRHINGE) {
+      if(g->ylp)
+	 free(g->ylp);
+      CALLOCTEST(g->ylp, g->ncurr, sizeof(double));
+      if(g->ylp_neg)
+	 free(g->ylp_neg);
+      CALLOCTEST(g->ylp_neg, g->ncurr, sizeof(double));
+   }
+   return SUCCESS;
+}

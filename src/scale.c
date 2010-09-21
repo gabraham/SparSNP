@@ -148,11 +148,6 @@ int main(int argc, char* argv[])
 	 i++;
 	 filename_folds_ind = argv[i];
       }
-      else if(strcmp2(argv[i], "-nfolds"))
-      {
-	 i++;
-	 nfolds = atoi(argv[i]);
-      }
    }
 
    if((doscale && (filename_bin == NULL || n == 0 || p == 0))
@@ -172,16 +167,26 @@ int main(int argc, char* argv[])
 	    encoded, binformat, filename_folds_ind, nfolds, MODE_TRAIN))
 	 return EXIT_FAILURE;
 
-      for(k = 0 ; k < g.nfolds ; k++)
+      if(filename_folds_ind)
       {
-	 gmatrix_set_fold(&g, k);
+	 for(k = 0 ; k < g.nfolds ; k++)
+	 {
+	    gmatrix_set_fold(&g, k);
 
-         if(!scale(&g))
+	    if(!scale(&g))
+	       return EXIT_FAILURE;
+
+	    len = strlen(filename_scale) + 1 + 3;
+	    snprintf(tmp, len, "%s.%02d", filename_scale, k);
+	    if(!writescale(tmp, g.mean, g.sd, p + 1))
+	       return EXIT_FAILURE;
+	 }
+      }
+      else
+      {
+	 if(!scale(&g))
 	    return EXIT_FAILURE;
-   
-	 len = strlen(filename_scale) + 1 + 3;
-	 snprintf(tmp, len, "%s.%02d", filename_scale, k);
-         if(!writescale(tmp, g.mean, g.sd, p + 1))
+	 if(!writescale(filename_scale, g.mean, g.sd, p + 1))
 	    return EXIT_FAILURE;
       }
 

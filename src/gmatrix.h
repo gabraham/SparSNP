@@ -108,6 +108,7 @@ int gmatrix_setup_folds(gmatrix *g);
 void gmatrix_set_ncurr(gmatrix *g);
 int gmatrix_set_fold(gmatrix *g, int fold);
 void gmatrix_zero_model(gmatrix *g);
+int gmatrix_init_lp(gmatrix *g);
 
 int cache_init(cache *ht, int nkeys);
 void cache_free(cache *ht);

@@ -185,10 +185,10 @@ int cd_gmatrix(gmatrix *g,
        epoch = 1, numconverged = 0,
        good = FALSE;
    int *active_old = NULL;
-   double s = 0, beta_new;
+   double s_old = 0, s = 0, beta_new;
    const double truncl = log2((1 - trunc) / trunc),
 	        l2recip = 1 / (1 + lambda2);
-   double *beta_old = NULL;
+   double *beta_old = NULL, *m = NULL;
    sample sm;
 
    if(!sample_init(&sm, n, g->inmemory))
@@ -196,6 +196,7 @@ int cd_gmatrix(gmatrix *g,
 
    CALLOCTEST(beta_old, p1, sizeof(double));
    CALLOCTEST(active_old, p1, sizeof(int));
+   CALLOCTEST(m, p1, sizeof(double));
 
    /* start off with all variables marked active
     * even though they're all zero, unless they're
@@ -204,6 +205,7 @@ int cd_gmatrix(gmatrix *g,
    {
       active_old[j] = g->active[j];
       beta_old[j] = g->beta[j];
+      m[j] = 1.0;
    }
 
    while(epoch <= maxepochs)
@@ -213,13 +215,14 @@ int cd_gmatrix(gmatrix *g,
       for(j = 0 ; j < p1; j++)
       {
 	 iter = 0;
+	 s_old = 0;
 	 g->nextcol(g, &sm, !g->active[j]);
 	 if(g->active[j])
 	 {
 	    /* iterate over jth variable */
       	    while(iter < maxiters)
       	    {
-      	       s = step_func(&sm, g, phi1_func, phi2_func);
+      	       s = step_func(&sm, g, phi1_func, phi2_func) * m[j];
       	       beta_new = g->beta[j] - s;
       	       if(j > 0) /* don't penalise intercept */
       	          beta_new = soft_threshold(beta_new, lambda1) * l2recip;
@@ -228,10 +231,26 @@ int cd_gmatrix(gmatrix *g,
       
 	       /* beta_new may have changed */
 	       s = beta_new - g->beta[j];
-      	       updatelp(g, s, j, sm.x);
-      	       g->beta[j] = beta_new;
+
+	       /* no need to update if beta hasn't changed */
+	       /*if(s != 0)
+	       {
+		  updatelp(g, s, j, sm.x);
+		  g->beta[j] = beta_new;
+	       }*/
+	      	      
 	       if(fabs(s) <= thresh)
 		  break;
+
+	       updatelp(g, s, j, sm.x);
+	       g->beta[j] = beta_new;
+
+	       if(iter > 0 && sign(s) != sign(s_old) && m[j] >= 1e-10)
+	       {
+		  m[j] *= 1.0 / 2.0;
+		  printf("step halving for j: %d  m:%.15f\n", j, m[j]);
+	       }
+	       s_old = s;
       	       iter++;
       	    }
 	 }
@@ -239,11 +258,11 @@ int cd_gmatrix(gmatrix *g,
 	 g->active[j] = (g->beta[j] != 0);
 	 numactive += g->active[j];
 	 numconverged += fabs(beta_old[j] - g->beta[j]) <= thresh;
-	 beta_old[j] = g->beta[j];
 
 	 if(iter >= maxiters)
 	    printfverb("max number of internal iterations (%d) \
-reached for variable: %d\n", maxiters, j);
+reached for variable: %d  s: %.15f\n", maxiters, j, s);
+	 beta_old[j] = g->beta[j];
       }
 
       printfverb("fold: %d  epoch: %d  numactive: %d  numconverged: %d\n", 
@@ -304,6 +323,7 @@ with %d active vars\n", time(NULL), epoch, numactive);
    sample_free(&sm);
    free(beta_old);
    free(active_old);
+   free(m);
 
    return good ? numactive : CDFAILURE;
 }
