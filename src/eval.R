@@ -1,14 +1,19 @@
 library(ggplot2)
 
 dir <- "~/Software/hapgen_1.3"
-roots <- c("sim8", "sim7", "sim6")
-resdirs <- c("./", "/mnt", "/mnt")
-nums <- c(30000, 10000, 4000)
+#roots <- c("sim8", "sim7", "sim6")
+roots <- c("sim7")
+#resdirs <- c("./", "/mnt", "/mnt")
+resdirs <- c("./")
+#nums <- c(30000, 10000, 4000)
+nums <- 1000
 p <- 185805
 legend <- sprintf(
    "%s/HapMap/genotypes_chr1_JPT+CHB_r22_nr.b36_fwd_legend.txt",
    dir)
-nexpers <- c(20, 30, 50)
+#nexpers <- c(20, 30, 50)
+nexpers <- c(10)
+maxfits <- c(20)
 
 runperf <- function(f)
 {
@@ -47,12 +52,12 @@ for(k in seq(along=roots))
       dir <- sprintf("%s/results", ex)
    
       # Find all files and sort by numerical ordering
-      files <- list.files(pattern="^beta_sqrhinge\\.csv\\.",
+      files <- list.files(pattern="^beta\\.csv\\.",
    	 path=dir, full.names=TRUE)
       if(length(files) == 0)
          stop("no files found")
       id <- sapply(strsplit(files, "\\."), tail, n=1)
-      files <- files[order(as.numeric(id))]
+      files <- files[order(as.numeric(id))][1:maxfits]
    
       b.cd <- sapply(files, function(f) {
          read.csv(f, header=FALSE)[-1,1]
@@ -67,6 +72,7 @@ for(k in seq(along=roots))
    	    col.names=FALSE, row.names=FALSE, sep="\t",
    	    file=f)
          cat(f, "\n")
+	 gc()
          runperf(f)
       })
    
@@ -95,6 +101,7 @@ for(k in seq(along=roots))
    	    col.names=FALSE, row.names=FALSE, sep="\t",
    	    file=f)
          cat(f, "\n")
+	 gc()
          runperf(f)
       })
       colnames(mes) <- colnames(stats)

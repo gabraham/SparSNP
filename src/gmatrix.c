@@ -5,9 +5,8 @@
 #include "coder.h"
 #include "ind.h"
 
-int sample_init(sample *s, int n, short inmemory)
+int sample_init(sample *s, int n)
 {
-   s->inmemory = inmemory;
    s->x = NULL;
    s->cached = FALSE;
    s->intercept = FALSE;
@@ -17,7 +16,7 @@ int sample_init(sample *s, int n, short inmemory)
 
 void sample_free(sample *s)
 {
-   if(s->intercept)
+/*   if(s->intercept)
       return;
 
    if(!s->cached && s->x)
@@ -26,28 +25,29 @@ void sample_free(sample *s)
       s->x = NULL;
    }
 
-   s->x2 = NULL;
+   s->x2 = NULL;*/
 }
 
 int gmatrix_init(gmatrix *g, char *filename, int n, int p,
-      short inmemory,  char *scalefile, short yformat, int model,
+      char *scalefile, short yformat, int model,
       short encoded, short binformat, char *folds_ind_file, int nfolds,
       short mode)
 {
-   int i, j;
+   int i, j, p1;
 
    g->model = model;
    g->filename = filename;
    g->i = g-> j = 0;
    g->n = n;
    g->p = p;
+   p1 = p + 1;
    g->yidx = 0;
    g->y = NULL;
+   g->yorig = NULL;
    g->lp = NULL;
    g->ylp = NULL;
    g->ylp_neg = NULL;
    g->lp_invlogit = NULL;
-   g->inmemory = inmemory;
    g->scalefile = scalefile;
    g->lookup = NULL;
    g->intercept = NULL;
@@ -71,15 +71,17 @@ int gmatrix_init(gmatrix *g, char *filename, int n, int p,
    g->ntest = NULL;
    g->ntrainrecip = NULL;
    g->ntestrecip = NULL;
-   g->ncurr = 0; /* current number of samples, depending on whether we're in
-		    training or testing and which fold we're in, etc. */
-   g->ncurr_recip = 0.0; /* reciprocal of ncurr to allow multiplication instead
+   g->ncurr = 0; /* current number of samples, depending on
+		    whether we're in training or testing and
+		    which fold we're in, etc. */
+   g->ncurr_recip = 0.0; /* reciprocal of ncurr to
+			    allow multiplication instead
 			    of division */
    g->mode = mode;
    g->nseek = sizeof(dtype) * (encoded ? g->nencb : g->n);
 
    MALLOCTEST(g->ca, sizeof(cache));
-   if(!cache_init(g->ca, g->p + 1)) /* +1 not for intercept, which isn't
+   if(!cache_init(g->ca, p1)) /* +1 not for intercept, which isn't
 				       stored but we need to maintain
 				       indexing consistency */
       return FAILURE;
@@ -87,11 +89,12 @@ int gmatrix_init(gmatrix *g, char *filename, int n, int p,
    if(filename)
       FOPENTEST(g->file, filename, "rb");
 
+   printf("gmatrix_init before gmatrix_setup_folds\n");
    if(!gmatrix_setup_folds(g))
       return FAILURE;
 
    MALLOCTEST(g->intercept, sizeof(double) * g->n);
-   for(i = 0 ; i < n ; i++)
+   for(i = n - 1 ; i >= 0 ; --i)
       g->intercept[i] = 1.0;
 
    MALLOCTEST(g->tmp, sizeof(dtype) * g->n);
@@ -102,18 +105,17 @@ int gmatrix_init(gmatrix *g, char *filename, int n, int p,
    if(g->binformat == BINFORMAT_PLINK)
       g->decode = &decode_plink;
 
-   if(inmemory)
-   {
-      if(!gmatrix_load(g))
-	 return FAILURE;
-      g->nextcol = gmatrix_mem_nextcol;
-   }
-   else
-      g->nextcol = gmatrix_disk_nextcol;
+   g->nextcol = gmatrix_disk_nextcol;
 
-   CALLOCTEST(g->beta, g->p + 1, sizeof(double));
-   CALLOCTEST(g->active, g->p + 1, sizeof(int));
-   CALLOCTEST(g->ignore, g->p + 1, sizeof(int));
+   if(!gmatrix_reset(g))
+      return FAILURE;
+
+   if(!gmatrix_disk_get_y(g))
+      return FAILURE;
+
+   CALLOCTEST(g->beta, p1, sizeof(double));
+   CALLOCTEST(g->active, p1, sizeof(int));
+   CALLOCTEST(g->ignore, p1, sizeof(int));
 
    if(g->scalefile && !gmatrix_read_scaling(g, scalefile))
       return FAILURE;
@@ -122,21 +124,28 @@ int gmatrix_init(gmatrix *g, char *filename, int n, int p,
       g->active[j] = !g->ignore[j];
 
    gmatrix_set_ncurr(g);
+   
+   if(!gmatrix_split_y(g))
+      return FAILURE;
 
    if(!gmatrix_init_lp(g))
       return FAILURE;
+
+   MALLOCTEST(g->xtmp, sizeof(double) * g->n);
 
    return SUCCESS;
 }
 
 int gmatrix_setup_folds(gmatrix *g)
 {
+   printf("gmatrix_setup_folds\n");
    if(g->folds_ind_file 
 	 && !(g->nfolds = ind_getfolds(g->folds_ind_file)))
       return FAILURE;
 
    MALLOCTEST(g->folds, sizeof(int) * g->n * g->nfolds);
-   if(g->nfolds > 1 && !ind_read(g->folds_ind_file, g->folds, g->n, g->nfolds))
+   if(g->nfolds > 1 && !ind_read(g->folds_ind_file,
+	    g->folds, g->n, g->nfolds))
       return FAILURE;
 
    MALLOCTEST(g->ntrain, sizeof(int) * g->nfolds);
@@ -158,8 +167,6 @@ int gmatrix_setup_folds(gmatrix *g)
 
 void gmatrix_free(gmatrix *g)
 {
-   int j;
-
    if(g->file)
    {
       fclose(g->file);
@@ -178,16 +185,13 @@ void gmatrix_free(gmatrix *g)
       free(g->y);
    g->y = NULL;
 
-   if(g->inmemory && g->x)
-   {
-      for(j = 0 ; j < g->p + 1 ; j++)
-      {
-	 if(g->x[j])
-	    free(g->x[j]);
-      }
-      free(g->x);
-      g->x = NULL;
-   }
+   if(g->yorig)
+      free(g->yorig);
+   g->yorig = NULL;
+
+   if(g->xtmp)
+      free(g->xtmp);
+   g->xtmp = NULL;
 
    if(g->ignore)
       free(g->ignore);
@@ -261,73 +265,127 @@ void gmatrix_free(gmatrix *g)
    g->ca = NULL;
 }
 
-int gmatrix_disk_nexty(gmatrix *g)
+/* yorig stays in memory and never changes */
+int gmatrix_disk_get_y(gmatrix *g)
+{
+   int i, n = g->n, n1 = g->n - 1;
+
+   /* read all of y the first time we see it, then skip it */
+   CALLOCTEST(g->yorig, n, sizeof(double));
+
+   /* The y vector may be byte packed */
+   FREADTEST(g->encbuf, sizeof(dtype), g->nencb, g->file);
+   g->decode(g->tmp, g->encbuf, g->nencb);
+ 
+   if(g->yformat == YFORMAT01) {
+      for(i = n1 ; i >= 0 ; --i)
+	 g->yorig[i] = (double)g->tmp[i];
+   } else {  /*  -1/1  */
+      for(i = n1 ; i >= 0 ; --i)
+	 g->yorig[i] = 2.0 * g->tmp[i] - 1.0;
+   }
+
+   return SUCCESS;
+}
+
+/* y is a copy of yorig as needed for crossval */
+int gmatrix_split_y(gmatrix *g)
 {
    int i, n = g->n, n1 = g->n - 1;
    int k = g->ncurr - 1;
 
-   if(g->binformat == BINFORMAT_BIN) {
-      /* read all of y the first time we see it, then skip it */
-      if(!g->y) {
-	 CALLOCTEST(g->y, n, sizeof(double));
-
-	 /* The y vector may be byte packed */
-	 FREADTEST(g->encbuf, sizeof(dtype), g->nencb, g->file);
-	 g->decode(g->tmp, g->encbuf, g->nencb);
-
-	 /* represent y as 0/1 or -1/1, allowing for different samples sizes
-	  * if cross-validation is used */
-	 if(g->nfolds < 2) /* no cv */
-	 {
-	    if(g->yformat == YFORMAT01)
-	       for(i = n1 ; i >= 0 ; --i)
-		  g->y[i] = (double)g->tmp[i];
-	    else  /*  -1/1  */
-	       for(i = n1 ; i >= 0 ; --i)
-		  g->y[i] = 2.0 * g->tmp[i] - 1.0;
-	 } 
-	 else  /* with cv */
-	 {
-	    if(g->yformat == YFORMAT01)
-	    {
-	       if(g->mode == MODE_TRAIN) {
-		  for(i = n1 ; i >= 0 ; --i)
-		     if(g->folds[g->fold * n + i])
-			g->y[k--] = (double)g->tmp[i];
-	       } else {
-		  for(i = n1 ; i >= 0 ; --i)
-		     if(!g->folds[g->fold * n + i])
-			g->y[k--] = (double)g->tmp[i];
-	       }
-	    }
-	    else /*  y \in -1/1  */
-	    {
-	       if(g->mode == MODE_TRAIN) {
-		  for(i = n1 ; i >= 0 ; --i)
-		     if(g->folds[g->fold * n + i])
-			g->y[k--] = 2.0 * g->tmp[i] - 1.0;
-	       } else {
-		  for(i = n1 ; i >= 0 ; --i)
-		     if(!g->folds[g->fold * n + i])
-			g->y[k--] = 2.0 * g->tmp[i] - 1.0;
-	       }
-	    }
-	 }
-
-      } else { /* don't read y again */
-	 FSEEKOTEST(g->file, g->nseek, SEEK_CUR);
-      }
-   } else { /* skip plink headers */
-      FSEEKOTEST(g->file,
-	    sizeof(dtype) * PLINK_HEADER_SIZE, SEEK_CUR);
+   if(g->ncurr <= 0) {
+      fprintf(stderr, "gmatrix_split_y: ncurr can't be zero");
+      return FAILURE;
    }
+
+   if(g->y)
+      free(g->y);
+
+   MALLOCTEST(g->y, sizeof(double) * g->ncurr);
+
+   /* represent y as 0/1 or -1/1, allowing for different
+    * samples sizes if cross-validation is used */
+   if(g->nfolds > 1) /* no cv */
+   {
+      if(g->mode == MODE_TRAIN) {
+	 for(i = n1 ; i >= 0 ; --i)
+	    if(g->folds[g->fold * n + i])
+	       g->y[k--] = g->yorig[i];
+      } else {
+	 for(i = n1 ; i >= 0 ; --i)
+	    if(!g->folds[g->fold * n + i])
+	       g->y[k--] = g->yorig[i];
+      }
+   }
+   else 
+   {
+      for(i = n1 ; i >= 0 ; --i)
+	 g->y[i] = g->yorig[i];
+   }
+
+   return SUCCESS;
+}
+
+int gmatrix_disk_nextcol(gmatrix *g, sample *s, int j)
+{
+   int i, l1, n1 = g->n - 1, n = g->n;
+   int k = g->ncurr - 1;
+
+   if(j == 0)
+   {
+      /* don't need to worry about cross-validation etc
+       * because the intercept is all 1s */
+      s->x = g->intercept;
+      return SUCCESS;
+   }
+
+   /* column is in cache */
+   if((s->x = cache_get(g->ca, j)))
+      return SUCCESS;
+
+   /* Data not in cache, get from disk and unpack.
+    * Skip y. Try to put data in cache. */
+   FSEEKOTEST(g->file, j * g->nseek, SEEK_SET);
+   FREADTEST(g->encbuf, sizeof(dtype), g->nencb, g->file);
+   g->decode(g->tmp, g->encbuf, g->nencb);
+
+   /* Get the scaled versions of the genotypes */
+   if(g->nfolds < 2) { /* without crossval */
+      if(g->scalefile) { /* scale.c doesn't use scalefile so check */
+         /* Get the scaled value instead of the original value */
+         l1 = j * NUM_X_LEVELS;
+         for(i = n1 ; i >= 0 ; --i)
+	    g->xtmp[i] = g->lookup[l1 + g->tmp[i]];
+      } else {
+	 for(i = n1 ; i >= 0 ; --i)
+	    g->xtmp[i] = (double)g->tmp[i];
+      }
+   } else {
+      /* with crossval */
+      /* Get the scaled value instead of the original value */
+      if(g->scalefile) {
+	 l1 = j * NUM_X_LEVELS;
+	 for(i = n1 ; i >= 0 ; --i)
+	    /* different between train and test */
+	    if((g->mode == MODE_PREDICT) ^ g->folds[g->fold * n + i])
+	       g->xtmp[k--] = g->lookup[l1 + g->tmp[i]];
+      } else {
+	 for(i = n1 ; i >= 0 ; --i)
+	    if((g->mode == MODE_PREDICT) ^ g->folds[g->fold * n + i])
+	       g->xtmp[k--] = (double)g->tmp[i];
+      }
+   }
+
+   /*cache_put(g->ca, j, g->xtmp);*/
+   s->x = g->xtmp;
 
    return SUCCESS;
 }
 
 /* big ugly function
  */
-int gmatrix_disk_nextcol(gmatrix *g, sample *s, int skip)
+int gmatrix_disk_nextcol_old(gmatrix *g, sample *s, int skip)
 {
    int i, l1;
    int n = g->n, n1 = g->n - 1, p1 = g->p + 1;
@@ -341,7 +399,7 @@ int gmatrix_disk_nextcol(gmatrix *g, sample *s, int skip)
    if(g->j == 0)
    {
       s->intercept = TRUE;
-      if(!gmatrix_disk_nexty(g))
+      if(!gmatrix_disk_get_y(g))
 	 return FAILURE;
 
       /* No need to copy values, just assign the intercept vector,
@@ -350,16 +408,16 @@ int gmatrix_disk_nextcol(gmatrix *g, sample *s, int skip)
       if(s->x)
 	 free(s->x);
 
-      /* don't need to worry about cross-validation etc because the intercept
-       * is all 1s */
+      /* don't need to worry about cross-validation etc
+       * because the intercept is all 1s */
       s->x = g->intercept;
 
       g->j++;
       return SUCCESS;
    }
 
-   /* this isn't an intercept, so we need to copy actual values but first make
-    * room for them */
+   /* this isn't an intercept, so we need to copy actual
+    * values but first make room for them */
    s->intercept = FALSE;
    if(g->j == 1) {
       MALLOCTEST(s->x, sizeof(double) * ncurr);
@@ -411,44 +469,6 @@ int gmatrix_disk_nextcol(gmatrix *g, sample *s, int skip)
    return SUCCESS;
 }
 
-int gmatrix_mem_nextcol(gmatrix *g, sample *s, int skip)
-{
-   if(g->j == g->p + 1)
-   {
-      g->i = g->j = 0;
-   }
-
-   s->x = g->x[g->j];
-   g->j++;
-
-   return SUCCESS;
-}
-
-int gmatrix_load(gmatrix *g)
-{
-   int i, j;
-   sample s;
-
-   if(!sample_init(&s, g->n, FALSE))
-      return FAILURE;
-
-   MALLOCTEST(g->x, sizeof(double*) * (g->p + 1))
-
-      for(j = 0 ; j < g->p + 1 ; j++)
-      {
-	 MALLOCTEST(g->x[j], sizeof(double) * g->n)
-	    if(!gmatrix_disk_nextcol(g, &s, FALSE))
-	       return FAILURE;
-
-	 for(i = 0 ; i < g->n ; i++)
-	    g->x[j][i] = (double)s.x[i];
-      }
-
-   sample_free(&s);
-
-   return SUCCESS;
-}
-
 int gmatrix_reset(gmatrix *g)
 {
    if(g->file)
@@ -479,7 +499,6 @@ int gmatrix_read_scaling(gmatrix *g, char *file_scale)
       MALLOCTEST(g->sd, sizeof(double) * p1);
 
    FOPENTEST(in, file_scale, "rb");
-
    FREADTEST(g->mean, sizeof(double), p1, in);
    FREADTEST(g->sd, sizeof(double), p1, in);
 
@@ -529,6 +548,10 @@ void count_fold_samples(int *ntrain, int *ntest,
    }
 }
 
+/* Hashtable as cache. Each variable has an associated weight,
+ * i.e. the number of requests for it, and putting a variable
+ * only works if it has higher weight than the variable in
+ * the same bucket (if they both hash to the same bucket).*/
 int cache_init(cache *ca, int nkeys)
 {
    int i;
@@ -611,10 +634,12 @@ int hash(int key)
 /* Sets the number of samples for actual use in CD */
 void gmatrix_set_ncurr(gmatrix *g)
 {
-   if(g->mode == MODE_TRAIN)
-      g->ncurr = g->ntrain[g->fold];
-   else
-      g->ncurr = g->ntest[g->fold];
+   {
+      if(g->mode == MODE_TRAIN)
+	 g->ncurr = g->ntrain[g->fold];
+      else
+	 g->ncurr = g->ntest[g->fold];
+   }
 
    g->ncurr_recip = 1.0 / g->ncurr;
 }
@@ -625,9 +650,9 @@ int gmatrix_set_fold(gmatrix *g, int fold)
    gmatrix_set_ncurr(g);
    if(!gmatrix_init_lp(g))
       return FAILURE;
-   if(g->scalefile)
-      return gmatrix_read_scaling(g, g->scalefile);
-   return SUCCESS;
+   if(g->scalefile && !gmatrix_read_scaling(g, g->scalefile))
+      return FAILURE;
+   return gmatrix_split_y(g);
 }
 
 /* zero the lp and adjust the lp-functions */

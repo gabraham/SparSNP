@@ -16,7 +16,7 @@ int scale(gmatrix *g)
    sample sm;
    double *tmp = NULL, delta;
 
-   if(!sample_init(&sm, g->ncurr, g->inmemory))
+   if(!sample_init(&sm, g->ncurr))
       return FAILURE;
 
    if(!g->mean)
@@ -29,12 +29,12 @@ int scale(gmatrix *g)
    MALLOCTEST(tmp, sizeof(double) * g->ncurr);
    
    /* read intercept and ignore it*/
-   g->nextcol(g, &sm, FALSE);
+   g->nextcol(g, &sm, 0);
 
    for(j = 1 ; j < p1 ; j++)
    {
       printf("%d of %d", j, p1);
-      g->nextcol(g, &sm, FALSE);
+      g->nextcol(g, &sm, j);
       g->mean[j] = g->sd[j] = 0;
       for(i = 0 ; i < g->ncurr ; i++)
       {
@@ -99,7 +99,6 @@ int main(int argc, char* argv[])
 	*filename_beta_out = NULL,
 	*filename_folds_ind = NULL;
    short doscale = TRUE,
-	 inmemory = FALSE,
 	 encoded = TRUE,
 	 binformat = BINFORMAT_BIN;
    gmatrix g;
@@ -137,8 +136,6 @@ int main(int argc, char* argv[])
 	 i++;
 	 p = (int)atof(argv[i]);
       }
-      else if(strcmp2(argv[i], "-inmemory"))
-	 inmemory = TRUE;
       else if(strcmp2(argv[i], "-notencoded"))
 	 encoded = FALSE;
       else if(strcmp2(argv[i], "-plink"))
@@ -163,7 +160,7 @@ int main(int argc, char* argv[])
    if(doscale)
    {
       if(!gmatrix_init(&g, filename_bin, n, p,
-	    inmemory, NULL, YFORMAT01, MODEL_LINEAR,
+	    NULL, YFORMAT01, MODEL_LINEAR,
 	    encoded, binformat, filename_folds_ind, nfolds, MODE_TRAIN))
 	 return EXIT_FAILURE;
 

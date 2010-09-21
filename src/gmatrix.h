@@ -33,7 +33,6 @@ typedef struct cache {
 typedef struct sample {
    double *x;
    double *x2;
-   short inmemory;
    short intercept;
    short cached;
    int nbins;
@@ -44,8 +43,9 @@ typedef struct sample {
 typedef struct gmatrix {
    char* filename;
    FILE* file;
+   double *yorig;
    double *y;
-   double **x;
+   double *xtmp;
    int n;
    int *ntrain;
    int *ntest;
@@ -67,7 +67,6 @@ typedef struct gmatrix {
    int bufsize;
    int bufidx;
    int yidx; /* only used for pcor */
-   short inmemory;
    int (*nextcol)(struct gmatrix*, sample*, int skip);
    char *scalefile;
    dtype *tmp;
@@ -89,17 +88,17 @@ typedef struct gmatrix {
    int nseek;
 } gmatrix;
 
-int sample_init(sample *, int, short);
+int sample_init(sample *, int);
 void sample_free(sample *);
-int gmatrix_init(gmatrix *, char *, int, int, short, char*, short,
-      int, short, short, char *folds_ind_file, int nfolds, short);
+int gmatrix_init(gmatrix *g, char *filename, int n, int p,
+      char *scalefile, short yformat, int model,
+      short encoded, short binformat, char *folds_ind_file, int nfolds,
+      short mode);
 int gmatrix_reset(gmatrix *);
 void gmatrix_free(gmatrix *);
 int gmatrix_disk_nextcol(gmatrix *, sample *, int skip);
 int gmatrix_disk_read_y(gmatrix *g);
 int gmatrix_disk_skipcol(gmatrix *g);
-int gmatrix_mem_nextcol(gmatrix *, sample *, int skip);
-int gmatrix_load(gmatrix *g);
 int gmatrix_disk_skipcol(gmatrix *g);
 int gmatrix_read_scaling(gmatrix *g, char *file_scale);
 void count_fold_samples(int *ntrain, int *ntest, double *ntrainrecip,
@@ -109,6 +108,8 @@ void gmatrix_set_ncurr(gmatrix *g);
 int gmatrix_set_fold(gmatrix *g, int fold);
 void gmatrix_zero_model(gmatrix *g);
 int gmatrix_init_lp(gmatrix *g);
+int gmatrix_split_y(gmatrix *g);
+int gmatrix_disk_get_y(gmatrix *g);
 
 int cache_init(cache *ht, int nkeys);
 void cache_free(cache *ht);

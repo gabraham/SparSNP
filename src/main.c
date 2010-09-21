@@ -109,7 +109,7 @@ int run_predict_beta(gmatrix *g, predict predict_func,
    double *restrict lp = g->lp;
    double *restrict beta = g->beta;
 
-   if(!sample_init(&sm, n, g->inmemory))
+   if(!sample_init(&sm, n))
       return FAILURE;
 
    CALLOCTEST(yhat, n, sizeof(double));
@@ -175,38 +175,54 @@ int main(int argc, char* argv[])
       return EXIT_FAILURE;
    }
 
-   /*if(!gmatrix_init(&g, opt.filename, opt.n, opt.p,
-	    opt.inmemory, opt.scalefile, opt.yformat, opt.model,
-	    opt.encoded, opt.binformat, opt.folds_ind_file, opt.nfolds,
-	    opt.mode))*/
-   if(!gmatrix_init(&g, opt.filename, opt.n, opt.p,
-	    opt.inmemory, NULL, opt.yformat, opt.model,
-	    opt.encoded, opt.binformat, opt.folds_ind_file,
-	    opt.nfolds, opt.mode))
-   {
-      gmatrix_free(&g);
-      opt_free(&opt);
-      fflush(stdout);
-      return EXIT_FAILURE;
-   }
-  
    if(opt.mode == MODE_TRAIN && !opt.nofit)
    {
-      for(k = 0 ; k < g.nfolds ; k++)
+      if(opt.nfolds > 1)
       {
-	 len = strlen(opt.scalefile) + 1 + 3;
-	 snprintf(tmp, len, "%s.%02d", opt.scalefile, k);
-	 g.scalefile = tmp;
-	 if(!(ret = gmatrix_set_fold(&g, k)))
-	    break;
+	 if(!gmatrix_init(&g, opt.filename, opt.n, opt.p,
+		  NULL, opt.yformat, opt.model,
+		  opt.encoded, opt.binformat, opt.folds_ind_file,
+		  opt.nfolds, opt.mode))
+	 {
+	    gmatrix_free(&g);
+	    opt_free(&opt);
+	    fflush(stdout);
+	    return EXIT_FAILURE;
+	 }
 
+	 for(k = 0 ; k < g.nfolds ; k++)
+	 {
+	    len = strlen(opt.scalefile) + 1 + 3;
+	    snprintf(tmp, len, "%s.%02d", opt.scalefile, k);
+	    g.scalefile = tmp;
+	    if(!(ret = gmatrix_set_fold(&g, k)))
+	       break;
+
+	    gmatrix_zero_model(&g);
+	    make_lambda1path(&opt, &g);
+	    gmatrix_reset(&g);
+
+	    /* gmatrix_zero_model(&g);*/
+	    if(!(ret = run_train(&opt, &g)))
+	       break;
+	 }
+      }
+      else
+      {
+	 if(!gmatrix_init(&g, opt.filename, opt.n, opt.p,
+	       opt.scalefile, opt.yformat,
+	       opt.model, opt.encoded, opt.binformat,
+	       opt.folds_ind_file, opt.nfolds, opt.mode))
+	 {
+	    gmatrix_free(&g);
+	    opt_free(&opt);
+	    fflush(stdout);
+	    return EXIT_FAILURE;
+	 }
 	 gmatrix_zero_model(&g);
 	 make_lambda1path(&opt, &g);
 	 gmatrix_reset(&g);
-
-	/* gmatrix_zero_model(&g);*/
-	 if(!(ret = run_train(&opt, &g)))
-	    break;
+	 ret = run_train(&opt, &g);
       }
    }
    else if(opt.mode == MODE_PREDICT)

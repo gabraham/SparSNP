@@ -59,21 +59,17 @@ void updatelp(gmatrix *g, const double update, const int j,
 /* Find smallest lambda1 that makes all coefficients
  * zero (except the intercept)
  */
-double get_lambda1max_gmatrix(
-      gmatrix *g,
-      phi1 phi1_func,
-      phi2 phi2_func,
-      inv inv_func,
-      step step_func)
+double get_lambda1max_gmatrix(gmatrix *g,
+      phi1 phi1_func, phi2 phi2_func, inv inv_func, step step_func)
 {
    int i, j, n = g->ncurr, n1 = g->ncurr - 1, p1 = g->p + 1;
    double s, zmax = 0, beta_new;
    sample sm;
 
-   if(!sample_init(&sm, n, g->inmemory))
+   if(!sample_init(&sm, n))
       return FAILURE;
 
-   g->nextcol(g, &sm, FALSE);
+   g->nextcol(g, &sm, 0);
 
    /* First compute the intercept. When all other variables
     * are zero, the intercept is just inv(mean(y)) for a suitable inv()
@@ -91,9 +87,9 @@ double get_lambda1max_gmatrix(
     * first because it's not penalised. */
    for(j = 1 ; j < p1; j++)
    {
-      g->nextcol(g, &sm, FALSE);
       if(g->ignore[j])
 	 continue;
+      g->nextcol(g, &sm, j);
 
       s = fabs(step_func(&sm, g, phi1_func, phi2_func));
       zmax = (zmax < s) ? s : zmax;
@@ -101,7 +97,7 @@ double get_lambda1max_gmatrix(
 
    g->beta[0] = beta_new;
 
-   sample_free(&sm);
+   /*sample_free(&sm);*/
 
    return zmax;
 }
@@ -191,7 +187,7 @@ int cd_gmatrix(gmatrix *g,
    double *beta_old = NULL, *m = NULL;
    sample sm;
 
-   if(!sample_init(&sm, n, g->inmemory))
+   if(!sample_init(&sm, n))
       return FAILURE;
 
    CALLOCTEST(beta_old, p1, sizeof(double));
@@ -216,9 +212,9 @@ int cd_gmatrix(gmatrix *g,
       {
 	 iter = 0;
 	 s_old = 0;
-	 g->nextcol(g, &sm, !g->active[j]);
 	 if(g->active[j])
 	 {
+	    g->nextcol(g, &sm, j);
 	    /* iterate over jth variable */
       	    while(iter < maxiters)
       	    {
@@ -320,7 +316,7 @@ with %d active vars\n", time(NULL), epoch, numactive);
    }
    printfverb("\n");
 
-   sample_free(&sm);
+   /*sample_free(&sm);*/
    free(beta_old);
    free(active_old);
    free(m);

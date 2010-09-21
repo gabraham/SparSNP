@@ -27,15 +27,15 @@ do
    fi
    pushd "$dir/$results"
    
-   # predict the phenotype
-   CD="~/Code/cd/src/cd -predict -model sqrhinge \
--f ../$bin -scale ../scale.bin \
--n $N -p $P -v -betafiles $(ls -v beta.csv.+([0-9])) \
-$enc"
-   eval "$CD"
+#   # predict the phenotype
+#   CD="~/Code/cd/src/cd -predict -model sqrhinge \
+#-f ../$bin -scale ../scale.bin \
+#-n $N -p $P -v -betafiles $(ls -v beta.csv.+([0-9])) \
+#$enc"
+#   eval "$CD"
 
    # unscale the coefs
-   for((k=0 ; k <= 30 ; k++));
+   for((k=0 ; k <= 50 ; k++));
    do
       UNSC="~/Code/cd/src/scale -unscale -p $P -scale ../scale.bin \
 -betafile beta.csv.$k -enc"

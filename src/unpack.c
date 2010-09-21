@@ -7,17 +7,16 @@ int unpack(gmatrix *g, char *filename_out)
    sample sm;
    FILE *out;
 
-   if(!sample_init(&sm, g->n, g->inmemory))
+   if(!sample_init(&sm, g->n))
       return FAILURE;
 
    FOPENTEST(out, filename_out, "wb");
-   g->nextcol(g, &sm, FALSE);
    FWRITETEST(g->y, sizeof(double), g->n, out);
 
-   for(j = 0 ; j < g->p ; j++)
+   for(j = 0 ; j < g->p + 1 ; j++)
    {
       printf("%d of %d", j, g->p);
-      g->nextcol(g, &sm, FALSE);
+      g->nextcol(g, &sm, j);
       FWRITETEST(sm.x, sizeof(double), g->n, out);
       printf("\r");
    }
@@ -70,8 +69,9 @@ int main(int argc, char *argv[])
       return EXIT_FAILURE;
    }
 
-   if(!gmatrix_init(&g, filename_bin, n, p, FALSE, NULL,
-	 YFORMAT01, MODEL_LINEAR, TRUE, binformat, NULL, 1, MODE_TRAIN))
+   if(!gmatrix_init(&g, filename_bin, n, p, NULL,
+	 YFORMAT01, MODEL_LINEAR, TRUE, binformat,
+	 NULL, 1, MODE_TRAIN))
       return EXIT_FAILURE;
 
    if(!unpack(&g, filename_out))

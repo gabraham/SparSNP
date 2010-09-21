@@ -58,7 +58,6 @@ int opt_defaults(Opt *opt)
    opt->subsetfile = "subset.csv";
    opt->lambda1pathfile = "lambda1path.csv";
    opt->step_func = NULL;
-   opt->inmemory = FALSE;
    opt->scalefile = NULL;
    opt->yformat = YFORMAT01;
    opt->predict_func = NULL;
@@ -81,7 +80,7 @@ int opt_parse(int argc, char* argv[], Opt* opt)
 
    for(i = 1 ; i < argc ; i++)
    {
-      if(strcmp2(argv[i], "-f"))
+      if(strcmp2(argv[i], "-bin"))
       {
 	 i++;
 	 opt->filename = argv[i];
@@ -204,12 +203,6 @@ int opt_parse(int argc, char* argv[], Opt* opt)
       else if(strcmp2(argv[i], "-cold"))
       {
 	 opt->warmrestarts = FALSE;
-      }
-      else if(strcmp2(argv[i], "-inmemory"))
-      {
-	 opt->inmemory = TRUE;
-	 printf("-inmemory not working currently\n");
-	 return FAILURE;
       }
       else if(strcmp2(argv[i], "-betafiles"))
       {
