@@ -36,8 +36,11 @@ int make_lambda1path(Opt *opt, gmatrix *g)
       opt->lambda1path[i] = exp(log(opt->lambda1max) - s * i);
 
    /* Write the coefs for model with intercept only */
-   snprintf(tmp, MAX_STR_LEN, "%s.%02d.%02d", opt->beta_files[0], 0, g->fold);
-   if(!writevectorf(tmp, g->beta, opt->p + 1))
+   snprintf(tmp, MAX_STR_LEN, "%s.%02d.%02d",
+	 opt->beta_files[0], 0, g->fold);
+
+   unscale_beta(g->beta_orig, g->beta, g->mean, g->sd, g->p + 1);
+   if(!writevectorf(tmp, g->beta_orig, g->p + 1))
       return FAILURE;
 
    snprintf(tmp, MAX_STR_LEN, "%s.%02d", opt->lambda1pathfile, g->fold);
@@ -79,8 +82,11 @@ int run_train(Opt *opt, gmatrix *g)
 	 break;
       } 
 
-      snprintf(tmp, MAX_STR_LEN, "%s.%02d.%02d", opt->beta_files[0], i, g->fold);
-      if(!writevectorf(tmp, g->beta, opt->p + 1))
+      snprintf(tmp, MAX_STR_LEN, "%s.%02d.%02d",
+	    opt->beta_files[0], i, g->fold);
+   
+      unscale_beta(g->beta_orig, g->beta, g->mean, g->sd, g->p + 1);
+      if(!writevectorf(tmp, g->beta_orig, g->p + 1))
 	 return FAILURE;
 
       if(!opt->warmrestarts)

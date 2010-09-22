@@ -43,7 +43,7 @@ int gmatrix_init(gmatrix *g, char *filename, int n, int p,
    p1 = p + 1;
    g->yidx = 0;
    g->y = NULL;
-   g->yorig = NULL;
+   g->y_orig = NULL;
    g->lp = NULL;
    g->ylp = NULL;
    g->ylp_neg = NULL;
@@ -79,7 +79,10 @@ int gmatrix_init(gmatrix *g, char *filename, int n, int p,
 			    of division */
    g->mode = mode;
    g->nseek = sizeof(dtype) * (encoded ? g->nencb : g->n);
+   g->beta_orig = NULL;
 
+   MALLOCTEST(g->beta_orig, sizeof(double) * p1);
+   
    MALLOCTEST(g->ca, sizeof(cache));
    if(!cache_init(g->ca, p1)) /* +1 not for intercept, which isn't
 				       stored but we need to maintain
@@ -183,9 +186,9 @@ void gmatrix_free(gmatrix *g)
       free(g->y);
    g->y = NULL;
 
-   if(g->yorig)
-      free(g->yorig);
-   g->yorig = NULL;
+   if(g->y_orig)
+      free(g->y_orig);
+   g->y_orig = NULL;
 
    if(g->xtmp)
       free(g->xtmp);
@@ -227,6 +230,10 @@ void gmatrix_free(gmatrix *g)
       free(g->beta);
    g->beta = NULL;
 
+   if(g->beta_orig)
+      free(g->beta_orig);
+   g->beta_orig = NULL;
+
    if(g->encbuf)
       free(g->encbuf);
    g->encbuf = NULL;
@@ -263,13 +270,13 @@ void gmatrix_free(gmatrix *g)
    g->ca = NULL;
 }
 
-/* yorig stays in memory and never changes */
+/* y_orig stays in memory and never changes */
 int gmatrix_disk_get_y(gmatrix *g)
 {
    int i, n = g->n, n1 = g->n - 1;
 
    /* read all of y the first time we see it, then skip it */
-   CALLOCTEST(g->yorig, n, sizeof(double));
+   CALLOCTEST(g->y_orig, n, sizeof(double));
 
    /* The y vector may be byte packed */
    FREADTEST(g->encbuf, sizeof(dtype), g->nencb, g->file);
@@ -277,16 +284,16 @@ int gmatrix_disk_get_y(gmatrix *g)
  
    if(g->yformat == YFORMAT01) {
       for(i = n1 ; i >= 0 ; --i)
-	 g->yorig[i] = (double)g->tmp[i];
+	 g->y_orig[i] = (double)g->tmp[i];
    } else {  /*  -1/1  */
       for(i = n1 ; i >= 0 ; --i)
-	 g->yorig[i] = 2.0 * g->tmp[i] - 1.0;
+	 g->y_orig[i] = 2.0 * g->tmp[i] - 1.0;
    }
 
    return SUCCESS;
 }
 
-/* y is a copy of yorig as needed for crossval */
+/* y is a copy of y_orig as needed for crossval */
 int gmatrix_split_y(gmatrix *g)
 {
    int i, n = g->n, n1 = g->n - 1;
@@ -309,17 +316,17 @@ int gmatrix_split_y(gmatrix *g)
       if(g->mode == MODE_TRAIN) {
 	 for(i = n1 ; i >= 0 ; --i)
 	    if(g->folds[g->fold * n + i])
-	       g->y[k--] = g->yorig[i];
+	       g->y[k--] = g->y_orig[i];
       } else {
 	 for(i = n1 ; i >= 0 ; --i)
 	    if(!g->folds[g->fold * n + i])
-	       g->y[k--] = g->yorig[i];
+	       g->y[k--] = g->y_orig[i];
       }
    }
    else 
    {
       for(i = n1 ; i >= 0 ; --i)
-	 g->y[i] = g->yorig[i];
+	 g->y[i] = g->y_orig[i];
    }
 
    return SUCCESS;

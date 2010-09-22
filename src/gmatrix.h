@@ -43,7 +43,7 @@ typedef struct sample {
 typedef struct gmatrix {
    char* filename;
    FILE* file;
-   double *yorig;
+   double *y_orig;
    double *y;
    double *xtmp;
    int n;
@@ -86,6 +86,7 @@ typedef struct gmatrix {
    short mode;
    cache *ca;
    int nseek;
+   double *beta_orig;
 } gmatrix;
 
 int sample_init(sample *, int);

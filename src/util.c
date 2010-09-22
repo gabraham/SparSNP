@@ -84,3 +84,28 @@ void scale_beta(double *beta, double *mean, double *sd, int p)
    }
 }
 
+/* assumes beta0 is intercept.
+ * 
+ * beta_j = beta_j^* / sd_j
+ *
+ * beta_0 = beta_0^* - \sum_{j=1}^{p+1} beta_j^* mean_j / sd_j
+ * */
+
+void unscale_beta(double *beta2, double *beta1,
+      double *mean, double *sd, int p)
+{
+   int j;
+   double t, s = 0;
+   for(j = p ; j >= 0 ; --j)
+   {
+      t = beta1[j] * mean[j];
+      if(sd[j] != 0)
+      {
+	 t /= sd[j];
+	 beta2[j] = beta1[j] / sd[j];
+      }
+      s += t;
+   }
+   beta2[0] -= s;
+}
+
