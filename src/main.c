@@ -42,6 +42,8 @@ int make_lambda1path(Opt *opt, gmatrix *g)
    unscale_beta(g->beta_orig, g->beta, g->mean, g->sd, g->p + 1);
    if(!writevectorf(tmp, g->beta_orig, g->p + 1))
       return FAILURE;
+   /*if(!writevectorf(tmp, g->beta, g->p + 1))
+      return FAILURE;*/
 
    snprintf(tmp, MAX_STR_LEN, "%s.%02d", opt->lambda1pathfile, g->fold);
    return writevectorf(tmp, opt->lambda1path, opt->nlambda1);
@@ -88,6 +90,8 @@ int run_train(Opt *opt, gmatrix *g)
       unscale_beta(g->beta_orig, g->beta, g->mean, g->sd, g->p + 1);
       if(!writevectorf(tmp, g->beta_orig, g->p + 1))
 	 return FAILURE;
+      /*if(!writevectorf(tmp, g->beta, g->p + 1))
+	 return FAILURE;*/
 
       if(!opt->warmrestarts)
 	 gmatrix_zero_model(g);
@@ -122,7 +126,7 @@ int run_predict_beta(gmatrix *g, predict predict_func,
 
    for(j = 0 ; j < p1 ; j++)
    {
-      g->nextcol(g, &sm, FALSE);
+      g->nextcol(g, &sm, j);
       for(i = 0 ; i < n ; i++)
 	 lp[i] += sm.x[i] * beta[j];
    }
@@ -151,12 +155,12 @@ int run_predict(gmatrix *g, predict predict_func, char **beta_files,
    {
       gmatrix_zero_model(g);
       printf("reading %s\n", beta_files[i]);
-      if(!load_beta(g->beta, beta_files[i], g->p + 1))
+      if(!load_beta(g->beta_orig, beta_files[i], g->p + 1))
 	 return FAILURE;
 
-      /* scale beta using the scales for this data (beta should already
-       * be on original scale, not scaled) */
-      scale_beta(g->beta, g->mean, g->sd, g->p + 1);
+      /* scale beta using the scales for this data (beta
+       * should already be on original scale, not scaled) */
+      scale_beta(g->beta, g->beta_orig, g->mean, g->sd, g->p + 1);
 
       snprintf(tmp, MAX_STR_LEN, "%s.pred", beta_files[i]);
       if(!run_predict_beta(g, predict_func, tmp))
@@ -166,9 +170,118 @@ int run_predict(gmatrix *g, predict predict_func, char **beta_files,
    return SUCCESS;
 }
 
+int do_train(gmatrix *g, Opt *opt, char tmp[])
+{
+   int ret = SUCCESS, k, len;
+   if(!gmatrix_init(g, opt->filename, opt->n, opt->p,
+	    NULL, opt->yformat, opt->model, opt->encoded,
+	    opt->binformat, opt->folds_ind_file, opt->mode))
+      return FAILURE;
+
+   printf("%d CV folds\n", g->nfolds);
+   /* cross-validation: training stage */
+   if(g->nfolds > 1)
+   {
+      for(k = 0 ; k < g->nfolds ; k++)
+      {
+	 printf("CV fold: %d\n", k);
+	 len = strlen(opt->scalefile) + 1 + 3;
+	 snprintf(tmp, len, "%s.%02d", opt->scalefile, k);
+	 g->scalefile = tmp;
+	 if(!(ret &= gmatrix_set_fold(g, k)))
+	    break;
+
+	 gmatrix_zero_model(g);
+	 make_lambda1path(opt, g);
+	 gmatrix_reset(g);
+
+	 /* gmatrix_zero_model(&g);*/
+	 if(!(ret &= run_train(opt, g)))
+	    break;
+      }
+   }
+   else
+   {
+      g->scalefile = opt->scalefile;
+      if(!gmatrix_read_scaling(g, g->scalefile))
+	 return FAILURE;
+      gmatrix_zero_model(g);
+      make_lambda1path(opt, g);
+      gmatrix_reset(g);
+      ret = run_train(opt, g);
+   }
+   
+   return ret;
+}
+
+int do_predict(gmatrix *g, Opt *opt, char tmp[])
+{
+   int ret = SUCCESS, b, k, len;
+
+   if(!gmatrix_init(g, opt->filename, opt->n, opt->p,
+	    NULL, opt->yformat, opt->model, opt->encoded,
+	    opt->binformat, opt->folds_ind_file, opt->mode))
+   return FAILURE;
+
+   if(g->nfolds > 1)
+   {
+      if(!opt->beta_files_fold)
+	 MALLOCTEST2(opt->beta_files_fold,
+	       sizeof(char*) * opt->n_beta_files);
+      for(b = 0 ; b < opt->n_beta_files ; b++)
+	 opt->beta_files_fold[b] = NULL;
+
+      /* cross-validation: prediction stage */
+      for(k = 0 ; k < g->nfolds ; k++)
+      {
+	 len = strlen(opt->scalefile) + 1 + 3;
+	 snprintf(tmp, len, "%s.%02d", opt->scalefile, k);
+	 g->scalefile = tmp;
+	 printf("reading scale file: %s\n", tmp);
+	 if(!(ret &= gmatrix_set_fold(g, k)))
+	    break;
+
+	 /* write y file */
+	 snprintf(tmp, 5, "y.%02d", k);
+	 printf("writing y file: %s\n", tmp);
+	 if(!(ret &= writevectorf(tmp, g->y, g->ncurr)))
+	    break;
+
+	 /* gmatrix_zero_model(&g); */
+	 gmatrix_reset(g);
+
+	 /* set up correct file names */
+	 for(b = 0 ; b < opt->n_beta_files ; b++)
+	 {
+	    len = strlen(opt->beta_files[b]);
+	    if(!opt->beta_files_fold[b])
+	       MALLOCTEST2(opt->beta_files_fold[b], len + 1 + 3);
+	    snprintf(opt->beta_files_fold[b], MAX_STR_LEN, "%s.%02d",
+		  opt->beta_files[b], k);
+	 }
+
+	 if(!(ret &= run_predict(g, opt->predict_func,
+		     opt->beta_files_fold, opt->n_beta_files)))
+	    break;
+      }
+   }
+   else
+   {
+      g->scalefile = opt->scalefile;
+      if(!gmatrix_read_scaling(g, g->scalefile))
+	 return FAILURE;
+      gmatrix_zero_model(g);
+      ret = run_predict(g, opt->predict_func,
+	    opt->beta_files_fold, opt->n_beta_files);
+   }
+
+   return ret;
+}
+
 int main(int argc, char* argv[])
 {
-   int k, ret = 0, len, b;
+   int ret = FAILURE;
+
    Opt opt;
    gmatrix g;
    char tmp[MAX_STR_LEN];
@@ -182,91 +295,9 @@ int main(int argc, char* argv[])
    }
 
    if(opt.mode == MODE_TRAIN && !opt.nofit)
-   {
-      if(opt.nfolds > 1)
-      {
-	 if(!gmatrix_init(&g, opt.filename, opt.n, opt.p,
-		  NULL, opt.yformat, opt.model,
-		  opt.encoded, opt.binformat, opt.folds_ind_file,
-		  opt.nfolds, opt.mode))
-	 {
-	    gmatrix_free(&g);
-	    opt_free(&opt);
-	    fflush(stdout);
-	    return EXIT_FAILURE;
-	 }
-
-	 for(k = 0 ; k < g.nfolds ; k++)
-	 {
-	    len = strlen(opt.scalefile) + 1 + 3;
-	    snprintf(tmp, len, "%s.%02d", opt.scalefile, k);
-	    g.scalefile = tmp;
-	    if(!(ret = gmatrix_set_fold(&g, k)))
-	       break;
-
-	    gmatrix_zero_model(&g);
-	    make_lambda1path(&opt, &g);
-	    gmatrix_reset(&g);
-
-	    /* gmatrix_zero_model(&g);*/
-	    if(!(ret = run_train(&opt, &g)))
-	       break;
-	 }
-      }
-      else
-      {
-	 if(!gmatrix_init(&g, opt.filename, opt.n, opt.p,
-	       opt.scalefile, opt.yformat,
-	       opt.model, opt.encoded, opt.binformat,
-	       opt.folds_ind_file, opt.nfolds, opt.mode))
-	 {
-	    gmatrix_free(&g);
-	    opt_free(&opt);
-	    fflush(stdout);
-	    return EXIT_FAILURE;
-	 }
-	 gmatrix_zero_model(&g);
-	 make_lambda1path(&opt, &g);
-	 gmatrix_reset(&g);
-	 ret = run_train(&opt, &g);
-      }
-   }
+      ret = do_train(&g, &opt, tmp);
    else if(opt.mode == MODE_PREDICT)
-   {
-      if(!opt.beta_files_fold)
-	 MALLOCTEST2(opt.beta_files_fold, sizeof(char*) * opt.n_beta_files);
-      for(b = 0 ; b < opt.n_beta_files ; b++)
-	 opt.beta_files_fold[b] = NULL;
-
-      for(k = 0 ; k < g.nfolds ; k++)
-      {
-	 len = strlen(opt.scalefile) + 1 + 3;
-	 snprintf(tmp, len, "%s.%02d", opt.scalefile, k);
-	 g.scalefile = tmp;
-	 if(!(ret = gmatrix_set_fold(&g, k)))
-	    break;
-
-	 printf("main.c g.ncurr:%d\n", g.ncurr);
-
-
-	/* gmatrix_zero_model(&g); */
-	 gmatrix_reset(&g);
-
-	 for(b = 0 ; b < opt.n_beta_files ; b++)
-	 {
-	    len = strlen(opt.beta_files[b]);
-	    if(!opt.beta_files_fold[b])
-	       MALLOCTEST2(opt.beta_files_fold[b], len + 1 + 3);
-	    snprintf(opt.beta_files_fold[b], MAX_STR_LEN, "%s.%02d",
-		  opt.beta_files[b], k);
-	    printf("new opt.beta_files_fold[%d]: %s\n", b, opt.beta_files_fold[b]);
-	 }
-
-	 if(!(ret = run_predict(&g, opt.predict_func,
-	       opt.beta_files_fold, opt.n_beta_files)))
-	    break;
-      }
-   }
+      ret = do_predict(&g, &opt, tmp);
 
    gmatrix_free(&g);
    opt_free(&opt);

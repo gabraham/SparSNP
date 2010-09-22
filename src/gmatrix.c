@@ -30,7 +30,7 @@ void sample_free(sample *s)
 
 int gmatrix_init(gmatrix *g, char *filename, int n, int p,
       char *scalefile, short yformat, int model,
-      short encoded, short binformat, char *folds_ind_file, int nfolds,
+      short encoded, short binformat, char *folds_ind_file,
       short mode)
 {
    int i, j, p1;
@@ -64,7 +64,7 @@ int gmatrix_init(gmatrix *g, char *filename, int n, int p,
    g->decode = &decode;
    g->binformat = binformat;
    g->folds_ind_file = folds_ind_file;
-   g->nfolds = nfolds;
+   g->nfolds = 1;
    g->folds = NULL;
    g->fold = 0; 
    g->ntrain = NULL;
@@ -112,7 +112,7 @@ int gmatrix_init(gmatrix *g, char *filename, int n, int p,
    if(!gmatrix_reset(g))
       return FAILURE;
 
-   if(!gmatrix_disk_get_y(g))
+   if(!gmatrix_disk_read_y(g))
       return FAILURE;
 
    CALLOCTEST(g->beta, p1, sizeof(double));
@@ -271,7 +271,7 @@ void gmatrix_free(gmatrix *g)
 }
 
 /* y_orig stays in memory and never changes */
-int gmatrix_disk_get_y(gmatrix *g)
+int gmatrix_disk_read_y(gmatrix *g)
 {
    int i, n = g->n, n1 = g->n - 1;
 
@@ -313,15 +313,9 @@ int gmatrix_split_y(gmatrix *g)
     * samples sizes if cross-validation is used */
    if(g->nfolds > 1) /* no cv */
    {
-      if(g->mode == MODE_TRAIN) {
-	 for(i = n1 ; i >= 0 ; --i)
-	    if(g->folds[g->fold * n + i])
-	       g->y[k--] = g->y_orig[i];
-      } else {
-	 for(i = n1 ; i >= 0 ; --i)
-	    if(!g->folds[g->fold * n + i])
-	       g->y[k--] = g->y_orig[i];
-      }
+      for(i = n1 ; i >= 0 ; --i)
+	 if((g->mode == MODE_PREDICT) ^ g->folds[g->fold * n + i])
+	    g->y[k--] = g->y_orig[i];
    }
    else 
    {
@@ -404,7 +398,7 @@ int gmatrix_disk_nextcol_old(gmatrix *g, sample *s, int skip)
    if(g->j == 0)
    {
       s->intercept = TRUE;
-      if(!gmatrix_disk_get_y(g))
+      if(!gmatrix_disk_read_y(g))
 	 return FAILURE;
 
       /* No need to copy values, just assign the intercept vector,
@@ -503,6 +497,7 @@ int gmatrix_read_scaling(gmatrix *g, char *file_scale)
    if(!g->sd)
       MALLOCTEST(g->sd, sizeof(double) * p1);
 
+   printf("gmatrix_read_scaling: p1=%d\n", p1);
    FOPENTEST(in, file_scale, "rb");
    FREADTEST(g->mean, sizeof(double), p1, in);
    FREADTEST(g->sd, sizeof(double), p1, in);

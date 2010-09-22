@@ -93,7 +93,7 @@ int sample_init(sample *, int);
 void sample_free(sample *);
 int gmatrix_init(gmatrix *g, char *filename, int n, int p,
       char *scalefile, short yformat, int model,
-      short encoded, short binformat, char *folds_ind_file, int nfolds,
+      short encoded, short binformat, char *folds_ind_file,
       short mode);
 int gmatrix_reset(gmatrix *);
 void gmatrix_free(gmatrix *);
@@ -110,7 +110,7 @@ int gmatrix_set_fold(gmatrix *g, int fold);
 void gmatrix_zero_model(gmatrix *g);
 int gmatrix_init_lp(gmatrix *g);
 int gmatrix_split_y(gmatrix *g);
-int gmatrix_disk_get_y(gmatrix *g);
+int gmatrix_disk_read_y(gmatrix *g);
 
 int cache_init(cache *ht, int nkeys);
 void cache_free(cache *ht);

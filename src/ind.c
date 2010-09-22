@@ -23,6 +23,7 @@ int ind_getfolds(char *file)
    FILE *in = NULL;
    FOPENTEST(in, file, "rb")
    FREADTEST(&nfolds, sizeof(int), 1, in);
+   fclose(in);
    return nfolds;
 }
 

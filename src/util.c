@@ -70,18 +70,22 @@ int load_beta(double *beta, char *filename, int p)
    return SUCCESS;
 }
 
-void scale_beta(double *beta, double *mean, double *sd, int p)
+/* takes beta on original scale and puts it on scaled scale */
+void scale_beta(double *beta2, double *beta1,
+      double *mean, double *sd, int p)
 {
    int j;
-
-   beta[0] = 1.0;
-
-   for(j = 1 ; j < p ; j++)
+   double t, s = 0;
+   for(j = p - 1 ; j >= 0 ; --j)
    {
-      beta[j] = beta[j] - mean[j];
+      t = beta1[j] * mean[j];
       if(sd[j] != 0)
-	 beta[j] = (beta[j] - mean[j]) / sd[j];
+	 t /= sd[j];
+
+      beta2[j] = beta1[j] * sd[j];
+      s += t;
    }
+   beta2[0] += s;
 }
 
 /* assumes beta0 is intercept.
@@ -89,14 +93,15 @@ void scale_beta(double *beta, double *mean, double *sd, int p)
  * beta_j = beta_j^* / sd_j
  *
  * beta_0 = beta_0^* - \sum_{j=1}^{p+1} beta_j^* mean_j / sd_j
+ *
+ * Note that zero beta^* remains zero in beta
  * */
-
 void unscale_beta(double *beta2, double *beta1,
       double *mean, double *sd, int p)
 {
    int j;
    double t, s = 0;
-   for(j = p ; j >= 0 ; --j)
+   for(j = p - 1 ; j >= 0 ; --j)
    {
       t = beta1[j] * mean[j];
       if(sd[j] != 0)

@@ -75,7 +75,7 @@ int readscale(char* filename, double *mean, double *sd, int p)
 
 int main(int argc, char* argv[])
 {
-   int i, n = 0, p = 0, len, nfolds = 1, k;
+   int i, n = 0, p = 0, len, k;
    char *filename_bin = NULL,
         *filename_scale = "scale.bin",
 	*filename_beta = NULL,
@@ -139,7 +139,8 @@ int main(int argc, char* argv[])
    {
       if(!gmatrix_init(&g, filename_bin, n, p,
 	    NULL, YFORMAT01, MODEL_LINEAR,
-	    encoded, binformat, filename_folds_ind, nfolds, MODE_TRAIN))
+	    encoded, binformat, filename_folds_ind,
+	    MODE_TRAIN))
 	 return EXIT_FAILURE;
 
       if(filename_folds_ind)
