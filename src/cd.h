@@ -8,6 +8,7 @@
 
 #define MAX_SHOW_NOTCONV 100
 
+typedef double (*loss)(double*, dtype*, int);
 typedef double (*loss_pt)(double, dtype);
 typedef double (*predict_pt)(double);
 typedef double (*phi1)(double);
@@ -29,6 +30,7 @@ typedef struct Opt {
    double l1minratio;
    int nlambda1;
    double trunc;
+   loss loss_func;
    loss_pt loss_pt_func;
    phi1 phi1_func;
    phi2 phi2_func;
@@ -60,6 +62,7 @@ typedef struct Opt {
    short encoded;
    short binformat;
    char *folds_ind_file;
+   char *numnz_file;
 } Opt;
 
 int cd_gmatrix(gmatrix *g,

@@ -65,6 +65,7 @@ int opt_defaults(Opt *opt)
    opt->encoded = TRUE;
    opt->binformat = BINFORMAT_BIN;
    opt->beta_files_fold = NULL;
+   opt->numnz_file = "nonzero.csv";
 
    MALLOCTEST(opt->beta_files, sizeof(char*));
    MALLOCTEST(opt->beta_files[0], sizeof(char) * (strlen(beta_default) + 1));
@@ -98,6 +99,8 @@ int opt_parse(int argc, char* argv[], Opt* opt)
 	    opt->step_func = &step_regular_logistic;
 	    opt->model = MODEL_LOGISTIC;
 	    opt->predict_func = &logphi1;
+	    opt->loss_func = &log_loss;
+	    opt->loss_pt_func = &log_loss_pt;
 	 }
 	 else if(strcmp2(argv[i], MODEL_NAME_SQRHINGE))
 	 {
@@ -106,6 +109,8 @@ int opt_parse(int argc, char* argv[], Opt* opt)
 	    opt->yformat = YFORMAT11;
 	    opt->model = MODEL_SQRHINGE;
 	    opt->predict_func = &linearphi1;
+	    opt->loss_func = &sqrhinge_loss;
+	    opt->loss_pt_func = &sqrhinge_loss_pt;
 	 }
 	 else if(strcmp2(argv[i], MODEL_NAME_LINEAR))
 	 {
@@ -113,14 +118,16 @@ int opt_parse(int argc, char* argv[], Opt* opt)
 	    opt->step_func = &step_regular_linear;
 	    opt->model = MODEL_LINEAR;
 	    opt->predict_func = &linearphi1;
+	    opt->loss_func = &linear_loss;
+	    opt->loss_pt_func = &linear_loss_pt;
 	 }
-	 else if(strcmp2(argv[i], MODEL_NAME_PCOR))
+	 /*else if(strcmp2(argv[i], MODEL_NAME_PCOR))
 	 {
 	    opt->inv_func = &linearinv;
 	    opt->step_func = &step_regular_linear;
 	    opt->model = MODEL_LINEAR;
 	    opt->predict_func = linearphi1;
-	 }
+	 }*/
 	 else
 	 {
 	    printf("model not available\n");

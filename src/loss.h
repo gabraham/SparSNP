@@ -13,17 +13,20 @@
 double plogis(double);
 double dotprod(dtype *, double *, int);
 
-double logloss_pt(double, dtype);
-double logloss(double *, dtype *, int);
-void logdloss_pt(dtype *, double, dtype, int, double*);
-void logd2loss_pt(dtype *, double, int, double*);
-double logd2loss_pt_j(dtype, double);
+double log_loss_pt(double, dtype);
+double log_loss(double *, dtype *, int);
+void log_dloss_pt(dtype *, double, dtype, int, double*);
+void log_d2loss_pt(dtype *, double, int, double*);
+double log_d2loss_pt_j(dtype, double);
 
-double linearloss_pt(double, dtype);
-double linearloss(double *, dtype *, int);
-void lineardloss_pt(dtype *, double, dtype, int, double*);
-void lineard2loss_pt(dtype *, double, int, double*);
-double lineard2loss_pt_j(dtype, double);
+double linear_loss_pt(double, dtype);
+double linear_loss(double *, dtype *, int);
+void linear_dloss_pt(dtype *, double, dtype, int, double*);
+void linear_d2loss_pt(dtype *, double, int, double*);
+double linear_d2loss_pt_j(dtype, double);
+
+double sqrhinge_loss(double *, dtype *, int);
+double sqrhinge_loss_pt(double, dtype);
 
 double linearphi1(double lp);
 double linearphi2(double lp);

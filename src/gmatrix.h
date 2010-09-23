@@ -87,6 +87,7 @@ typedef struct gmatrix {
    cache *ca;
    int nseek;
    double *beta_orig;
+   int *numnz;
 } gmatrix;
 
 int sample_init(sample *, int);

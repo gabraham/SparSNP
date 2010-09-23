@@ -61,6 +61,8 @@ int run_train(Opt *opt, gmatrix *g)
       printf("%d training samples, %d test samples\n",
 	    g->ntrain[g->fold], g->ntest[g->fold]);
    
+   CALLOCTEST(g->numnz, opt->nlambda1, sizeof(int));
+
    /* don't start from zero, getlambda1max already computed that */
    for(i = 1 ; i < opt->nlambda1 ; i++)
    {
@@ -75,6 +77,7 @@ int run_train(Opt *opt, gmatrix *g)
 	    opt->maxepochs, opt->maxiters,
 	    opt->lambda1path[i], opt->lambda2,
 	    opt->threshold, opt->verbose, opt->trunc);
+      g->numnz[i] = ret;
 
       gmatrix_reset(g);
 
@@ -86,12 +89,12 @@ int run_train(Opt *opt, gmatrix *g)
 
       snprintf(tmp, MAX_STR_LEN, "%s.%02d.%02d",
 	    opt->beta_files[0], i, g->fold);
-   
       unscale_beta(g->beta_orig, g->beta, g->mean, g->sd, g->p + 1);
       if(!writevectorf(tmp, g->beta_orig, g->p + 1))
 	 return FAILURE;
       /*if(!writevectorf(tmp, g->beta, g->p + 1))
 	 return FAILURE;*/
+
 
       if(!opt->warmrestarts)
 	 gmatrix_zero_model(g);
@@ -104,6 +107,10 @@ reached or exceeded: %d\n", opt->nzmax);
       }
    }
 
+   snprintf(tmp, MAX_STR_LEN, "%s.%02d", opt->numnz_file, g->fold);
+   if(!writevectorl(tmp, g->numnz, i + 1))
+      return FAILURE;
+
    return SUCCESS;
 }
 
@@ -115,6 +122,7 @@ int run_predict_beta(gmatrix *g, predict predict_func,
 {
    int i, j, n = g->ncurr, p1 = g->p + 1;
    sample sm;
+   /*double loss = 0;*/
    double *yhat;
    double *restrict lp = g->lp;
    double *restrict beta = g->beta;
@@ -132,7 +140,10 @@ int run_predict_beta(gmatrix *g, predict predict_func,
    }
    
    for(i = 0 ; i < n ; i++)
+   {
       yhat[i] = predict_func(lp[i]);
+      /*loss += g->loss_pt(yhat[i], g->y[i]);*/
+   }
 
    printf("writing %s (%d) ... ", predict_file, n);
    if(!writevectorf(predict_file, yhat, n))
@@ -156,7 +167,10 @@ int run_predict(gmatrix *g, predict predict_func, char **beta_files,
       gmatrix_zero_model(g);
       printf("reading %s\n", beta_files[i]);
       if(!load_beta(g->beta_orig, beta_files[i], g->p + 1))
-	 return FAILURE;
+      {
+	 printf("skipping %s\n", beta_files[i]);
+	 continue;
+      }
 
       /* scale beta using the scales for this data (beta
        * should already be on original scale, not scaled) */

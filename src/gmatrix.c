@@ -80,6 +80,7 @@ int gmatrix_init(gmatrix *g, char *filename, int n, int p,
    g->mode = mode;
    g->nseek = sizeof(dtype) * (encoded ? g->nencb : g->n);
    g->beta_orig = NULL;
+   g->numnz = NULL;
 
    MALLOCTEST(g->beta_orig, sizeof(double) * p1);
    
@@ -268,6 +269,10 @@ void gmatrix_free(gmatrix *g)
       free(g->ca);
    }
    g->ca = NULL;
+
+   if(g->numnz)
+      free(g->numnz);
+   g->numnz = NULL;
 }
 
 /* y_orig stays in memory and never changes */
