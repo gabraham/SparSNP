@@ -161,6 +161,8 @@ int run_predict(gmatrix *g, predict predict_func, char **beta_files,
       /* scale beta using the scales for this data (beta
        * should already be on original scale, not scaled) */
       scale_beta(g->beta, g->beta_orig, g->mean, g->sd, g->p + 1);
+      /*for(int j = 0 ; j < g->p + 1 ; j++)
+	 g->beta[j] = g->beta_orig[j];*/
 
       snprintf(tmp, MAX_STR_LEN, "%s.pred", beta_files[i]);
       if(!run_predict_beta(g, predict_func, tmp))
