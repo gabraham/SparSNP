@@ -497,7 +497,6 @@ int gmatrix_read_scaling(gmatrix *g, char *file_scale)
    if(!g->sd)
       MALLOCTEST(g->sd, sizeof(double) * p1);
 
-   printf("gmatrix_read_scaling: p1=%d\n", p1);
    FOPENTEST(in, file_scale, "rb");
    FREADTEST(g->mean, sizeof(double), p1, in);
    FREADTEST(g->sd, sizeof(double), p1, in);
@@ -703,3 +702,4 @@ int gmatrix_init_lp(gmatrix *g)
    }
    return SUCCESS;
 }
+

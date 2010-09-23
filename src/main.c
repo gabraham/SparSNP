@@ -160,9 +160,9 @@ int run_predict(gmatrix *g, predict predict_func, char **beta_files,
 
       /* scale beta using the scales for this data (beta
        * should already be on original scale, not scaled) */
-      scale_beta(g->beta, g->beta_orig, g->mean, g->sd, g->p + 1);
-      /*for(int j = 0 ; j < g->p + 1 ; j++)
-	 g->beta[j] = g->beta_orig[j];*/
+      /*scale_beta(g->beta, g->beta_orig, g->mean, g->sd, g->p + 1);*/
+      for(int j = 0 ; j < g->p + 1 ; j++)
+	 g->beta[j] = g->beta_orig[j];
 
       snprintf(tmp, MAX_STR_LEN, "%s.pred", beta_files[i]);
       if(!run_predict_beta(g, predict_func, tmp))
@@ -175,12 +175,14 @@ int run_predict(gmatrix *g, predict predict_func, char **beta_files,
 int do_train(gmatrix *g, Opt *opt, char tmp[])
 {
    int ret = SUCCESS, k, len;
+
    if(!gmatrix_init(g, opt->filename, opt->n, opt->p,
 	    NULL, opt->yformat, opt->model, opt->encoded,
 	    opt->binformat, opt->folds_ind_file, opt->mode))
       return FAILURE;
 
    printf("%d CV folds\n", g->nfolds);
+
    /* cross-validation: training stage */
    if(g->nfolds > 1)
    {
@@ -236,10 +238,10 @@ int do_predict(gmatrix *g, Opt *opt, char tmp[])
       /* cross-validation: prediction stage */
       for(k = 0 ; k < g->nfolds ; k++)
       {
-	 len = strlen(opt->scalefile) + 1 + 3;
+	 /*len = strlen(opt->scalefile) + 1 + 3;
 	 snprintf(tmp, len, "%s.%02d", opt->scalefile, k);
 	 g->scalefile = tmp;
-	 printf("reading scale file: %s\n", tmp);
+	 printf("reading scale file: %s\n", tmp);*/
 	 if(!(ret &= gmatrix_set_fold(g, k)))
 	    break;
 
@@ -269,9 +271,9 @@ int do_predict(gmatrix *g, Opt *opt, char tmp[])
    }
    else
    {
-      g->scalefile = opt->scalefile;
+      /*g->scalefile = opt->scalefile;
       if(!gmatrix_read_scaling(g, g->scalefile))
-	 return FAILURE;
+	 return FAILURE;*/
       gmatrix_zero_model(g);
       ret = run_predict(g, opt->predict_func,
 	    opt->beta_files_fold, opt->n_beta_files);
