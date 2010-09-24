@@ -42,17 +42,22 @@ cv.auc <- lapply(folds, function(fold) {
 })
 
 cv.auc.d <- data.frame(do.call(rbind, cv.auc))
+# remove zeros which create problems with log transform
+cv.auc.d <- cv.auc.d[cv.auc.d$NonZero > 0, ] 
+
+nz <- 2^(1:log2(max(cv.auc.d$NonZero)))
 
 g1 <- ggplot(cv.auc.d, aes(x=NonZero, y=AUC)) 
-g1 <- g1 + geom_point() #+ scale_x_log10()
-g1 <- g1 + geom_smooth() 
+g1 <- g1 + geom_point()
+g1 <- g1 + scale_x_log2(breaks=nz, labels=nz)
+g1 <- g1 + geom_smooth() + geom_vline(xintercept=20, lty=2)
 
 g2 <- ggplot(cv.auc.d, aes(x=lambda, y=AUC)) 
-g2 <- g2 + geom_point() #+ scale_x_log10()
+g2 <- g2 + geom_point() + scale_x_log10()
 g2 <- g2 + geom_smooth() 
 
 g3 <- ggplot(cv.auc.d, aes(x=loss, y=AUC)) 
-g3 <- g3 + geom_point() #+ scale_x_log10()
+g3 <- g3 + geom_point() + scale_x_log10()
 g3 <- g3 + geom_smooth() 
 
 pdf("cv.pdf")
