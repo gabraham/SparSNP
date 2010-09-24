@@ -2,6 +2,7 @@
 #include <math.h>
 
 #include "common.h"
+#include "loss.h"
 
 #define BUFSIZE 10
 
@@ -88,6 +89,8 @@ typedef struct gmatrix {
    int nseek;
    double *beta_orig;
    int *numnz;
+   loss loss_func;
+   loss_pt loss_pt_func;
 } gmatrix;
 
 int sample_init(sample *, int);
@@ -95,7 +98,7 @@ void sample_free(sample *);
 int gmatrix_init(gmatrix *g, char *filename, int n, int p,
       char *scalefile, short yformat, int model,
       short encoded, short binformat, char *folds_ind_file,
-      short mode);
+      short mode, loss_pt);
 int gmatrix_reset(gmatrix *);
 void gmatrix_free(gmatrix *);
 int gmatrix_disk_nextcol(gmatrix *, sample *, int skip);

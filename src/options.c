@@ -1,5 +1,4 @@
 #include "cd.h"
-#include "loss.h"
 
 void opt_free(Opt *opt)
 {

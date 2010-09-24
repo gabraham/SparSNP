@@ -36,3 +36,6 @@ double linearinv(double lp);
 double loginv(double lp);
 double sqrhingeinv(double lp);
 
+typedef double (*loss)(double*, dtype*, int);
+typedef double (*loss_pt)(double, dtype);
+

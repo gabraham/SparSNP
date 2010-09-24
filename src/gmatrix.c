@@ -31,7 +31,7 @@ void sample_free(sample *s)
 int gmatrix_init(gmatrix *g, char *filename, int n, int p,
       char *scalefile, short yformat, int model,
       short encoded, short binformat, char *folds_ind_file,
-      short mode)
+      short mode, loss_pt loss_pt_func)
 {
    int i, j, p1;
 
@@ -48,6 +48,8 @@ int gmatrix_init(gmatrix *g, char *filename, int n, int p,
    g->ylp = NULL;
    g->ylp_neg = NULL;
    g->lp_invlogit = NULL;
+   g->loss_func = NULL;
+   g->loss_pt_func = loss_pt_func;
    g->scalefile = scalefile;
    g->lookup = NULL;
    g->intercept = NULL;

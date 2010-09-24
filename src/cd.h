@@ -8,8 +8,6 @@
 
 #define MAX_SHOW_NOTCONV 100
 
-typedef double (*loss)(double*, dtype*, int);
-typedef double (*loss_pt)(double, dtype);
 typedef double (*predict_pt)(double);
 typedef double (*phi1)(double);
 typedef double (*phi2)(double);

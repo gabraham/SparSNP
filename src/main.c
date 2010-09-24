@@ -1,6 +1,5 @@
 #include <stdlib.h>
 #include "cd.h"
-#include "loss.h"
 #include "util.h"
 
 /*
@@ -122,7 +121,6 @@ int run_predict_beta(gmatrix *g, predict predict_func,
 {
    int i, j, n = g->ncurr, p1 = g->p + 1;
    sample sm;
-   /*double loss = 0;*/
    double *yhat;
    double *restrict lp = g->lp;
    double *restrict beta = g->beta;
@@ -142,7 +140,7 @@ int run_predict_beta(gmatrix *g, predict predict_func,
    for(i = 0 ; i < n ; i++)
    {
       yhat[i] = predict_func(lp[i]);
-      /*loss += g->loss_pt(yhat[i], g->y[i]);*/
+      /*g->loss[ += g->loss_pt(yhat[i], g->y[i]);*/
    }
 
    printf("writing %s (%d) ... ", predict_file, n);
@@ -192,7 +190,8 @@ int do_train(gmatrix *g, Opt *opt, char tmp[])
 
    if(!gmatrix_init(g, opt->filename, opt->n, opt->p,
 	    NULL, opt->yformat, opt->model, opt->encoded,
-	    opt->binformat, opt->folds_ind_file, opt->mode))
+	    opt->binformat, opt->folds_ind_file, opt->mode,
+	    opt->loss_pt_func))
       return FAILURE;
 
    printf("%d CV folds\n", g->nfolds);
@@ -238,8 +237,9 @@ int do_predict(gmatrix *g, Opt *opt, char tmp[])
 
    if(!gmatrix_init(g, opt->filename, opt->n, opt->p,
 	    NULL, opt->yformat, opt->model, opt->encoded,
-	    opt->binformat, opt->folds_ind_file, opt->mode))
-   return FAILURE;
+	    opt->binformat, opt->folds_ind_file, opt->mode,
+	    opt->loss_pt_func))
+      return FAILURE;
 
    if(g->nfolds > 1)
    {
@@ -290,7 +290,7 @@ int do_predict(gmatrix *g, Opt *opt, char tmp[])
 	 return FAILURE;*/
       gmatrix_zero_model(g);
       ret = run_predict(g, opt->predict_func,
-	    opt->beta_files_fold, opt->n_beta_files);
+	    opt->beta_files, opt->n_beta_files);
    }
 
    return ret;
