@@ -104,10 +104,11 @@ void unscale_beta(double *beta2, double *beta1,
    for(j = p - 1 ; j >= 0 ; --j)
    {
       t = beta1[j] * mean[j];
+      beta2[j] = beta1[j];
       if(sd[j] != 0)
       {
 	 t /= sd[j];
-	 beta2[j] = beta1[j] / sd[j];
+	 beta2[j] /= sd[j];
       }
       s += t;
    }

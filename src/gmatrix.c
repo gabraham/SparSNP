@@ -5,6 +5,8 @@
 #include "coder.h"
 #include "ind.h"
 
+static inline int hash(int key);
+
 int sample_init(sample *s, int n)
 {
    s->x = NULL;
@@ -85,6 +87,8 @@ int gmatrix_init(gmatrix *g, char *filename, int n, int p,
    g->numnz = NULL;
 
    MALLOCTEST(g->beta_orig, sizeof(double) * p1);
+   for(j = 0 ; j < p1 ; j++)
+      g->beta_orig[j] = -1.2345;
    
    MALLOCTEST(g->ca, sizeof(cache));
    if(!cache_init(g->ca, p1)) /* +1 not for intercept, which isn't
@@ -177,93 +181,29 @@ void gmatrix_free(gmatrix *g)
       g->file = NULL;
    }
 
-   if(g->mean)
-      free(g->mean);
-
-   if(g->sd)
-      free(g->sd);
-
-   g->mean = g->sd = NULL;
-
-   if(g->y)
-      free(g->y);
-   g->y = NULL;
-
-   if(g->y_orig)
-      free(g->y_orig);
-   g->y_orig = NULL;
-
-   if(g->xtmp)
-      free(g->xtmp);
-   g->xtmp = NULL;
-
-   if(g->ignore)
-      free(g->ignore);
-   g->ignore = NULL;
-
-   if(g->tmp)
-      free(g->tmp);
-   g->tmp = NULL;
-
-   if(g->intercept)
-      free(g->intercept);
-   g->intercept = NULL;
-
-   if(g->lookup)
-      free(g->lookup);
-   g->lookup = NULL;
-
-   if(g->lp)
-      free(g->lp);
-   g->lp = NULL;
-
-   if(g->ylp)
-      free(g->ylp);
-   g->ylp = NULL;
-
-   if(g->ylp_neg)
-      free(g->ylp_neg);
-   g->ylp_neg = NULL;
-
-   if(g->lp_invlogit)
-      free(g->lp_invlogit);
-   g->lp_invlogit = NULL;
-
-   if(g->beta)
-      free(g->beta);
-   g->beta = NULL;
-
-   if(g->beta_orig)
-      free(g->beta_orig);
-   g->beta_orig = NULL;
-
-   if(g->encbuf)
-      free(g->encbuf);
-   g->encbuf = NULL;
-
-   if(g->folds)
-      free(g->folds);
-   g->folds = NULL;
-
-   if(g->ntrain)
-      free(g->ntrain);
-   g->ntrain = NULL;
-
-   if(g->ntest)
-      free(g->ntest);
-   g->ntest = NULL;
-
-   if(g->ntrainrecip)
-      free(g->ntrainrecip);
-   g->ntrainrecip = NULL;
-
-   if(g->ntestrecip)
-      free(g->ntestrecip);
-   g->ntestrecip = NULL;
-
-   if(g->active)
-      free(g->active);
-   g->active = NULL;
+   FREENULL(g->mean);
+   FREENULL(g->sd);
+   FREENULL(g->y);
+   FREENULL(g->y_orig);
+   FREENULL(g->xtmp);
+   FREENULL(g->ignore);
+   FREENULL(g->tmp);
+   FREENULL(g->intercept);
+   FREENULL(g->lookup);
+   FREENULL(g->lp);
+   FREENULL(g->ylp);
+   FREENULL(g->ylp_neg);
+   FREENULL(g->lp_invlogit);
+   FREENULL(g->beta);
+   FREENULL(g->beta_orig);
+   FREENULL(g->encbuf);
+   FREENULL(g->folds);
+   FREENULL(g->ntrain);
+   FREENULL(g->ntest);
+   FREENULL(g->ntrainrecip);
+   FREENULL(g->ntestrecip);
+   FREENULL(g->active);
+   FREENULL(g->numnz);
 
    if(g->ca)
    {
@@ -272,9 +212,6 @@ void gmatrix_free(gmatrix *g)
    }
    g->ca = NULL;
 
-   if(g->numnz)
-      free(g->numnz);
-   g->numnz = NULL;
 }
 
 /* y_orig stays in memory and never changes */
@@ -311,8 +248,7 @@ int gmatrix_split_y(gmatrix *g)
       return FAILURE;
    }
 
-   if(g->y)
-      free(g->y);
+   FREENULL(g->y);
 
    MALLOCTEST(g->y, sizeof(double) * g->ncurr);
 
@@ -337,6 +273,7 @@ int gmatrix_disk_nextcol(gmatrix *g, sample *s, int j)
 {
    int i, l1, n1 = g->n - 1, n = g->n;
    int k = g->ncurr - 1;
+   int f = g->fold * n;
 
    if(j == 0)
    {
@@ -374,16 +311,16 @@ int gmatrix_disk_nextcol(gmatrix *g, sample *s, int j)
 	 l1 = j * NUM_X_LEVELS;
 	 for(i = n1 ; i >= 0 ; --i)
 	    /* different between train and test */
-	    if((g->mode == MODE_PREDICT) ^ g->folds[g->fold * n + i])
+	    if((g->mode == MODE_PREDICT) ^ g->folds[f + i])
 	       g->xtmp[k--] = g->lookup[l1 + g->tmp[i]];
       } else {
 	 for(i = n1 ; i >= 0 ; --i)
-	    if((g->mode == MODE_PREDICT) ^ g->folds[g->fold * n + i])
+	    if((g->mode == MODE_PREDICT) ^ g->folds[f + i])
 	       g->xtmp[k--] = (double)g->tmp[i];
       }
    }
 
-   /*cache_put(g->ca, j, g->xtmp);*/
+   cache_put(g->ca, j, g->xtmp, g->ncurr);
    s->x = g->xtmp;
 
    return SUCCESS;
@@ -411,8 +348,7 @@ int gmatrix_disk_nextcol_old(gmatrix *g, sample *s, int skip)
       /* No need to copy values, just assign the intercept vector,
        * but first, free any old data we have from previous
        * iterations */
-      if(s->x)
-	 free(s->x);
+      FREENULL(s->x);
 
       /* don't need to worry about cross-validation etc
        * because the intercept is all 1s */
@@ -437,12 +373,8 @@ int gmatrix_disk_nextcol_old(gmatrix *g, sample *s, int skip)
    }
 
    /* read the data, unpack if necessary */
-   /*if(g->encoded) {*/
    FREADTEST(g->encbuf, sizeof(dtype), g->nencb, g->file);
    g->decode(g->tmp, g->encbuf, g->nencb);
-   /*} else {
-     FREADTEST(g->tmp, sizeof(dtype), n, g->file);
-     }*/
 
    /* Get the scaled versions of the genotypes */
    if(g->nfolds < 2) { /* no cv */
@@ -573,6 +505,8 @@ int cache_init(cache *ca, int nkeys)
    {
       ca->buckets[i].active = FALSE;
       ca->buckets[i].key = 0.0;
+      ca->buckets[i].n = 0;
+      ca->buckets[i].value = NULL;
    }
 
    return SUCCESS;
@@ -580,32 +514,36 @@ int cache_init(cache *ca, int nkeys)
 
 void cache_free(cache *ca)
 {
-   if(ca->buckets)
-      free(ca->buckets);
-   ca->buckets = NULL;
+   int i;
+
+   for(i = 0 ; i < ca->size ; i++)
+      FREENULL(ca->buckets[i].value);
+
+   FREENULL(ca->buckets);
+   FREENULL(ca->weights);
+   FREENULL(ca->keys);
    ca->active = 0;
-
-   if(ca->weights)
-      free(ca->weights);
-   ca->weights = NULL;
-
-   if(ca->keys)
-      free(ca->keys);
-   ca->keys = NULL;
 }
 
-int cache_put(cache *ca, int key, double *value)
+int cache_put(cache *ca, int key, double *value, int n)
 {
+   int i;
    bucket *bk = NULL;
    int hval = hash(key);
 
    bk = &ca->buckets[hval];
 
+   /* accept new value only if bucket is empty and if new weight is higher
+    * than old weight */
    if(!bk->active || ca->weights[key] > ca->weights[bk->key])
    {
       ca->keys[bk->key] = FALSE;
       bk->key = key;
-      bk->value = value;
+      bk->n = n;
+      FREENULL(bk->value);
+      MALLOCTEST(bk->value, sizeof(double) * n);
+      for(i = n - 1 ; i >= 0 ; --i)
+	 bk->value[i] = value[i];
       ca->keys[key] = TRUE;
       if(!bk->active)
       {
@@ -621,20 +559,32 @@ int cache_put(cache *ca, int key, double *value)
 double* cache_get(cache *ca, int key)
 {
    bucket *bk;
-   int hval = hash(key);
+   int hval = 0;
+   
+   if(!ca->keys[key])
+      return NULL;
 
-   /* ca->weights[key]++; */
+   hval = hash(key);
+   ca->weights[key]++;
 
    bk = &ca->buckets[hval];
-   if(bk && bk->active)
+   if(bk && bk->active && bk->key == key)
       return bk->value;
 
    return NULL;
 }
 
-int hash(int key)
+/* assumes 32 bit ints */
+static inline int hash(int key)
 {
-   return key >> 28;
+   int s = 0;
+   s += key & 1;
+   s += key & 2;
+   s += key & 4;
+   s += key & 8;
+   s += key & 16;
+   s += key & 32;
+   return s;
 }
 
 /* Sets the number of samples for actual use in CD */
@@ -654,6 +604,9 @@ int gmatrix_set_fold(gmatrix *g, int fold)
 {
    g->fold = fold;
    gmatrix_set_ncurr(g);
+   cache_free(g->ca);
+   if(!cache_init(g->ca, g->p + 1))
+      return FAILURE;
    if(!gmatrix_init_lp(g))
       return FAILURE;
    if(g->scalefile && !gmatrix_read_scaling(g, g->scalefile))
@@ -692,19 +645,15 @@ void gmatrix_zero_model(gmatrix *g)
 
 int gmatrix_init_lp(gmatrix *g)
 {
-   if(g->lp)
-      free(g->lp);
+   FREENULL(g->lp);
    CALLOCTEST(g->lp, g->ncurr, sizeof(double));
    if(g->model == MODEL_LOGISTIC) {
-      if(g->lp_invlogit)
-	 free(g->lp_invlogit);
+      FREENULL(g->lp_invlogit);
       CALLOCTEST(g->lp_invlogit, g->ncurr, sizeof(double));
    } else if(g->model == MODEL_SQRHINGE) {
-      if(g->ylp)
-	 free(g->ylp);
+      FREENULL(g->ylp);
       CALLOCTEST(g->ylp, g->ncurr, sizeof(double));
-      if(g->ylp_neg)
-	 free(g->ylp_neg);
+      FREENULL(g->ylp_neg);
       CALLOCTEST(g->ylp_neg, g->ncurr, sizeof(double));
    }
    return SUCCESS;

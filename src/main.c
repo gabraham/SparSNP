@@ -94,9 +94,8 @@ int run_train(Opt *opt, gmatrix *g)
       /*if(!writevectorf(tmp, g->beta, g->p + 1))
 	 return FAILURE;*/
 
-
-      if(!opt->warmrestarts)
-	 gmatrix_zero_model(g);
+      /*if(!opt->warmrestarts)
+	 gmatrix_zero_model(g);*/
 
       if(opt->nzmax != 0 && opt->nzmax <= ret - 1)
       {
@@ -107,8 +106,14 @@ reached or exceeded: %d\n", opt->nzmax);
    }
 
    snprintf(tmp, MAX_STR_LEN, "%s.%02d", opt->numnz_file, g->fold);
-   if(!writevectorl(tmp, g->numnz, i + 1))
+   if(opt->nlambda1 == 1)
+      i++;
+   /* number of non-zero variables for each successful fit and the all-zero
+    * fit */
+   if(!writevectorl(tmp, g->numnz, i))
       return FAILURE;
+
+   FREENULL(g->numnz);
 
    return SUCCESS;
 }
@@ -148,7 +153,7 @@ int run_predict_beta(gmatrix *g, predict predict_func,
       return FAILURE;
    printf("done\n");
 
-   free(yhat);
+   FREENULL(yhat);
    sample_free(&sm);
    
    return SUCCESS;

@@ -122,6 +122,12 @@ retval, (unsigned long)count); \
 return FAILURE; \
 }
 
+#define FREENULL(x) \
+if(x) { \
+free(x); \
+x = NULL; \
+}
+
 int strcmp2(const char*, const char*);
 
 double soft_threshold(double beta, double gamma);

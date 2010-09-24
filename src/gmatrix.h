@@ -13,10 +13,11 @@
 #define YFORMAT01 1
 #define YFORMAT11 2
 
-#define HASH_SIZE 16
+#define HASH_SIZE 64
 
 typedef struct bucket {
    int key;
+   int n;
    double *value;
    unsigned int active;
    struct bucket *next;
@@ -118,7 +119,7 @@ int gmatrix_disk_read_y(gmatrix *g);
 
 int cache_init(cache *ht, int nkeys);
 void cache_free(cache *ht);
-int cache_put(cache *ht, int key, double *value);
+int cache_put(cache *ht, int key, double *value, int n);
 double* cache_get(cache *ht, int key);
-int hash(int key);
+/*static inline int hash(int key);*/
 

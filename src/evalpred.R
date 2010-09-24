@@ -7,10 +7,17 @@ folds <- read.csv("folds.txt", header=FALSE)[,1]
 folds <- unique(sort(folds))
 #folds <- 0
 
+linearloss <- function(p, y)
+{
+   mean((y - p)^2)
+}
+
 sqrhingeloss <- function(p, y)
 {
    mean(pmax(0, 1 - p * y)^2)
 }
+
+lossfun <- linearloss
 
 cv.auc <- lapply(folds, function(fold) {
    y <- read.csv(sprintf("y.%02d", fold), header=FALSE)[,1]
@@ -32,7 +39,7 @@ cv.auc <- lapply(folds, function(fold) {
    res <- apply(pr, 2, auc,
 	 y=as.numeric(as.character(factor(y, labels=c(0, 1)))))
 
-   loss <- apply(pr, 2, sqrhingeloss, y=y)
+   loss <- apply(pr, 2, lossfun, y=y)
 
    cbind(lambda=lambda[1:length(res)],
       AUC=res,

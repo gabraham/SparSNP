@@ -3,7 +3,7 @@ source runhapgen.sh
 RR1=1.5
 RR2=2.25
 
-for ((J=1 ; J<=1; J++));
+for ((J=3 ; J<=3; J++));
 do
    DIR="sim2.$J"
    if ! [ -d "$DIR" ]; then
@@ -11,9 +11,9 @@ do
    fi  
    prefix="sim"
    N=250
-   K=2
-   HAPLO=HapMap/genotypes_chr1_JPT+CHB_r22_nr.b36_fwd.phased.100
-   LEGEND=HapMap/genotypes_chr1_JPT+CHB_r22_nr.b36_fwd_legend.txt.100
+   K=20
+   HAPLO=HapMap/genotypes_chr1_JPT+CHB_r22_nr.b36_fwd.phased.1000
+   LEGEND=HapMap/genotypes_chr1_JPT+CHB_r22_nr.b36_fwd_legend.txt.1000
    CLEAN=1
    if ! [ -a "$DIR/sim.bin" ];
    then
