@@ -2,18 +2,20 @@ library(ggplot2)
 
 dir <- "~/Software/hapgen_1.3"
 #roots <- c("sim8", "sim7", "sim6")
-roots <- c("sim7")
+roots <- c("sim8")
 #resdirs <- c("./", "/mnt", "/mnt")
 resdirs <- c("./")
 #nums <- c(30000, 10000, 4000)
-nums <- 1000
+nums <- 30000
 p <- 185805
 legend <- sprintf(
    "%s/HapMap/genotypes_chr1_JPT+CHB_r22_nr.b36_fwd_legend.txt",
    dir)
 #nexpers <- c(20, 30, 50)
-nexpers <- c(10)
-maxfits <- c(20)
+nexpers <- 25
+maxfits <- 50
+resultsdir.cd <- "results4"
+resultsdir.plink <- "results"
 
 runperf <- function(f)
 {
@@ -49,7 +51,7 @@ for(k in seq(along=roots))
    # Analyse CD results
    res.cd <- lapply(seq(along=exper), function(k) {
       ex <- exper[[k]]
-      dir <- sprintf("%s/results", ex)
+      dir <- sprintf("%s/%s", ex, resultsdir.cd)
    
       # Find all files and sort by numerical ordering
       files <- list.files(pattern="^beta\\.csv\\.",
@@ -57,9 +59,11 @@ for(k in seq(along=roots))
       if(length(files) == 0)
          stop("no files found")
       id <- sapply(strsplit(files, "\\."), tail, n=1)
+      maxfits <- min(maxfits, length(id))
       files <- files[order(as.numeric(id))][1:maxfits]
    
       b.cd <- sapply(files, function(f) {
+	 cat("reading", f, "\n")
          read.csv(f, header=FALSE)[-1,1]
       })
       
@@ -89,7 +93,7 @@ for(k in seq(along=roots))
    # Analyse plink results
    res.pl <- lapply(seq(along=exper), function(k) {
       ex <- exper[[k]]
-      dir <- sprintf("%s/results", ex)
+      dir <- sprintf("%s/%s", ex, resultsdir.plink)
       d <- read.csv(sprintf("%s/plink.assoc.logistic", dir), sep="")
        
       stats <- cbind(coef=d$STAT, logpval=-log10(d$P))
@@ -125,8 +129,8 @@ for(k in seq(along=roots))
    m.comb$Method <- factor(m.comb$Method)
    
    maxdf <- round(max(m.comb$df / 10))
-   m.comb$df_bin <- cut(m.comb$df, breaks=(0:maxdf) * 10,
-         labels=(1:maxdf - 1) * 10 + 5)
+   m.comb$df_bin <- cut(m.comb$df, breaks=(0:maxdf) * 5,
+         labels=(1:maxdf - 1) * 5 + 2.5)
    l <- levels(m.comb$df_bin)
    l[length(l)] <- ""
    levels(m.comb$df_bin) <- l
@@ -137,7 +141,7 @@ for(k in seq(along=roots))
    g <- g + geom_point(size=3)
    g <- g + ylim(0, 0.42)
    
-   pdf(sprintf("%s/results_%s.pdf", resdirs[k], root), width=11)
+   pdf(sprintf("%s/results_%s.pdf", resdirs[k], root), width=16)
    print(g)
    dev.off()
    
