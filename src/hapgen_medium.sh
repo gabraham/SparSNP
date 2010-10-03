@@ -3,9 +3,9 @@ source runhapgen.sh
 RR1=1.5
 RR2=2.25
 
-for ((J=1 ; J<=10; J++));
+for ((J=1 ; J<=25; J++));
 do
-   DIR="sim5.$J"
+   DIR="sim7.$J"
    if ! [ -d "$DIR" ]; then
       mkdir $DIR
    fi  

@@ -67,7 +67,7 @@ g3 <- ggplot(cv.auc.d, aes(x=loss, y=AUC))
 g3 <- g3 + geom_point() + scale_x_log10()
 g3 <- g3 + geom_smooth() 
 
-pdf("cv.pdf")
+pdf("crossval.pdf")
 print(g1)
 print(g2)
 print(g3)

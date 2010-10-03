@@ -3,19 +3,17 @@
 set -u
 set -e
 
-DIR_STEM="sim8."
+DIR_STEM="sim7."
 N=10000
 P=185805
 bin=sim.bin
-enc="-encoded"
-CD="~/Code/cd/src/cd -model sqrhinge -f ../$bin -scale ../scale.bin \
--n $N -p $P -v -betafiles beta.csv -maxepochs 5000 -nzmax 200 \
--nl1 100 $enc"
-SCALE="~/Code/cd/src/scale -bin $bin -n $N -p $P $enc"
+CD="~/Code/cd/src/cd -model sqrhinge -bin ../$bin -scale ../scale.bin \
+-n $N -p $P -v -maxepochs 10000 -nzmax 250 -nl1 100"
+SCALE="~/Code/cd/src/scale -bin $bin -n $N -p $P"
 scale="scale.bin"
-results="results"
+results="results4"
 
-for((i=1 ; i<=10 ; i++));
+for((i=21 ; i<=21 ; i++));
 do
    dir="$DIR_STEM""$i"
    while ! [[ -d "$dir" && -a "$dir/$bin" ]];
