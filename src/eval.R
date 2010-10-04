@@ -69,7 +69,7 @@ for(k in seq(along=roots))
       mes <- sapply(1:ncol(b.cd), function(i) {
          f <- sprintf("%s/b.cd.%s", dir, i - 1)
          if(!file.exists(f)) 
-   	 write.table(cbind(ysnp[[k]], abs(sign(b.cd[,i]))),
+   	 write.table(cbind(ysnp[[k]], abs((b.cd[,i]))),
    	    col.names=FALSE, row.names=FALSE, sep="\t",
    	    file=f)
          cat(f, "\n")
