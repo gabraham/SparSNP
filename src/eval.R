@@ -1,21 +1,20 @@
 library(ggplot2)
+library(gdata)
 
 dir <- "~/Software/hapgen_1.3"
 #roots <- c("sim8", "sim7", "sim6")
-roots <- c("sim8")
+roots <- c("sim7")
 #resdirs <- c("./", "/mnt", "/mnt")
 resdirs <- c("./")
 #nums <- c(30000, 10000, 4000)
-nums <- 30000
+nums <- 1000
 p <- 185805
 legend <- sprintf(
    "%s/HapMap/genotypes_chr1_JPT+CHB_r22_nr.b36_fwd_legend.txt",
    dir)
 #nexpers <- c(20, 30, 50)
-nexpers <- 25
-maxfits <- 50
-resultsdir.cd <- "results4"
-resultsdir.plink <- "results"
+nexpers <- c(10)
+maxfits <- c(20)
 
 runperf <- function(f)
 {
@@ -51,7 +50,7 @@ for(k in seq(along=roots))
    # Analyse CD results
    res.cd <- lapply(seq(along=exper), function(k) {
       ex <- exper[[k]]
-      dir <- sprintf("%s/%s", ex, resultsdir.cd)
+      dir <- sprintf("%s/results", ex)
    
       # Find all files and sort by numerical ordering
       files <- list.files(pattern="^beta\\.csv\\.",
@@ -59,11 +58,9 @@ for(k in seq(along=roots))
       if(length(files) == 0)
          stop("no files found")
       id <- sapply(strsplit(files, "\\."), tail, n=1)
-      maxfits <- min(maxfits, length(id))
       files <- files[order(as.numeric(id))][1:maxfits]
    
       b.cd <- sapply(files, function(f) {
-	 cat("reading", f, "\n")
          read.csv(f, header=FALSE)[-1,1]
       })
       
@@ -93,7 +90,7 @@ for(k in seq(along=roots))
    # Analyse plink results
    res.pl <- lapply(seq(along=exper), function(k) {
       ex <- exper[[k]]
-      dir <- sprintf("%s/%s", ex, resultsdir.plink)
+      dir <- sprintf("%s/results", ex)
       d <- read.csv(sprintf("%s/plink.assoc.logistic", dir), sep="")
        
       stats <- cbind(coef=d$STAT, logpval=-log10(d$P))
@@ -115,8 +112,8 @@ for(k in seq(along=roots))
    # Both -log10(pval) and STAT yield same AROC/APRC, so take one
    m.pl <- data.frame(t(sapply(res.pl, function(x) x[[1]][,1])))
    # fake DF, to make the point plot nicely
-   pl.df <- 300
-   m.pl$df <- pl.df
+   maxdf <- 256
+   m.pl$df <- maxdf
    m.pl$Sim <- 1
    m.pl$nsim <- 1
    m.pl$Method <- "logistic"
@@ -124,24 +121,45 @@ for(k in seq(along=roots))
    m.cd$Method <- "lasso"
    
    # cutoff, don't show the long tail
-   m.cd.2 <- m.cd[m.cd$df > 0 & m.cd$df < 256 ,]
+   m.cd.2 <- m.cd[m.cd$df > 0 & m.cd$df < maxdf ,]
    m.comb <- rbind(m.cd.2, m.pl)
    m.comb$Method <- factor(m.comb$Method)
    
-   maxdf <- round(max(m.comb$df / 10))
-   m.comb$df_bin <- cut(m.comb$df, breaks=(0:maxdf) * 5,
-         labels=(1:maxdf - 1) * 5 + 2.5)
+   rmaxdf <- round(max(m.comb$df / 10))
+   m.comb$df_bin <- cut(m.comb$df, breaks=(0:rmaxdf) * 10)
    l <- levels(m.comb$df_bin)
    l[length(l)] <- ""
    levels(m.comb$df_bin) <- l
-   
-   b <- 2^sort(unique(round(log2(m.comb$df[m.comb$df > 0]))))
+   m.comb$df_bin <- drop.levels(m.comb$df_bin, reorder=FALSE)
+
    g <- ggplot(m.comb, aes(x=df_bin, y=APR, shape=Method))
-   g <- g + geom_boxplot(outlier.size=0)
-   g <- g + geom_point(size=3)
+   g <- g + geom_boxplot(outlier.size=0, colour="darkgray", size=1.5)
+   g <- g + geom_point(size=3, position=position_jitter(width=0.07))
    g <- g + ylim(0, 0.42)
+   g <- g + scale_shape_manual(values=c(1, 2))
+   g <- g + xlab("# Non-zero variables") + ylab("APRC")
+   g <- g + opts(axis.text.x=theme_text(angle=-90, hjust=0),
+	 legend.text=theme_text(size=15))
    
-   pdf(sprintf("%s/results_%s.pdf", resdirs[k], root), width=16)
+   pdf(sprintf("%s/results_%s_1.pdf", resdirs[k], root), width=11)
+   print(g)
+   dev.off()
+
+   maxdf2 <- 60
+   m.comb2 <- m.comb[
+	 m.comb$df %in% ((1:(maxdf2/2)) * 2) | m.comb$Method == "logistic", ]
+   m.comb2$df_f <- factor(m.comb2$df)
+   levels(m.comb2$df_f)[length(levels(m.comb2$df_f))] <- ""
+
+   g <- ggplot(m.comb2, aes(x=df_f, y=APR, shape=Method))
+   g <- g + geom_boxplot(colour="darkgray", outlier.size=0, size=1.5)
+   g <- g + ylim(0, 0.42)
+   g <- g + geom_point(size=3, position=position_jitter(width=0.1))
+   g <- g + scale_shape_manual(values=c(1, 2))
+   g <- g + xlab("# Non-zero variables") + ylab("APRC")
+   g <- g + opts(legend.text=theme_text(size=15))
+   
+   pdf(sprintf("%s/results_%s_2.pdf", resdirs[k], root), width=14)
    print(g)
    dev.off()
    
