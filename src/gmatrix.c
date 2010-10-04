@@ -12,22 +12,7 @@ int sample_init(sample *s, int n)
    s->x = NULL;
    s->cached = FALSE;
    s->intercept = FALSE;
-   /*MALLOCTEST(s->x, sizeof(double) * n);*/
    return SUCCESS;
-}
-
-void sample_free(sample *s)
-{
-/*   if(s->intercept)
-      return;
-
-   if(!s->cached && s->x)
-   {
-      free(s->x);
-      s->x = NULL;
-   }
-
-   s->x2 = NULL;*/
 }
 
 int gmatrix_init(gmatrix *g, char *filename, int n, int p,
@@ -284,8 +269,8 @@ int gmatrix_disk_nextcol(gmatrix *g, sample *s, int j)
    }
 
    /* column is in cache */
-   if((s->x = cache_get(g->ca, j)))
-      return SUCCESS;
+   /*if((s->x = cache_get(g->ca, j)))
+      return SUCCESS;*/
 
    /* Data not in cache, get from disk and unpack.
     * Skip y. Try to put data in cache. */
@@ -320,7 +305,7 @@ int gmatrix_disk_nextcol(gmatrix *g, sample *s, int j)
       }
    }
 
-   cache_put(g->ca, j, g->xtmp, g->ncurr);
+   /*cache_put(g->ca, j, g->xtmp, g->ncurr);*/
    s->x = g->xtmp;
 
    return SUCCESS;

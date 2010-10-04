@@ -22,8 +22,6 @@ int unpack(gmatrix *g, char *filename_out)
    }
    printf("\n");
 
-   sample_free(&sm);
-
    fflush(out);
    fclose(out);
 

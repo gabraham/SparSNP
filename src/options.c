@@ -120,13 +120,13 @@ int opt_parse(int argc, char* argv[], Opt* opt)
 	    opt->loss_func = &linear_loss;
 	    opt->loss_pt_func = &linear_loss_pt;
 	 }
-	 /*else if(strcmp2(argv[i], MODEL_NAME_PCOR))
+	 else if(strcmp2(argv[i], MODEL_NAME_PCOR))
 	 {
 	    opt->inv_func = &linearinv;
 	    opt->step_func = &step_regular_linear;
 	    opt->model = MODEL_LINEAR;
 	    opt->predict_func = linearphi1;
-	 }*/
+	 }
 	 else
 	 {
 	    printf("model not available\n");

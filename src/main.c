@@ -154,7 +154,6 @@ int run_predict_beta(gmatrix *g, predict predict_func,
    printf("done\n");
 
    FREENULL(yhat);
-   sample_free(&sm);
    
    return SUCCESS;
 }

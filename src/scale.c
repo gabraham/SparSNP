@@ -48,7 +48,6 @@ int scale(gmatrix *g)
    printf("\n");
 
    free(tmp);
-   sample_free(&sm);
 
    return SUCCESS;
 }

@@ -2,19 +2,19 @@ library(ggplot2)
 library(gdata)
 
 dir <- "~/Software/hapgen_1.3"
-#roots <- c("sim8", "sim7", "sim6")
-roots <- c("sim7")
-#resdirs <- c("./", "/mnt", "/mnt")
-resdirs <- c("./")
-#nums <- c(30000, 10000, 4000)
-nums <- 1000
+roots <- c("sim8", "sim7", "sim6")
+resdirs <- c("./", "/mnt", "/mnt")
+nums <- c(30000, 10000, 4000)
+resdirs <- c("./", "/mnt", "/mnt")
+nums <- c(30000, 10000, 4000)
 p <- 185805
 legend <- sprintf(
    "%s/HapMap/genotypes_chr1_JPT+CHB_r22_nr.b36_fwd_legend.txt",
    dir)
-#nexpers <- c(20, 30, 50)
-nexpers <- c(10)
-maxfits <- c(20)
+nexpers <- c(20, 30, 50)
+maxfits <- 50
+resultsdir.cd <- "results4"
+resultsdir.plink <- "results"
 
 runperf <- function(f)
 {

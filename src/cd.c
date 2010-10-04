@@ -97,8 +97,6 @@ double get_lambda1max_gmatrix(gmatrix *g,
 
    g->beta[0] = beta_new;
 
-   /*sample_free(&sm);*/
-
    return zmax;
 }
 
@@ -316,7 +314,6 @@ with %d active vars\n", time(NULL), epoch, numactive);
    }
    printfverb("\n");
 
-   /*sample_free(&sm);*/
    free(beta_old);
    free(active_old);
    free(m);
