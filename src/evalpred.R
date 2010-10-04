@@ -56,8 +56,8 @@ nz <- 2^(1:log2(max(cv.auc.d$NonZero)))
 
 g1 <- ggplot(cv.auc.d, aes(x=NonZero, y=AUC)) 
 g1 <- g1 + geom_point()
-g1 <- g1 + scale_x_log2(breaks=nz, labels=nz)
 g1 <- g1 + geom_smooth() + geom_vline(xintercept=20, lty=2)
+g1 <- g1 + scale_x_log2(breaks=nz, labels=nz)
 
 g2 <- ggplot(cv.auc.d, aes(x=lambda, y=AUC)) 
 g2 <- g2 + geom_point() + scale_x_log10()
