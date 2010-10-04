@@ -11,8 +11,10 @@ p <- 185805
 legend <- sprintf(
    "%s/HapMap/genotypes_chr1_JPT+CHB_r22_nr.b36_fwd_legend.txt",
    dir)
-nexpers <- c(25, 30, 50)
-maxfits <- 50
+#nexpers <- c(25, 30, 50)
+#maxfits <- 50
+nexpers <- c(10, 30, 50)
+maxfits <- 10
 resultsdir.cd <- "results4"
 resultsdir.plink <- "results"
 
@@ -46,6 +48,32 @@ for(k in seq(along=roots))
       as.numeric((1:p) %in% pos)
    })
    cat("done\n")
+
+    # Analyse plink results
+   res.pl <- lapply(seq(along=exper), function(k) {
+      ex <- exper[[k]]
+      dir <- sprintf("%s/%s", ex, resultsdir.plink)
+      f <- sprintf("%s/plink.assoc.logistic", dir)
+      d <- read.csv(f, sep="")
+      cat(f, "\n")
+       
+      stats <- cbind(coef=d$STAT, logpval=-log10(d$P))
+   
+      mes <- sapply(1:ncol(stats), function(i) {
+         f <- sprintf("%s/b.cd.plink.%s", dir, colnames(stats)[i])
+         if(!file.exists(f))
+   	 write.table(cbind(ysnp[[k]], abs(stats[,i])),
+   	    col.names=FALSE, row.names=FALSE, sep="\t",
+   	    file=f)
+         cat(f, "\n")
+	 gc()
+         runperf(f)
+      })
+
+      colnames(mes) <- colnames(stats)
+      list(measure=mes)
+   })
+
    
    # Analyse CD results
    res.cd <- lapply(seq(along=exper), function(k) {
@@ -87,28 +115,7 @@ for(k in seq(along=roots))
       rep(1:length(res.cd), sapply(res.cd, function(x) length(x$df)))
    )
    
-   # Analyse plink results
-   res.pl <- lapply(seq(along=exper), function(k) {
-      ex <- exper[[k]]
-      dir <- sprintf("%s/%s", ex, resultsdir.plink)
-      d <- read.csv(sprintf("%s/plink.assoc.logistic", dir), sep="")
-       
-      stats <- cbind(coef=d$STAT, logpval=-log10(d$P))
-   
-      mes <- sapply(1:ncol(stats), function(i) {
-         f <- sprintf("%s/b.cd.plink.%s", dir, colnames(stats)[i])
-         if(!file.exists(f))
-   	 write.table(cbind(ysnp[[k]], abs(stats[,i])),
-   	    col.names=FALSE, row.names=FALSE, sep="\t",
-   	    file=f)
-         cat(f, "\n")
-	 gc()
-         runperf(f)
-      })
-      colnames(mes) <- colnames(stats)
-      list(measure=mes)
-   })
-   
+     
    # Both -log10(pval) and STAT yield same AROC/APRC, so take one
    m.pl <- data.frame(t(sapply(res.pl, function(x) x[[1]][,1])))
    # fake DF, to make the point plot nicely
