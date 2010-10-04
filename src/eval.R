@@ -50,7 +50,7 @@ for(k in seq(along=roots))
    # Analyse CD results
    res.cd <- lapply(seq(along=exper), function(k) {
       ex <- exper[[k]]
-      dir <- sprintf("%s/results", ex)
+      dir <- sprintf("%s/%s", ex, resultsdir.cd)
    
       # Find all files and sort by numerical ordering
       files <- list.files(pattern="^beta\\.csv\\.",
@@ -90,7 +90,7 @@ for(k in seq(along=roots))
    # Analyse plink results
    res.pl <- lapply(seq(along=exper), function(k) {
       ex <- exper[[k]]
-      dir <- sprintf("%s/results", ex)
+      dir <- sprintf("%s/%s", ex, resultsdir.plink)
       d <- read.csv(sprintf("%s/plink.assoc.logistic", dir), sep="")
        
       stats <- cbind(coef=d$STAT, logpval=-log10(d$P))
