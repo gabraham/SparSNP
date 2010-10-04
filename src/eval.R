@@ -11,7 +11,7 @@ p <- 185805
 legend <- sprintf(
    "%s/HapMap/genotypes_chr1_JPT+CHB_r22_nr.b36_fwd_legend.txt",
    dir)
-nexpers <- c(20, 30, 50)
+nexpers <- c(25, 30, 50)
 maxfits <- 50
 resultsdir.cd <- "results4"
 resultsdir.plink <- "results"
