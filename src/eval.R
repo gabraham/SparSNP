@@ -61,7 +61,7 @@ for(k in seq(along=roots))
    
       mes <- sapply(1:ncol(stats), function(i) {
          f <- sprintf("%s/b.cd.plink.%s", dir, colnames(stats)[i])
-         if(!file.exists(f))
+         #if(!file.exists(f))
    	 write.table(cbind(ysnp[[k]], abs(stats[,i])),
    	    col.names=FALSE, row.names=FALSE, sep="\t",
    	    file=f)
@@ -96,7 +96,7 @@ for(k in seq(along=roots))
    
       mes <- sapply(1:ncol(b.cd), function(i) {
          f <- sprintf("%s/b.cd.%s", dir, i - 1)
-         if(!file.exists(f)) 
+         #if(!file.exists(f)) 
    	 write.table(cbind(ysnp[[k]], abs((b.cd[,i]))),
    	    col.names=FALSE, row.names=FALSE, sep="\t",
    	    file=f)

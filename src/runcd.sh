@@ -3,17 +3,20 @@
 set -u
 set -e
 
-DIR_STEM="sim7."
-N=10000
-P=185805
+DIR_STEM="sim3."
+N=1000
+P=10000
+MODEL=linear
+NZMAX=1000
 bin=sim.bin
-CD="~/Code/cd/src/cd -model sqrhinge -bin ../$bin -scale ../scale.bin \
--n $N -p $P -v -maxepochs 10000 -nzmax 250 -nl1 100"
+CD="~/Code/cd/src/cd -model $MODEL -bin ../$bin -scale ../scale.bin \
+-n $N -p $P -v -maxepochs 10000 -nzmax $NZMAX -nl1 100 -l1min 0.001 \
+-thresh 1e-6"
 SCALE="~/Code/cd/src/scale -bin $bin -n $N -p $P"
 scale="scale.bin"
 results="results4"
 
-for((i=21 ; i<=21 ; i++));
+for((i=3 ; i<=3 ; i++));
 do
    dir="$DIR_STEM""$i"
    while ! [[ -d "$dir" && -a "$dir/$bin" ]];

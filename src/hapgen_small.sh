@@ -5,16 +5,16 @@ RR2=2.25
 
 for ((J=3 ; J<=3; J++));
 do
-   DIR="sim2.$J"
+   DIR="sim3.$J"
    if ! [ -d "$DIR" ]; then
       mkdir $DIR
    fi  
    prefix="sim"
-   N=250
+   N=500
    K=20
-   HAPLO=HapMap/genotypes_chr1_JPT+CHB_r22_nr.b36_fwd.phased.1000
-   LEGEND=HapMap/genotypes_chr1_JPT+CHB_r22_nr.b36_fwd_legend.txt.1000
-   CLEAN=1
+   HAPLO=HapMap/genotypes_chr1_JPT+CHB_r22_nr.b36_fwd.phased.10000
+   LEGEND=HapMap/genotypes_chr1_JPT+CHB_r22_nr.b36_fwd_legend.txt.10000
+   CLEAN=0
    if ! [ -a "$DIR/sim.bin" ];
    then
       simulate $DIR $prefix $N $K $HAPLO $LEGEND $RR1 $RR2 $CLEAN

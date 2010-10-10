@@ -111,6 +111,18 @@ function simulate {
 
    local LOCI=$DIR/loci.txt
    local CUTFILE=$DIR/cut.txt
+
+   if ! [ -a "$HAPLO" ];
+   then
+      echo "$HAPLO doesn't exist"
+      exit 1
+   fi
+
+   if ! [ -a "$LEGEND" ];
+   then
+      echo "$LEGEND doesn't exist"
+      exit 1
+   fi
    
    local P=$(($(head -1 $HAPLO | sed 's/ //g' | wc -c) - 1))
    
@@ -124,15 +136,18 @@ function simulate {
    echo "####################################"
    
    # Cut hapmap legend files into blocks
-   hapmapcut $LEGEND $HAPLO $K $CUTFILE
+   /bin/rm -rf $DIR/HapMap
+   mkdir $DIR/HapMap
+   /bin/cp $LEGEND $HAPLO $DIR/HapMap
+   hapmapcut $DIR/$LEGEND $DIR/$HAPLO $K $CUTFILE
 
    # Convert hapmap legend file to plink MAP file
-   if ! [ -a "$LEGEND.map" ];
+   if ! [ -a "$DIR/$LEGEND.map" ];
    then
       local RSCRIPT=".conv.R"
       cat > $RSCRIPT <<EOF
    source("~/Code/cd/R/convert.R")
-   hapmap2map("$LEGEND", "$LEGEND.map")
+   hapmap2map("$DIR/$LEGEND", "$DIR/$LEGEND.map")
 EOF
       Rscript $RSCRIPT
    fi
@@ -151,14 +166,14 @@ EOF
    # Simulate genotypes using each of the causal SNPs
    for ((i = 1 ; i <= $K ; i++));
    do
-      local f="$LEGEND""_$i"
+      local f="$DIR/$LEGEND""_$i"
       local w=$(cat $f | wc -l)
       tail -n $((w-1)) $f > "$f"".tmp"
       randomline "$f"".tmp"
       SNP=`echo $RANDLINE | cut -f 2 -d ' '`
       echo $SNP >> $LOCI
    
-      CMD="./hapgen -h $HAPLO""_$i -l $LEGEND""_$i \
+      CMD="./hapgen -h $DIR/$HAPLO""_$i -l $DIR/$LEGEND""_$i \
       -o "$DIR/sim$i" -n $N $N -gen -rr $rr1 $rr2  -dl $SNP"
       echo $CMD
       set +e # hapgen returns 1 on exit
@@ -211,7 +226,7 @@ EOF
    fi
 
    # plink, binary bed format
-   cmd="$PLINK --ped $DIR/sim.ped --map $LEGEND.map --make-bed --out $DIR/sim"
+   cmd="$PLINK --ped $DIR/sim.ped --map $DIR/$LEGEND.map --make-bed --out $DIR/sim"
    echo $cmd
    eval $cmd
    if [ $clean == 1 ];

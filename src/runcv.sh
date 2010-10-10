@@ -1,8 +1,8 @@
 #!/bin/bash
 
-N=500
+N=1000
 #P=185805
-P=1000
+P=10000
 NFOLDS=10
 NZMAX=1000
 MODEL=sqrhinge
@@ -15,7 +15,7 @@ MODEL=sqrhinge
 
 time ~/Code/cd/src/cd -train -model $MODEL -n $N -p $P \
 -scale scale.bin -bin ../sim.bin -nzmax $NZMAX \
--maxepochs 5000 \
+-maxepochs 10000 \
 -foldind folds.ind
 
 B=$(for((i=0;i<=100;i++)); do printf 'beta.csv.%02d ' $i; done)
