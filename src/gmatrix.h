@@ -6,9 +6,10 @@
 
 #define BUFSIZE 10
 
-/* categorical x inputs: 0, 1, 2 */
-#define NUM_X_LEVELS 3
-#define X_LEVELS {0, 1, 2}
+/* categorical x inputs: 0, 1, 2, 3 */
+#define NUM_X_LEVELS 4
+#define X_LEVELS {0, 1, 2, 3}
+#define X_LEVEL_NA 3
 
 #define YFORMAT01 1
 #define YFORMAT11 2
@@ -55,6 +56,8 @@ typedef struct gmatrix {
    double *ntestrecip;
    int ncurr;
    double ncurr_recip;
+   int *ncurr_j;
+   double *ncurr_recip_j;
    int p;
    int i;
    int j;
@@ -92,6 +95,7 @@ typedef struct gmatrix {
    int *numnz;
    loss loss_func;
    loss_pt loss_pt_func;
+   int *ngood;
 } gmatrix;
 
 int sample_init(sample *, int);

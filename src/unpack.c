@@ -3,7 +3,7 @@
 
 int unpack(gmatrix *g, char *filename_out)
 {
-   int j;
+   int j, p1 = g->p + 1;
    sample sm;
    FILE *out;
 
@@ -13,9 +13,10 @@ int unpack(gmatrix *g, char *filename_out)
    FOPENTEST(out, filename_out, "wb");
    FWRITETEST(g->y, sizeof(double), g->n, out);
 
-   for(j = 0 ; j < g->p + 1 ; j++)
+   /* ignore intercept */
+   for(j = 1 ; j < p1 ; j++)
    {
-      printf("%d of %d", j, g->p);
+      printf("%d of %d", j, p1);
       g->nextcol(g, &sm, j);
       FWRITETEST(sm.x, sizeof(double), g->n, out);
       printf("\r");

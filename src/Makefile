@@ -33,7 +33,7 @@ scale: common.c coder.c ind.c gmatrix.c util.c cd.c scale.c
 transpose: common.c coder.c transpose.c
 	$(CC) $(CCFLAGS) $(LIBRARIES) $^ -o transpose
 
-hapgen2bin: common.c coder.c hapgen2bin.c
+hapgen2bin: common.c util.c coder.c hapgen2bin.c
 	$(CC) $(CCFLAGS) $(LIBRARIES) $^ -o hapgen2bin
 
 hapgen2ped: common.c hapgen2ped.c

@@ -60,10 +60,11 @@ int gmatrix_init(gmatrix *g, char *filename, int n, int p,
    g->ntest = NULL;
    g->ntrainrecip = NULL;
    g->ntestrecip = NULL;
-   g->ncurr = 0; /* current number of samples, depending on
+   g->ncurr = 0;
+   g->ncurr_j = NULL; /* current number of samples, depending on
 		    whether we're in training or testing and
 		    which fold we're in, etc. */
-   g->ncurr_recip = 0.0; /* reciprocal of ncurr to
+   g->ncurr_recip_j = NULL; /* reciprocal of ncurr to
 			    allow multiplication instead
 			    of division */
    g->mode = mode;
@@ -71,9 +72,10 @@ int gmatrix_init(gmatrix *g, char *filename, int n, int p,
    g->beta_orig = NULL;
    g->numnz = NULL;
 
-   MALLOCTEST(g->beta_orig, sizeof(double) * p1);
-   for(j = 0 ; j < p1 ; j++)
-      g->beta_orig[j] = -1.2345;
+   CALLOCTEST(g->beta_orig, p1, sizeof(double));
+
+   CALLOCTEST(g->ncurr_j, p1, sizeof(int));
+   CALLOCTEST(g->ncurr_recip_j, p1, sizeof(double));
    
    MALLOCTEST(g->ca, sizeof(cache));
    if(!cache_init(g->ca, p1)) /* +1 not for intercept, which isn't
@@ -189,6 +191,8 @@ void gmatrix_free(gmatrix *g)
    FREENULL(g->ntestrecip);
    FREENULL(g->active);
    FREENULL(g->numnz);
+   FREENULL(g->ncurr_j);
+   FREENULL(g->ncurr_recip_j);
 
    if(g->ca)
    {
@@ -254,6 +258,9 @@ int gmatrix_split_y(gmatrix *g)
    return SUCCESS;
 }
 
+/*
+ * reads one column of data from disk (all samples for one variable)
+ */
 int gmatrix_disk_nextcol(gmatrix *g, sample *s, int j)
 {
    int i, l1, n1 = g->n - 1, n = g->n;
@@ -285,7 +292,7 @@ int gmatrix_disk_nextcol(gmatrix *g, sample *s, int j)
          l1 = j * NUM_X_LEVELS;
          for(i = n1 ; i >= 0 ; --i)
 	    g->xtmp[i] = g->lookup[l1 + g->tmp[i]];
-      } else {
+      } else { /* no scaling */
 	 for(i = n1 ; i >= 0 ; --i)
 	    g->xtmp[i] = (double)g->tmp[i];
       }
@@ -298,7 +305,7 @@ int gmatrix_disk_nextcol(gmatrix *g, sample *s, int j)
 	    /* different between train and test */
 	    if((g->mode == MODE_PREDICT) ^ g->folds[f + i])
 	       g->xtmp[k--] = g->lookup[l1 + g->tmp[i]];
-      } else {
+      } else { /* no scaling */
 	 for(i = n1 ; i >= 0 ; --i)
 	    if((g->mode == MODE_PREDICT) ^ g->folds[f + i])
 	       g->xtmp[k--] = (double)g->tmp[i];
@@ -308,87 +315,6 @@ int gmatrix_disk_nextcol(gmatrix *g, sample *s, int j)
    /*cache_put(g->ca, j, g->xtmp, g->ncurr);*/
    s->x = g->xtmp;
 
-   return SUCCESS;
-}
-
-/* big ugly function
- */
-int gmatrix_disk_nextcol_old(gmatrix *g, sample *s, int skip)
-{
-   int i, l1;
-   int n = g->n, n1 = g->n - 1, p1 = g->p + 1;
-   int ncurr = g->ncurr;
-   int k = g->ncurr - 1;
-
-   if(g->j == p1 && !gmatrix_reset(g))
-      return FAILURE;
-
-   /* either read the y vector, or skip rows and/or headers */
-   if(g->j == 0)
-   {
-      s->intercept = TRUE;
-      if(!gmatrix_disk_read_y(g))
-	 return FAILURE;
-
-      /* No need to copy values, just assign the intercept vector,
-       * but first, free any old data we have from previous
-       * iterations */
-      FREENULL(s->x);
-
-      /* don't need to worry about cross-validation etc
-       * because the intercept is all 1s */
-      s->x = g->intercept;
-
-      g->j++;
-      return SUCCESS;
-   }
-
-   /* this isn't an intercept, so we need to copy actual
-    * values but first make room for them */
-   s->intercept = FALSE;
-   if(g->j == 1) {
-      MALLOCTEST(s->x, sizeof(double) * ncurr);
-   }
-
-   if(skip) 
-   {
-      FSEEKOTEST(g->file, g->nseek, SEEK_CUR);
-      g->j++;
-      return SUCCESS;
-   }
-
-   /* read the data, unpack if necessary */
-   FREADTEST(g->encbuf, sizeof(dtype), g->nencb, g->file);
-   g->decode(g->tmp, g->encbuf, g->nencb);
-
-   /* Get the scaled versions of the genotypes */
-   if(g->nfolds < 2) { /* no cv */
-      if(g->scalefile) {
-         /* Get the scaled value instead of the original value */
-         l1 = g->j * NUM_X_LEVELS;
-         for(i = n1 ; i >= 0 ; --i)
-	    s->x[i] = g->lookup[l1 + g->tmp[i]];
-      } else {
-	 for(i = n1 ; i >= 0 ; --i)
-	    if(g->folds[g->fold * n + i])
-	       s->x[k--] = (double)g->tmp[i];
-      }
-   } else { /* cv */
-      /* Get the scaled value instead of the original value */
-      if(g->scalefile) {
-	 l1 = g->j * NUM_X_LEVELS;
-	 for(i = n1 ; i >= 0 ; --i)
-	    /* different between train and test */
-	    if((g->mode == MODE_PREDICT) ^ g->folds[g->fold * n + i])
-	       s->x[k--] = g->lookup[l1 + g->tmp[i]];
-      } else {
-      	 for(i = n1 ; i >= 0 ; --i)
-	    if((g->mode == MODE_PREDICT) ^ g->folds[g->fold * n + i])
-	       s->x[k--] = (double)g->tmp[i];
-      }
-   }
-
-   g->j++;
    return SUCCESS;
 }
 
@@ -407,7 +333,7 @@ int gmatrix_reset(gmatrix *g)
    return SUCCESS;
 }
 
-/* Populate lookup tables for SNP levels 0, 1, 2
+/* Populate lookup tables for SNP levels 0, 1, 2, 3
  */
 int gmatrix_read_scaling(gmatrix *g, char *file_scale)
 {
@@ -439,7 +365,9 @@ int gmatrix_read_scaling(gmatrix *g, char *file_scale)
 	 for(k = 0 ; k < NUM_X_LEVELS ; k++)
 	 {
 	    l2 = l1 + k;
-	    g->lookup[l2] = (k - g->mean[j]) / g->sd[j];
+	    /* scale unless missing obs */
+	    g->lookup[l2] = (k != X_LEVEL_NA) ?
+	       (k - g->mean[j]) / g->sd[j] : 0;
 	 }
       }
    }
@@ -449,7 +377,10 @@ int gmatrix_read_scaling(gmatrix *g, char *file_scale)
    return SUCCESS;
 }
 
-/* number of training and test samples per fold */
+/* number of training and test samples per fold.
+ * folds is a vector of binary indicators, for each sample
+ * whether it's in or out of the training set in that cv fold.
+ */
 void count_fold_samples(int *ntrain, int *ntest,
       double *ntrainrecip, double *ntestrecip,
       int *folds, int nfolds, int n)
@@ -575,12 +506,8 @@ static inline int hash(int key)
 /* Sets the number of samples for actual use in CD */
 void gmatrix_set_ncurr(gmatrix *g)
 {
-   {
-      if(g->mode == MODE_TRAIN)
-	 g->ncurr = g->ntrain[g->fold];
-      else
-	 g->ncurr = g->ntest[g->fold];
-   }
+   g->ncurr = (g->mode == MODE_TRAIN) ? 
+      g->ntrain[g->fold] : g->ntest[g->fold];
 
    g->ncurr_recip = 1.0 / g->ncurr;
 }

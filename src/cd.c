@@ -223,7 +223,7 @@ int cd_gmatrix(gmatrix *g,
       	       beta_new = clip(beta_new, -truncl, truncl);
       	       beta_new = zero(beta_new, ZERO_THRESH);
       
-	       /* beta_new may have changed */
+	       /* beta_new may have changed by thresholding */
 	       s = beta_new - g->beta[j];
 
 	       /* no need to update if beta hasn't changed */

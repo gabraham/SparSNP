@@ -2,31 +2,45 @@
 #include "util.h"
 #include "common.h"
 
+int writebinvectorf(char* file, double* x, int n)
+{
+   FILE* out = NULL;
+   FOPENTEST(out, file, "wb");
+   FWRITETEST(x, sizeof(double), n, out);
+   fclose(out);
+   return SUCCESS;
+}
+
+int writebinvectorl(char* file, int* x, int n)
+{
+   FILE* out = NULL;
+   FOPENTEST(out, file, "wb");
+   FWRITETEST(x, sizeof(int), n, out);
+   fclose(out);
+   return SUCCESS;
+}
+
 int writevectorf(char* file, double* beta, int p)
 {
    int i;
-   FILE* out;
-   
+   FILE* out = NULL;
    FOPENTEST(out, file, "w")
    for(i = 0 ; i < p ; i++)
       fprintf(out, "%.20f\n", beta[i]);
    fflush(out);
    fclose(out);
-
    return SUCCESS;
 }
 
 int writevectorl(char* file, int* beta, int p)
 {
    int i;
-   FILE* out;
-   
+   FILE* out = NULL;
    FOPENTEST(out, file, "w")
    for(i = 0 ; i < p ; i++)
       fprintf(out, "%d\n", beta[i]);
    fflush(out);
    fclose(out);
-
    return SUCCESS;
 }
 

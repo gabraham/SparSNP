@@ -11,11 +11,11 @@
  */
 int scale(gmatrix *g)
 {
-   int i, j, p1 = g->p + 1;
+   int i, j, p1 = g->p + 1, n = g->ncurr, ngood = 0;
    sample sm;
    double *tmp = NULL, delta;
 
-   if(!sample_init(&sm, g->ncurr))
+   if(!sample_init(&sm, n))
       return FAILURE;
 
    if(!g->mean)
@@ -25,7 +25,7 @@ int scale(gmatrix *g)
    g->mean[0] = 0;
    g->sd[0] = 1;
 
-   MALLOCTEST(tmp, sizeof(double) * g->ncurr);
+   MALLOCTEST(tmp, sizeof(double) * n);
    
    /* read intercept and ignore it*/
    g->nextcol(g, &sm, 0);
@@ -34,15 +34,20 @@ int scale(gmatrix *g)
    {
       printf("%d of %d", j, p1);
       g->nextcol(g, &sm, j);
-      g->mean[j] = g->sd[j] = 0;
-      for(i = 0 ; i < g->ncurr ; i++)
+      ngood = g->mean[j] = g->sd[j] = 0;
+      for(i = 0 ; i < n ; i++)
       {
-	 delta = sm.x[i] - g->mean[j];
-	 g->mean[j] += delta / (i + 1);
-	 g->sd[j] += delta * (sm.x[i] - g->mean[j]);
+	 /* skip missing observations */
+	 if(sm.x[i] != X_LEVEL_NA)
+	 {
+	    delta = sm.x[i] - g->mean[j];
+	    g->mean[j] += delta / (i + 1);
+	    g->sd[j] += delta * (sm.x[i] - g->mean[j]);
+	    ngood++;
+	 }
       }
 
-      g->sd[j] = sqrt(g->sd[j] / (g->ncurr - 1));
+      g->sd[j] = sqrt(g->sd[j] / (ngood - 1));
       printf("\r");
    }
    printf("\n");
