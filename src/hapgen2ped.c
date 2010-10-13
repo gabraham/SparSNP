@@ -56,6 +56,7 @@ int hapgen2ped(char *x_filename_in, char *y_filename_in, char *filename_out,
    FOPENTEST(y_in, y_filename_in, "rt");
    FOPENTEST(out, filename_out, "wt");
 
+   /* read data in blocks */
    bufctr = 0;
    for(i = 0 ; i < n ; )
    {
@@ -72,7 +73,7 @@ int hapgen2ped(char *x_filename_in, char *y_filename_in, char *filename_out,
       	 {
       	    ptr = alleles[buf_in[k][2 * j] - ASCII_DIFF];
 	    m = 4 * j;
-      	    buf_out[k][m] = ptr[0];
+      	    buf_out[k][m]     = ptr[0];
       	    buf_out[k][m + 1] = ptr[1];
       	    buf_out[k][m + 2] = ptr[2];
       	    buf_out[k][m + 3] = ptr[3];
