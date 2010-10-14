@@ -127,7 +127,7 @@ analyse <- function(k)
    list(m.cd.all=m.cd.all, m.pl=m.pl)
 }
 
-res <- lapply(seq(along=root), analyse)
+res <- lapply(seq(along=roots), analyse)
 save(res, file=sprintf("%s/eval_%s.RData", resdirs[k], root))
 
 plot.eval <- function(k)
@@ -195,5 +195,5 @@ plot.eval <- function(k)
    sapply(seq(along=m.cd.all), function(i) plot.apr(m.cd.all[[i]], suf[i]))
 }
 
-g <- lapply(seq(along=root), plot.eval)
+g <- lapply(seq(along=roots), plot.eval)
 
