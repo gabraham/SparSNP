@@ -5,12 +5,13 @@ dir <- "~/Software/hapgen_1.3"
 roots <- c("sim8", "sim7", "sim6")
 resdirs <- c("./", "./", "./")
 nums <- c(30000, 10000, 1000)
+resdirs <- c("./", "./", "./")
+nums <- c(30000, 10000, 1000)
 p <- 185805
 legend <- sprintf(
    "%s/HapMap/genotypes_chr1_JPT+CHB_r22_nr.b36_fwd_legend.txt",
    dir)
 nexpers <- c(25, 30, 40)
-maxfits <- 50
 resultsdir.cd <- "results4"
 resultsdir.plink <- "results"
 
@@ -24,6 +25,14 @@ runperf <- function(f)
    p
 }
 
+condsign <- function(x, s)
+{
+   if(s) {
+      sign(x)
+   } else {
+      x
+   }
+}
 
 for(k in seq(along=roots))
 {
@@ -57,11 +66,12 @@ for(k in seq(along=roots))
    
       mes <- sapply(1:ncol(stats), function(i) {
          f <- sprintf("%s/b.cd.plink.%s", dir, colnames(stats)[i])
+         #if(!file.exists(f))
    	 write.table(cbind(ysnp[[k]], abs(stats[,i])),
    	    col.names=FALSE, row.names=FALSE, sep="\t",
    	    file=f)
          cat(f, "\n")
-	 gc()
+         gc()
          runperf(f)
       })
 
@@ -69,49 +79,51 @@ for(k in seq(along=roots))
       list(measure=mes)
    })
 
-   
    # Analyse CD results
-   res.cd <- lapply(seq(along=exper), function(k) {
-      ex <- exper[[k]]
-      dir <- sprintf("%s/%s", ex, resultsdir.cd)
-   
-      # Find all files and sort by numerical ordering
-      files <- list.files(pattern="^beta\\.csv\\.",
-   	 path=dir, full.names=TRUE)
-      if(length(files) == 0)
-         stop("no files found")
-      id <- sapply(strsplit(files, "\\."), tail, n=1)
-      files <- files[order(as.numeric(id))][1:maxfits]
-   
-      b.cd <- sapply(files, function(f) {
-         read.csv(f, header=FALSE)[-1,1]
-      })
+   res.cd <- lapply(list(TRUE, FALSE), function(dosign) {
+      lapply(seq(along=exper), function(k) {
+         ex <- exper[[k]]
+         dir <- sprintf("%s/%s", ex, resultsdir.cd)
       
-      df.cd <- apply(b.cd, 2, function(x) sum(x != 0))
-   
-      mes <- sapply(1:ncol(b.cd), function(i) {
-         f <- sprintf("%s/b.cd.%s", dir, i - 1)
-   	 write.table(cbind(ysnp[[k]], sign(abs((b.cd[,i])))),
-   	    col.names=FALSE, row.names=FALSE, sep="\t",
-   	    file=f)
-         cat(f, "\n")
-	 gc()
-         runperf(f)
+         # Find all files and sort by numerical ordering
+         files <- list.files(pattern="^beta\\.csv\\.",
+	       path=dir, full.names=TRUE)
+         if(length(files) == 0)
+            stop("no files found")
+         id <- sapply(strsplit(files, "\\."), tail, n=1)
+         files <- files[order(as.numeric(id))]
+      
+         b.cd <- try(sapply(files, function(f) {
+            read.csv(f, header=FALSE)[-1,1]
+         }))
+
+         df.cd <- apply(b.cd, 2, function(x) sum(x != 0))
+      
+         mes <- sapply(1:ncol(b.cd), function(i) {
+            f <- sprintf("%s/b.cd.%s", dir, i - 1)
+	    write.table(cbind(ysnp[[k]], abs(condsign(b.cd[,i], dosign))),
+	       col.names=FALSE, row.names=FALSE, sep="\t", file=f)
+            cat(f, "\n")
+            gc()
+            runperf(f)
+         })
+      
+         list(measure=mes, df=df.cd, nsim=length(id))
       })
-   
-      list(measure=mes, df=df.cd, nsim=length(id))
    })
    
-   m.cd <- data.frame(
-      do.call("rbind", lapply(res.cd, function(r) t(do.call("rbind", r))))
-   )
-   m.cd$Sim <- factor(
-      rep(1:length(res.cd), sapply(res.cd, function(x) length(x$df)))
-   )
+   m.cd.all <- lapply(res.cd, function(rr) {
+      d <- data.frame(
+	 do.call("rbind", lapply(rr, function(r) t(do.call("rbind", r)))))
+      d$Sim <- factor(
+	 rep(1:length(rr), sapply(rr, function(x) length(x$df))))
+      d$Method <- "lasso"
+      d
+   })
    
-     
    # Both -log10(pval) and STAT yield same AROC/APRC, so take one
    m.pl <- data.frame(t(sapply(res.pl, function(x) x[[1]][,1])))
+   
    # fake DF, to make the point plot nicely
    maxdf <- 256
    m.pl$df <- maxdf
@@ -119,50 +131,54 @@ for(k in seq(along=roots))
    m.pl$nsim <- 1
    m.pl$Method <- "logistic"
    
-   m.cd$Method <- "lasso"
-   
-   # cutoff, don't show the long tail
-   m.cd.2 <- m.cd[m.cd$df > 0 & m.cd$df < maxdf ,]
-   m.comb <- rbind(m.cd.2, m.pl)
-   m.comb$Method <- factor(m.comb$Method)
-   
-   rmaxdf <- round(max(m.comb$df / 10))
-   m.comb$df_bin <- cut(m.comb$df, breaks=(0:rmaxdf) * 10)
-   l <- levels(m.comb$df_bin)
-   l[length(l)] <- ""
-   levels(m.comb$df_bin) <- l
-   m.comb$df_bin <- drop.levels(m.comb$df_bin, reorder=FALSE)
+   plot.apr <- function(m.cd, suf)
+   {
+      # cutoff, don't show the long tail
+      m.cd.2 <- m.cd[m.cd$df > 0 & m.cd$df < maxdf ,]
+      m.comb <- rbind(m.cd.2, m.pl)
+      m.comb$Method <- factor(m.comb$Method)
+      
+      rmaxdf <- round(max(m.comb$df / 10))
+      m.comb$df_bin <- cut(m.comb$df, breaks=(0:rmaxdf) * 10)
+      l <- levels(m.comb$df_bin)
+      l[length(l)] <- ""
+      levels(m.comb$df_bin) <- l
+      m.comb$df_bin <- drop.levels(m.comb$df_bin, reorder=FALSE)
 
-   g <- ggplot(m.comb, aes(x=df_bin, y=APR, shape=Method))
-   g <- g + geom_boxplot(outlier.size=0, colour="darkgray", size=1.5)
-   g <- g + geom_point(size=3, position=position_jitter(width=0.07))
-   g <- g + ylim(0, 0.42)
-   g <- g + scale_shape_manual(values=c(1, 2))
-   g <- g + xlab("# Non-zero variables") + ylab("APRC")
-   g <- g + opts(axis.text.x=theme_text(angle=-90, hjust=0),
-	 legend.text=theme_text(size=15))
-   
-   pdf(sprintf("%s/results_%s_1.pdf", resdirs[k], root), width=11)
-   print(g)
-   dev.off()
+      g <- ggplot(m.comb, aes(x=df_bin, y=APR, shape=Method))
+      g <- g + geom_boxplot(outlier.size=0, colour="darkgray", size=1.5)
+      g <- g + geom_point(size=3, position=position_jitter(width=0.07))
+      g <- g + ylim(0, 0.42)
+      g <- g + scale_shape_manual(values=c(1, 2))
+      g <- g + xlab("# Non-zero variables") + ylab("APRC")
+      g <- g + opts(axis.text.x=theme_text(angle=-90, hjust=0),
+            legend.text=theme_text(size=15))
+      
+      pdf(sprintf("%s/results_%s_1_%s.pdf", resdirs[k], root, suf), width=11)
+      print(g)
+      dev.off()
 
-   maxdf2 <- 60
-   m.comb2 <- m.comb[
-	 m.comb$df %in% ((1:(maxdf2/2)) * 2) | m.comb$Method == "logistic", ]
-   m.comb2$df_f <- factor(m.comb2$df)
-   levels(m.comb2$df_f)[length(levels(m.comb2$df_f))] <- ""
+      maxdf2 <- 60
+      m.comb2 <- m.comb[
+            m.comb$df %in% ((1:(maxdf2/2)) * 2) | m.comb$Method == "logistic", ]
+      m.comb2$df_f <- factor(m.comb2$df)
+      levels(m.comb2$df_f)[length(levels(m.comb2$df_f))] <- ""
 
-   g <- ggplot(m.comb2, aes(x=df_f, y=APR, shape=Method))
-   g <- g + geom_boxplot(colour="darkgray", outlier.size=0, size=1.5)
-   g <- g + ylim(0, 0.42)
-   g <- g + geom_point(size=3, position=position_jitter(width=0.1))
-   g <- g + scale_shape_manual(values=c(1, 2))
-   g <- g + xlab("# Non-zero variables") + ylab("APRC")
-   g <- g + opts(legend.text=theme_text(size=15))
-   
-   pdf(sprintf("%s/results_%s_2.pdf", resdirs[k], root), width=14)
-   print(g)
-   dev.off()
+      g <- ggplot(m.comb2, aes(x=df_f, y=APR, shape=Method))
+      g <- g + geom_boxplot(colour="darkgray", outlier.size=0, size=1.5)
+      g <- g + ylim(0, 0.42)
+      g <- g + geom_point(size=3, position=position_jitter(width=0.1))
+      g <- g + scale_shape_manual(values=c(1, 2))
+      g <- g + xlab("# Non-zero variables") + ylab("APRC")
+      g <- g + opts(legend.text=theme_text(size=15))
+      
+      pdf(sprintf("%s/results_%s_2_%s.pdf", resdirs[k], root, suf), width=14)
+      print(g)
+      dev.off()
+   }
+
+   suf <- c(1, 2)
+   sapply(seq(along=m.cd.all), function(i) plot.apr(m.cd.all[[i]], suf[i]))
    
    save.image(file=sprintf("%s/eval_%s.RData", resdirs[k], root))
 }
