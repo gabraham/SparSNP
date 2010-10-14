@@ -34,7 +34,7 @@ condsign <- function(x, s)
    }
 }
 
-for(k in seq(along=roots))
+analyse <- function(k) 
 {
    root <- roots[k]
    n <- nums[k]
@@ -80,7 +80,7 @@ for(k in seq(along=roots))
    })
 
    # Analyse CD results
-   res.cd <- lapply(list(TRUE, FALSE), function(dosign) {
+   res.cd <- lapply(c(sign=TRUE, nosign=FALSE), function(dosign) {
       lapply(seq(along=exper), function(k) {
          ex <- exper[[k]]
          dir <- sprintf("%s/%s", ex, resultsdir.cd)
@@ -123,10 +123,19 @@ for(k in seq(along=roots))
    
    # Both -log10(pval) and STAT yield same AROC/APRC, so take one
    m.pl <- data.frame(t(sapply(res.pl, function(x) x[[1]][,1])))
-   
-   # fake DF, to make the point plot nicely
-   maxdf <- 256
-   m.pl$df <- maxdf
+
+   list(m.cd.all=m.cd.all, m.pl=m.pl)
+}
+
+res <- lapply(seq(along=root), analyse)
+save(res, file=sprintf("%s/eval_%s.RData", resdirs[k], root))
+
+plot.eval <- function(k)
+{
+   m.cd.all <- res[[k]]$m.cd.all
+   m.pl <- res[[k]]$m.pl
+
+   m.pl$df <- as.numeric(NA)
    m.pl$Sim <- 1
    m.pl$nsim <- 1
    m.pl$Method <- "logistic"
@@ -138,24 +147,25 @@ for(k in seq(along=roots))
       m.comb <- rbind(m.cd.2, m.pl)
       m.comb$Method <- factor(m.comb$Method)
       
-      rmaxdf <- round(max(m.comb$df / 10))
+      rmaxdf <- ceiling(max(m.comb$df / 10, na.rm=TRUE))
       m.comb$df_bin <- cut(m.comb$df, breaks=(0:rmaxdf) * 10)
-      l <- levels(m.comb$df_bin)
-      l[length(l)] <- ""
-      levels(m.comb$df_bin) <- l
+      levels(m.comb$df_bin) <- c(levels(m.comb$df_bin), "")
+      m.comb$df_bin[is.na(m.comb$df_bin)] <- ""
       m.comb$df_bin <- drop.levels(m.comb$df_bin, reorder=FALSE)
 
-      g <- ggplot(m.comb, aes(x=df_bin, y=APR, shape=Method))
+      g <- ggplot(m.comb, aes(x=df_bin, y=APR))
       g <- g + geom_boxplot(outlier.size=0, colour="darkgray", size=1.5)
-      g <- g + geom_point(size=3, position=position_jitter(width=0.07))
+      g <- g + geom_point(size=2, position=position_jitter(width=0.07),
+	    shape=21)
       g <- g + ylim(0, 0.42)
       g <- g + scale_shape_manual(values=c(1, 2))
       g <- g + xlab("# Non-zero variables") + ylab("APRC")
       g <- g + opts(axis.text.x=theme_text(angle=-90, hjust=0),
             legend.text=theme_text(size=15))
+      g1 <- g + facet_grid(~ Method, scales="free", space="free")
       
       pdf(sprintf("%s/results_%s_1_%s.pdf", resdirs[k], root, suf), width=11)
-      print(g)
+      print(g1)
       dev.off()
 
       maxdf2 <- 60
@@ -164,22 +174,26 @@ for(k in seq(along=roots))
       m.comb2$df_f <- factor(m.comb2$df)
       levels(m.comb2$df_f)[length(levels(m.comb2$df_f))] <- ""
 
-      g <- ggplot(m.comb2, aes(x=df_f, y=APR, shape=Method))
+      g <- ggplot(m.comb2, aes(x=df_f, y=APR))
       g <- g + geom_boxplot(colour="darkgray", outlier.size=0, size=1.5)
       g <- g + ylim(0, 0.42)
-      g <- g + geom_point(size=3, position=position_jitter(width=0.1))
+      g <- g + geom_point(size=2, position=position_jitter(width=0.1),
+	    shape=21)
       g <- g + scale_shape_manual(values=c(1, 2))
       g <- g + xlab("# Non-zero variables") + ylab("APRC")
       g <- g + opts(legend.text=theme_text(size=15))
+      g2 <- g + facet_grid(~ Method, scales="free", space="free")
       
       pdf(sprintf("%s/results_%s_2_%s.pdf", resdirs[k], root, suf), width=14)
-      print(g)
+      print(g2)
       dev.off()
+      
+      list(g1, g2)
    }
 
-   suf <- c(1, 2)
+   suf <- c("sign", "nosign")
    sapply(seq(along=m.cd.all), function(i) plot.apr(m.cd.all[[i]], suf[i]))
-   
-   save.image(file=sprintf("%s/eval_%s.RData", resdirs[k], root))
 }
+
+g <- lapply(seq(along=root), plot.eval)
 
