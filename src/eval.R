@@ -164,7 +164,7 @@ plot.eval <- function(k)
             legend.text=theme_text(size=15))
       g1 <- g + facet_grid(~ Method, scales="free", space="free")
       
-      pdf(sprintf("%s/results_%s_1_%s.pdf", resdirs[k], root, suf), width=11)
+      pdf(sprintf("%s/results_%s_1_%s.pdf", resdirs[k], root, suf), width=14)
       print(g1)
       dev.off()
 
@@ -172,7 +172,8 @@ plot.eval <- function(k)
       m.comb2 <- m.comb[
             m.comb$df %in% ((1:(maxdf2/2)) * 2) | m.comb$Method == "logistic", ]
       m.comb2$df_f <- factor(m.comb2$df)
-      levels(m.comb2$df_f)[length(levels(m.comb2$df_f))] <- ""
+      levels(m.comb2$df_f) <- c(levels(m.comb2$df_f), "")
+      m.comb2$df_f[is.na(m.comb2$df_f)] <- ""
 
       g <- ggplot(m.comb2, aes(x=df_f, y=APR))
       g <- g + geom_boxplot(colour="darkgray", outlier.size=0, size=1.5)
@@ -184,7 +185,7 @@ plot.eval <- function(k)
       g <- g + opts(legend.text=theme_text(size=15))
       g2 <- g + facet_grid(~ Method, scales="free", space="free")
       
-      pdf(sprintf("%s/results_%s_2_%s.pdf", resdirs[k], root, suf), width=14)
+      pdf(sprintf("%s/results_%s_2_%s.pdf", resdirs[k], root, suf), width=15)
       print(g2)
       dev.off()
       
