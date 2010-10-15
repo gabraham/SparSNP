@@ -36,7 +36,7 @@ cv.auc <- lapply(folds, function(fold) {
    nz <- read.csv(sprintf("nonzero.csv.%02d", fold), header=FALSE)[,1]
    
    # Don't count the intercept, except for first #nonzero
-   nz[-1] <- nz[-1] - 1  
+   #nz[-1] <- nz[-1] - 1  
 
    # glmnet::auc expects y = 0/1
    res <- apply(pr, 2, auc,
@@ -55,7 +55,7 @@ cv.auc.d <- data.frame(do.call(rbind, cv.auc))
 # remove zeros which create problems with log transform
 cv.auc.d <- cv.auc.d[cv.auc.d$NonZero > 0, ] 
 
-nz <- 2^(0:log2(max(cv.auc.d$NonZero)))
+nz <- 2^(1:log2(max(cv.auc.d$NonZero)))
 
 g1 <- ggplot(cv.auc.d, aes(x=NonZero, y=AUC)) 
 g1 <- g1 + geom_point()
