@@ -55,7 +55,7 @@ cv.auc.d <- data.frame(do.call(rbind, cv.auc))
 # remove zeros which create problems with log transform
 cv.auc.d <- cv.auc.d[cv.auc.d$NonZero > 0, ] 
 
-nz <- 2^(1:log2(max(cv.auc.d$NonZero)))
+nz <- 2^(0:log2(max(cv.auc.d$NonZero)))
 
 g1 <- ggplot(cv.auc.d, aes(x=NonZero, y=AUC)) 
 g1 <- g1 + geom_point()
