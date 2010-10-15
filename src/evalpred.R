@@ -76,5 +76,5 @@ print(g2)
 print(g3)
 dev.off()
 
-save(cv.auc.d, file="crossval.pdf")
+save(cv.auc.d, file="crossval.RData")
 
