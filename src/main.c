@@ -106,10 +106,8 @@ reached or exceeded: %d\n", opt->nzmax);
    }
 
    snprintf(tmp, MAX_STR_LEN, "%s.%02d", opt->numnz_file, g->fold);
-/*   if(opt->nlambda1 == 1)
-      i++;*/
    /* number of non-zero variables for each successful fit and the all-zero
-    * fit */
+    * fit, excluding intercept */
    if(!writevectorl(tmp, g->numnz, i + 1))
       return FAILURE;
 

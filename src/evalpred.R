@@ -34,6 +34,9 @@ cv.auc <- lapply(folds, function(fold) {
 
    lambda <- read.csv(sprintf("lambda1path.csv.%02d", fold), header=FALSE)[,1]
    nz <- read.csv(sprintf("nonzero.csv.%02d", fold), header=FALSE)[,1]
+   
+   # Don't count the intercept, except for first #nonzero
+   nz[-1] <- nz[-1] - 1  
 
    # glmnet::auc expects y = 0/1
    res <- apply(pr, 2, auc,
