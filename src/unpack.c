@@ -3,28 +3,39 @@
 
 int unpack(gmatrix *g, char *filename_out)
 {
-   int j, p1 = g->p + 1;
+   int i, j, p1 = g->p + 1;
    sample sm;
    FILE *out;
+   char *tmp = NULL;
 
    if(!sample_init(&sm, g->n))
       return FAILURE;
 
+   MALLOCTEST(tmp, sizeof(char) * g->n);
+
    FOPENTEST(out, filename_out, "wb");
-   FWRITETEST(g->y, sizeof(double), g->n, out);
+   /*FWRITETEST(g->y, sizeof(double), g->n, out);*/
+   for(i = g->n ; i >= 0 ; --i)
+      tmp[i] = (char)g->y[i];
+   FWRITETEST(tmp, sizeof(char), g->n, out);
 
    /* ignore intercept */
    for(j = 1 ; j < p1 ; j++)
    {
       printf("%d of %d", j, p1);
       g->nextcol(g, &sm, j);
-      FWRITETEST(sm.x, sizeof(double), g->n, out);
+      /*FWRITETEST(sm.x, sizeof(double), g->n, out);*/
+      for(i = g->n ; i >= 0 ; --i)
+	 tmp[i] = (char)sm.x[i];
+      FWRITETEST(tmp, sizeof(char), g->n, out);
       printf("\r");
    }
    printf("\n");
 
    fflush(out);
    fclose(out);
+
+   free(tmp);
 
    return SUCCESS;
 }

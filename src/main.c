@@ -174,7 +174,6 @@ int run_predict(gmatrix *g, predict predict_func, char **beta_files,
 
       /* scale beta using the scales for this data (beta
        * should already be on original scale, not scaled) */
-      /*scale_beta(g->beta, g->beta_orig, g->mean, g->sd, g->p + 1);*/
       for(int j = 0 ; j < g->p + 1 ; j++)
 	 g->beta[j] = g->beta_orig[j];
 
@@ -214,7 +213,6 @@ int do_train(gmatrix *g, Opt *opt, char tmp[])
 	 make_lambda1path(opt, g);
 	 gmatrix_reset(g);
 
-	 /* gmatrix_zero_model(&g);*/
 	 if(!(ret &= run_train(opt, g)))
 	    break;
       }
@@ -254,10 +252,10 @@ int do_predict(gmatrix *g, Opt *opt, char tmp[])
       /* cross-validation: prediction stage */
       for(k = 0 ; k < g->nfolds ; k++)
       {
-	 /*len = strlen(opt->scalefile) + 1 + 3;
+	 len = strlen(opt->scalefile) + 1 + 3;
 	 snprintf(tmp, len, "%s.%02d", opt->scalefile, k);
 	 g->scalefile = tmp;
-	 printf("reading scale file: %s\n", tmp);*/
+	 printf("reading scale file: %s\n", tmp);
 	 if(!(ret &= gmatrix_set_fold(g, k)))
 	    break;
 
@@ -267,7 +265,7 @@ int do_predict(gmatrix *g, Opt *opt, char tmp[])
 	 if(!(ret &= writevectorf(tmp, g->y, g->ncurr)))
 	    break;
 
-	 /* gmatrix_zero_model(&g); */
+	 /*gmatrix_zero_model(&g);*/
 	 gmatrix_reset(g);
 
 	 /* set up correct file names */
@@ -287,9 +285,9 @@ int do_predict(gmatrix *g, Opt *opt, char tmp[])
    }
    else
    {
-      /*g->scalefile = opt->scalefile;
+      g->scalefile = opt->scalefile;
       if(!gmatrix_read_scaling(g, g->scalefile))
-	 return FAILURE;*/
+	 return FAILURE;
       gmatrix_zero_model(g);
       ret = run_predict(g, opt->predict_func,
 	    opt->beta_files, opt->n_beta_files);

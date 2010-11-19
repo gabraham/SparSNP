@@ -58,7 +58,7 @@ int transpose(char *filename_in, char *filename_out, const int n,
 
       j += bufsize;
       bufs++;
-      printf("%lu\r", j);
+      printf("%lu\n", j);
    }
    printf("\n");
 

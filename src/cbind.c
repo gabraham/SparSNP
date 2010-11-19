@@ -3,11 +3,11 @@
 #include <string.h>
 #include "common.h"
 
-/* Concatenates *text* files by columns 
+/* Concatenates *text* files by columns
  */
 int cbind(const int nfiles, char **filenames_in,
       const char *filename_out, const int n,
-      const int p)
+      const int p, const char sep)
 {
    int i, j, p2 = 2 * p, p22 = p2 + 2;
    FILE **in = NULL, *out = NULL;
@@ -32,11 +32,12 @@ int cbind(const int nfiles, char **filenames_in,
 	 }
 	 buf[strlen(buf) - 1] = '\0';
 	 fprintf(out, "%s", buf);
+	 if(sep != '\0' && j < nfiles - 1)
+	    fprintf(out, "%c", sep);
       }
       fprintf(out, "\n");
       printf("\r");
    }
-
 
    for(j = 0 ; j < nfiles ; j++)
       fclose(in[j]);
@@ -53,6 +54,7 @@ int main(int argc, char *argv[])
    int i, j, k, n = 0, p = 0, nfiles = 0;
    char **filenames_in = NULL,
 	 *filename_out = NULL;
+   char sep = '\0';
 
    for(i = 1 ; i < argc ; i++)
    {
@@ -89,6 +91,12 @@ int main(int argc, char *argv[])
 	 i++;
 	 p = (int)atof(argv[i]);
       }
+      else if(strcmp2(argv[i], "-sep"))
+      {
+	 i++;
+	 sep = argv[i][0];
+	 printf("sep: %c\n", sep);
+      }
    }
 
    printf("n: %d   p:%d\n", n, p);
@@ -104,7 +112,7 @@ int main(int argc, char *argv[])
    }
 
    
-   if(!(cbind(nfiles, filenames_in, filename_out, n, p)))
+   if(!(cbind(nfiles, filenames_in, filename_out, n, p, sep)))
    {
       for(i = 0 ; i < nfiles ; i++)
 	 free(filenames_in[i]);

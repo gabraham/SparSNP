@@ -16,7 +16,8 @@ CCFLAGS = -std=gnu99 -Wall -ggdb3 \
 	  -fstrict-aliasing \
 	  -D_FILE_OFFSET_BITS=$(LONG_BIT)
 
-targets = cd scale transpose hapgen2bin hapgen2ped cbind split unpack
+targets = cd scale transpose hapgen2bin hapgen2ped \
+	  cbind split unpack univariable
 all: $(targets)
 
 debug: CCFLAGS = -Wall -ggdb3 -std=gnu99 -D_FILE_OFFSET_BITS=$(LONG_BIT)
@@ -48,8 +49,13 @@ split: common.c util.c ind.c split.c
 unpack: common.c coder.c ind.c gmatrix.c unpack.c
 	$(CC) $(CCFLAGS) $(LIBRARIES) $^ -o unpack
 
+univariable: common.c coder.c ind.c gmatrix.c loss.c util.c \
+   options.c cd.c univariable.c
+	$(CC) $(CCFLAGS) $(LIBRARIES) $^ -o cd
+
 #pcor: common.c gmatrix.c loss.c util.c cd.c pcor.c
 #	$(CC) -Dintype=double $(CCFLAGS) $(LIBRARIES) $^ -o pcor
 
 clean:
 	/bin/rm -f $(targets)
+

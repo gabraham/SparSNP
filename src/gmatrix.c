@@ -79,7 +79,7 @@ int gmatrix_init(gmatrix *g, char *filename, int n, int p,
    
    MALLOCTEST(g->ca, sizeof(cache));
    if(!cache_init(g->ca, p1)) /* +1 not for intercept, which isn't
-				       stored but we need to maintain
+				       stored in cache, but we need to maintain
 				       indexing consistency */
       return FAILURE;
 
@@ -279,7 +279,7 @@ int gmatrix_disk_nextcol(gmatrix *g, sample *s, int j)
    /*if((s->x = cache_get(g->ca, j)))
       return SUCCESS;*/
 
-   /* Data not in cache, get from disk and unpack.
+   /* Get data from disk and unpack.
     * Skip y. Try to put data in cache. */
    FSEEKOTEST(g->file, j * g->nseek, SEEK_SET);
    FREADTEST(g->encbuf, sizeof(dtype), g->nencb, g->file);
@@ -365,7 +365,8 @@ int gmatrix_read_scaling(gmatrix *g, char *file_scale)
 	 for(k = 0 ; k < NUM_X_LEVELS ; k++)
 	 {
 	    l2 = l1 + k;
-	    /* scale unless missing obs */
+	    /* Scale unless missing obs. If missing, make the observed a zero
+	     * so that it contributes nothing to the gradient later. */
 	    g->lookup[l2] = (k != X_LEVEL_NA) ?
 	       (k - g->mean[j]) / g->sd[j] : 0;
 	 }

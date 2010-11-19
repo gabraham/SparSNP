@@ -18,7 +18,7 @@ inline static double zero(const double x, const double thresh)
 
 /* Update linear predictor and related variables.
  * */
-void updatelp(gmatrix *g, const double update, const int j,
+void updatelp(gmatrix *g, const double update,
       const double *restrict x)
 {
    int i, n = g->ncurr;
@@ -79,7 +79,7 @@ double get_lambda1max_gmatrix(gmatrix *g,
       s += g->y[i];
 
    beta_new = inv_func(s / n);
-   updatelp(g, beta_new, 0, NULL);
+   updatelp(g, beta_new, NULL);
    printf("intercept: %.15f (%d samples)\n", beta_new, n);
 
    /* find smallest lambda1 that makes all coefficients zero, by
@@ -158,7 +158,7 @@ double step_regular_sqrhinge(sample *s, gmatrix *g,
    /* compute gradient */
    for(i = n - 1 ; i >= 0 ; --i)
       grad += ylp_neg_tmp[i] * y_tmp[i] * x_tmp[i] * ylp_tmp[i];
-   return grad * g->ncurr_recip;
+   return grad * g->ncurr_recip; /* avoid division */
 }
 
 /* coordinate descent */
@@ -213,6 +213,7 @@ int cd_gmatrix(gmatrix *g,
 	 if(g->active[j])
 	 {
 	    g->nextcol(g, &sm, j);
+
 	    /* iterate over jth variable */
       	    while(iter < maxiters)
       	    {
@@ -226,17 +227,11 @@ int cd_gmatrix(gmatrix *g,
 	       /* beta_new may have changed by thresholding */
 	       s = beta_new - g->beta[j];
 
-	       /* no need to update if beta hasn't changed */
-	       /*if(s != 0)
-	       {
-		  updatelp(g, s, j, sm.x);
-		  g->beta[j] = beta_new;
-	       }*/
-	      	      
+	       /* no need to update if beta hasn't changed much */
 	       if(fabs(s) <= thresh)
 		  break;
 
-	       updatelp(g, s, j, sm.x);
+	       updatelp(g, s, sm.x);
 	       g->beta[j] = beta_new;
 
 	       if(iter > 0 && sign(s) != sign(s_old) && m[j] >= 1e-10)

@@ -99,5 +99,6 @@ double step_regular_logistic(sample *s, gmatrix *g,
 double step_regular_sqrhinge(sample *s, gmatrix *g,
       phi1 phi1_func, phi2 phi2_func);
 
-
+void updatelp(gmatrix *g, const double update,
+      const double *restrict x);
 
