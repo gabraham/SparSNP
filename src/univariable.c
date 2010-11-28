@@ -59,11 +59,11 @@ int cd_simple(gmatrix *g,
       /* actual variable */
       s2 = step_func(sm, g, NULL, NULL);
       *beta -= s2;
-      updatelp(g, -s2, sm->x);
+      /*updatelp(g, -s2, sm->x);*/
 
       for(i = n - 1 ; i >= 0 ; --i)
       {
-	 g->lp[i] = sm->x[i] * -s1;
+	 g->lp[i] = sm->x[i] * -s2;
 	 g->lp_invlogit[i] = 1 / (1 + exp(-g->lp[i]));
       }
 
