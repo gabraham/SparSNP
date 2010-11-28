@@ -104,7 +104,7 @@ int make_hessian(double *hessian, double *x,
  */
 int univar_gmatrix(Opt *opt, gmatrix *g, double *zscore)
 {
-   int j, k,
+   int i, j, k,
        n = g->ncurr,
        p1 = g->p + 1;
    double *hessian = NULL,
@@ -141,7 +141,12 @@ int univar_gmatrix(Opt *opt, gmatrix *g, double *zscore)
 	 return FAILURE;
 
       /* don't let previous estimates affect current ones */
-      gmatrix_zero_model(g);
+      /*gmatrix_zero_model(g);*/
+      for(i = n - 1 ; i >= 0 ; --i)
+      {
+	 g->lp[i] = 0;
+	 g->lp_invlogit[i] = 0.5;
+      }
 
     /*  printf("beta[%d]: %.10f\t", j, beta[j]);*/
 
