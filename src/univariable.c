@@ -36,7 +36,7 @@ int cd_simple(gmatrix *g,
 	      int p)
 {
    int epoch = 1, maxepoch = 1000;
-   double s1 = 10,
+   double s1 = 10, /* just a number larger than threshold */
 	  s2 = 10;
 
    sample sm_intercept;
@@ -48,12 +48,9 @@ int cd_simple(gmatrix *g,
       s1 = step_func(&sm_intercept, g, NULL, NULL);
       *beta_intercept -= s1;
       updatelp(g, -s1, g->intercept);
-      /*printf("\t[%d] s1: %.5f\tintercept: %.5f", epoch, s1,
-       * *beta_intercept);*/
 
       /* actual variable */
       s2 = step_func(sm, g, NULL, NULL);
-     /* printf("\ts2: %.5f\tbeta: %.5f\n",s2, *beta);*/
       *beta -= s2;
       updatelp(g, -s2, sm->x);
 
@@ -81,7 +78,7 @@ int make_hessian(double *hessian, double *x,
 {
    int k;
 
-   double P, q;
+   double P, q, z;
 
    /* row-major ordering */
    for(k = 0 ; k < n ; k++)
@@ -89,9 +86,10 @@ int make_hessian(double *hessian, double *x,
       P = 1 / (1 + exp(-beta_intercept - beta * x[k]));
       q = P * (1 - P);
       hessian[0] += q;
-      hessian[1] += x[k] * q;
+      z = x[k] * q;
+      hessian[1] += z;
       hessian[2] = hessian[1];
-      hessian[3] += x[k] * x[k] * q;
+      hessian[3] += x[k] * z;
    }
 
    return SUCCESS;
@@ -121,8 +119,8 @@ int univar_gmatrix(Opt *opt, gmatrix *g, double *zscore)
 
    MALLOCTEST(hessian, sizeof(double) * 4);
    MALLOCTEST(invhessian, sizeof(double) * 4);
-   MALLOCTEST(beta, sizeof(double) * p1);
-   MALLOCTEST(zscore, sizeof(double) * p1);
+   CALLOCTEST(beta, p1, sizeof(double));
+   CALLOCTEST(zscore, p1, sizeof(double));
 
    /* We don't use this value ever, it's only here for consistency with the
     * multivariable methods such use the intercept */
@@ -131,6 +129,10 @@ int univar_gmatrix(Opt *opt, gmatrix *g, double *zscore)
    /* get p-values per SNP */
    for(j = 1 ; j < p1 ; j++)
    {
+      printf("%d\r", j);
+      if(!g->active[j])
+	 continue;
+      
       beta_intercept = beta[j] = 0.0;
       g->nextcol(g, &sm, j);
 
@@ -141,7 +143,7 @@ int univar_gmatrix(Opt *opt, gmatrix *g, double *zscore)
       /* don't let previous estimates affect current ones */
       gmatrix_zero_model(g);
 
-      printf("beta[%d]: %.10f\t", j, beta[j]);
+    /*  printf("beta[%d]: %.10f\t", j, beta[j]);*/
 
       for(k = 0 ; k < 4 ; k++)
 	 hessian[k] = 0.0;
@@ -153,7 +155,6 @@ int univar_gmatrix(Opt *opt, gmatrix *g, double *zscore)
 
       /* z-score for the SNP only, ignore intercept */
       zscore[j] = beta[j] / sqrt(invhessian[3]);
-      printf("zscore: %.6f\n", zscore[j]);
    }
 
    FREENULL(hessian);
