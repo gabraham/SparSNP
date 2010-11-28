@@ -35,7 +35,8 @@ int cd_simple(gmatrix *g,
 	      int n,
 	      int p)
 {
-   int epoch = 1, maxepoch = 1000;
+   int i, 
+	 epoch = 1, maxepoch = 1000;
    double s1 = 10, /* just a number larger than threshold */
 	  s2 = 10;
 
@@ -47,12 +48,24 @@ int cd_simple(gmatrix *g,
       /* intercept */
       s1 = step_func(&sm_intercept, g, NULL, NULL);
       *beta_intercept -= s1;
-      updatelp(g, -s1, g->intercept);
+      /*updatelp(g, -s1, g->intercept);*/
+
+      for(i = n - 1 ; i >= 0 ; --i)
+      {
+	 g->lp[i] = -s1;
+	 g->lp_invlogit[i] = 1 / (1 + exp(-g->lp[i]));
+      }
 
       /* actual variable */
       s2 = step_func(sm, g, NULL, NULL);
       *beta -= s2;
       updatelp(g, -s2, sm->x);
+
+      for(i = n - 1 ; i >= 0 ; --i)
+      {
+	 g->lp[i] = sm->x[i] * -s1;
+	 g->lp_invlogit[i] = 1 / (1 + exp(-g->lp[i]));
+      }
 
       epoch++;
    }

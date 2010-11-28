@@ -31,7 +31,6 @@ void updatelp(gmatrix *g, const double update,
    if(x)
    {
       for(i = n - 1 ; i >= 0 ; --i)
-	 /*g->lp[i] = clip(g->lp[i] + x[i] * beta_diff, -MAXLP, MAXLP);*/
 	 lp[i] += x[i] * update;
    }
    else /* update from intercept, lp[i] is zero and x[i] is one */
