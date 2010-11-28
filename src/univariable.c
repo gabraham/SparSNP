@@ -27,6 +27,7 @@ void invert2x2(double *y, double *x)
  */
 int cd_simple(gmatrix *g,
 	      sample *sm,
+	      double *beta_intercept,
 	      double *beta,
 	      step step_func, 
 	      phi1 phi1_func,
@@ -34,28 +35,31 @@ int cd_simple(gmatrix *g,
 	      int n,
 	      int p)
 {
-   int epoch = 1, maxepoch = 100;
+   int epoch = 1, maxepoch = 1000;
    double s1 = 10,
-	  s2 = 10,
-	  beta_intercept = 0;
+	  s2 = 10;
 
-   while(epoch <= maxepoch && fabs(s1) >= 1e-9 && fabs(s2) >= s2)
+   sample sm_intercept;
+   sm_intercept.x = g->intercept;
+
+   while(epoch <= maxepoch && (fabs(s1) >= 1e-9 || fabs(s2) >= 1e-9))
    {
       /* intercept */
-      s1 = step_func(sm, g, phi1_func, phi2_func);
-      beta_intercept -= s1;
-      updatelp(g, s1, NULL);
-      printf("\t[%d] s1: %.5f\tintercept: %.5f", epoch, s1, beta_intercept);
+      s1 = step_func(&sm_intercept, g, NULL, NULL);
+      *beta_intercept -= s1;
+      updatelp(g, -s1, g->intercept);
+      /*printf("\t[%d] s1: %.5f\tintercept: %.5f", epoch, s1,
+       * *beta_intercept);*/
 
       /* actual variable */
-      s2 = step_func(sm, g, phi1_func, phi2_func);
-      printf("\ts2: %.5f\tbeta: %.5f\n",s2, *beta);
+      s2 = step_func(sm, g, NULL, NULL);
+     /* printf("\ts2: %.5f\tbeta: %.5f\n",s2, *beta);*/
       *beta -= s2;
-      updatelp(g, s2, sm->x);
+      updatelp(g, -s2, sm->x);
 
       epoch++;
    }
-   printf("\n");
+   /*printf("\n");*/
 
    return SUCCESS;
 }
@@ -72,28 +76,23 @@ int cd_simple(gmatrix *g,
  *
  */
 int make_hessian(double *hessian, double *x,
-      double *beta, int n, phi2 phi2_func)
+      double beta_intercept, double beta,
+      int n, phi2 phi2_func)
 {
-   int i, j, k;
+   int k;
 
-   double P,
-	  *q = NULL;
-
-   MALLOCTEST(q, sizeof(double) * n);
-
-   for(k = 0 ; k < n ; k++)
-   {
-      P = exp(beta[0] + beta[1] * x[k]);
-      q[k] = P * (1 - P); 
-   }
+   double P, q;
 
    /* row-major ordering */
-   for(i = 0 ; i < 2 ; i++)
-      for(j = 0 ; j < 2 ; j++)
-	 for(k = 0 ; k < n ; k++)
-	    hessian[i * 2 + j] += x[k * 2 + i] * x[k * 2 + j] * q[k];
-
-   FREENULL(q);
+   for(k = 0 ; k < n ; k++)
+   {
+      P = 1 / (1 + exp(-beta_intercept - beta * x[k]));
+      q = P * (1 - P);
+      hessian[0] += q;
+      hessian[1] += x[k] * q;
+      hessian[2] = hessian[1];
+      hessian[3] += x[k] * x[k] * q;
+   }
 
    return SUCCESS;
 }
@@ -107,13 +106,13 @@ int make_hessian(double *hessian, double *x,
  */
 int univar_gmatrix(Opt *opt, gmatrix *g, double *zscore)
 {
-   int j,
+   int j, k,
        n = g->ncurr,
-       p = g->p,
        p1 = g->p + 1;
    double *hessian = NULL,
 	  *invhessian = NULL,
 	  *beta = NULL;
+   double beta_intercept = 0;
 
    sample sm;
 
@@ -123,32 +122,38 @@ int univar_gmatrix(Opt *opt, gmatrix *g, double *zscore)
    MALLOCTEST(hessian, sizeof(double) * 4);
    MALLOCTEST(invhessian, sizeof(double) * 4);
    MALLOCTEST(beta, sizeof(double) * p1);
-   MALLOCTEST(zscore, sizeof(double) * p);
+   MALLOCTEST(zscore, sizeof(double) * p1);
 
+   /* We don't use this value ever, it's only here for consistency with the
+    * multivariable methods such use the intercept */
    beta[0] = 0;
 
    /* get p-values per SNP */
    for(j = 1 ; j < p1 ; j++)
    {
+      beta_intercept = beta[j] = 0.0;
       g->nextcol(g, &sm, j);
 
-      if(!cd_simple(g, &sm, beta + j, opt->step_func,
+      if(!cd_simple(g, &sm, &beta_intercept, beta + j, opt->step_func,
 	    opt->phi1_func, opt->phi2_func, n, 2))
 	 return FAILURE;
 
       /* don't let previous estimates affect current ones */
       gmatrix_zero_model(g);
 
-      printf("beta[%d]: %.10f\n", j, beta[j]);
+      printf("beta[%d]: %.10f\t", j, beta[j]);
 
-      if(!make_hessian(hessian, sm.x, beta, n, opt->phi2_func))
+      for(k = 0 ; k < 4 ; k++)
+	 hessian[k] = 0.0;
+
+      if(!make_hessian(hessian, sm.x, beta_intercept, beta[j], n, opt->phi2_func))
 	 return FAILURE;
 
       invert2x2(invhessian, hessian);
 
       /* z-score for the SNP only, ignore intercept */
       zscore[j] = beta[j] / sqrt(invhessian[3]);
-	    
+      printf("zscore: %.6f\n", zscore[j]);
    }
 
    FREENULL(hessian);
