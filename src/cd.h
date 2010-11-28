@@ -8,6 +8,9 @@
 
 #define MAX_SHOW_NOTCONV 100
 
+#define OPTIONS_CALLER_CD 1
+#define OPTIONS_CALLER_UNIVARIABLE 2
+
 typedef double (*predict_pt)(double);
 typedef double (*phi1)(double);
 typedef double (*phi2)(double);
@@ -18,6 +21,7 @@ typedef double (*step)(sample *s, gmatrix *g,
 typedef double (*predict)(double x);
 
 typedef struct Opt {
+   short caller;
    short mode;
    short model;
    int maxepochs;
@@ -81,7 +85,7 @@ double get_lambda1max_gmatrix(gmatrix *g,
 
 int cvsplit(Opt *opt);
 void opt_free(Opt *opt);
-int opt_defaults(Opt *opt);
+int opt_defaults(Opt *opt, short caller);
 int opt_parse(int argc, char* argv[], Opt* opt);
 int make_lambda1path(Opt *opt, gmatrix *g);
 int run(Opt *opt, gmatrix *g);

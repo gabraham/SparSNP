@@ -26,10 +26,11 @@ void opt_free(Opt *opt)
    }
 }
 
-int opt_defaults(Opt *opt)
+int opt_defaults(Opt *opt, short caller)
 {
    const char *beta_default = "beta.csv";
 
+   opt->caller = caller;
    opt->mode = MODE_TRAIN;
    opt->model = 0;
    opt->nlambda1 = 100;
@@ -247,22 +248,44 @@ int opt_parse(int argc, char* argv[], Opt* opt)
       }
    }
 
-
-   if(opt->filename == NULL || opt->model == 0
-	 || opt->n == 0 || opt->p == 0 || !opt->scalefile)
+   if(opt->caller == OPTIONS_CALLER_CD)
    {
-      printf("usage: cd [-train|-predict] -model <model> \
+      if(opt->filename == NULL || opt->model == 0
+            || opt->n == 0 || opt->p == 0 || !opt->scalefile)
+      {
+         printf("usage: cd [-train|-predict] -model <model> \
 -bin <filename> -n <#samples> -p <#variables> -scale <scalefile> \
 [-betafiles <beta filename/s>] [-pred <pred filename>] \
 [-maxepochs <maxepochs>] [-maxiters <maxiters>] [-l1 <lambda1>] [-notencoded] \
 [-plink] [-l2 <lambda2>] [-thresh <threshold>] [-foldind <foldsfile>] \
 [-pred <prediction file>] [-seed <seed>] [-v] [-vv]\n");
-      return FAILURE;
+         return FAILURE;
+      }
+      else if(opt->n_beta_files > 1 && opt->mode == MODE_TRAIN)
+      {
+         printf("warning: multiple beta filenames provided in training mode, \
+onl   y using the first one\n");
+      }
    }
-   else if(opt->n_beta_files > 1 && opt->mode == MODE_TRAIN)
+   else
    {
-      printf("warning: multiple beta filenames provided in training mode, \
-only using the first one\n");
+      if(opt->filename == NULL || opt->model == 0
+            || opt->n == 0 || opt->p == 0)
+      {
+         printf("usage: univariable [-train|-predict] -model <model> \
+-bin <filename> -n <#samples> -p <#variables> -scale <scalefile> \
+[-betafiles <beta filename/s>] [-pred <pred filename>] \
+[-maxepochs <maxepochs>] [-maxiters <maxiters>] [-l1 <lambda1>] \
+[-notencoded] \
+[-plink] [-l2 <lambda2>] [-thresh <threshold>] [-foldind <foldsfile>] \
+[-pred <prediction file>] [-seed <seed>] [-v] [-vv]\n");
+         return FAILURE;
+      }
+      else if(opt->n_beta_files > 1 && opt->mode == MODE_TRAIN)
+      {
+         printf("warning: multiple beta filenames provided in training mode, \
+               only using the first one\n");
+      }
    }
 
    if(!opt->encoded)

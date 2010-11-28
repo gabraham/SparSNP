@@ -51,7 +51,7 @@ unpack: common.c coder.c ind.c gmatrix.c unpack.c
 
 univariable: common.c coder.c ind.c gmatrix.c loss.c util.c \
    options.c cd.c univariable.c
-	$(CC) $(CCFLAGS) $(LIBRARIES) $^ -o cd
+	$(CC) $(CCFLAGS) $(LIBRARIES) $^ -o univariable
 
 #pcor: common.c gmatrix.c loss.c util.c cd.c pcor.c
 #	$(CC) -Dintype=double $(CCFLAGS) $(LIBRARIES) $^ -o pcor

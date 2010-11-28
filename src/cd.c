@@ -127,14 +127,15 @@ double step_regular_logistic(sample *s, gmatrix *g,
    double grad = 0, d2 = 0;
    double *restrict y_tmp = g->y,
 	  *restrict lp_invlogit_tmp = g->lp_invlogit,
-	  *restrict x_tmp = s->x,
-	  *restrict x2_tmp = s->x2;
+	  *restrict x_tmp = s->x;
+	  /**restrict x2_tmp = s->x2;*/
 
    /* compute gradient */
    for(i = n - 1 ; i >= 0 ; --i)
    {
       grad += x_tmp[i] * (lp_invlogit_tmp[i] - y_tmp[i]);
-      d2 += x2_tmp[i] * lp_invlogit_tmp[i] * (1 - lp_invlogit_tmp[i]);
+      d2 += x_tmp[i] * x_tmp[i] 
+	 * lp_invlogit_tmp[i] * (1 - lp_invlogit_tmp[i]);
    }
    if(d2 == 0)
       return 0;

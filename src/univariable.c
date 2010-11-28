@@ -3,8 +3,10 @@
 #include "util.h"
 #include "coder.h"
 
+#define OPTIONS_CALLER univariable
+
 /* 
- * Invert 2x2 matrix x and put it in y, matrix ordering:
+ * Invert 2x2 matrix x and put it in y, row-major matrix ordering:
  *  0 1
  *  2 3
  */
@@ -33,37 +35,67 @@ int cd_simple(gmatrix *g,
 	      int p)
 {
    int epoch = 1, maxepoch = 100;
-   double s = 0,
+   double s1 = 10,
+	  s2 = 10,
 	  beta_intercept = 0;
 
-   while(epoch <= maxepoch)
+   while(epoch <= maxepoch && fabs(s1) >= 1e-9 && fabs(s2) >= s2)
    {
       /* intercept */
-      s = step_func(sm, g, phi1_func, phi2_func);
-      beta_intercept -= s;
-      updatelp(g, s, NULL);
+      s1 = step_func(sm, g, phi1_func, phi2_func);
+      beta_intercept -= s1;
+      updatelp(g, s1, NULL);
+      printf("\t[%d] s1: %.5f\tintercept: %.5f", epoch, s1, beta_intercept);
 
       /* actual variable */
-      s = step_func(sm, g, phi1_func, phi2_func);
-      *beta -= s;
-      updatelp(g, s, sm->x);
+      s2 = step_func(sm, g, phi1_func, phi2_func);
+      printf("\ts2: %.5f\tbeta: %.5f\n",s2, *beta);
+      *beta -= s2;
+      updatelp(g, s2, sm->x);
 
       epoch++;
    }
+   printf("\n");
 
    return SUCCESS;
 }
 
-/* evaluate the 2x2 Hessian at beta
+/* 
+ * Evaluate the 2 by 2 Hessian at beta
  *
  * in R:
- * Q <- diag(drop(plogis(x %*% beta) * (1 - plogis(x %*% beta))))
- * H <- crossprod(x, Q) %*% x
+ *
+ * Q <- diag(drop(plogis(x %*% beta) * (1 - plogis(x %*% beta)))),
+ *    an n by n diagonal matrix
+ *
+ * H <- crossprod(x, Q) %*% x, a 2 by 2 matrix
+ *
  */
-void make_hessian(double *hessian, double *x,
+int make_hessian(double *hessian, double *x,
       double *beta, int n, phi2 phi2_func)
 {
-    
+   int i, j, k;
+
+   double P,
+	  *q = NULL;
+
+   MALLOCTEST(q, sizeof(double) * n);
+
+   for(k = 0 ; k < n ; k++)
+   {
+      P = exp(beta[0] + beta[1] * x[k]);
+      q[k] = P * (1 - P); 
+   }
+
+   /* row-major ordering */
+   for(i = 0 ; i < 2 ; i++)
+      for(j = 0 ; j < 2 ; j++)
+	 for(k = 0 ; k < n ; k++)
+	    hessian[i * 2 + j] += x[k * 2 + i] * x[k * 2 + j] * q[k];
+
+   FREENULL(q);
+
+   return SUCCESS;
 }
 
 /* Two stages:
@@ -73,7 +105,7 @@ void make_hessian(double *hessian, double *x,
  *
  * 2) Fit a multivariable model to the top k SNPs plus intercept
  */
-int univar_gmatrix(Opt *opt, gmatrix *g)
+int univar_gmatrix(Opt *opt, gmatrix *g, double *zscore)
 {
    int j,
        n = g->ncurr,
@@ -81,8 +113,7 @@ int univar_gmatrix(Opt *opt, gmatrix *g)
        p1 = g->p + 1;
    double *hessian = NULL,
 	  *invhessian = NULL,
-	  *beta = NULL,
-	  *zscore = NULL;
+	  *beta = NULL;
 
    sample sm;
 
@@ -91,18 +122,28 @@ int univar_gmatrix(Opt *opt, gmatrix *g)
 
    MALLOCTEST(hessian, sizeof(double) * 4);
    MALLOCTEST(invhessian, sizeof(double) * 4);
-   MALLOCTEST(beta, sizeof(double) * p);
+   MALLOCTEST(beta, sizeof(double) * p1);
    MALLOCTEST(zscore, sizeof(double) * p);
+
+   beta[0] = 0;
 
    /* get p-values per SNP */
    for(j = 1 ; j < p1 ; j++)
    {
       g->nextcol(g, &sm, j);
 
-      cd_simple(g, &sm, beta, opt->step_func,
-	    opt->phi1_func, opt->phi2_func, n, 2);
+      if(!cd_simple(g, &sm, beta + j, opt->step_func,
+	    opt->phi1_func, opt->phi2_func, n, 2))
+	 return FAILURE;
 
-      make_hessian(hessian, sm.x, beta, n, opt->phi2_func);
+      /* don't let previous estimates affect current ones */
+      gmatrix_zero_model(g);
+
+      printf("beta[%d]: %.10f\n", j, beta[j]);
+
+      if(!make_hessian(hessian, sm.x, beta, n, opt->phi2_func))
+	 return FAILURE;
+
       invert2x2(invhessian, hessian);
 
       /* z-score for the SNP only, ignore intercept */
@@ -122,12 +163,17 @@ int run_train(Opt *opt, gmatrix *g)
 {
    int ret;
    /*char tmp[MAX_STR_LEN];*/
+   double *zscore = NULL;
+
+   MALLOCTEST(zscore, sizeof(double) * g->p);
 
    if(opt->verbose)
       printf("%d training samples, %d test samples\n",
 	    g->ntrain[g->fold], g->ntest[g->fold]);
 
-   ret = univar_gmatrix(opt, g);
+   ret = univar_gmatrix(opt, g, zscore);
+
+   FREENULL(zscore);
 
    return SUCCESS;
 }
@@ -193,7 +239,8 @@ int main(int argc, char* argv[])
 
    setbuf(stdout, NULL);
 
-   if(!opt_defaults(&opt) || !opt_parse(argc, argv, &opt))
+   if(!opt_defaults(&opt, OPTIONS_CALLER_UNIVARIABLE) 
+	 || !opt_parse(argc, argv, &opt))
    {
       opt_free(&opt);
       return EXIT_FAILURE;

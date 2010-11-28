@@ -2,6 +2,8 @@
 #include "cd.h"
 #include "util.h"
 
+#define OPTIONS_CALLER cd
+
 /*
  * Creates a vector of lambda1 penalties
  */
@@ -306,7 +308,8 @@ int main(int argc, char* argv[])
 
    setbuf(stdout, NULL);
 
-   if(!opt_defaults(&opt) || !opt_parse(argc, argv, &opt))
+   if(!opt_defaults(&opt, OPTIONS_CALLER_CD) 
+	 || !opt_parse(argc, argv, &opt))
    {
       opt_free(&opt);
       return EXIT_FAILURE;
