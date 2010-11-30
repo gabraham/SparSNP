@@ -72,6 +72,9 @@ int cd_simple(gmatrix *g,
    return SUCCESS;
 }
 
+/*
+ * Iteratively-Reweighted Least Squares for logistic regression
+ */
 int irls(gmatrix *g,
 	      sample *sm,
 	      double *beta_intercept,
@@ -82,7 +85,7 @@ int irls(gmatrix *g,
 	      int n,
 	      int p)
 {
-   int i, iter = 1, maxiter = 100;
+   int i, j, iter = 1, maxiter = 20;
 
    double grad[2] = {0, 0};
    double hessian[4] = {0, 0, 0, 0},
@@ -91,14 +94,22 @@ int irls(gmatrix *g,
 
    while(iter <= maxiter && (fabs(s1) >= 1e-8 || fabs(s2) >= 1e-8))
    {
+      for(j = 3 ; j >= 0 ; --j)
+      {
+	 grad[j] = 0.0;
+	 hessian[j] = 0.0;
+      }
+
       for(i = n - 1; i >= 0 ; --i)
       {
 	 g->lp[i] = *beta_intercept + *beta * sm->x[i];
-	 g->lp_invlogit[i] = 1 / (1 + exp(g->lp[i]));
+	 g->lp_invlogit[i] = 1 / (1 + exp(-g->lp[i]));
 
-	 grad[0] += (g->lp_invlogit[i] - g->y[i]);
+	 /* Gradient */
+	 grad[0] +=            (g->lp_invlogit[i] - g->y[i]);
 	 grad[1] += sm->x[i] * (g->lp_invlogit[i] - g->y[i]);
 
+	 /* Hessian */
 	 w = g->lp_invlogit[i] * (1 - g->lp_invlogit[i]);
 	 hessian[0] += w;
 	 z = sm->x[i] * w;
@@ -116,6 +127,9 @@ int irls(gmatrix *g,
       printf("%d intercept: %.5f beta: %.5f\n", iter, *beta_intercept, *beta);
       iter++;
    }
+
+   if(iter >= maxiter)
+      printf("IRLS didn't converge\n");
 
    return SUCCESS;
 }

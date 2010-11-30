@@ -5,7 +5,7 @@ y <- scan("~/Software/hapgen_1.3/sim4.3/sim.y")
 
 n <- length(y)
 x0 <- numeric(n) + 1
-x1 <- x[,1]
+x1 <- x[,3]
 
 x01 <- cbind(1, x1)
 
@@ -14,8 +14,10 @@ p <- ncol(x)
 lp <- numeric(n)
 lpinv <- plogis(lp)
 beta <- numeric(2)
+iter <- 1
+s <- numeric(2) + 10
 
-for(iter in 1:10)
+while(any(abs(s) >= 1e-9) && iter <= 100)
 {
    #s0 <- sum(x0 * (lpinv - y)) / sum(x0 ^ 2 * lpinv * (1 - lpinv))
    #s1 <- sum(x1 * (lpinv - y)) / sum(x1 ^ 2 * lpinv * (1 - lpinv))
@@ -31,8 +33,10 @@ for(iter in 1:10)
       sum(x0 * x1 * w),
       sum(x1 * x0 * w),
       sum(x1^2 * w)), 2, 2)
-   beta <- beta - solve(H) %*% crossprod(x01, lpinv - y) 
+   s <- solve(H) %*% crossprod(x01, lpinv - y) 
+   beta <- beta - g * s
    cat(beta, "\n")
+   iter <- iter + 1
 }
 
 
