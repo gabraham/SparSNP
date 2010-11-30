@@ -124,7 +124,8 @@ int irls(gmatrix *g,
       *beta_intercept -= s1;
       *beta -= s2;
 
-      printf("%d intercept: %.5f beta: %.5f\n", iter, *beta_intercept, *beta);
+      /*printf("%d intercept: %.5f beta: %.5f\n", iter, *beta_intercept,
+       * *beta);*/
       iter++;
    }
 
@@ -275,11 +276,10 @@ int run_train(Opt *opt, gmatrix *g, double zthresh)
    }
 
    if(numselected == 0)
-   {
       printf("no SNP exceeded threshold, aborting\n");
-   }
    else
    {
+      printf("%d SNP exceeded z-score=%.3f\n", numselected, zthresh);
       /* train un-penalised multivariable model on
        * the selected SNPs, with lambda=0 */
       ret = cd_gmatrix(
