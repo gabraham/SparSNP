@@ -50,8 +50,8 @@ unpack: common.c coder.c ind.c gmatrix.c unpack.c
 	$(CC) $(CCFLAGS) $(LIBRARIES) $^ -o unpack
 
 univariable: common.c coder.c ind.c gmatrix.c loss.c util.c \
-   options.c cd.c univariable.c
-	$(CC) $(CCFLAGS) $(LIBRARIES) $^ -o univariable
+   options.c cd.c svd.c univariable.c
+	$(CC) $(CCFLAGS) $(LIBRARIES) -llapack -lblas $^ -o univariable
 
 #pcor: common.c gmatrix.c loss.c util.c cd.c pcor.c
 #	$(CC) -Dintype=double $(CCFLAGS) $(LIBRARIES) $^ -o pcor

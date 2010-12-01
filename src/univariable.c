@@ -2,6 +2,7 @@
 #include "cd.h"
 #include "util.h"
 #include "coder.h"
+#include "svd.h"
 
 #define OPTIONS_CALLER univariable
 
@@ -118,7 +119,9 @@ int irls(gmatrix *g,
 	 hessian[3] += sm->x[i] * z;
       }
       
-      invert2x2(invhessian, hessian);
+      /*invert2x2(invhessian, hessian);*/
+      pseudoinverse(hessian, &n, n&, invhessian);
+
       s1 = invhessian[0] * grad[0] + invhessian[1] * grad[1];
       s2 = invhessian[2] * grad[0] + invhessian[3] * grad[1];
       *beta_intercept -= s1;
