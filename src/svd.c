@@ -1,4 +1,12 @@
+#include <stdlib.h>
+#include <string.h>
+#include <math.h>
+#include <stdio.h>
+
+#include "common.h"
 #include "svd.h"
+
+#define EPS 1e-9
 
 /*
  * This declaration is necessary since /usr/lib/clapack.h on Linux doesn't
@@ -34,6 +42,24 @@ void tcrossprod(double *A, double *B, int *m, int *k, int *n, double *C)
 }
 
 /*
+ * C = A' B
+ */
+void crossprod(double *A, double *B, int *m, int *k, int *n, double *C)
+{
+   double alpha = 1.0, beta = 0.0;
+   int LDA = *m;
+   int LDB = *n;
+   int LDC = *m;
+
+/*
+ *  unverified
+
+   cblas_dgemm(CblasColMajor, CblasTrans, CblasTrans,
+	 *m, *n, *k, alpha, A, LDA, B, LDB, beta, C, LDC);
+	 */
+}
+
+/*
  * Takes the m by n matrix x, drops the columns for which the flags are 0,
  * returns the resulting matrix.
  */
@@ -45,7 +71,7 @@ double* dropcolumns(double *x, int m, int n, int* flags)
    for(j = 0 ; j < n ; j++)
       num += flags[j];
    
-   x2 = Calloc(m * num, double);
+   x2 = calloc(m * num, sizeof(double));
 
    for(i = 0 ; i < m ; i++)
    {
@@ -74,7 +100,7 @@ double* droprows(double *x, int m, int n, int* flags)
    for(i = 0 ; i < m ; i++)
       num += flags[i];
 
-   x2 = Calloc(num * n, double);
+   x2 = calloc(num * n, sizeof(double));
 
    k = 0;
    for(i = 0 ; i < m ; i++)
@@ -103,7 +129,7 @@ double* droprows(double *x, int m, int n, int* flags)
  */
 int pseudoinverse(double *Aorig, int *m, int *n, double *P)
 {
-   double *A, *U, *U2, *S, *S2, *VT, *VT2,
+   double *A, *U, *U2, *S, *VT, *VT2,
 	  *WORK, *TMP, optwork = 0, *Sinv, tol, maxs;
 
    int LDA = *m,
@@ -117,25 +143,17 @@ int pseudoinverse(double *Aorig, int *m, int *n, double *P)
        *eigens, neigens;
    char JOBZ[] = {'S'};
 
-   A = Calloc((*m) * (*n), double);
+   A = calloc((*m) * (*n), sizeof(double));
    memcpy(A, Aorig, sizeof(double) * (*m) * (*n));
 
    q = fmin(*m, *n);
    LDVT = q;
 
-   IWORK = Calloc(8 * q, int);
-   S = Calloc(q, double);
-   eigens = Calloc(q, int);
-   U = Calloc(LDU * q, double);
-   VT = Calloc(q * (*n), double);
-
-   #ifdef VERBOSE
-   if(VERBOSE > 1)
-   {
-      printf("A\n");
-      printmatrix(A, m, n, CblasColMajor);
-   }
-   #endif
+   IWORK = calloc(8 * q, sizeof(int));
+   S = calloc(q, sizeof(double));
+   eigens = calloc(q, sizeof(int));
+   U = calloc(LDU * q, sizeof(double));
+   VT = calloc(q * (*n), sizeof(double));
 
    /* Query to get the optimal work space size */
    INFO = dgesdd(JOBZ, m, n, A, &LDA, S, U, &LDU, VT,
@@ -148,14 +166,14 @@ int pseudoinverse(double *Aorig, int *m, int *n, double *P)
    }
 
    LWORK = (int)optwork;
-   WORK = Calloc(LWORK, double);
+   WORK = calloc(LWORK, sizeof(double));
 
    /* Now do actual SVD */
    INFO = dgesdd(JOBZ, m, n, A, &LDA, S, U, &LDU, VT,
 	 &LDVT, WORK, &LWORK, IWORK);
-   Free(IWORK);
-   Free(WORK);
-   Free(A);
+   free(IWORK);
+   free(WORK);
+   free(A);
    if(INFO != 0)
    {
       /*error("Error %d from dgesdd", INFO);*/
@@ -170,127 +188,63 @@ int pseudoinverse(double *Aorig, int *m, int *n, double *P)
 	 maxs = S[i];
 
    /* Drop eigenvectors with eigenvalues that are close to zero */
-
    /* Same tolerance heuristic as in corpcor package */
    tol = fmax(*m, *n) * maxs * EPS;
-
-   #ifdef VERBOSE
-   if(VERBOSE > 1)
-      printf("tol=%5.15f\n", tol);
-   #endif
 
    /* Find which eigenvalues fall above tol (1: above, 0: below) */
    neigens = 0;
    for(i = 0 ; i < q ; i++)
-   {
       neigens += eigens[i] = fabs(S[i]) <= tol ? 0 : 1;
-
-      #ifdef VERBOSE
-      if(VERBOSE > 1)
-	 printf("eigens[%d]=%d\n", i, eigens[i]);
-      #endif
-   }
-
-   #ifdef VERBOSE
-   if(VERBOSE > 1)
-      printf("neigens=%d\n", neigens);
-   #endif
 
    /* 
     * Return a matrix of zeros of dimensions n * m
     */
    if(neigens == 0)
    {
-      #ifdef VERBOSE
-      if(VERBOSE > 1)
-	 printf("All eigenvalues are zero, returning zero matrix\n");
-      #endif
-
       for(i = 0 ; i < *m ; i++)
 	 for(j = 0 ; j < *n ; j++)
 	    P[i + j * (*m)] = 0;
 
-      Free(U);
-      Free(VT);
+      free(U);
+      free(VT);
       return SUCCESS;
    }
 
    U2 = dropcolumns(U, LDU, q, eigens);
    VT2 = droprows(VT, q, *n, eigens);
    Sinv = calloc(neigens * neigens, sizeof(double));
-   Free(U);
-   Free(VT);
-
-   #ifdef VERBOSE
-   if(VERBOSE > 1)
-   {
-      printf("U\n");
-      printmatrix(U, &LDU, &q, CblasColMajor);
-      printf("VT\n");
-      printmatrix(VT, &q, n, CblasColMajor);
-
-      printf("U2\n");
-      printmatrix(U2, &LDU, &neigens, CblasColMajor);
-      printf("VT2\n");
-      printmatrix(VT2, &neigens, n, CblasColMajor);
-   }
-   #endif
+   free(U);
+   free(VT);
 
    /* Sinv = S^{-1}
     *
     * Sinv is a matrix, with the diagonal being the vector S
     * Ignore the tiny eigenvalues
     */
-   #ifdef VERBOSE
-   if(VERBOSE > 1)
-      printf("S\n");
-   #endif
 
    k = 0;
    for(i = 0 ; i < q ; i++)
    {
-      #ifdef VERBOSE
-      if(VERBOSE > 1)
-	 printf("%10.5g ", S[i]);
-      #endif
-
       if(eigens[i])
       {
 	 Sinv[k * neigens + k] = 1.0 / S[i];
 	 k++;
       }
    }
-   Free(S);
-
-   #ifdef VERBOSE
-   if(VERBOSE > 1)
-   {
-      printf("\n");
-      printf("Sinv\n");
-      printmatrix(Sinv, &neigens, &neigens, CblasColMajor);
-   }
-   #endif
+   free(S);
 
    /* TMP = VT' Sinv */
-   TMP = Calloc((*n) * neigens, double);
+   TMP = calloc((*n) * neigens, sizeof(double));
    cblas_dgemm(CblasColMajor, CblasTrans, CblasNoTrans,
 	 *n, neigens, neigens, 1.0, VT2, neigens, Sinv, neigens, 0, TMP, *n);
-   Free(VT2);
-   Free(Sinv);
-
-   #ifdef VERBOSE
-   if(VERBOSE > 1)
-   {
-      printf("TMP\n");
-      printmatrix(TMP, n, &neigens, CblasColMajor);
-   }
-   #endif
+   free(VT2);
+   free(Sinv);
 
    /* P = TMP U' */
    cblas_dgemm(CblasColMajor, CblasNoTrans, CblasTrans,
 	 *n, LDU, neigens, 1.0, TMP, *n, U2, LDU, 0, P, *n);
-   Free(TMP);
-   Free(U2);
+   free(TMP);
+   free(U2);
 
    return SUCCESS;
 }

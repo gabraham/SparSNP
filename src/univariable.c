@@ -77,25 +77,31 @@ int cd_simple(gmatrix *g,
  * Iteratively-Reweighted Least Squares for logistic regression
  */
 int irls(gmatrix *g,
-	      sample *sm,
-	      double *beta_intercept,
-	      double *beta,
-	      step step_func, 
-	      phi1 phi1_func,
-	      phi2 phi2_func,
-	      int n,
-	      int p)
+         double *beta_intercept,
+	 double *beta,
+	 step step_func, 
+	 phi1 phi1_func,
+	 phi2 phi2_func,
+	 int n,
+	 int p)
 {
    int i, j, iter = 1, maxiter = 20;
 
-   double grad[2] = {0, 0};
-   double hessian[4] = {0, 0, 0, 0},
-       invhessian[4] = {0, 0, 0, 0};
-   double w, z, s1 = 10, s2 = 10;
+   double *grad = NULL,
+	  *hessian = NULL,
+	  *invhessian = NULL,
+	  *s = NULL,
+	  *tmpx = NULL;
+   double w, z;
 
-   while(iter <= maxiter && (fabs(s1) >= 1e-8 || fabs(s2) >= 1e-8))
+   MALLOCTEST(grad, sizeof(double) * p);
+   MALLOCTEST(hessian, sizeof(double) * p * p);
+   MALLOCTEST(invhessian, sizeof(double) * p * p);
+   MALLOCTEST(s, sizeof(double) * p);
+
+   while(iter <= maxiter) 
    {
-      for(j = 3 ; j >= 0 ; --j)
+      for(j = p1 ; j >= 0 ; --j)
       {
 	 grad[j] = 0.0;
 	 hessian[j] = 0.0;
@@ -107,20 +113,25 @@ int irls(gmatrix *g,
 	 g->lp_invlogit[i] = 1 / (1 + exp(-g->lp[i]));
 
 	 /* Gradient */
-	 grad[0] +=            (g->lp_invlogit[i] - g->y[i]);
-	 grad[1] += sm->x[i] * (g->lp_invlogit[i] - g->y[i]);
+	 for(j = p1 ; j >= 0 ; --j)
+	 {
+	    grad[j] += x[] * (g->lp_invlogit[i] - g->y[i]);
+	 }
 
 	 /* Hessian */
-	 w = g->lp_invlogit[i] * (1 - g->lp_invlogit[i]);
+	 /*w = g->lp_invlogit[i] * (1 - g->lp_invlogit[i]);
 	 hessian[0] += w;
 	 z = sm->x[i] * w;
 	 hessian[1] += z;
 	 hessian[2] = hessian[1];
-	 hessian[3] += sm->x[i] * z;
+	 hessian[3] += sm->x[i] * z;*/
+	 xtmp[i] = x[i] * sqrt(w[i]);
+
+	 crossprod(xtmp, xtmp, ,, hessian);
       }
       
       /*invert2x2(invhessian, hessian);*/
-      pseudoinverse(hessian, &n, n&, invhessian);
+      pseudoinverse(hessian, &two, &two, invhessian);
 
       s1 = invhessian[0] * grad[0] + invhessian[1] * grad[1];
       s2 = invhessian[2] * grad[0] + invhessian[3] * grad[1];
@@ -134,6 +145,11 @@ int irls(gmatrix *g,
 
    if(iter >= maxiter)
       printf("IRLS didn't converge\n");
+
+   FREENULL(grad);
+   FREENULL(hessian);
+   FREENULL(invhessian);
+   FREENULL(s);
 
    return SUCCESS;
 }
@@ -182,7 +198,8 @@ int univar_gmatrix(Opt *opt, gmatrix *g, double *zscore)
 {
    int i, j, k,
        n = g->ncurr,
-       p1 = g->p + 1;
+       p1 = g->p + 1,
+       two = 2;
    double *hessian = NULL,
 	  *invhessian = NULL,
 	  *beta = NULL;
@@ -233,7 +250,8 @@ int univar_gmatrix(Opt *opt, gmatrix *g, double *zscore)
       if(!make_hessian(hessian, sm.x, beta_intercept, beta[j], n))
 	 return FAILURE;
 
-      invert2x2(invhessian, hessian);
+      /*invert2x2(invhessian, hessian);*/
+      pseudoinverse(hessian, &two, &two, invhessian);
 
       /* z-score for the SNP only, ignore intercept */
       zscore[j] = beta[j] / sqrt(invhessian[3]);
@@ -285,12 +303,12 @@ int run_train(Opt *opt, gmatrix *g, double zthresh)
       printf("%d SNP exceeded z-score=%.3f\n", numselected, zthresh);
       /* train un-penalised multivariable model on
        * the selected SNPs, with lambda=0 */
-      ret = cd_gmatrix(
+      /*ret = cd_gmatrix(
 	    g, opt->phi1_func, opt->phi2_func,
 	    opt->step_func,
 	    opt->maxiters, opt->maxiters,
 	    0, opt->lambda2,
-	    opt->threshold, opt->verbose, opt->trunc);
+	    opt->threshold, opt->verbose, opt->trunc);*/
    }
 
    FREENULL(zscore);
