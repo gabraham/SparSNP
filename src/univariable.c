@@ -25,54 +25,6 @@ void invert2x2(double *y, double *x)
    y[3] =  x[0] / s;
 }
 
-/* Simple coordinate descent for minimising loss, without any penalisation
- *
- * x: an array of length p
- * beta: is an array of length p
- */
-int cd_simple(gmatrix *g,
-	      sample *sm,
-	      double *beta_intercept,
-	      double *beta,
-	      step step_func, 
-	      phi1 phi1_func,
-	      phi2 phi2_func,
-	      int n,
-	      int p)
-{
-   int i, 
-	 iter = 1, maxiter = 10000;
-   double s1 = 10, /* just a number larger than threshold */
-	  s2 = 10;
-
-   sample sm_intercept;
-   sm_intercept.x = g->intercept;
-
-   while(iter <= maxiter && (fabs(s1) >= 1e-8 || fabs(s2) >= 1e-8))
-   {
-      /* intercept */
-      s1 = step_func(&sm_intercept, g, NULL, NULL);
-      *beta_intercept -= s1;
-
-      /* actual variable */
-      s2 = step_func(sm, g, NULL, NULL);
-      *beta -= s2;
-
-      for(i = n - 1 ; i >= 0 ; --i)
-      {
-	 g->lp[i] += -s1 + sm->x[i] * -s2;
-	 g->lp_invlogit[i] = 1 / (1 + exp(-g->lp[i]));
-      }
-
-      iter++;
-   }
-   /*printf("\n");*/
-
-   printf("terminated in %d iterations\n", iter);
-
-   return SUCCESS;
-}
-
 /*
  * Iteratively-Reweighted Least Squares for logistic regression
  */
@@ -93,6 +45,7 @@ int irls(gmatrix *g,
 	  *s = NULL,
 	  *tmpx = NULL;
    double w, z;
+   sample sm;
 
    MALLOCTEST(grad, sizeof(double) * p);
    MALLOCTEST(hessian, sizeof(double) * p * p);
@@ -105,8 +58,24 @@ int irls(gmatrix *g,
       {
 	 grad[j] = 0.0;
 	 hessian[j] = 0.0;
-      }
+      
+	 g->nextcol(g, &sm, j);
 
+	 for(i = n - 1; i >= 0 ; --i)
+	 {
+	    grad[j] += sm.x[i] * (g->lp_invlogit[i] - g->y[i]);
+	    w = g->lp_invlogit[i] * (1 - g->lp_invlogit[i]);
+	    hessian[] += 
+
+	 }
+
+	 
+	 
+
+      }
+   }
+
+      
       for(i = n - 1; i >= 0 ; --i)
       {
 	 g->lp[i] = *beta_intercept + *beta * sm->x[i];
@@ -273,6 +242,7 @@ int run_train(Opt *opt, gmatrix *g, double zthresh)
    int ret;
    int numselected = 0;
    double *zscore = NULL;
+   double *x = NULL;
 
    CALLOCTEST(zscore, p1, sizeof(double));
 
@@ -296,6 +266,11 @@ int run_train(Opt *opt, gmatrix *g, double zthresh)
       }
    }
 
+   MALLOCTEST(x, sizeof(double) * g->n * numselected);
+
+   if(!gmatrix_read_matrix(g, x, g->active))
+      return FAILURE;
+
    if(numselected == 0)
       printf("no SNP exceeded threshold, aborting\n");
    else
@@ -312,6 +287,7 @@ int run_train(Opt *opt, gmatrix *g, double zthresh)
    }
 
    FREENULL(zscore);
+   FREENULL(x);
 
    return SUCCESS;
 }

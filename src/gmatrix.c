@@ -258,6 +258,32 @@ int gmatrix_split_y(gmatrix *g)
    return SUCCESS;
 }
 
+/**
+ * Read all the data into a preallocated row-major n by k matrix, which
+ * variables are read is determined by the p+1 array ind
+ */
+int gmatrix_read_matrix(gmatrix *g, double *x, int *ind)
+{
+   int i, j,
+       p1 = g->p + 1, 
+       n = g->n;
+   sample sm;
+
+   for(j = 0 ; j < p1 ; j++)
+   {
+      if(ind[j])
+      {
+	 if(g->nextcol(g, &sm, j))
+	    return FAILURE;
+   
+         for(i = 0 ; i < n ; i++)
+	    x[i * p1 + j] = sm.x[i];
+      }
+   }
+
+   return SUCCESS;
+}
+
 /*
  * reads one column of data from disk (all samples for one variable)
  */
