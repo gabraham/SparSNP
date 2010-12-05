@@ -14,13 +14,19 @@ CCFLAGS = -std=gnu99 -Wall -ggdb3 \
 	  -funroll-loops -Winline \
 	  -ffast-math \
 	  -fstrict-aliasing \
-	  -D_FILE_OFFSET_BITS=$(LONG_BIT)
+	  -D_FILE_OFFSET_BITS=$(LONG_BIT) \
+	  -DMACOSX
 
 targets = cd scale transpose hapgen2bin hapgen2ped \
 	  cbind split unpack univariable
 all: $(targets)
 
-debug: CCFLAGS = -Wall -ggdb3 -std=gnu99 -D_FILE_OFFSET_BITS=$(LONG_BIT)
+debug: CCFLAGS = -Wall \
+   		 -ggdb3 \
+		 -std=gnu99 \
+		 -D_FILE_OFFSET_BITS=$(LONG_BIT) \
+		 -DMACOSX
+
 debug: $(targets)
 
 LIBRARIES = -lm

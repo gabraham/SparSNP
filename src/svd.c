@@ -16,10 +16,13 @@ int dgesdd(char *jobz, int *m, int *n, double *a, int *lda,
       double *s, double *u, int *ldu, double *vt, int *ldvt,
       double *work, int *lwork, int *iwork)
 {
+
+#ifndef MACOSX
    extern void dgesdd_(const char *JOBZ, const int *M, const int *N,
 	 const double *A, const int *LDA, double* S, double* U, const int *LDU,
 	 double *VT, int *LDVT, double *WORK, int *LWORK, int *IWORK,
 	 int *INFO);
+#endif
 
    int info;
    dgesdd_(jobz, m, n, a, lda, s, u, ldu, vt, ldvt,
@@ -39,24 +42,6 @@ void tcrossprod(double *A, double *B, int *m, int *k, int *n, double *C)
 
    cblas_dgemm(CblasColMajor, CblasNoTrans, CblasTrans,
 	 *m, *n, *k, alpha, A, LDA, B, LDB, beta, C, LDC);
-}
-
-/*
- * C = A' B
- */
-void crossprod(double *A, double *B, int *m, int *k, int *n, double *C)
-{
-   double alpha = 1.0, beta = 0.0;
-   int LDA = *m;
-   int LDB = *n;
-   int LDC = *m;
-
-/*
- *  unverified
-
-   cblas_dgemm(CblasColMajor, CblasTrans, CblasTrans,
-	 *m, *n, *k, alpha, A, LDA, B, LDB, beta, C, LDC);
-	 */
 }
 
 /*

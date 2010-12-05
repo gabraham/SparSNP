@@ -10,6 +10,12 @@
 /*#define ZTHRESH 5.012169*/
 #define ZTHRESH 1.0
 
+#define IRLS_THRESH 1e-9
+#define IRLS_THRESH_MAX 10
+
+#define IRLS_ERR_NO_CONVERGENCE 2 /* didn't converge within predefined iterations */
+#define IRLS_ERR_DIVERGENCE 3 /* converged but to a very large value */
+
 /* 
  * Invert 2x2 matrix x and put it in y, row-major matrix ordering:
  *  0 1
@@ -26,101 +32,165 @@ void invert2x2(double *y, double *x)
 }
 
 /*
+ * Z = X^T Y
+ *
+ * X: m by n
+ * Y: m by p
+ * Z: n by p
+ *
+ * row major ordering
+ *
+ * This is a bit wasteful for Z = X^T X due to symmetry
+ */
+void crossprod(double *x, double *y, double *z, int m, int n, int p)
+{
+   int i, j, k;
+
+   for(i = 0 ; i < n ; i++)
+      for(j = 0 ; j < p ; j++)
+	 for(k = 0 ; k < m ; k++)
+	    z[i * p + j] += x[k * n + i] * y[k * p + j];
+}
+
+/*
+ * Weighted cross product
+ * Z = X^T W Y
+ *
+ * W: a diagonal m by m matrix
+ * X: m by n
+ * Y: m by p
+ * Z: n by p
+ *
+ * Note that w is NOT a matrix, it's an array of length m
+ */
+void wcrossprod(double *x, double *y, double *w, double *z, int m, int n, int p)
+{
+   int i, j, k;
+
+   for(i = 0 ; i < n ; i++)
+   {
+      for(j = 0 ; j < p ; j++)
+      {
+	 k = 0;
+	 z[i * p + j] = x[k * n + i] * y[k * p + j] * w[k];
+	 for(k = 1 ; k < m ; k++)
+	    z[i * p + j] += x[k * n + i] * y[k * p + j] * w[k];
+      }
+   }
+}
+
+/*
+ * Square-Matrix-vector product
+ *
+ * z = X y
+ *
+ * z: m by 1
+ * X: m by m
+ * y: m by 1
+ *
+ */
+void sqmvprod(double *x, double *y, double *z, int m)
+{
+   int i, k;
+      
+   for(i = 0 ; i < m ; i++)
+   {
+      k = 0;
+      z[i] = x[k * m + i] * y[k];
+      for(k = 1 ; k < m ; k++)
+	 z[i] += x[k * m + i] * y[k];
+   }
+}
+
+/*
  * Iteratively-Reweighted Least Squares for logistic regression
  */
-int irls(gmatrix *g,
-         double *beta_intercept,
-	 double *beta,
-	 step step_func, 
-	 phi1 phi1_func,
-	 phi2 phi2_func,
-	 int n,
-	 int p)
+int irls(double *x, double *y, double *beta, double *invhessian, int n, int p)
 {
-   int i, j, iter = 1, maxiter = 20;
+   int i, j, 
+       iter = 1, maxiter = 50,
+       converged = FALSE, diverged = FALSE,
+       ret = SUCCESS;
 
    double *grad = NULL,
 	  *hessian = NULL,
-	  *invhessian = NULL,
-	  *s = NULL,
-	  *tmpx = NULL;
-   double w, z;
-   sample sm;
+	  *lp = NULL,
+	  *lp_invlogit = NULL,
+	  *w = NULL,
+	  *s = NULL;
 
+   MALLOCTEST(lp, sizeof(double) * n);
+   MALLOCTEST(lp_invlogit, sizeof(double) * n);
    MALLOCTEST(grad, sizeof(double) * p);
-   MALLOCTEST(hessian, sizeof(double) * p * p);
-   MALLOCTEST(invhessian, sizeof(double) * p * p);
-   MALLOCTEST(s, sizeof(double) * p);
+   CALLOCTEST(hessian, p * p, sizeof(double));
+   CALLOCTEST(w, n, sizeof(double));
+   CALLOCTEST(s, p, sizeof(double));
 
    while(iter <= maxiter) 
    {
-      for(j = p1 ; j >= 0 ; --j)
-      {
-	 grad[j] = 0.0;
-	 hessian[j] = 0.0;
-      
-	 g->nextcol(g, &sm, j);
-
-	 for(i = n - 1; i >= 0 ; --i)
-	 {
-	    grad[j] += sm.x[i] * (g->lp_invlogit[i] - g->y[i]);
-	    w = g->lp_invlogit[i] * (1 - g->lp_invlogit[i]);
-	    hessian[] += 
-
-	 }
-
-	 
-	 
-
-      }
-   }
-
-      
       for(i = n - 1; i >= 0 ; --i)
       {
-	 g->lp[i] = *beta_intercept + *beta * sm->x[i];
-	 g->lp_invlogit[i] = 1 / (1 + exp(-g->lp[i]));
+	 lp[i] = x[i * p] * beta[0];
 
-	 /* Gradient */
-	 for(j = p1 ; j >= 0 ; --j)
+	 for(j = 1 ; j < p ; j++)
 	 {
-	    grad[j] += x[] * (g->lp_invlogit[i] - g->y[i]);
+	    lp[i] += x[i * p + j] * beta[j];
+	    lp_invlogit[i] = 1 / (1 + exp(-lp[i]));
 	 }
-
-	 /* Hessian */
-	 /*w = g->lp_invlogit[i] * (1 - g->lp_invlogit[i]);
-	 hessian[0] += w;
-	 z = sm->x[i] * w;
-	 hessian[1] += z;
-	 hessian[2] = hessian[1];
-	 hessian[3] += sm->x[i] * z;*/
-	 xtmp[i] = x[i] * sqrt(w[i]);
-
-	 crossprod(xtmp, xtmp, ,, hessian);
       }
-      
-      /*invert2x2(invhessian, hessian);*/
-      pseudoinverse(hessian, &two, &two, invhessian);
 
-      s1 = invhessian[0] * grad[0] + invhessian[1] * grad[1];
-      s2 = invhessian[2] * grad[0] + invhessian[3] * grad[1];
-      *beta_intercept -= s1;
-      *beta -= s2;
+      /* gradient */
+      for(j = 0 ; j < p ; j++)
+      {
+	 grad[j] = 0.0;
+	 for(i = n - 1; i >= 0 ; --i)
+	    grad[j] += x[i * p + j] * (lp_invlogit[i] - y[i]);
+      }
 
-      /*printf("%d intercept: %.5f beta: %.5f\n", iter, *beta_intercept,
-       * *beta);*/
+      /* weights */
+      for(i = n - 1; i >= 0 ; --i)
+	 w[i] = lp_invlogit[i] * (1 - lp_invlogit[i]);
+
+      /* hessian */
+      wcrossprod(x, x, w, hessian, n, p, p);
+      pseudoinverse(hessian, &p, &p, invhessian);
+
+      /* Newton step */
+      sqmvprod(invhessian, grad, s, p);
+      converged = TRUE;
+      diverged = FALSE;
+      for(j = 0 ; j < p ; j++)
+      {
+	 beta[j] -= s[j];
+	 converged &= (fabs(s[j]) <= IRLS_THRESH);
+	 diverged |= (fabs(beta[j]) >= IRLS_THRESH_MAX);
+      }
+
+      if(converged || diverged)
+	 break;
+
       iter++;
    }
 
    if(iter >= maxiter)
+   {
       printf("IRLS didn't converge\n");
+      ret = IRLS_ERR_NO_CONVERGENCE;
+   }
+   else if(diverged)
+   {
+      printf("IRLS diverged\n");
+      ret = IRLS_ERR_DIVERGENCE;
+   }
 
    FREENULL(grad);
    FREENULL(hessian);
-   FREENULL(invhessian);
+   FREENULL(lp);
+   FREENULL(lp_invlogit);
+   FREENULL(w);
    FREENULL(s);
 
-   return SUCCESS;
+   return ret;
 }
 
 /* 
@@ -165,73 +235,55 @@ int make_hessian(double *hessian, double *x,
  */
 int univar_gmatrix(Opt *opt, gmatrix *g, double *zscore)
 {
-   int i, j, k,
+   int i, j, ret,
        n = g->ncurr,
-       p1 = g->p + 1,
-       two = 2;
-   double *hessian = NULL,
-	  *invhessian = NULL,
-	  *beta = NULL;
-   double beta_intercept = 0;
-
+       p1 = g->p + 1;
+   double beta[2] = {0, 0};
+   double *invhessian = NULL,
+	  *x = NULL;
    sample sm;
 
    if(!sample_init(&sm, n))
       return FAILURE;
 
-   MALLOCTEST(hessian, sizeof(double) * 4);
    MALLOCTEST(invhessian, sizeof(double) * 4);
-   CALLOCTEST(beta, p1, sizeof(double));
+   CALLOCTEST(x, 2 * n, sizeof(double));
 
-   /* We don't use this value ever, it's only here for consistency with the
-    * multivariable methods such use the intercept */
-   beta[0] = 0;
-
-   /* get p-values per SNP */
+   /* get p-values per SNP, skip intercept */
    for(j = 1 ; j < p1 ; j++)
    {
       printf("%d ", j);
       if(!g->active[j])
+      {
+	 printf("skipped variable %d\n", j);
 	 continue;
+      }
       
-      beta_intercept = beta[j] = 0.0;
       g->nextcol(g, &sm, j);
-
-      /*if(!cd_simple(g, &sm, &beta_intercept, beta + j, opt->step_func,
-	    opt->phi1_func, opt->phi2_func, n, 2))
-	 return FAILURE;*/
-
-      if(!irls(g, &sm, &beta_intercept, beta + j, opt->step_func,
-	    opt->phi1_func, opt->phi2_func, n, 2))
-	 return FAILURE;
-
-      /* don't let previous estimates affect current ones */
-      /*gmatrix_zero_model(g);*/
       for(i = n - 1 ; i >= 0 ; --i)
       {
-	 g->lp[i] = 0;
-	 g->lp_invlogit[i] = 0.5;
+	 x[2 * i] = 1.0;
+	 x[2 * i + 1] = sm.x[i];
       }
 
-      for(k = 0 ; k < 4 ; k++)
-	 hessian[k] = 0.0;
+      beta[0] = beta[1] = 0.0;
+      ret = irls(x, g->y, beta, invhessian, n, 2);
 
-      if(!make_hessian(hessian, sm.x, beta_intercept, beta[j], n))
+      if(ret == FAILURE)
 	 return FAILURE;
-
-      /*invert2x2(invhessian, hessian);*/
-      pseudoinverse(hessian, &two, &two, invhessian);
-
-      /* z-score for the SNP only, ignore intercept */
-      zscore[j] = beta[j] / sqrt(invhessian[3]);
-      printf("z=%.3f\n", zscore[j]);
-
+      else if(ret == SUCCESS)
+      {
+	 /* z-score for the SNP only, ignore intercept */
+	 zscore[j] = beta[1] / sqrt(invhessian[3]);
+      }
+      else
+	 zscore[j] = 0.0;
+      printf("zscore[%d]: %.6f\n", j, zscore[j]);
    }
    printf("\n");
 
-   FREENULL(hessian);
    FREENULL(invhessian);
-   FREENULL(beta);
+   FREENULL(x);
 
    return SUCCESS;
 }
@@ -242,7 +294,8 @@ int run_train(Opt *opt, gmatrix *g, double zthresh)
    int ret;
    int numselected = 0;
    double *zscore = NULL;
-   double *x = NULL;
+   double *x = NULL,
+	  *invhessian = NULL;
 
    CALLOCTEST(zscore, p1, sizeof(double));
 
@@ -257,7 +310,6 @@ int run_train(Opt *opt, gmatrix *g, double zthresh)
    printf("univariate selection done\n");
    for(j = 0 ; j < p1 ; j++)
    {
-      printf("zscore[%d]: %.4f\n", j, zscore[j]);
       g->active[j] &= (fabs(zscore[j]) >= zthresh);
       if(g->active[j])
       {
@@ -266,28 +318,27 @@ int run_train(Opt *opt, gmatrix *g, double zthresh)
       }
    }
 
-   MALLOCTEST(x, sizeof(double) * g->n * numselected);
+   MALLOCTEST(x, sizeof(double) * g->n * (numselected + 1));
 
    if(!gmatrix_read_matrix(g, x, g->active))
       return FAILURE;
+
+   CALLOCTEST(invhessian, numselected * numselected, sizeof(double));
 
    if(numselected == 0)
       printf("no SNP exceeded threshold, aborting\n");
    else
    {
-      printf("%d SNP exceeded z-score=%.3f\n", numselected, zthresh);
+      printf("total %d SNP exceeded z-score=%.3f\n", numselected, zthresh);
       /* train un-penalised multivariable model on
        * the selected SNPs, with lambda=0 */
-      /*ret = cd_gmatrix(
-	    g, opt->phi1_func, opt->phi2_func,
-	    opt->step_func,
-	    opt->maxiters, opt->maxiters,
-	    0, opt->lambda2,
-	    opt->threshold, opt->verbose, opt->trunc);*/
+      ret = irls(x, g->y, g->beta, invhessian, g->n, numselected);
+	    
    }
 
    FREENULL(zscore);
    FREENULL(x);
+   FREENULL(invhessian);
 
    return SUCCESS;
 }
