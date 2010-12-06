@@ -259,20 +259,20 @@ int gmatrix_split_y(gmatrix *g)
 }
 
 /*
- * Read all the data into a preallocated row-major n by k matrix, which
+ * Read all the data into a preallocated row-major n by m matrix, which
  * variables are read is determined by the p+1 array ind
  */
-int gmatrix_read_matrix(gmatrix *g, double *x, int *ind)
+int gmatrix_read_matrix(gmatrix *g, double *x, int *ind, int m)
 {
-   int i, j,
-       p1 = g->p + 1, 
+   int i, j, k = 0,
+       p1 = g->p + 1,
        n = g->n;
    double prev = -1;
    sample sm;
 
    for(j = 0 ; j < p1 ; j++)
    {
-      g->active[j] = TRUE;
+      /*g->active[j] = TRUE;*/
       if(ind[j])
       {
 	 if(!g->nextcol(g, &sm, j))
@@ -280,10 +280,11 @@ int gmatrix_read_matrix(gmatrix *g, double *x, int *ind)
    
          for(i = 0 ; i < n ; i++)
 	 {
-	    x[i * p1 + j] = sm.x[i];
-	    g->active[j] &= (sm.x[i] != prev);
-	    prev = sm.x[i];
+	    x[i * m + k] = sm.x[i];
+	    /*g->active[j] &= (sm.x[i] != prev);
+	    prev = sm.x[i];*/
 	 }
+	 k++;
       }
    }
 

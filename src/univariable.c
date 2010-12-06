@@ -8,7 +8,7 @@
 
 /* qnorm(abs(0.05 / 185805), lower.tail=FALSE) */
 /*#define ZTHRESH 5.012169*/
-#define ZTHRESH 1.0
+#define ZTHRESH 3.5
 
 #define IRLS_THRESH 1e-9
 #define IRLS_THRESH_MAX 10
@@ -290,12 +290,13 @@ int univar_gmatrix(Opt *opt, gmatrix *g, double *zscore)
 
 int run_train(Opt *opt, gmatrix *g, double zthresh)
 {
-   int j, p1 = g->p + 1;
+   int j, n = g->ncurr, p1 = g->p + 1;
    int ret;
    int numselected = 0;
    double *zscore = NULL;
    double *x = NULL,
-	  *invhessian = NULL;
+	  *invhessian = NULL,
+	  *beta = NULL;
 
    CALLOCTEST(zscore, p1, sizeof(double));
 
@@ -308,7 +309,9 @@ int run_train(Opt *opt, gmatrix *g, double zthresh)
       return FAILURE;
 
    printf("univariate selection done\n");
-   for(j = 0 ; j < p1 ; j++)
+   numselected = 1;
+   g->active[0] = TRUE;
+   for(j = 1 ; j < p1 ; j++)
    {
       g->active[j] &= (fabs(zscore[j]) >= zthresh);
       if(g->active[j])
@@ -318,27 +321,27 @@ int run_train(Opt *opt, gmatrix *g, double zthresh)
       }
    }
 
-   MALLOCTEST(x, sizeof(double) * g->n * (numselected + 1));
-
-   if(!gmatrix_read_matrix(g, x, g->active))
-      return FAILURE;
-
-   CALLOCTEST(invhessian, numselected * numselected, sizeof(double));
-
-   if(numselected == 0)
-      printf("no SNP exceeded threshold, aborting\n");
-   else
+   printf("total %d SNPs exceeded z-score=%.3f\n", numselected, zthresh);
+   if(numselected > 0)
    {
-      printf("total %d SNP exceeded z-score=%.3f\n", numselected, zthresh);
+      MALLOCTEST(x, sizeof(double) * n * numselected);
+      if(!gmatrix_read_matrix(g, x, g->active, numselected))
+	 return FAILURE;
+      CALLOCTEST(invhessian, numselected * numselected, sizeof(double));
+      CALLOCTEST(beta, numselected, sizeof(double));
+
       /* train un-penalised multivariable model on
        * the selected SNPs, with lambda=0 */
-      ret = irls(x, g->y, g->beta, invhessian, g->n, numselected);
-	    
+      ret = irls(x, g->y, beta, invhessian, n, numselected);
+      printf("IRLS returned %d\n", ret);	    
+
+      /* copy estimated beta to the array for all SNPs */
    }
 
    FREENULL(zscore);
    FREENULL(x);
    FREENULL(invhessian);
+   FREENULL(beta);
 
    return SUCCESS;
 }

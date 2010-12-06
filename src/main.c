@@ -93,11 +93,6 @@ int run_train(Opt *opt, gmatrix *g)
       unscale_beta(g->beta_orig, g->beta, g->mean, g->sd, g->p + 1);
       if(!writevectorf(tmp, g->beta_orig, g->p + 1))
 	 return FAILURE;
-      /*if(!writevectorf(tmp, g->beta, g->p + 1))
-	 return FAILURE;*/
-
-      /*if(!opt->warmrestarts)
-	 gmatrix_zero_model(g);*/
 
       if(opt->nzmax != 0 && opt->nzmax <= ret - 1)
       {

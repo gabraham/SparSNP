@@ -120,7 +120,7 @@ void gmatrix_zero_model(gmatrix *g);
 int gmatrix_init_lp(gmatrix *g);
 int gmatrix_split_y(gmatrix *g);
 int gmatrix_disk_read_y(gmatrix *g);
-int gmatrix_read_matrix(gmatrix *g, double *x, int *ind);
+int gmatrix_read_matrix(gmatrix *g, double *x, int *ind, int m);
 
 int cache_init(cache *ht, int nkeys);
 void cache_free(cache *ht);
