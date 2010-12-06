@@ -43,8 +43,6 @@ int make_lambda1path(Opt *opt, gmatrix *g)
    unscale_beta(g->beta_orig, g->beta, g->mean, g->sd, g->p + 1);
    if(!writevectorf(tmp, g->beta_orig, g->p + 1))
       return FAILURE;
-   /*if(!writevectorf(tmp, g->beta, g->p + 1))
-      return FAILURE;*/
 
    snprintf(tmp, MAX_STR_LEN, "%s.%02d", opt->lambda1pathfile, g->fold);
    return writevectorf(tmp, opt->lambda1path, opt->nlambda1);
