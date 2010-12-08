@@ -266,7 +266,7 @@ int gmatrix_read_matrix(gmatrix *g, double *x, int *ind, int m)
 {
    int i, j, k = 0,
        p1 = g->p + 1,
-       n = g->n;
+       n = g->ncurr;
    /*double prev = -1;*/
    sample sm;
 

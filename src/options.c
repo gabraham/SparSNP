@@ -72,6 +72,10 @@ int opt_defaults(Opt *opt, short caller)
    strcpy(opt->beta_files[0], beta_default);
    opt->n_beta_files = 1;
 
+   opt->zthresh = 5.326724; /* 1 - qnorm(5e-8) */
+   opt->lambda2_univar = 1e-6;
+   opt->lambda2_multivar = 1e-3;
+
    return SUCCESS;
 }
 
@@ -246,19 +250,24 @@ int opt_parse(int argc, char* argv[], Opt* opt)
 	 i++;
 	 opt->folds_ind_file = argv[i];
       }
+      else if(strcmp2(argv[i], "-zthresh"))
+      {
+	 i++;
+	 opt->zthresh = atof(argv[i]);
+      }
    }
 
-   if(opt->caller == OPTIONS_CALLER_CD)
+   if(opt->caller == OPTIONS_CALLER_CD) /* coordinate descent */
    {
       if(opt->filename == NULL || opt->model == 0
             || opt->n == 0 || opt->p == 0 || !opt->scalefile)
       {
          printf("usage: cd [-train|-predict] -model <model> \
 -bin <filename> -n <#samples> -p <#variables> -scale <scalefile> \
-[-betafiles <beta filename/s>] [-pred <pred filename>] \
-[-maxepochs <maxepochs>] [-maxiters <maxiters>] [-l1 <lambda1>] [-notencoded] \
-[-plink] [-l2 <lambda2>] [-thresh <threshold>] [-foldind <foldsfile>] \
-[-pred <prediction file>] [-seed <seed>] [-v] [-vv]\n");
+[-betafiles <beta filename/s>] \
+[-maxepochs <maxepochs>] [-maxiters <maxiters>] [-l1 <lambda1>] \
+-l2 <lambda2>] [-thresh <threshold>] [-foldind <foldsfile>] \
+[-pred <prediction file>] [-v] [-vv]\n");
          return FAILURE;
       }
       else if(opt->n_beta_files > 1 && opt->mode == MODE_TRAIN)
@@ -267,18 +276,16 @@ int opt_parse(int argc, char* argv[], Opt* opt)
 onl   y using the first one\n");
       }
    }
-   else
+   else /* univariable selection */
    {
       if(opt->filename == NULL || opt->model == 0
             || opt->n == 0 || opt->p == 0)
       {
          printf("usage: univariable [-train|-predict] -model <model> \
--bin <filename> -n <#samples> -p <#variables> -scale <scalefile> \
-[-betafiles <beta filename/s>] [-pred <pred filename>] \
-[-maxepochs <maxepochs>] [-maxiters <maxiters>] [-l1 <lambda1>] \
-[-notencoded] \
-[-plink] [-l2 <lambda2>] [-thresh <threshold>] [-foldind <foldsfile>] \
-[-pred <prediction file>] [-seed <seed>] [-v] [-vv]\n");
+-bin <filename> -n <#samples> -p <#variables>  \
+[-betafiles <beta filename/s>] \
+[-zthresh <Z score threshold>] [-foldind <foldsfile>] \
+[-pred <prediction file>] [-v] [-vv]\n");
          return FAILURE;
       }
       else if(opt->n_beta_files > 1 && opt->mode == MODE_TRAIN)

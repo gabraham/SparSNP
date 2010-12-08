@@ -6,10 +6,6 @@
 
 #define OPTIONS_CALLER univariable
 
-/* qnorm(abs(0.05 / 185805), lower.tail=FALSE) */
-/*#define ZTHRESH 5.012169*/
-#define ZTHRESH 3.5
-
 #define IRLS_THRESH 1e-9
 #define IRLS_THRESH_MAX 10
 
@@ -103,9 +99,11 @@ void sqmvprod(double *x, double *y, double *z, int m)
 }
 
 /*
- * Iteratively-Reweighted Least Squares for logistic regression
+ * Iteratively-Reweighted Least Squares for logistic regression with l2
+ * penalties
  */
-int irls(double *x, double *y, double *beta, double *invhessian, int n, int p)
+int irls(double *x, double *y, double *beta, double *invhessian, int n, int p,
+      double lambda2, int verbose)
 {
    int i, j, 
        iter = 1, maxiter = 50,
@@ -128,6 +126,8 @@ int irls(double *x, double *y, double *beta, double *invhessian, int n, int p)
 
    while(iter <= maxiter) 
    {
+      if(verbose)
+	 printf("IRLS iter %d\n", iter);
       for(i = n - 1; i >= 0 ; --i)
       {
 	 lp[i] = x[i * p] * beta[0];
@@ -153,10 +153,16 @@ int irls(double *x, double *y, double *beta, double *invhessian, int n, int p)
 
       /* hessian */
       wcrossprod(x, x, w, hessian, n, p, p);
+
+      /* Add l2 penalty to diagonal except to zero */
+      for(j = 1 ; j < p ; j++)
+	 hessian[j * p + j] = lambda2;
+
       pseudoinverse(hessian, &p, &p, invhessian);
 
       /* Newton step */
       sqmvprod(invhessian, grad, s, p);
+
       converged = TRUE;
       diverged = FALSE;
       for(j = 0 ; j < p ; j++)
@@ -252,7 +258,7 @@ int univar_gmatrix(Opt *opt, gmatrix *g, double *zscore)
    /* get p-values per SNP, skip intercept */
    for(j = 1 ; j < p1 ; j++)
    {
-      printf("%d ", j);
+      /*printf("%d ", j);*/
       if(!g->active[j])
       {
 	 printf("skipped variable %d\n", j);
@@ -267,7 +273,8 @@ int univar_gmatrix(Opt *opt, gmatrix *g, double *zscore)
       }
 
       beta[0] = beta[1] = 0.0;
-      ret = irls(x, g->y, beta, invhessian, n, 2);
+      ret = irls(x, g->y, beta, invhessian, n, 2,
+	    opt->lambda2_univar, FALSE);
 
       if(ret == FAILURE)
 	 return FAILURE;
@@ -278,9 +285,9 @@ int univar_gmatrix(Opt *opt, gmatrix *g, double *zscore)
       }
       else
 	 zscore[j] = 0.0;
-      printf("zscore[%d]: %.6f\n", j, zscore[j]);
+      /*printf("zscore[%d]: %.6f\n", j, zscore[j]);*/
    }
-   printf("\n");
+   /*printf("\n");*/
 
    FREENULL(invhessian);
    FREENULL(x);
@@ -333,7 +340,8 @@ int run_train(Opt *opt, gmatrix *g, double zthresh)
 
       /* train un-penalised multivariable model on
        * the selected SNPs, with lambda=0 */
-      ret = irls(x, g->y, beta, invhessian, n, numselected);
+      ret = irls(x, g->y, beta, invhessian, n, numselected,
+	    opt->lambda2_multivar, TRUE);
       printf("IRLS returned %d\n", ret);	    
 
       /* copy estimated beta to the array for all SNPs */
@@ -342,7 +350,7 @@ int run_train(Opt *opt, gmatrix *g, double zthresh)
       {
 	 if(g->active[j])
 	 {
-	    printf("beta[%d]: %.5f\n", j, beta[k]);
+	    /*printf("beta[%d]: %.5f\n", j, beta[k]);*/
 	    g->beta[j] = beta[k];
 	    k++;
 	 }
@@ -351,6 +359,10 @@ int run_train(Opt *opt, gmatrix *g, double zthresh)
 
    snprintf(tmp, MAX_STR_LEN, "%s.00.%02d", opt->beta_files[0], g->fold);
    if(!writevectorf(tmp, g->beta, g->p + 1))
+      return FAILURE;
+
+   snprintf(tmp, MAX_STR_LEN, "%s.%02d", opt->numnz_file, g->fold);
+   if(!writevectorl(tmp, &numselected, 1))
       return FAILURE;
 
    FREENULL(zscore);
@@ -389,7 +401,7 @@ int do_train(gmatrix *g, Opt *opt, char tmp[])
 	 /*make_lambda1path(opt, g);*/
 	 gmatrix_reset(g);
 
-	 if(!(ret &= run_train(opt, g, ZTHRESH)))
+	 if(!(ret &= run_train(opt, g, opt->zthresh)))
 	    break;
       }
    }
@@ -401,7 +413,7 @@ int do_train(gmatrix *g, Opt *opt, char tmp[])
       gmatrix_zero_model(g);
       /*make_lambda1path(opt, g);*/
       gmatrix_reset(g);
-      ret = run_train(opt, g, ZTHRESH);
+      ret = run_train(opt, g, opt->zthresh);
    }
    
    return ret;

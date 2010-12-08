@@ -55,7 +55,8 @@ void updatelp(gmatrix *g, const double update,
    }
 }
 
-/* Find smallest lambda1 that makes all coefficients
+/* 
+ * Find smallest lambda1 that makes all coefficients
  * zero (except the intercept)
  */
 double get_lambda1max_gmatrix(gmatrix *g,
