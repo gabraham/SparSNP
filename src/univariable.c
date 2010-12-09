@@ -154,7 +154,7 @@ int irls(double *x, double *y, double *beta, double *invhessian, int n, int p,
       /* hessian */
       wcrossprod(x, x, w, hessian, n, p, p);
 
-      /* Add l2 penalty to diagonal except to zero */
+      /* Add l2 penalty to diagonal, except the intercept */
       for(j = 1 ; j < p ; j++)
 	 hessian[j * p + j] += lambda2;
 

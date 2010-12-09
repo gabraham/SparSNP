@@ -280,7 +280,7 @@ int gmatrix_read_matrix(gmatrix *g, double *x, int *ind, int m)
    
          for(i = 0 ; i < n ; i++)
 	 {
-	    x[i * m + k] = sm.x[i] == X_LEVEL_NA ? 0 : sm.x[i];
+	    x[i * m + k] = (sm.x[i] == X_LEVEL_NA ? 0 : sm.x[i]);
 	    /*g->active[j] &= (sm.x[i] != prev);
 	    prev = sm.x[i];*/
 	 }

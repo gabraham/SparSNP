@@ -73,7 +73,7 @@ int opt_defaults(Opt *opt, short caller)
    opt->n_beta_files = 1;
 
    opt->zthresh = 5.326724; /* 1 - qnorm(5e-8) */
-   opt->lambda2_univar = 1e-6;
+   opt->lambda2_univar = 1e-3;
    opt->lambda2_multivar = 1e-3;
 
    return SUCCESS;
