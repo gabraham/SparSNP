@@ -7,7 +7,7 @@
 #define OPTIONS_CALLER univariable
 
 #define IRLS_THRESH 1e-9
-#define IRLS_THRESH_MAX 10
+#define IRLS_THRESH_MAX 20
 
 #define IRLS_ERR_NO_CONVERGENCE 2 /* didn't converge within predefined iterations */
 #define IRLS_ERR_DIVERGENCE 3 /* converged but to a very large value */
@@ -106,7 +106,7 @@ int irls(double *x, double *y, double *beta, double *invhessian, int n, int p,
       double lambda2, int verbose)
 {
    int i, j, 
-       iter = 1, maxiter = 50,
+       iter = 1, maxiter = 250,
        converged = FALSE, diverged = FALSE,
        ret = SUCCESS;
 
@@ -156,11 +156,11 @@ int irls(double *x, double *y, double *beta, double *invhessian, int n, int p,
 
       /* Add l2 penalty to diagonal except to zero */
       for(j = 1 ; j < p ; j++)
-	 hessian[j * p + j] = lambda2;
+	 hessian[j * p + j] += lambda2;
 
       pseudoinverse(hessian, &p, &p, invhessian);
 
-      /* Newton step */
+      /* Compute the Newton step */
       sqmvprod(invhessian, grad, s, p);
 
       converged = TRUE;
@@ -172,7 +172,8 @@ int irls(double *x, double *y, double *beta, double *invhessian, int n, int p,
 	 diverged |= (fabs(beta[j]) >= IRLS_THRESH_MAX);
       }
 
-      if(converged || diverged)
+      /*if(converged || diverged)*/
+      if(converged)
 	 break;
 
       iter++;
@@ -285,9 +286,7 @@ int univar_gmatrix(Opt *opt, gmatrix *g, double *zscore)
       }
       else
 	 zscore[j] = 0.0;
-      /*printf("zscore[%d]: %.6f\n", j, zscore[j]);*/
    }
-   /*printf("\n");*/
 
    FREENULL(invhessian);
    FREENULL(x);
@@ -300,10 +299,11 @@ int run_train(Opt *opt, gmatrix *g, double zthresh)
    int k, j, n = g->ncurr, p1 = g->p + 1;
    int ret;
    int numselected = 0;
-   double *zscore = NULL;
+   double *zscore = NULL; /* for univariable screening */
    double *x = NULL,
 	  *invhessian = NULL,
-	  *beta = NULL;
+	  *beta = NULL,
+	  *se = NULL; /* for multivariable model */
    char tmp[MAX_STR_LEN];
 
    CALLOCTEST(zscore, p1, sizeof(double));
@@ -329,7 +329,12 @@ int run_train(Opt *opt, gmatrix *g, double zthresh)
       }
    }
 
-   printf("total %d SNPs exceeded z-score=%.3f\n", numselected, zthresh);
+   /* univariable z scores */
+   snprintf(tmp, MAX_STR_LEN, "univar_zscore.00.%02d", g->fold);
+   if(!writevectorf(tmp, zscore, g->p + 1))
+      return FAILURE;
+
+   printf("total %d SNPs exceeded z-score=%.3f\n", numselected - 1, zthresh);
    if(numselected > 0)
    {
       MALLOCTEST(x, sizeof(double) * n * numselected);
@@ -337,6 +342,7 @@ int run_train(Opt *opt, gmatrix *g, double zthresh)
 	 return FAILURE;
       CALLOCTEST(invhessian, numselected * numselected, sizeof(double));
       CALLOCTEST(beta, numselected, sizeof(double));
+      CALLOCTEST(se, p1, sizeof(double));
 
       /* train un-penalised multivariable model on
        * the selected SNPs, with lambda=0 */
@@ -350,18 +356,26 @@ int run_train(Opt *opt, gmatrix *g, double zthresh)
       {
 	 if(g->active[j])
 	 {
-	    /*printf("beta[%d]: %.5f\n", j, beta[k]);*/
 	    g->beta[j] = beta[k];
+	    se[j] = sqrt(invhessian[k * numselected + k]);
 	    k++;
 	 }
       }
    }
 
+   /* estimated coefficients */
    snprintf(tmp, MAX_STR_LEN, "%s.00.%02d", opt->beta_files[0], g->fold);
    if(!writevectorf(tmp, g->beta, g->p + 1))
       return FAILURE;
 
+   /* standard errors */
+   snprintf(tmp, MAX_STR_LEN, "%s_se.00.%02d", opt->beta_files[0], g->fold);
+   if(!writevectorf(tmp, se, g->p + 1))
+      return FAILURE;
+
+   /* number of selected variables */
    snprintf(tmp, MAX_STR_LEN, "%s.%02d", opt->numnz_file, g->fold);
+   numselected--; /* don't count intercept as a variable */
    if(!writevectorl(tmp, &numselected, 1))
       return FAILURE;
 
@@ -369,6 +383,7 @@ int run_train(Opt *opt, gmatrix *g, double zthresh)
    FREENULL(x);
    FREENULL(invhessian);
    FREENULL(beta);
+   FREENULL(se);
 
    return SUCCESS;
 }
