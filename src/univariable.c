@@ -243,8 +243,6 @@ int make_hessian(double *hessian, double *x,
 int univar_gmatrix(Opt *opt, gmatrix *g, double *beta, double *zscore)
 {
    int i, j, ret,
-       n = g->ncurr,
-       n1 = n - 1,
        p1 = g->p + 1;
    double beta2[2] = {0, 0};
    double *invhessian = NULL,
@@ -255,7 +253,6 @@ int univar_gmatrix(Opt *opt, gmatrix *g, double *beta, double *zscore)
       return FAILURE;
 
    MALLOCTEST(invhessian, sizeof(double) * 4);
-   CALLOCTEST(x, 2 * n, sizeof(double));
 
    /* get p-values per SNP, skip intercept */
    for(j = 1 ; j < p1 ; j++)
@@ -267,15 +264,16 @@ int univar_gmatrix(Opt *opt, gmatrix *g, double *beta, double *zscore)
 	 continue;
       }
       
-      g->nextcol(g, &sm, j);
-      for(i = n1 ; i >= 0 ; --i)
+      g->nextcol(g, &sm, j, NA_ACTION_DELETE);
+      CALLOCTEST(x, 2 * sm.n, sizeof(double));
+      for(i = sm.n - 1 ; i >= 0 ; --i)
       {
 	 x[2 * i] = 1.0;
 	 x[2 * i + 1] = sm.x[i];
       }
 
       beta2[0] = beta2[1] = 0.0;
-      ret = irls(x, g->y, beta2, invhessian, n, 2,
+      ret = irls(x, sm.y, beta2, invhessian, sm.n, 2,
 	    opt->lambda2_univar, FALSE);
 
       if(ret == FAILURE)
@@ -478,7 +476,7 @@ int run_predict_beta(gmatrix *g, predict predict_func,
 
    for(j = 0 ; j < p1 ; j++)
    {
-      g->nextcol(g, &sm, j);
+      g->nextcol(g, &sm, j, NA_ACTION_ZERO);
       for(i = 0 ; i < n ; i++)
 	 lp[i] += sm.x[i] * beta[j];
    }

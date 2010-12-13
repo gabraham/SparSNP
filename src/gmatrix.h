@@ -16,6 +16,9 @@
 
 #define HASH_SIZE 64
 
+#define NA_ACTION_DELETE 1
+#define NA_ACTION_ZERO 2
+
 typedef struct bucket {
    int key;
    int n;
@@ -34,7 +37,9 @@ typedef struct cache {
 } cache;
 
 typedef struct sample {
+   int n;
    double *x;
+   double *y;
    double *x2;
    short intercept;
    short cached;
@@ -72,7 +77,7 @@ typedef struct gmatrix {
    int bufsize;
    int bufidx;
    int yidx; /* only used for pcor */
-   int (*nextcol)(struct gmatrix*, sample*, int skip);
+   int (*nextcol)(struct gmatrix*, sample*, int skip, int na_action);
    char *scalefile;
    dtype *tmp;
    unsigned char *encbuf;
@@ -106,7 +111,7 @@ int gmatrix_init(gmatrix *g, char *filename, int n, int p,
       short mode, loss_pt);
 int gmatrix_reset(gmatrix *);
 void gmatrix_free(gmatrix *);
-int gmatrix_disk_nextcol(gmatrix *, sample *, int skip);
+int gmatrix_disk_nextcol(gmatrix *, sample *, int skip, int na_action);
 int gmatrix_disk_read_y(gmatrix *g);
 int gmatrix_disk_skipcol(gmatrix *g);
 int gmatrix_disk_skipcol(gmatrix *g);

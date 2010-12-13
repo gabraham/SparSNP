@@ -9,7 +9,9 @@ static inline int hash(int key);
 
 int sample_init(sample *s)
 {
+   s->n = 0;
    s->x = NULL;
+   s->y = NULL;
    s->cached = FALSE;
    s->intercept = FALSE;
    return SUCCESS;
@@ -279,15 +281,12 @@ int gmatrix_read_matrix(gmatrix *g, double *x, int *ind, int m)
    {
       if(ind[j])
       {
-	 if(!g->nextcol(g, &sm, j))
+	 /* must not delete obs otherwise matrix structure will break */
+	 if(!g->nextcol(g, &sm, j, NA_ACTION_ZERO))
 	    return FAILURE;
    
-         for(i = 0 ; i < n ; i++)
-	 {
-	    /*missing[i] |= (sm.x[i] == X_LEVEL_NA);
-	    x[i * m + k] = (missing[i] ? 0 : sm.x[i]);*/
-	    x[i * m + k] = (sm.x[i] == X_LEVEL_NA ? 0 : sm.x[i]);
-	 }
+         for(i = 0 ; i < sm.n ; i++)
+	    x[i * m + k] = sm.x[i];
 	 k++;
       }
    }
@@ -300,12 +299,13 @@ int gmatrix_read_matrix(gmatrix *g, double *x, int *ind, int m)
 /*
  * reads one column of data from disk (all samples for one variable)
  */
-int gmatrix_disk_nextcol(gmatrix *g, sample *s, int j)
+int gmatrix_disk_nextcol(gmatrix *g, sample *s, int j, int na_action)
 {
    int i, l1, n1 = g->n - 1, n = g->n;
    int k = g->ncurr - 1;
    int f = g->fold * n;
-   double d;
+   int ngood = 0;
+   dtype d;
 
    if(j == 0)
    {
@@ -326,36 +326,93 @@ int gmatrix_disk_nextcol(gmatrix *g, sample *s, int j)
    g->decode(g->tmp, g->encbuf, g->nencb);
 
    /* Get the scaled versions of the genotypes */
-   if(g->nfolds < 2) { /* without crossval */
-      if(g->scalefile) { /* scale.c doesn't use scalefile so check */
-         /* Get the scaled value instead of the original value */
+   if(g->nfolds < 2)
+   { /* without crossval */
+      if(g->scalefile)
+      { /* scale.c doesn't use scalefile so check */
+         /* Get the scaled value instead of the original value.
+	  * Note that na_action=NA_ACTION_DELETE is NOT supported for scaled
+	  * inputs since scaled inputs come from the lookup table */
+	 if(na_action != NA_ACTION_ZERO)
+	 {
+	    fprintf(stderr, "NA_ACTION_DELETE not supported for scaled \
+inputs in gmatrix_disk_nextcol\n");
+	    return FAILURE;
+	 }
+
          l1 = j * NUM_X_LEVELS;
          for(i = n1 ; i >= 0 ; --i)
 	    g->xtmp[i] = g->lookup[l1 + g->tmp[i]];
-      } else { /* no scaling */
-	 for(i = n1 ; i >= 0 ; --i)
+      }
+      else
+      { /* no scaling */
+	 if(na_action == NA_ACTION_ZERO)
 	 {
-	    d = (double)g->tmp[i];
-	    g->xtmp[i] = (d == X_LEVEL_NA ? 0 : d);
+	    for(i = n1 ; i >= 0 ; --i)
+	    {
+	       d = g->tmp[i];
+	       g->xtmp[i] = (d == X_LEVEL_NA ? 0 : (double)d);
+	    }
+	    s->n = n;
+	 }
+	 else
+	 {
+	    for(i = 0 ; i < n ; ++i)
+	    {
+	       d = g->tmp[i];
+	       if(d != X_LEVEL_NA)
+		  g->xtmp[ngood++] = (double)d;
+	    }
+	    s->n = ngood;
 	 }
       }
-   } else {
+   }
+   else 
+   {
       /* with crossval */
       /* Get the scaled value instead of the original value */
-      if(g->scalefile) {
+      if(g->scalefile)
+      {
+	 if(na_action != NA_ACTION_ZERO)
+	 {
+	    fprintf(stderr, "NA_ACTION_DELETE not supported for scaled \
+inputs in gmatrix_disk_nextcol\n");
+	    return FAILURE;
+	 }
+
 	 l1 = j * NUM_X_LEVELS;
 	 for(i = n1 ; i >= 0 ; --i)
 	    /* different between train and test */
 	    if((g->mode == MODE_PREDICT) ^ g->folds[f + i])
 	       g->xtmp[k--] = g->lookup[l1 + g->tmp[i]];
-      } else { /* no scaling */
-	 for(i = n1 ; i >= 0 ; --i)
+	 s->n = n;
+      }
+      else 
+      { /* no scaling */
+	 if(na_action == NA_ACTION_ZERO)
 	 {
-	    if((g->mode == MODE_PREDICT) ^ g->folds[f + i])
+	    for(i = n1 ; i >= 0 ; --i)
 	    {
-	       d = (double)g->tmp[i];
-	       g->xtmp[k--] = (d == X_LEVEL_NA ? 0 : d);
+	       if((g->mode == MODE_PREDICT) ^ g->folds[f + i])
+	       {
+	          d = g->tmp[i];
+	          g->xtmp[k--] = (d == X_LEVEL_NA ? 0 : (double)d);
+	       }
 	    }
+	    s->n = n;
+	 } 
+	 else
+	 {
+	    for(i = 0 ; i < n ; ++i)
+	    {
+	       if((g->mode == MODE_PREDICT) ^ g->folds[f + i])
+	       {
+	          d = g->tmp[i];
+		  if(d != X_LEVEL_NA)
+		     g->xtmp[ngood++] = (double)d;
+	       }
+	    }
+	    s->n = ngood;
 	 }
       }
    }
