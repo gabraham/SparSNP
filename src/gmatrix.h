@@ -99,7 +99,7 @@ typedef struct gmatrix {
    double *x;
 } gmatrix;
 
-int sample_init(sample *, int);
+int sample_init(sample *);
 int gmatrix_init(gmatrix *g, char *filename, int n, int p,
       char *scalefile, short yformat, int model,
       short encoded, short binformat, char *folds_ind_file,

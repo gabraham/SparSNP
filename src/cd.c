@@ -66,7 +66,7 @@ double get_lambda1max_gmatrix(gmatrix *g,
    double s, zmax = 0, beta_new;
    sample sm;
 
-   if(!sample_init(&sm, n))
+   if(!sample_init(&sm))
       return FAILURE;
 
    g->nextcol(g, &sm, 0);
@@ -175,7 +175,7 @@ int cd_gmatrix(gmatrix *g,
       const int verbose,
       const double trunc)
 {
-   const int n = g->ncurr, p = g->p, p1 = g->p + 1;
+   const int p = g->p, p1 = g->p + 1;
    int j, iter, allconverged = 0, numactive = 0,
        epoch = 1, numconverged = 0,
        good = FALSE;
@@ -186,7 +186,7 @@ int cd_gmatrix(gmatrix *g,
    double *beta_old = NULL, *m = NULL;
    sample sm;
 
-   if(!sample_init(&sm, n))
+   if(!sample_init(&sm))
       return FAILURE;
 
    CALLOCTEST(beta_old, p1, sizeof(double));

@@ -7,7 +7,7 @@
 
 static inline int hash(int key);
 
-int sample_init(sample *s, int n)
+int sample_init(sample *s)
 {
    s->x = NULL;
    s->cached = FALSE;
@@ -261,18 +261,22 @@ int gmatrix_split_y(gmatrix *g)
 /*
  * Read all the data into a preallocated row-major n by m matrix, which
  * variables are read is determined by the p+1 array ind
+ *
+ * For each vector of samples x_i, if any of the observations are missing then
+ * the entire sample is zeroed out and ignored.
  */
 int gmatrix_read_matrix(gmatrix *g, double *x, int *ind, int m)
 {
    int i, j, k = 0,
        p1 = g->p + 1,
        n = g->ncurr;
-   /*double prev = -1;*/
    sample sm;
+   int *missing = NULL;
+
+   CALLOCTEST(missing, n, sizeof(int));
 
    for(j = 0 ; j < p1 ; j++)
    {
-      /*g->active[j] = TRUE;*/
       if(ind[j])
       {
 	 if(!g->nextcol(g, &sm, j))
@@ -280,13 +284,15 @@ int gmatrix_read_matrix(gmatrix *g, double *x, int *ind, int m)
    
          for(i = 0 ; i < n ; i++)
 	 {
+	    /*missing[i] |= (sm.x[i] == X_LEVEL_NA);
+	    x[i * m + k] = (missing[i] ? 0 : sm.x[i]);*/
 	    x[i * m + k] = (sm.x[i] == X_LEVEL_NA ? 0 : sm.x[i]);
-	    /*g->active[j] &= (sm.x[i] != prev);
-	    prev = sm.x[i];*/
 	 }
 	 k++;
       }
    }
+
+   FREENULL(missing);
 
    return SUCCESS;
 }
@@ -299,6 +305,7 @@ int gmatrix_disk_nextcol(gmatrix *g, sample *s, int j)
    int i, l1, n1 = g->n - 1, n = g->n;
    int k = g->ncurr - 1;
    int f = g->fold * n;
+   double d;
 
    if(j == 0)
    {
@@ -327,7 +334,10 @@ int gmatrix_disk_nextcol(gmatrix *g, sample *s, int j)
 	    g->xtmp[i] = g->lookup[l1 + g->tmp[i]];
       } else { /* no scaling */
 	 for(i = n1 ; i >= 0 ; --i)
-	    g->xtmp[i] = (double)g->tmp[i];
+	 {
+	    d = (double)g->tmp[i];
+	    g->xtmp[i] = (d == X_LEVEL_NA ? 0 : d);
+	 }
       }
    } else {
       /* with crossval */
@@ -340,8 +350,13 @@ int gmatrix_disk_nextcol(gmatrix *g, sample *s, int j)
 	       g->xtmp[k--] = g->lookup[l1 + g->tmp[i]];
       } else { /* no scaling */
 	 for(i = n1 ; i >= 0 ; --i)
+	 {
 	    if((g->mode == MODE_PREDICT) ^ g->folds[f + i])
-	       g->xtmp[k--] = (double)g->tmp[i];
+	    {
+	       d = (double)g->tmp[i];
+	       g->xtmp[k--] = (d == X_LEVEL_NA ? 0 : d);
+	    }
+	 }
       }
    }
 

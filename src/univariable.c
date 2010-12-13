@@ -106,7 +106,7 @@ int irls(double *x, double *y, double *beta, double *invhessian, int n, int p,
       double lambda2, int verbose)
 {
    int i, j, 
-       iter = 1, maxiter = 250,
+       iter = 1, maxiter = 100,
        converged = FALSE, diverged = FALSE,
        ret = SUCCESS;
 
@@ -240,17 +240,18 @@ int make_hessian(double *hessian, double *x,
  *
  * 2) Fit a multivariable model to the top k SNPs plus intercept
  */
-int univar_gmatrix(Opt *opt, gmatrix *g, double *zscore)
+int univar_gmatrix(Opt *opt, gmatrix *g, double *beta, double *zscore)
 {
    int i, j, ret,
        n = g->ncurr,
+       n1 = n - 1,
        p1 = g->p + 1;
-   double beta[2] = {0, 0};
+   double beta2[2] = {0, 0};
    double *invhessian = NULL,
 	  *x = NULL;
    sample sm;
 
-   if(!sample_init(&sm, n))
+   if(!sample_init(&sm))
       return FAILURE;
 
    MALLOCTEST(invhessian, sizeof(double) * 4);
@@ -267,14 +268,14 @@ int univar_gmatrix(Opt *opt, gmatrix *g, double *zscore)
       }
       
       g->nextcol(g, &sm, j);
-      for(i = n - 1 ; i >= 0 ; --i)
+      for(i = n1 ; i >= 0 ; --i)
       {
 	 x[2 * i] = 1.0;
 	 x[2 * i + 1] = sm.x[i];
       }
 
-      beta[0] = beta[1] = 0.0;
-      ret = irls(x, g->y, beta, invhessian, n, 2,
+      beta2[0] = beta2[1] = 0.0;
+      ret = irls(x, g->y, beta2, invhessian, n, 2,
 	    opt->lambda2_univar, FALSE);
 
       if(ret == FAILURE)
@@ -282,10 +283,13 @@ int univar_gmatrix(Opt *opt, gmatrix *g, double *zscore)
       else if(ret == SUCCESS)
       {
 	 /* z-score for the SNP only, ignore intercept */
-	 zscore[j] = beta[1] / sqrt(invhessian[3]);
+	 zscore[j] = beta2[1] / sqrt(invhessian[3]);
+	 beta[j] = beta2[1];
       }
       else
-	 zscore[j] = 0.0;
+      {
+	 beta[j] = zscore[j] = 0.0;
+      }
    }
 
    FREENULL(invhessian);
@@ -307,13 +311,14 @@ int run_train(Opt *opt, gmatrix *g, double zthresh)
    char tmp[MAX_STR_LEN];
 
    CALLOCTEST(zscore, p1, sizeof(double));
+   CALLOCTEST(beta, p1, sizeof(double));
 
    if(opt->verbose)
       printf("%d training samples, %d test samples\n",
 	    g->ntrain[g->fold], g->ntest[g->fold]);
 
    /* select the SNP using univariable method */
-   if(!(ret = univar_gmatrix(opt, g, zscore)))
+   if(!(ret = univar_gmatrix(opt, g, beta, zscore)))
       return FAILURE;
 
    printf("univariate selection done\n");
@@ -334,7 +339,17 @@ int run_train(Opt *opt, gmatrix *g, double zthresh)
    if(!writevectorf(tmp, zscore, g->p + 1))
       return FAILURE;
 
+   snprintf(tmp, MAX_STR_LEN, "univar_beta.00.%02d", g->fold);
+   if(!writevectorf(tmp, beta, g->p + 1))
+      return FAILURE;
+
    printf("total %d SNPs exceeded z-score=%.3f\n", numselected - 1, zthresh);
+   FREENULL(beta);
+
+   /* don't do multivariable IRLS here, do in R */
+   FREENULL(zscore);
+   return SUCCESS;
+
    if(numselected > 0)
    {
       MALLOCTEST(x, sizeof(double) * n * numselected);
@@ -379,7 +394,6 @@ int run_train(Opt *opt, gmatrix *g, double zthresh)
    if(!writevectorl(tmp, &numselected, 1))
       return FAILURE;
 
-   FREENULL(zscore);
    FREENULL(x);
    FREENULL(invhessian);
    FREENULL(beta);
@@ -418,6 +432,11 @@ int do_train(gmatrix *g, Opt *opt, char tmp[])
 
 	 if(!(ret &= run_train(opt, g, opt->zthresh)))
 	    break;
+
+	 snprintf(tmp, 5, "y.%02d", k);
+	 printf("writing y file: %s\n", tmp);
+	 if(!(ret &= writevectorf(tmp, g->y, g->ncurr)))
+	    break;
       }
    }
    else
@@ -428,7 +447,13 @@ int do_train(gmatrix *g, Opt *opt, char tmp[])
       gmatrix_zero_model(g);
       /*make_lambda1path(opt, g);*/
       gmatrix_reset(g);
-      ret = run_train(opt, g, opt->zthresh);
+      if(!(ret = run_train(opt, g, opt->zthresh)))
+	 return FAILURE;
+
+      snprintf(tmp, 5, "y.%02d", 0);
+      printf("writing y file: %s\n", tmp);
+      if(!writevectorf(tmp, g->y, g->ncurr))
+	 return FAILURE;
    }
    
    return ret;
@@ -446,7 +471,7 @@ int run_predict_beta(gmatrix *g, predict predict_func,
    double *restrict lp = g->lp;
    double *restrict beta = g->beta;
 
-   if(!sample_init(&sm, n))
+   if(!sample_init(&sm))
       return FAILURE;
 
    CALLOCTEST(yhat, n, sizeof(double));

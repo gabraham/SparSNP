@@ -8,7 +8,7 @@ int unpack(gmatrix *g, char *filename_out)
    FILE *out;
    char *tmp = NULL;
 
-   if(!sample_init(&sm, g->n))
+   if(!sample_init(&sm))
       return FAILURE;
 
    MALLOCTEST(tmp, sizeof(char) * g->n);

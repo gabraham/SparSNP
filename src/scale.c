@@ -15,7 +15,7 @@ int scale(gmatrix *g)
    sample sm;
    double *tmp = NULL, delta;
 
-   if(!sample_init(&sm, n))
+   if(!sample_init(&sm))
       return FAILURE;
 
    if(!g->mean)

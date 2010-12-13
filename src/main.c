@@ -123,7 +123,7 @@ int run_predict_beta(gmatrix *g, predict predict_func,
    double *restrict lp = g->lp;
    double *restrict beta = g->beta;
 
-   if(!sample_init(&sm, n))
+   if(!sample_init(&sm))
       return FAILURE;
 
    CALLOCTEST(yhat, n, sizeof(double));
