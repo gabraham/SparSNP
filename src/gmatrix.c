@@ -130,6 +130,8 @@ int gmatrix_init(gmatrix *g, char *filename, int n, int p,
       return FAILURE;
 
    MALLOCTEST(g->xtmp, sizeof(double) * g->n);
+   MALLOCTEST(g->ytmp, sizeof(double) * g->n);
+   /*MALLOCTEST(g->good, sizeof(double) * g->n);*/
 
    return SUCCESS;
 }
@@ -175,6 +177,8 @@ void gmatrix_free(gmatrix *g)
    FREENULL(g->y);
    FREENULL(g->y_orig);
    FREENULL(g->xtmp);
+   FREENULL(g->ytmp);
+   /*FREENULL(g->good);*/
    FREENULL(g->ignore);
    FREENULL(g->tmp);
    FREENULL(g->intercept);
@@ -361,7 +365,10 @@ inputs in gmatrix_disk_nextcol\n");
 	    {
 	       d = g->tmp[i];
 	       if(d != X_LEVEL_NA)
-		  g->xtmp[ngood++] = (double)d;
+	       {
+		  g->xtmp[ngood] = (double)d;
+		  g->ytmp[ngood++] = g->y[i];
+	       }
 	    }
 	    s->n = ngood;
 	 }
@@ -409,7 +416,10 @@ inputs in gmatrix_disk_nextcol\n");
 	       {
 	          d = g->tmp[i];
 		  if(d != X_LEVEL_NA)
-		     g->xtmp[ngood++] = (double)d;
+		  {
+		     g->xtmp[ngood] = (double)d;
+		     g->ytmp[ngood++] = g->y[i];
+		  }
 	       }
 	    }
 	    s->n = ngood;
@@ -419,6 +429,7 @@ inputs in gmatrix_disk_nextcol\n");
 
    /*cache_put(g->ca, j, g->xtmp, g->ncurr);*/
    s->x = g->xtmp;
+   s->y = g->ytmp;
 
    return SUCCESS;
 }

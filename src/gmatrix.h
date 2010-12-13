@@ -54,6 +54,8 @@ typedef struct gmatrix {
    double *y_orig;
    double *y;
    double *xtmp;
+   double *ytmp;
+   int *good;
    int n;
    int *ntrain;
    int *ntest;
