@@ -345,8 +345,8 @@ int run_train(Opt *opt, gmatrix *g, double zthresh)
    FREENULL(beta);
 
    /* don't do multivariable IRLS here, do in R */
-   FREENULL(zscore);
-   return SUCCESS;
+   /*FREENULL(zscore);
+   return SUCCESS;*/
 
    if(numselected > 0)
    {

@@ -367,7 +367,7 @@ inputs in gmatrix_disk_nextcol\n");
 	       if(d != X_LEVEL_NA)
 	       {
 		  g->xtmp[ngood] = (double)d;
-		  g->ytmp[ngood++] = g->y[i];
+		  g->ytmp[ngood++] = g->y_orig[i];
 	       }
 	    }
 	    s->n = ngood;
@@ -404,9 +404,10 @@ inputs in gmatrix_disk_nextcol\n");
 	       {
 	          d = g->tmp[i];
 	          g->xtmp[k--] = (d == X_LEVEL_NA ? 0 : (double)d);
+		  ngood++;
 	       }
 	    }
-	    s->n = n;
+	    s->n = ngood;
 	 } 
 	 else
 	 {
@@ -418,7 +419,7 @@ inputs in gmatrix_disk_nextcol\n");
 		  if(d != X_LEVEL_NA)
 		  {
 		     g->xtmp[ngood] = (double)d;
-		     g->ytmp[ngood++] = g->y[i];
+		     g->ytmp[ngood++] = g->y_orig[i];
 		  }
 	       }
 	    }
