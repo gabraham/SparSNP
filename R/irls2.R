@@ -45,12 +45,13 @@ irls <- function(x, y, lambda=0, dispersion=1, maxiter=250)
       z <- lp + (1 / w) * (y - lpinv)
       l <- try(lm(z ~ x, weights=w))
       if(class(l) == "try-error")
-	 return(NULL)
+	 browser()
 
       betaold <- beta
       beta <- coef(l)
-      bad <- is.na(beta)
-      s <- beta[!bad] - betaold[!bad]
+      beta[is.na(beta)] <- 0
+      s <- beta - betaold
+
       iter <- iter + 1
    }
 

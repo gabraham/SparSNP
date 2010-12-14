@@ -230,6 +230,7 @@ int pseudoinverse(double *Aorig, int *m, int *n, double *P)
 	 *n, LDU, neigens, 1.0, TMP, *n, U2, LDU, 0, P, *n);
    free(TMP);
    free(U2);
+   free(eigens);
 
    return SUCCESS;
 }

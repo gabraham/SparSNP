@@ -316,6 +316,8 @@ int gmatrix_disk_nextcol(gmatrix *g, sample *s, int j, int na_action)
       /* don't need to worry about cross-validation etc
        * because the intercept is all 1s */
       s->x = g->intercept;
+      s->y = g->y_orig;
+      s->n = g->ncurr;
       return SUCCESS;
    }
 

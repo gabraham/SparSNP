@@ -276,6 +276,7 @@ int univar_gmatrix(Opt *opt, gmatrix *g, double *beta, double *zscore)
       ret = irls(x, sm.y, beta2, invhessian, sm.n, 2,
 	    opt->lambda2_univar, FALSE);
 
+      FREENULL(x);
       if(ret == FAILURE)
 	 return FAILURE;
       else if(ret == SUCCESS)
@@ -291,7 +292,6 @@ int univar_gmatrix(Opt *opt, gmatrix *g, double *beta, double *zscore)
    }
 
    FREENULL(invhessian);
-   FREENULL(x);
 
    return SUCCESS;
 }
@@ -322,15 +322,17 @@ int run_train(Opt *opt, gmatrix *g, double zthresh)
    printf("univariate selection done\n");
    numselected = 1;
    g->active[0] = TRUE;
+   printf("selected vars: ");
    for(j = 1 ; j < p1 ; j++)
    {
       g->active[j] &= (fabs(zscore[j]) >= zthresh);
       if(g->active[j])
       {
-	 printf("selected var %d\n", j);
+	 printf("%d,", j);
 	 numselected++;
       }
    }
+   printf("\n");
 
    /* univariable z scores */
    snprintf(tmp, MAX_STR_LEN, "univar_zscore.00.%02d", g->fold);
@@ -396,6 +398,7 @@ int run_train(Opt *opt, gmatrix *g, double zthresh)
    FREENULL(invhessian);
    FREENULL(beta);
    FREENULL(se);
+   FREENULL(zscore);
 
    return SUCCESS;
 }
