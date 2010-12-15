@@ -132,11 +132,7 @@ int run_predict_beta(gmatrix *g, predict predict_func,
    {
       g->nextcol(g, &sm, j, NA_ACTION_ZERO);
       for(i = 0 ; i < n ; i++)
-      {
 	 lp[i] += sm.x[i] * beta[j];
-	 printf("%d %d\n", i, j);
-	 fflush(stdout);
-      }
    }
    
    for(i = 0 ; i < n ; i++)
