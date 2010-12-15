@@ -301,7 +301,12 @@ int gmatrix_read_matrix(gmatrix *g, double *x, int *ind, int m)
 }
 
 /*
- * reads one column of data from disk (all samples for one variable)
+ * Reads one column of data from disk (all samples for one variable).
+ * Takes into account whether we're doing cross-validation or not
+ * and if so which fold we're currently in, and how we choose to 
+ * handle missing values.
+ *
+ * na_action: one of NA_ACTION_ZERO, NA_ACTION_DELETE
  */
 int gmatrix_disk_nextcol(gmatrix *g, sample *s, int j, int na_action)
 {
@@ -337,8 +342,9 @@ int gmatrix_disk_nextcol(gmatrix *g, sample *s, int j, int na_action)
       if(g->scalefile)
       { /* scale.c doesn't use scalefile so check */
          /* Get the scaled value instead of the original value.
-	  * Note that na_action=NA_ACTION_DELETE is NOT supported for scaled
-	  * inputs since scaled inputs come from the lookup table */
+	  * Note that na_action=NA_ACTION_DELETE is NOT supported
+	  * for scaled inputs since scaled inputs come from
+	  * the lookup table */
 	 if(na_action != NA_ACTION_ZERO)
 	 {
 	    fprintf(stderr, "NA_ACTION_DELETE not supported for scaled \
@@ -391,10 +397,15 @@ inputs in gmatrix_disk_nextcol\n");
 
 	 l1 = j * NUM_X_LEVELS;
 	 for(i = n1 ; i >= 0 ; --i)
+	 {
 	    /* different between train and test */
 	    if((g->mode == MODE_PREDICT) ^ g->folds[f + i])
+	    {
 	       g->xtmp[k--] = g->lookup[l1 + g->tmp[i]];
-	 s->n = n;
+	       ngood++;
+	    }
+	 }
+	 s->n = ngood;
       }
       else 
       { /* no scaling */

@@ -3,11 +3,11 @@
 set -u
 set -e
 
-DIR_STEM="sim3."
-N=1000
-P=10000
+DIR_STEM="sim4."
+N=200
+P=100
 MODEL=linear
-NZMAX=1000
+NZMAX=10
 bin=sim.bin
 CD="~/Code/cd/src/cd -model $MODEL -bin ../$bin -scale ../scale.bin \
 -n $N -p $P -v -maxepochs 10000 -nzmax $NZMAX -nl1 100 -l1min 0.001 \
