@@ -9,8 +9,11 @@
 #define IRLS_THRESH 1e-8
 #define IRLS_THRESH_MAX 30
 
-#define IRLS_ERR_NO_CONVERGENCE 2 /* didn't converge within predefined iterations */
-#define IRLS_ERR_DIVERGENCE 3 /* converged but to a very large value */
+/* didn't converge within predefined iterations */
+#define IRLS_ERR_NO_CONVERGENCE 2 
+
+/* converged but to a very large value */
+#define IRLS_ERR_DIVERGENCE 3 
 
 /* 
  * Invert 2x2 matrix x and put it in y, row-major matrix ordering:
@@ -57,9 +60,10 @@ void crossprod(double *x, double *y, double *z, int m, int n, int p)
  * Y: m by p
  * Z: n by p
  *
- * Note that w is NOT a matrix, it's an array of length m
+ * Note that w is NOT actually a matrix, it's an array of length m
  */
-void wcrossprod(double *x, double *y, double *w, double *z, int m, int n, int p)
+void wcrossprod(double *x, double *y, double *w, double *z,
+      int m, int n, int p)
 {
    int i, j, k;
 
@@ -99,11 +103,11 @@ void sqmvprod(double *x, double *y, double *z, int m)
 }
 
 /*
- * Iteratively-Reweighted Least Squares for logistic regression with l2
- * penalties
+ * Iteratively-Reweighted Least Squares for logistic regression
+ * with l2 penalties
  */
-int irls(double *x, double *y, double *beta, double *invhessian, int n, int p,
-      double lambda2, int verbose)
+int irls(double *x, double *y, double *beta, double *invhessian,
+      int n, int p, double lambda2, int verbose)
 {
    int i, j, 
        iter = 1, maxiter = 100,
@@ -247,8 +251,8 @@ int make_hessian(double *hessian, double *x,
 
 /* Two stages:
  *
- * 1) Select the top k SNPs by univariable p values, using each SNP and the
- * intercept as covariables
+ * 1) Select the top k SNPs by univariable p values, using each
+ * SNP and the intercept as covariables
  *
  * 2) Fit a multivariable model to the top k SNPs plus intercept
  */
