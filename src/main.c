@@ -131,6 +131,9 @@ int run_predict_beta(gmatrix *g, predict predict_func,
    for(j = 0 ; j < p1 ; j++)
    {
       g->nextcol(g, &sm, j, NA_ACTION_ZERO);
+
+      /* We count up to n, which should be the same as sm.n,
+       * since we're not deleting missing obs */
       for(i = 0 ; i < n ; i++)
 	 lp[i] += sm.x[i] * beta[j];
    }
