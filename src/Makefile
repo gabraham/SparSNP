@@ -29,7 +29,7 @@ debug: CCFLAGS = -Wall \
 
 debug: $(targets)
 
-LIBRARIES = -lm
+LIBRARIES = -lm -llapack -lblas -lgfortran
 
 cd: common.c coder.c ind.c gmatrix.c loss.c util.c options.c main.c cd.c
 	$(CC) $(CCFLAGS) $(LIBRARIES) $^ -o cd

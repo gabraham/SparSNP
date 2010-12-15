@@ -6,8 +6,8 @@
 
 #define OPTIONS_CALLER univariable
 
-#define IRLS_THRESH 1e-9
-#define IRLS_THRESH_MAX 20
+#define IRLS_THRESH 1e-8
+#define IRLS_THRESH_MAX 30
 
 #define IRLS_ERR_NO_CONVERGENCE 2 /* didn't converge within predefined iterations */
 #define IRLS_ERR_DIVERGENCE 3 /* converged but to a very large value */
@@ -117,6 +117,8 @@ int irls(double *x, double *y, double *beta, double *invhessian, int n, int p,
 	  *w = NULL,
 	  *s = NULL;
 
+   double loss_old = 1e6, loss = 0;
+
    MALLOCTEST(lp, sizeof(double) * n);
    MALLOCTEST(lp_invlogit, sizeof(double) * n);
    MALLOCTEST(grad, sizeof(double) * p);
@@ -128,6 +130,12 @@ int irls(double *x, double *y, double *beta, double *invhessian, int n, int p,
    {
       if(verbose)
 	 printf("IRLS iter %d\n", iter);
+      
+      if(iter > 1)
+	 loss_old = loss;
+      loss = 0;
+
+      /* setup the linea predictors, and compute the loss */
       for(i = n - 1; i >= 0 ; --i)
       {
 	 lp[i] = x[i * p] * beta[0];
@@ -137,6 +145,15 @@ int irls(double *x, double *y, double *beta, double *invhessian, int n, int p,
 	    lp[i] += x[i * p + j] * beta[j];
 	    lp_invlogit[i] = 1 / (1 + exp(-lp[i]));
 	 }
+
+	 loss += log(1 + exp(lp[i])) - y[i] * lp[i];
+      }
+
+      /* same convergence test as in R's glm.fit */
+      if(fabs(loss - loss_old) / (fabs(loss) + 0.1) <= IRLS_THRESH)
+      {
+	 converged = TRUE;
+	 break;
       }
 
       /* gradient */
@@ -168,11 +185,12 @@ int irls(double *x, double *y, double *beta, double *invhessian, int n, int p,
       for(j = 0 ; j < p ; j++)
       {
 	 beta[j] -= s[j];
-	 converged &= (fabs(s[j]) <= IRLS_THRESH);
+	 /*converged &= (fabs(s[j]) <= IRLS_THRESH);*/
 	 diverged |= (fabs(beta[j]) >= IRLS_THRESH_MAX);
       }
 
-      /*if(converged || diverged)*/
+
+
       if(converged)
 	 break;
 
@@ -180,15 +198,9 @@ int irls(double *x, double *y, double *beta, double *invhessian, int n, int p,
    }
 
    if(iter >= maxiter)
-   {
-      printf("IRLS didn't converge\n");
       ret = IRLS_ERR_NO_CONVERGENCE;
-   }
    else if(diverged)
-   {
-      printf("IRLS diverged\n");
       ret = IRLS_ERR_DIVERGENCE;
-   }
 
    FREENULL(grad);
    FREENULL(hessian);
@@ -275,19 +287,24 @@ int univar_gmatrix(Opt *opt, gmatrix *g, double *beta, double *zscore)
       beta2[0] = beta2[1] = 0.0;
       ret = irls(x, sm.y, beta2, invhessian, sm.n, 2,
 	    opt->lambda2_univar, FALSE);
-
       FREENULL(x);
+
       if(ret == FAILURE)
 	 return FAILURE;
-      else if(ret == SUCCESS)
+      else if(ret == IRLS_ERR_NO_CONVERGENCE)
+      {
+	 printf("IRLS didn't converge for variable %d\n", j);
+	 beta[j] = zscore[j] = 0.0;
+      }
+      else
       {
 	 /* z-score for the SNP only, ignore intercept */
 	 zscore[j] = beta2[1] / sqrt(invhessian[3]);
 	 beta[j] = beta2[1];
-      }
-      else
-      {
-	 beta[j] = zscore[j] = 0.0;
+
+	 if(ret == IRLS_ERR_DIVERGENCE)
+	    printf("IRLS diverged for variable %d, z=%.3f\n",
+		  j, zscore[j]);
       }
    }
 
