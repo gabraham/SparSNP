@@ -1,9 +1,8 @@
 #!/bin/bash
 
-N=2000
-#P=185805
-P=1000
-NFOLDS=10
+N=30000
+P=185805
+NFOLDS=3
 NZMAX=200
 MODEL=sqrhinge
 
