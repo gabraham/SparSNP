@@ -2,11 +2,19 @@
 library(glmnet)
 library(MASS)
 
-irls <- function(x, y, lambda=0, dispersion=1, maxiter=250)
+irls <- function(x, y, lambda=0, dispersion=1, maxiter=250, scale=TRUE)
 {
+   if(NROW(x) != length(y))
+      stop("NROW(x) != length(y)")
+
+   x <- cbind(x)
    good <- apply(x, 1, function(x) all(!is.na(x)))
    x <- x[good,]
-   x1 <- cbind(1, x)
+   x1 <- if(scale) {
+      cbind(1, scale(x))
+   } else {
+      cbind(1, x)
+   }
    y <- y[good]
 
    if(sum(good) == 0)
@@ -21,8 +29,7 @@ irls <- function(x, y, lambda=0, dispersion=1, maxiter=250)
    beta <- numeric(p)
    s <- 10
    iter <- 1
-   #L <- diag(c(0, rep(lambda, p - 1)))
-
+   L <- diag(c(0, rep(lambda, p - 1)))
 
    cat(dim(x), "\n")
 
@@ -34,7 +41,7 @@ irls <- function(x, y, lambda=0, dispersion=1, maxiter=250)
       w <- lpinv * (1 - lpinv)
 
       grad <- crossprod(x1, lpinv - y)
-      hess <- crossprod(x1, diag(w)) %*% x1 #+ L
+      hess <- crossprod(x1, diag(w)) %*% x1 + L
       invhess <- ginv(hess)
       s <- invhess %*% grad
       beta <- beta - s
@@ -61,8 +68,8 @@ irls <- function(x, y, lambda=0, dispersion=1, maxiter=250)
    }
 
    hess <- crossprod(x1, diag(w)) %*% x1
-   #invhess <- ginv(hess)
-   invhess <- solve(hess)
+   invhess <- ginv(hess)
+   #invhess <- solve(hess)
    se <- sqrt(diag(invhess) * dispersion)
    zscore <- beta / se
    pval <- 2 * pnorm(abs(zscore), lower.tail=FALSE)

@@ -232,7 +232,9 @@ int gmatrix_disk_read_y(gmatrix *g)
    return SUCCESS;
 }
 
-/* y is a copy of y_orig as needed for crossval */
+/* y is a copy of y_orig as needed for crossval - in training y are the
+ * training samples, in prediction y are the testing samples
+ */
 int gmatrix_split_y(gmatrix *g)
 {
    int i, n = g->n, n1 = g->n - 1;

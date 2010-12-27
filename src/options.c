@@ -76,6 +76,8 @@ int opt_defaults(Opt *opt, short caller)
    opt->lambda2_univar = 1e-3;
    opt->lambda2_multivar = 1e-3;
 
+   opt->do_multivar = TRUE;
+
    return SUCCESS;
 }
 
@@ -255,6 +257,10 @@ int opt_parse(int argc, char* argv[], Opt* opt)
 	 i++;
 	 opt->zthresh = atof(argv[i]);
       }
+      else if(strcmp2(argv[i], "-nomultivar"))
+      {
+	 opt->do_multivar = FALSE;
+      }
    }
 
    if(opt->caller == OPTIONS_CALLER_CD) /* coordinate descent */
@@ -285,7 +291,7 @@ onl   y using the first one\n");
 -bin <filename> -n <#samples> -p <#variables>  \
 [-betafiles <beta filename/s>] \
 [-zthresh <Z score threshold>] [-foldind <foldsfile>] \
-[-pred <prediction file>] [-v] [-vv]\n");
+[-pred <prediction file>] [-nomultivar] [-v] [-vv]\n");
          return FAILURE;
       }
       else if(opt->n_beta_files > 1 && opt->mode == MODE_TRAIN)

@@ -184,7 +184,7 @@ int irls(double *x, double *y, double *beta, double *invhessian,
       /* Compute the Newton step */
       sqmvprod(invhessian, grad, s, p);
 
-      converged = TRUE;
+      /*converged = TRUE;*/
       diverged = FALSE;
       for(j = 0 ; j < p ; j++)
       {
@@ -193,10 +193,8 @@ int irls(double *x, double *y, double *beta, double *invhessian,
 	 diverged |= (fabs(beta[j]) >= IRLS_THRESH_MAX);
       }
 
-
-
-      if(converged)
-	 break;
+      /*if(converged)
+	 break;*/
 
       iter++;
    }
@@ -341,19 +339,15 @@ int run_train(Opt *opt, gmatrix *g, double zthresh)
       return FAILURE;
 
    printf("univariate selection done\n");
+
    numselected = 1;
    g->active[0] = TRUE;
-   printf("selected vars: ");
    for(j = 1 ; j < p1 ; j++)
    {
       g->active[j] &= (fabs(zscore[j]) >= zthresh);
       if(g->active[j])
-      {
-	 printf("%d,", j);
 	 numselected++;
-      }
    }
-   printf("\n");
 
    /* univariable z scores */
    snprintf(tmp, MAX_STR_LEN, "univar_zscore.00.%02d", g->fold);
@@ -367,9 +361,11 @@ int run_train(Opt *opt, gmatrix *g, double zthresh)
    printf("total %d SNPs exceeded z-score=%.3f\n", numselected - 1, zthresh);
    FREENULL(beta);
 
-   /* don't do multivariable IRLS here, do in R */
-   /*FREENULL(zscore);
-   return SUCCESS;*/
+   if(!opt->do_multivar)
+   {
+      FREENULL(zscore);
+      return SUCCESS;
+   }
 
    if(numselected > 0)
    {
@@ -455,10 +451,10 @@ int do_train(gmatrix *g, Opt *opt, char tmp[])
 	 if(!(ret &= run_train(opt, g, opt->zthresh)))
 	    break;
 
-	 snprintf(tmp, 5, "y.%02d", k);
+	 /*snprintf(tmp, 5, "y.%02d", k);
 	 printf("writing y file: %s\n", tmp);
 	 if(!(ret &= writevectorf(tmp, g->y, g->ncurr)))
-	    break;
+	    break;*/
       }
    }
    else
@@ -472,10 +468,10 @@ int do_train(gmatrix *g, Opt *opt, char tmp[])
       if(!(ret = run_train(opt, g, opt->zthresh)))
 	 return FAILURE;
 
-      snprintf(tmp, 5, "y.%02d", 0);
+      /*snprintf(tmp, 5, "y.%02d", 0);
       printf("writing y file: %s\n", tmp);
       if(!writevectorf(tmp, g->y, g->ncurr))
-	 return FAILURE;
+	 return FAILURE;*/
    }
    
    return ret;

@@ -68,6 +68,7 @@ typedef struct Opt {
    double zthresh;
    double lambda2_univar;
    double lambda2_multivar;
+   int do_multivar;
 } Opt;
 
 int cd_gmatrix(gmatrix *g,
