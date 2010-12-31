@@ -110,7 +110,7 @@ int irls(double *x, double *y, double *beta, double *invhessian,
       int n, int p, double lambda2, int verbose)
 {
    int i, j, 
-       iter = 1, maxiter = 100,
+       iter = 1, maxiter = 30,
        converged = FALSE, diverged = FALSE,
        ret = SUCCESS;
 
