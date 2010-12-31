@@ -24,6 +24,8 @@ void opt_free(Opt *opt)
       free(opt->beta_files_fold);
       opt->beta_files_fold = NULL;
    }
+
+   FREENULL(opt->zthresh);
 }
 
 int opt_defaults(Opt *opt, short caller)
@@ -72,7 +74,15 @@ int opt_defaults(Opt *opt, short caller)
    strcpy(opt->beta_files[0], beta_default);
    opt->n_beta_files = 1;
 
-   opt->zthresh = 5.326724; /* 1 - qnorm(5e-8) */
+   opt->nzthresh = 6;
+   MALLOCTEST(opt->zthresh, sizeof(double) * opt->nzthresh);
+   opt->zthresh[0] = 14.933338;
+   opt->zthresh[1] = 13.310921;
+   opt->zthresh[2] = 11.464025;
+   opt->zthresh[3] = 9.262340;
+   opt->zthresh[4] = 6.361341;
+   opt->zthresh[5] = 4.264891;
+
    opt->lambda2_univar = 1e-3;
    opt->lambda2_multivar = 1e-3;
 
@@ -252,11 +262,11 @@ int opt_parse(int argc, char* argv[], Opt* opt)
 	 i++;
 	 opt->folds_ind_file = argv[i];
       }
-      else if(strcmp2(argv[i], "-zthresh"))
+      /*else if(strcmp2(argv[i], "-zthresh"))
       {
 	 i++;
 	 opt->zthresh = atof(argv[i]);
-      }
+      }*/
       else if(strcmp2(argv[i], "-nomultivar"))
       {
 	 opt->do_multivar = FALSE;
@@ -290,7 +300,7 @@ onl   y using the first one\n");
          printf("usage: univariable [-train|-predict] -model <model> \
 -bin <filename> -n <#samples> -p <#variables>  \
 [-betafiles <beta filename/s>] \
-[-zthresh <Z score threshold>] [-foldind <foldsfile>] \
+[-foldind <foldsfile>] \
 [-pred <prediction file>] [-nomultivar] [-v] [-vv]\n");
          return FAILURE;
       }

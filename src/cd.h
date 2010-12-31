@@ -65,7 +65,8 @@ typedef struct Opt {
    short binformat;
    char *folds_ind_file;
    char *numnz_file;
-   double zthresh;
+   double *zthresh;
+   int nzthresh;
    double lambda2_univar;
    double lambda2_multivar;
    int do_multivar;
