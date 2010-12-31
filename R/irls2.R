@@ -59,7 +59,7 @@ irls <- function(x, y, lambda=0, dispersion=1, maxiter=250, scale=TRUE)
 	 dev.old <- dev
       }
 
-      dev <- sum(log(1 + exp(lp)) - y * lp)
+      dev <- sum(log(1 + exp(lp)) - y * lp) + sum(beta^2)
 
       if(iter > 1 && abs(dev - dev.old) / (abs(dev) + 0.1) < 1e-8)
 	 break

@@ -16,29 +16,29 @@ SCALE="~/Code/cd/src/scale -bin $bin -n $N -p $P"
 scale="scale.bin"
 results="results4"
 
-for((i=1 ; i<=30 ; i++));
+for((i=10 ; i<=10 ; i++));
 do
    dir="$DIR_STEM""$i"
    dir_res="$dir/$results"
-   if ! [ -d "$dir_res" ]; then
-      mkdir "$dir_res"
+   #if ! [ -d "$dir_res" ]; then
+    #  mkdir "$dir_res"
       pushd "$dir"
-      if ! [ -f "$scale" ]; then
+      #if ! [ -f "$scale" ]; then
          eval "$SCALE"   
-      else
-         echo "skipping scale"
-      fi
+      #else
+      #   echo "skipping scale"
+      #fi
       pushd "$results"
-      if ! [ -a "lambda1path.csv" ];
-      then
+      #if ! [ -a "lambda1path.csv" ];
+      #then
          eval "time $CD" 2>&1 | tee > log
-      else
-         echo "skipping cd"
-      fi
+      #else
+      #   echo "skipping cd"
+      #fi
       popd
       popd
-   else
-      echo "skipping $dir_res"
-   fi
+   #else
+   #   echo "skipping $dir_res"
+   #fi
 done
 

@@ -396,17 +396,17 @@ int run_train(Opt *opt, gmatrix *g, double zthresh)
    }
 
    /* estimated coefficients */
-   snprintf(tmp, MAX_STR_LEN, "%s.00.%02d", opt->beta_files[0], g->fold);
+   snprintf(tmp, MAX_STR_LEN, "univar_%s.00.%02d", opt->beta_files[0], g->fold);
    if(!writevectorf(tmp, g->beta, g->p + 1))
       return FAILURE;
 
    /* standard errors */
-   snprintf(tmp, MAX_STR_LEN, "%s_se.00.%02d", opt->beta_files[0], g->fold);
+   snprintf(tmp, MAX_STR_LEN, "univar_%s_se.00.%02d", opt->beta_files[0], g->fold);
    if(!writevectorf(tmp, se, g->p + 1))
       return FAILURE;
 
    /* number of selected variables */
-   snprintf(tmp, MAX_STR_LEN, "%s.%02d", opt->numnz_file, g->fold);
+   snprintf(tmp, MAX_STR_LEN, "univar_%s.%02d", opt->numnz_file, g->fold);
    numselected--; /* don't count intercept as a variable */
    if(!writevectorl(tmp, &numselected, 1))
       return FAILURE;
