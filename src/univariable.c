@@ -271,7 +271,7 @@ int univar_gmatrix(Opt *opt, gmatrix *g, double *beta, double *zscore)
    /* get p-values per SNP, skip intercept */
    for(j = 1 ; j < p1 ; j++)
    {
-      /*printf("%d ", j);*/
+      printf("%d\r", j);
       if(!g->active[j])
       {
 	 printf("skipped variable %d\n", j);
@@ -309,74 +309,23 @@ int univar_gmatrix(Opt *opt, gmatrix *g, double *beta, double *zscore)
 		  j, zscore[j]);
       }
    }
+   printf("\n");
 
    FREENULL(invhessian);
 
    return SUCCESS;
 }
 
-/* Fit a multivariable model to the SNPs exceeding the z threshold */
-int run_multivar(Opt *opt, gmatrix *g, double *zscore, double *beta, double *se,
-      double *invhessian, int *numselected, double zthresh)
-{
-   int j, k, p1 = g->p + 1,
-       ret = 0,
-       n = g->ncurr;
-   double *x = NULL;
-   
-   *numselected = 1;
-   g->active[0] = TRUE;
-   for(j = 1 ; j < p1 ; j++)
-   {
-      g->active[j] &= (fabs(zscore[j]) >= zthresh);
-      if(g->active[j])
-	 (*numselected)++;
-   }
-
-   printf("total %d SNPs exceeded z-score=%.3f\n", (*numselected) - 1, zthresh);
-
-   if(*numselected > 0)
-   {
-      FREENULL(x);
-      FREENULL(beta);
-      FREENULL(invhessian);
-      FREENULL(se);
-
-      MALLOCTEST(x, sizeof(double) * n * (*numselected));
-      if(!gmatrix_read_matrix(g, x, g->active, *numselected))
-	 return FAILURE;
-      CALLOCTEST(invhessian, (*numselected) * (*numselected), sizeof(double));
-      CALLOCTEST(beta, *numselected, sizeof(double));
-      CALLOCTEST(se, p1, sizeof(double));
-
-      /* train un-penalised multivariable model on
-       * the selected SNPs, with lambda=0 */
-      ret = irls(x, g->y, beta, invhessian, n, *numselected,
-	    opt->lambda2_multivar, TRUE);
-      printf("IRLS returned %d\n", ret);	    
-
-      /* copy estimated beta to the array for all SNPs */
-      k = 0;
-      for(j = 0 ; j < p1 ; j++)
-      {
-	 if(g->active[j])
-	 {
-	    g->beta[j] = beta[k];
-	    se[j] = sqrt(invhessian[k * (*numselected) + k]);
-	    k++;
-	 }
-      }
-   }
-
-   FREENULL(x);
-  
-   return SUCCESS;
-}
-
 int run_train(Opt *opt, gmatrix *g)
 {
-   int i, p1 = g->p + 1, numselected = 0;
-   double *zscore = NULL,
+   int i, j, k,
+       n = g->ncurr,
+       p1 = g->p + 1,
+       numselected = 0,
+       nums1 = 0,
+       ret = 0;
+   double *x = NULL,
+	  *zscore = NULL,
 	  *beta = NULL,
 	  *se = NULL,
 	  *invhessian = NULL;
@@ -411,31 +360,73 @@ int run_train(Opt *opt, gmatrix *g)
       for(i = 0 ; i < opt->nzthresh ; i++)
       {
 	 gmatrix_zero_model(g); /* reset active variables */
-	 if(!run_multivar(opt, g, zscore, beta, se, invhessian,
-		  &numselected, opt->zthresh[i]))
-	    return FAILURE;
+
+	 numselected = 0; 
+	 g->active[0] = TRUE;
+	 for(j = 1 ; j < p1 ; j++)
+	 {
+	    g->active[j] &= (fabs(zscore[j]) >= opt->zthresh[i]);
+	    if(g->active[j])
+	       numselected++;
+	 }
+	 nums1 = numselected + 1;
+	 printf("total %d SNPs exceeded z-score=%.3f\n", numselected,
+	       opt->zthresh[i]);
+
+	 FREENULL(se);
+	 CALLOCTEST(se, p1, sizeof(double));
+
+	 FREENULL(x);
+	 FREENULL(beta);
+	 FREENULL(invhessian);
+
+	 if(numselected > 0)
+	 {
+	    MALLOCTEST(x, sizeof(double) * n * nums1);
+	    if(!gmatrix_read_matrix(g, x, g->active, nums1))
+	       return FAILURE;
+	    CALLOCTEST(invhessian, nums1 * nums1, sizeof(double));
+	    CALLOCTEST(beta, nums1, sizeof(double));
+
+	    /* train un-penalised multivariable model on
+	     * the selected SNPs, with lambda=0 */
+	    ret = irls(x, g->y, beta, invhessian, n, nums1,
+		  opt->lambda2_multivar, TRUE);
+	    printf("IRLS returned %d\n", ret);	    
+
+	    FREENULL(x);
+
+	    /* copy estimated beta to the array for all SNPs */
+	    k = 0;
+	    for(j = 0 ; j < p1 ; j++)
+	    {
+	       if(g->active[j])
+	       {
+		  g->beta[j] = beta[k];
+		  se[j] = sqrt(invhessian[k * nums1 + k]);
+		  k++;
+	       }
+	    }
+	 }
 
 	 /* estimated coefficients */
-	 snprintf(tmp, MAX_STR_LEN, "univar_%s.%02d.%02d", opt->beta_files[0], i, g->fold);
+	 snprintf(tmp, MAX_STR_LEN, "multivar_%s.%02d.%02d", opt->beta_files[0], i, g->fold);
 	 if(!writevectorf(tmp, g->beta, g->p + 1))
 	    return FAILURE;
 
 	 /* standard errors */
-	 snprintf(tmp, MAX_STR_LEN, "univar_%s_se.%02d.%02d", opt->beta_files[0], i, g->fold);
+	 snprintf(tmp, MAX_STR_LEN, "multivar_%s_se.%02d.%02d", opt->beta_files[0], i, g->fold);
 	 if(!writevectorf(tmp, se, g->p + 1))
 	    return FAILURE;
 
 	 /* number of selected variables */
-	 snprintf(tmp, MAX_STR_LEN, "univar_%s.%02d.%02d", opt->numnz_file, i, g->fold);
-	 numselected--; /* don't count intercept as a variable */
+	 snprintf(tmp, MAX_STR_LEN, "multivar_%s.%02d.%02d", opt->numnz_file, i, g->fold);
 	 if(!writevectorl(tmp, &numselected, 1))
 	    return FAILURE;
-
       }
    }
 
    FREENULL(beta);
-   FREENULL(zscore);
    FREENULL(invhessian);
    FREENULL(se);
    FREENULL(zscore);
