@@ -7,8 +7,9 @@ source("~/Code/cd/R/ggplot2_fix.R")
 plot.apr2 <- function(m.cd, m.pl, suf, nz.breaks)
 {
    # cutoff, don't show the long tail
+   m.pl$Method <- "logis\n"
    m.pl$df <- 1
-   m.cd.2 <- m.cd[m.cd$df > 0,]
+   m.cd.2 <- m.cd[m.cd$df > 0, c("APR", "ROC", "df", "Method")]
    m.comb <- rbind(m.cd.2, m.pl)
    m.comb$Method <- factor(m.comb$Method)
    
@@ -79,9 +80,9 @@ nz.breaks <- c(1, 2, 3, 5, 10, 15, 20, 25, 30, 40, 50, 75, 100, 150, 200, 250, 5
 
 lapply(seq(along=roots), function(i) {
    load(sprintf("eval_%s.RData", roots[i]))
-   rm(suf)
+   #rm(suf)
 
    # Use the second version, nosign
-   plot.apr2(m.cd.all[[2]], m.pl, roots[i], nz.breaks)
+   plot.apr2(res$m.cd.all[[2]], res$m.pl, roots[i], nz.breaks)
 })
 

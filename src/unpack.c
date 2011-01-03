@@ -15,7 +15,7 @@ int unpack(gmatrix *g, char *filename_out)
 
    FOPENTEST(out, filename_out, "wb");
    /*FWRITETEST(g->y, sizeof(double), g->n, out);*/
-   for(i = g->n ; i >= 0 ; --i)
+   for(i = g->n - 1; i >= 0 ; --i)
       tmp[i] = (char)g->y[i];
    FWRITETEST(tmp, sizeof(char), g->n, out);
 
@@ -25,7 +25,7 @@ int unpack(gmatrix *g, char *filename_out)
       printf("%d of %d", j, p1);
       g->nextcol(g, &sm, j, NA_ACTION_ZERO);
       /*FWRITETEST(sm.x, sizeof(double), g->n, out);*/
-      for(i = g->n ; i >= 0 ; --i)
+      for(i = g->n - 1 ; i >= 0 ; --i)
 	 tmp[i] = (char)sm.x[i];
       FWRITETEST(tmp, sizeof(char), g->n, out);
       printf("\r");
