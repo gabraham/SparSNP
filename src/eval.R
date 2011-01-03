@@ -1,5 +1,6 @@
 library(ggplot2)
 library(gdata)
+library(ROCR)
 
 dir <- "~/Software/hapgen_1.3"
 roots <- c("sim8", "sim7", "sim6")
@@ -11,8 +12,7 @@ p <- 185805
 legend <- sprintf(
    "%s/HapMap/genotypes_chr1_JPT+CHB_r22_nr.b36_fwd_legend.txt",
    dir)
-#nexpers <- c(25, 30, 40)
-nexpers <- c(2, 2, 2)
+nexpers <- c(25, 30, 40)
 resultsdir.cd <- "results4"
 resultsdir.plink <- "results"
 
@@ -80,6 +80,23 @@ analyse <- function(k)
       list(measure=mes)
    })
 
+   # ROC and PRC curves
+   pr.pl <- lapply(seq(along=exper), function(k) {
+      ex <- exper[[k]]
+      dir <- sprintf("%s/%s", ex, resultsdir.plink)
+      f <- sprintf("%s/plink.assoc.logistic", dir)
+      d <- read.csv(f, sep="")
+      cat(f, "\n")
+      #stats <- cbind(coef=d$STAT, logpval=-log10(d$P))
+      -log10(d$P)
+   })
+ 
+   pred.pl <- prediction(pr.pl, ysnp)
+   perf.pl <- list(
+      roc=performance(pred.pl, "tpr", "fpr"),
+      prc=performance(pred.pl, "prec", "rec")
+   )
+
    # Analyse CD results
    res.cd <- lapply(c(sign=TRUE, nosign=FALSE), function(dosign) {
       lapply(seq(along=exper), function(k) {
@@ -112,6 +129,34 @@ analyse <- function(k)
          list(measure=mes, df=df.cd, nsim=length(id))
       })
    })
+
+   pr.cd <- lapply(seq(along=exper), function(k) {
+      ex <- exper[[k]]
+      dir <- sprintf("%s/%s", ex, resultsdir.cd)
+
+      # Find all files and sort by numerical ordering
+      files <- list.files(pattern="^beta\\.csv\\.",
+	 path=dir, full.names=TRUE)
+      if(length(files) == 0)
+	 stop("no files found")
+      id <- sapply(strsplit(files, "\\."), tail, n=3)[1,]
+      files <- files[order(as.numeric(id))]
+
+      b.cd <- lapply(files, function(x) scan(x)[-1])
+      df.cd <- sapply(b.cd, function(x) sum(x != 0))
+
+      pred <- prediction(b.cd, rep(ysnp[k], length(b.cd)))
+
+      list(
+	 roc=performance(pred, "tpr", "fpr"),
+	 prc=performance(pred, "prec", "rec"),
+	 df=df.cd
+      )
+   })
+
+   pred.cd <- prediction(lapply(pr.cd, function(x) x$beta), ysnp)
+
+ 
    
    m.cd.all <- lapply(res.cd, function(rr) {
       d <- data.frame(
