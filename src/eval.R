@@ -11,7 +11,8 @@ p <- 185805
 legend <- sprintf(
    "%s/HapMap/genotypes_chr1_JPT+CHB_r22_nr.b36_fwd_legend.txt",
    dir)
-nexpers <- c(25, 30, 40)
+#nexpers <- c(25, 30, 40)
+nexpers <- c(2, 2, 2)
 resultsdir.cd <- "results4"
 resultsdir.plink <- "results"
 
@@ -127,74 +128,9 @@ analyse <- function(k)
    list(m.cd.all=m.cd.all, m.pl=m.pl)
 }
 
-res <- lapply(seq(along=roots), analyse)
-save(res, file=sprintf("%s/eval_%s.RData", resdirs[k], root))
+lapply(seq(along=roots), function(k) {
+   res <- analyse(k)
+   save(res, file=sprintf("%s/eval_%s.RData", resdirs[k], roots[k]))
+})
 
-plot.eval <- function(k)
-{
-   m.cd.all <- res[[k]]$m.cd.all
-   m.pl <- res[[k]]$m.pl
-
-   m.pl$df <- as.numeric(NA)
-   m.pl$Sim <- 1
-   m.pl$nsim <- 1
-   m.pl$Method <- "logistic"
-   
-   plot.apr <- function(m.cd, suf)
-   {
-      # cutoff, don't show the long tail
-      m.cd.2 <- m.cd[m.cd$df > 0 & m.cd$df < maxdf ,]
-      m.comb <- rbind(m.cd.2, m.pl)
-      m.comb$Method <- factor(m.comb$Method)
-      
-      rmaxdf <- ceiling(max(m.comb$df / 10, na.rm=TRUE))
-      m.comb$df_bin <- cut(m.comb$df, breaks=(0:rmaxdf) * 10)
-      levels(m.comb$df_bin) <- c(levels(m.comb$df_bin), "")
-      m.comb$df_bin[is.na(m.comb$df_bin)] <- ""
-      m.comb$df_bin <- drop.levels(m.comb$df_bin, reorder=FALSE)
-
-      g <- ggplot(m.comb, aes(x=df_bin, y=APR))
-      g <- g + geom_boxplot(outlier.size=0, colour="darkgray", size=1.5)
-      g <- g + geom_point(size=2, position=position_jitter(width=0.07),
-	    shape=21)
-      g <- g + ylim(0, 0.42)
-      g <- g + scale_shape_manual(values=c(1, 2))
-      g <- g + xlab("# Non-zero variables") + ylab("APRC")
-      g <- g + opts(axis.text.x=theme_text(angle=-90, hjust=0),
-            legend.text=theme_text(size=15))
-      g1 <- g + facet_grid(~ Method, scales="free", space="free")
-      
-      pdf(sprintf("%s/results_%s_1_%s.pdf", resdirs[k], root, suf), width=14)
-      print(g1)
-      dev.off()
-
-      maxdf2 <- 60
-      m.comb2 <- m.comb[
-            m.comb$df %in% ((1:(maxdf2/2)) * 2) | m.comb$Method == "logistic", ]
-      m.comb2$df_f <- factor(m.comb2$df)
-      levels(m.comb2$df_f) <- c(levels(m.comb2$df_f), "")
-      m.comb2$df_f[is.na(m.comb2$df_f)] <- ""
-
-      g <- ggplot(m.comb2, aes(x=df_f, y=APR))
-      g <- g + geom_boxplot(colour="darkgray", outlier.size=0, size=1.5)
-      g <- g + ylim(0, 0.42)
-      g <- g + geom_point(size=2, position=position_jitter(width=0.1),
-	    shape=21)
-      g <- g + scale_shape_manual(values=c(1, 2))
-      g <- g + xlab("# Non-zero variables") + ylab("APRC")
-      g <- g + opts(legend.text=theme_text(size=15))
-      g2 <- g + facet_grid(~ Method, scales="free", space="free")
-      
-      pdf(sprintf("%s/results_%s_2_%s.pdf", resdirs[k], root, suf), width=15)
-      print(g2)
-      dev.off()
-      
-      list(g1, g2)
-   }
-
-   suf <- c("sign", "nosign")
-   sapply(seq(along=m.cd.all), function(i) plot.apr(m.cd.all[[i]], suf[i]))
-}
-
-g <- lapply(seq(along=roots), plot.eval)
 
