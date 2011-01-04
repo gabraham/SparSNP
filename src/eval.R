@@ -130,7 +130,7 @@ analyse <- function(k)
       })
    })
 
-   pr.cd <- lapply(seq(along=exper), function(k) {
+   perf.cd <- lapply(seq(along=exper), function(k) {
       ex <- exper[[k]]
       dir <- sprintf("%s/%s", ex, resultsdir.cd)
 
@@ -153,10 +153,6 @@ analyse <- function(k)
 	 df=df.cd
       )
    })
-
-   pred.cd <- prediction(lapply(pr.cd, function(x) x$beta), ysnp)
-
- 
    
    m.cd.all <- lapply(res.cd, function(rr) {
       d <- data.frame(
@@ -170,7 +166,7 @@ analyse <- function(k)
    # Both -log10(pval) and STAT yield same AROC/APRC, so take one
    m.pl <- data.frame(t(sapply(res.pl, function(x) x[[1]][,1])))
 
-   list(m.cd.all=m.cd.all, m.pl=m.pl)
+   list(m.cd.all=m.cd.all, m.pl=m.pl, perf.pl=perf.pl, perf.cd=perf.cd)
 }
 
 lapply(seq(along=roots), function(k) {
