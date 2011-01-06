@@ -56,7 +56,7 @@ unpack: common.c coder.c ind.c gmatrix.c unpack.c
 	$(CC) $(CCFLAGS) $(LIBRARIES) $^ -o unpack
 
 univariable: common.c coder.c ind.c gmatrix.c loss.c util.c \
-   options.c cd.c svd.c matrix.c univariable.c
+   options.c cd.c svd.c matrix.c thin.c univariable.c
 	$(CC) $(CCFLAGS) $(LIBRARIES) -llapack -lblas -lm $^ -o univariable
 
 #pcor: common.c gmatrix.c loss.c util.c cd.c pcor.c

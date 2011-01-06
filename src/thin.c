@@ -46,15 +46,16 @@ int thin(double *x, int n, int p, int *active,
    double *S = NULL,
 	  *P = NULL,
 	  *xwin = NULL;
-   int ws = windowsize,
+   int ws = (windowsize < p) ? windowsize : p,
        ws2 = ws * ws;
 
+   stepsize = (stepsize > windowsize) ? windowsize : stepsize;
+
+   printf(">>>>p=%d\n", p); fflush(stdout);
    j = 0;
    while(j < p && ws > 1)
    {
-      printf("%d\n", j);
-      fflush(stdout);
-
+      printf("ws=%d\tstepsize=%d\n", ws, stepsize); fflush(stdout);
       /* Consider SNPs in the window only */
       MALLOCTEST(xwin, sizeof(double) * ws * n);
       copyshrinkrange(x, xwin, n, p, j, j + ws);
@@ -62,8 +63,6 @@ int thin(double *x, int n, int p, int *active,
       MALLOCTEST(S, sizeof(double) * ws2);
       MALLOCTEST(P, sizeof(double) * ws2);
 
-      printf("ws: %d\tws2: %d\n", ws, ws2);
-      fflush(stdout);
       /* Estimate correlation in the window */
       cov(xwin, S, n, ws);
       FREENULL(xwin);
@@ -84,9 +83,10 @@ int thin(double *x, int n, int p, int *active,
       FREENULL(P);
 
       /* beware of edge effect */
+      stepsize = (stepsize < p - j) ? stepsize : p - j;
+      j += stepsize;
       ws = (windowsize < p - j) ? windowsize : p - j;
       ws2 = ws * ws;
-      j += stepsize;
    }
 
    return SUCCESS;

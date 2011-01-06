@@ -5,6 +5,7 @@
 #include "svd.h"
 #include "univariable.h"
 #include "matrix.h"
+#include "thin.h"
 
 /*
  * Iteratively-Reweighted Least Squares for logistic regression
@@ -227,13 +228,16 @@ int run_train(Opt *opt, gmatrix *g)
        p1 = g->p + 1,
        numselected = 0,
        nums1 = 0,
-       ret = 0;
+       ret = 0,
+       pselected = 0;
    double *x = NULL,
+	  *xthinned = NULL,
 	  *zscore = NULL,
 	  *beta = NULL,
 	  *se = NULL,
 	  *invhessian = NULL;
    char tmp[MAX_STR_LEN];
+   int *activeselected = NULL;
 
    CALLOCTEST(zscore, p1, sizeof(double));
    CALLOCTEST(beta, p1, sizeof(double));
@@ -287,18 +291,67 @@ int run_train(Opt *opt, gmatrix *g)
 	 if(numselected > 0)
 	 {
 	    MALLOCTEST(x, sizeof(double) * n * nums1);
-	    if(!gmatrix_read_matrix(g, x, g->active, nums1))
-	       return FAILURE;
 	    CALLOCTEST(invhessian, nums1 * nums1, sizeof(double));
 	    CALLOCTEST(beta, nums1, sizeof(double));
+	    CALLOCTEST(activeselected, nums1, sizeof(int));
+
+	    /* slice of the active vector for this window, ignoring intercept */
+	    k = 1;
+	    for(j = 1 ; j < p1 ; j++)
+	    {
+	       if(g->active[j])
+	       {
+		  activeselected[k] = TRUE;
+		  k++;
+	       }
+	    }
+
+	    printf("numselected=%d\tnums1=%d\n", numselected, nums1);
+
+
+	    /* read the chosen variables into memory */
+	    if(!gmatrix_read_matrix(g, x, g->active, nums1))
+	       return FAILURE;
+
+	    /* thin the SNPs based on correlation */
+	    if(nums1 > 2)
+	    {
+	       if(!thin(x, n, numselected, activeselected,
+		     THIN_COR_MAX, THIN_WINDOW_SIZE, THIN_STEP_SIZE))
+	       return FAILURE;
+
+	       k = 0;
+	       for(j = 1 ; j < nums1 ; j++)
+	          k += activeselected[j];
+
+	       printf("After thinning, %d of %d SNPs left (excluding intercept)\n", k, numselected);
+
+	       MALLOCTEST(xthinned, sizeof(double) * n * (k + 1));
+	       activeselected[0] = TRUE; /* intercept */
+	       copyshrink(x, xthinned, n, nums1, activeselected, k + 1);
+	       pselected = k + 1;
+	    }
+	    else /* no thinning */
+	    {
+	       xthinned = x;
+	       pselected = nums1;
+	    }
 
 	    /* train un-penalised multivariable model on
 	     * the selected SNPs, with lambda=0 */
-	    ret = irls(x, g->y, beta, invhessian, n, nums1,
+	    ret = irls(xthinned, g->y, beta, invhessian, n, pselected,
 		  opt->lambda2_multivar, TRUE);
 	    printf("IRLS returned %d\n", ret);	    
 
-	    FREENULL(x);
+	    if(xthinned == x)
+	    {
+	       FREENULL(x);
+	    }
+	    else
+	    {
+	       FREENULL(x);
+	       FREENULL(xthinned);
+	    }
 
 	    /* copy estimated beta to the array for all SNPs */
 	    k = 0;
@@ -334,6 +387,7 @@ int run_train(Opt *opt, gmatrix *g)
    FREENULL(invhessian);
    FREENULL(se);
    FREENULL(zscore);
+   FREENULL(activeselected);
 
    return SUCCESS;
 }

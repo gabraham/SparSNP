@@ -101,8 +101,8 @@ void copyshrink(double *x, double *y, int n, int p, int *active, int m)
       k = 0;
       for(j = 0 ; j < p ; j++)
       {
-	 printf("i:%d j:%d k:%d m:%d active[%d]:%d\n", i, j, k, m, j, active[j]);
-	 fflush(stdout);
+	 /*printf("i:%d j:%d k:%d m:%d active[%d]:%d\n", i, j, k, m, j, active[j]);
+	 fflush(stdout);*/
 	 if(active[j])
 	 {
 	    y[i * m + k] = x[i * p + j];
@@ -128,8 +128,6 @@ void copyshrinkrange(double *x, double *y, int n, int p, int from, int to)
       k = 0;
       for(j = 0 ; j < p ; j++)
       {
-	 printf("i:%d j:%d k:%d m:%d\n", i, j, k, m);
-	 fflush(stdout);
 	 if(j >= from && j < to)
 	 {
 	    y[i * m + k] = x[i * p + j];
