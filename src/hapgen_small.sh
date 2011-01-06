@@ -3,7 +3,7 @@ source runhapgen.sh
 RR1=1.5
 RR2=2.25
 
-for ((J=41 ; J<=41; J++));
+for ((J=1 ; J<=1; J++));
 do
    DIR="sim6.$J"
    if   [ -d "$DIR" ]; then
