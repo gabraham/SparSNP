@@ -17,9 +17,15 @@ void crossprod(double *x, double *y, double *z, int m, int n, int p)
    int i, j, k;
 
    for(i = 0 ; i < n ; i++)
+   {
       for(j = 0 ; j < p ; j++)
-	 for(k = 0 ; k < m ; k++)
+      {
+	 k = 0;
+	 z[i * p + j] = x[k * n + i] * y[k * p + j];
+	 for(k = 1 ; k < m ; k++)
 	    z[i * p + j] += x[k * n + i] * y[k * p + j];
+      }
+   }
 }
 
 /* 

@@ -294,6 +294,7 @@ int run_train(Opt *opt, gmatrix *g)
 	    CALLOCTEST(invhessian, nums1 * nums1, sizeof(double));
 	    CALLOCTEST(beta, nums1, sizeof(double));
 	    CALLOCTEST(activeselected, nums1, sizeof(int));
+	    activeselected[0] = TRUE; /* intercept */
 
 	    /* slice of the active vector for this window, ignoring intercept */
 	    k = 1;
@@ -307,7 +308,6 @@ int run_train(Opt *opt, gmatrix *g)
 	    }
 
 	    printf("numselected=%d\tnums1=%d\n", numselected, nums1);
-
 
 	    /* read the chosen variables into memory */
 	    if(!gmatrix_read_matrix(g, x, g->active, nums1))
@@ -327,7 +327,6 @@ int run_train(Opt *opt, gmatrix *g)
 	       printf("After thinning, %d of %d SNPs left (excluding intercept)\n", k, numselected);
 
 	       MALLOCTEST(xthinned, sizeof(double) * n * (k + 1));
-	       activeselected[0] = TRUE; /* intercept */
 	       copyshrink(x, xthinned, n, nums1, activeselected, k + 1);
 	       pselected = k + 1;
 	    }

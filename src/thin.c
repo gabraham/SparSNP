@@ -22,6 +22,7 @@ void cov2cor(double *S, double *P, int p)
    double z;
    int i, j;
 
+   /* skip diagonal */
    for(i = 1 ; i < p ; i++)
    {
       for(j = 0 ; j < i ; j++)
@@ -63,6 +64,11 @@ int thin(double *x, int n, int p, int *active,
       MALLOCTEST(S, sizeof(double) * ws2);
       MALLOCTEST(P, sizeof(double) * ws2);
 
+      for(i = 0 ; i < ws2 ; i++)
+      {
+	 S[i] = P[i] = -10;
+      }
+
       /* Estimate correlation in the window */
       cov(xwin, S, n, ws);
       FREENULL(xwin);
@@ -74,6 +80,7 @@ int thin(double *x, int n, int p, int *active,
       {
 	 for(k = 0 ; k < i; k++)
 	 {
+	    printf("i:%d j:%d k:%d ws:%d\n", i, j, k, ws); fflush(stdout);
 	    /* remove the first member of each pair, if both are active */
 	    if(fabs(P[i * ws + k]) > cormax && active[i + j] && active[k + j])
 	       active[i + j] = FALSE;
