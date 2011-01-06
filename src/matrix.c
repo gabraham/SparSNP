@@ -1,5 +1,7 @@
-#include "matrix.h"
 #include <stdio.h>
+#include <math.h>
+#include "common.h"
+#include "matrix.h"
 
 /*
  * Z = X^T Y
@@ -28,25 +30,63 @@ void crossprod(double *x, double *y, double *z, int m, int n, int p)
    }
 }
 
-void cov(double *x, double *S, double *mean, int n, int p)
+int cov(double *x, double *S, int n, int p)
 {
-   int i, j, k;
+   int i, j, k, p2 = p * p;
+   double *mean = NULL;
+   double n1 = 1.0 / n, z, n2 = 1.0 / (n - 1.0);
+
+   CALLOCTEST(mean, p, sizeof(double));
+   for(j = 0 ; j < p ; j++)
+   {
+      for(i = 0 ; i < n ; i++)
+	 mean[j] += x[i * p + j];
+      mean[j] *= n1;
+   }
 
    for(i = 0 ; i < n ; i++)
    {
       for(j = 0 ; j < p ; j++)
       {
 	 k = 0;
-	 S[i * p + j] = (S[k * n + i] - mean[j]) 
-		  * (x[k * p + j] - mean[j]);
-	 for(k = 1 ; k < m ; k++)
-	    S[i * p + j] += (S[k * n + i] - mean[j]) 
-		  * (S[k * p + j] - mean[j]);
+	 z = (S[k * n + i] - mean[j]) * (x[k * p + j] - mean[j]);
+	 S[i * p + j] = S[j * p + i] = z;
+	 for(k = 1 ; k < j ; k++)
+	 {
+	    z = (S[k * n + i] - mean[j]) * (S[k * p + j] - mean[j]);
+	    S[i * p + j] += z;
+	    S[j * p + i] += z;
+	 }
       }
    }
 
+   /* divide all by n-1 */
    for(i = 0 ; i < p2 ; i++)
-      S[i] *= d;
+      S[i] *= n2;
+
+   FREENULL(mean);
+   return SUCCESS;
+}
+
+/* Converts a p by p covariance matrix S to a p by p correlation matrix P
+ */
+void cov2cor(double *S, double *P, int p)
+{
+   double z;
+   int i, j;
+
+   /* skip diagonal */
+   for(i = 1 ; i < p ; i++)
+   {
+      for(j = 0 ; j < i ; j++)
+      {
+	 z = S[i * p + j] / sqrt(S[i * p + i] * S[j * p + j]);
+	 P[i * p + j] = P[j * p + i] = z;
+      }
+   }
+
+   for(i = 0 ; i < p ; i++)
+      P[i * p + i] = 1.0;
 }
 
 /* 

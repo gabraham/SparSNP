@@ -26,27 +26,6 @@
    FREENULL(mean);
 }*/
 
-/* Converts a p by p covariance matrix S to a p by p correlation matrix P
- */
-void cov2cor(double *S, double *P, int p)
-{
-   double z;
-   int i, j;
-
-   /* skip diagonal */
-   for(i = 1 ; i < p ; i++)
-   {
-      for(j = 0 ; j < i ; j++)
-      {
-	 z = S[i * p + j] / sqrt(S[i * p + i] * S[j * p + j]);
-	 P[i * p + j] = P[j * p + i] = z;
-      }
-   }
-
-   for(i = 0 ; i < p ; i++)
-      P[i * p + i] = 1.0;
-}
-
 /* Remove SNPs based on correlation in a sliding window of size THIN_WINDOW_SIZE
  *
  * x is the original n by p data
