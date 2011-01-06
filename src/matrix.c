@@ -37,7 +37,7 @@ int cov(double *x, double *S, int n, int p)
 {
    int i, j, k, p2 = p * p;
    double *mean = NULL;
-   double n1 = 1.0 / n, z, n2 = 1.0 / (n - 1.0);
+   double n1 = 1.0 / n, n2 = 1.0 / (n - 1.0);
 
    /* compute the mean */
    CALLOCTEST(mean, p, sizeof(double));
