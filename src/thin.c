@@ -5,15 +5,26 @@
 #include "thin.h"
 #include "matrix.h"
 
-void cov(double *x, double *S, int n, int p)
+/*int cov(double *x, double *S, int n, int p)
 {
-   int i, p2 = p * p;
+   int i, j, p2 = p * p;
    double d = 1.0 / (n - 1.0);
+   double *mean = NULL;
+
+   CALLOCTEST(mean, p, sizeof(double));
+   for(j = 0 ; j < p ; j++)
+   {
+      for(i = 0 ; i < n ; i++)
+	 mean[j] +=  x[i * p + j];
+      mean[j] /= n;
+   }
 
    crossprod(x, x, S, n, p, p);
    for(i = 0 ; i < p2 ; i++)
       S[i] *= d;
-}
+
+   FREENULL(mean);
+}*/
 
 /* Converts a p by p covariance matrix S to a p by p correlation matrix P
  */
@@ -39,6 +50,8 @@ void cov2cor(double *S, double *P, int p)
 /* Remove SNPs based on correlation in a sliding window of size THIN_WINDOW_SIZE
  *
  * x is the original n by p data
+ *
+ * The selected SNPs are indicated by the array "active"
  */
 int thin(double *x, int n, int p, int *active,
       double cormax, int windowsize, int stepsize)
@@ -64,15 +77,11 @@ int thin(double *x, int n, int p, int *active,
       MALLOCTEST(S, sizeof(double) * ws2);
       MALLOCTEST(P, sizeof(double) * ws2);
 
-      for(i = 0 ; i < ws2 ; i++)
-      {
-	 S[i] = P[i] = -10;
-      }
-
       /* Estimate correlation in the window */
       cov(xwin, S, n, ws);
-      FREENULL(xwin);
       cov2cor(S, P, ws);
+
+      FREENULL(xwin);
       FREENULL(S);
 
       /* filter pairs looking at lower triangular matrix */

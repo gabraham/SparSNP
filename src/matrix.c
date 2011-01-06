@@ -28,6 +28,27 @@ void crossprod(double *x, double *y, double *z, int m, int n, int p)
    }
 }
 
+void cov(double *x, double *S, double *mean, int n, int p)
+{
+   int i, j, k;
+
+   for(i = 0 ; i < n ; i++)
+   {
+      for(j = 0 ; j < p ; j++)
+      {
+	 k = 0;
+	 S[i * p + j] = (S[k * n + i] - mean[j]) 
+		  * (x[k * p + j] - mean[j]);
+	 for(k = 1 ; k < m ; k++)
+	    S[i * p + j] += (S[k * n + i] - mean[j]) 
+		  * (S[k * p + j] - mean[j]);
+      }
+   }
+
+   for(i = 0 ; i < p2 ; i++)
+      S[i] *= d;
+}
+
 /* 
  * Invert 2x2 matrix x and put it in y, row-major matrix ordering:
  *  0 1
@@ -140,6 +161,18 @@ void copyshrinkrange(double *x, double *y, int n, int p, int from, int to)
 	    k++;
 	 }
       }
+   }
+}
+
+void printmatrix(double *x, int n, int p)
+{
+   int i, j;
+
+   for(i = 0 ; i < n ; i++)
+   {
+      for(j = 0 ; j < p - 1; j++)
+	 printf("%.3f ", x[i * p + j]);
+      printf("%.3f\n", x[i * p + j]);
    }
 }
 

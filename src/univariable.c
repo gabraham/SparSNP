@@ -294,41 +294,47 @@ int run_train(Opt *opt, gmatrix *g)
 	    CALLOCTEST(invhessian, nums1 * nums1, sizeof(double));
 	    CALLOCTEST(beta, nums1, sizeof(double));
 	    CALLOCTEST(activeselected, nums1, sizeof(int));
-	    activeselected[0] = TRUE; /* intercept */
 
-	    /* slice of the active vector for this window, ignoring intercept */
-	    k = 1;
-	    for(j = 1 ; j < p1 ; j++)
-	    {
-	       if(g->active[j])
-	       {
-		  activeselected[k] = TRUE;
-		  k++;
-	       }
-	    }
-
-	    printf("numselected=%d\tnums1=%d\n", numselected, nums1);
-
-	    /* read the chosen variables into memory */
+	    /* read the chosen variables into memory, including the intercept */
 	    if(!gmatrix_read_matrix(g, x, g->active, nums1))
 	       return FAILURE;
 
-	    /* thin the SNPs based on correlation */
+	    /* thin the SNPs based on correlation, but only if there are at
+	     * least two SNPs (don't forget intercept adds one) */
 	    if(nums1 > 2)
 	    {
-	       if(!thin(x, n, numselected, activeselected,
+	       /* Slice the active vector for this window. We start off by
+		* making all variables active, then thin() will make some
+		* inactive. Ignore intercept for thinning. */
+	       k = 0;
+	       for(j = 1 ; j < p1 ; j++)
+	       {
+		  if(g->active[j])
+		  {
+		     activeselected[k] = TRUE;
+		     k++;
+		  }
+	       }
+
+	       /* activeselected[0] must be FALSE, we don't want to thin the
+		* intercept */
+	       activeselected[0] = FALSE;
+	       if(!thin(x, n, nums1, activeselected,
 		     THIN_COR_MAX, THIN_WINDOW_SIZE, THIN_STEP_SIZE))
 	       return FAILURE;
 
-	       k = 0;
-	       for(j = 1 ; j < nums1 ; j++)
-	          k += activeselected[j];
+	       /* Count the remaining SNPs post thinning, add one for
+		* intercept  */
+	       activeselected[0] = TRUE;
+	       pselected = 0;
+	       for(j = 0 ; j < nums1 ; j++)
+	          pselected += activeselected[j];
 
-	       printf("After thinning, %d of %d SNPs left (excluding intercept)\n", k, numselected);
+	       printf("After thinning, %d of %d SNPs left (excluding intercept)\n",
+		     pselected - 1, numselected);
 
-	       MALLOCTEST(xthinned, sizeof(double) * n * (k + 1));
-	       copyshrink(x, xthinned, n, nums1, activeselected, k + 1);
-	       pselected = k + 1;
+	       MALLOCTEST(xthinned, sizeof(double) * n * pselected);
+	       copyshrink(x, xthinned, n, nums1, activeselected, pselected);
 	    }
 	    else /* no thinning */
 	    {
@@ -352,7 +358,7 @@ int run_train(Opt *opt, gmatrix *g)
 	       FREENULL(xthinned);
 	    }
 
-	    /* copy estimated beta to the array for all SNPs */
+	    /* copy estimated beta back to the array for all SNPs */
 	    k = 0;
 	    for(j = 0 ; j < p1 ; j++)
 	    {

@@ -1,7 +1,7 @@
 
 #define THIN_WINDOW_SIZE 50
 #define THIN_STEP_SIZE 5
-#define THIN_COR_MAX 0.9
+#define THIN_COR_MAX 0.8
 
 void cov(double *x, double *S, int n, int p);
 void cov2cor(double *S, double *P, int p);
