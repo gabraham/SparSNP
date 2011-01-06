@@ -30,12 +30,16 @@ void crossprod(double *x, double *y, double *z, int m, int n, int p)
    }
 }
 
+/* x is n by p row major matrix
+ * S is p by p row major matrix
+ */
 int cov(double *x, double *S, int n, int p)
 {
    int i, j, k, p2 = p * p;
    double *mean = NULL;
    double n1 = 1.0 / n, z, n2 = 1.0 / (n - 1.0);
 
+   /* compute the mean */
    CALLOCTEST(mean, p, sizeof(double));
    for(j = 0 ; j < p ; j++)
    {
@@ -44,23 +48,22 @@ int cov(double *x, double *S, int n, int p)
       mean[j] *= n1;
    }
 
-   for(i = 0 ; i < n ; i++)
+   /* rows of S */
+   for(j = 0 ; j < p ; j++)
    {
-      for(j = 0 ; j < p ; j++)
+      /* columns of S */
+      for(k = 0 ; k <= j ; k++)
       {
-	 k = 0;
-	 z = (S[k * n + i] - mean[j]) * (x[k * p + j] - mean[j]);
-	 S[i * p + j] = S[j * p + i] = z;
-	 for(k = 1 ; k < j ; k++)
-	 {
-	    z = (S[k * n + i] - mean[j]) * (S[k * p + j] - mean[j]);
-	    S[i * p + j] += z;
-	    S[j * p + i] += z;
-	 }
+	 i = 0;
+	 S[j * p + k] = (x[i * p + k] - mean[k]) * (x[i * p + j] - mean[j]);
+	 for(i = 1 ; i < n ; i++)
+	    S[j * p + k] += (x[i * p + k] - mean[k]) * (x[i * p + j] - mean[j]);
+
+	 S[k * p + j] = S[j * p + k];
       }
    }
 
-   /* divide all by n-1 */
+   /* divide S by n-1 */
    for(i = 0 ; i < p2 ; i++)
       S[i] *= n2;
 
