@@ -7,11 +7,11 @@
 
 void cov(double *x, double *S, int n, int p)
 {
-   int i, m = n * p;
+   int i, p2 = p * p;
    double d = 1.0 / (n - 1.0);
 
    crossprod(x, x, S, n, p, p);
-   for(i = 0 ; i < m ; i++)
+   for(i = 0 ; i < p2 ; i++)
       S[i] *= d;
 }
 
@@ -36,6 +36,8 @@ void cov2cor(double *S, double *P, int p)
 }
 
 /* Remove SNPs based on correlation in a sliding window of size THIN_WINDOW_SIZE
+ *
+ * x is the original n by p data
  */
 int thin(double *x, int n, int p, int *active,
       double cormax, int windowsize, int stepsize)
@@ -44,21 +46,26 @@ int thin(double *x, int n, int p, int *active,
    double *S = NULL,
 	  *P = NULL,
 	  *xwin = NULL;
-   int ws = THIN_WINDOW_SIZE,
+   int ws = windowsize,
        ws2 = ws * ws;
-
 
    j = 0;
    while(j < p && ws > 1)
    {
+      printf("%d\n", j);
+      fflush(stdout);
+
+      /* Consider SNPs in the window only */
       MALLOCTEST(xwin, sizeof(double) * ws * n);
-      copyshrink(x, xwin, n, p, active, ws);
+      copyshrinkrange(x, xwin, n, p, j, j + ws);
 
       MALLOCTEST(S, sizeof(double) * ws2);
       MALLOCTEST(P, sizeof(double) * ws2);
 
-      /* correlation in the window */
-      cov(x, S, n, p);
+      printf("ws: %d\tws2: %d\n", ws, ws2);
+      fflush(stdout);
+      /* Estimate correlation in the window */
+      cov(xwin, S, n, ws);
       FREENULL(xwin);
       cov2cor(S, P, ws);
       FREENULL(S);
@@ -78,7 +85,8 @@ int thin(double *x, int n, int p, int *active,
 
       /* beware of edge effect */
       ws = (windowsize < p - j) ? windowsize : p - j;
-      j += THIN_STEP_SIZE;
+      ws2 = ws * ws;
+      j += stepsize;
    }
 
    return SUCCESS;

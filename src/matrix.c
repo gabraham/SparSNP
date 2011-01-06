@@ -1,4 +1,5 @@
 #include "matrix.h"
+#include <stdio.h>
 
 /*
  * Z = X^T Y
@@ -90,7 +91,6 @@ void sqmvprod(double *x, double *y, double *z, int m)
 /* 
  * Copy the n by p matrix x to the n by m matrix y, ignoring p-m columns
  *
- * active is a logical array of p cells
  */
 void copyshrink(double *x, double *y, int n, int p, int *active, int m)
 {
@@ -101,7 +101,36 @@ void copyshrink(double *x, double *y, int n, int p, int *active, int m)
       k = 0;
       for(j = 0 ; j < p ; j++)
       {
+	 printf("i:%d j:%d k:%d m:%d active[%d]:%d\n", i, j, k, m, j, active[j]);
+	 fflush(stdout);
 	 if(active[j])
+	 {
+	    y[i * m + k] = x[i * p + j];
+	    k++;
+	 }
+      }
+   }
+}
+
+/* 
+ * Copy the n by p matrix x to the n by m matrix y
+ *
+ * from: start (inclusive)
+ * to: end (exclusive)
+ *
+ */
+void copyshrinkrange(double *x, double *y, int n, int p, int from, int to)
+{
+   int i, j, k, m = to - from;
+
+   for(i = 0 ; i < n ; i++)
+   {
+      k = 0;
+      for(j = 0 ; j < p ; j++)
+      {
+	 printf("i:%d j:%d k:%d m:%d\n", i, j, k, m);
+	 fflush(stdout);
+	 if(j >= from && j < to)
 	 {
 	    y[i * m + k] = x[i * p + j];
 	    k++;
