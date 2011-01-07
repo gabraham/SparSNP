@@ -219,3 +219,16 @@ void printmatrix(double *x, int n, int p)
    }
 }
 
+void printmatrix0(double *x, int n, int p)
+{
+   int i, j;
+
+   for(i = 0 ; i < n ; i++)
+   {
+      for(j = 0 ; j < p - 1; j++)
+	 printf("%.0f ", x[i * p + j]);
+      printf("%.0f\n", x[i * p + j]);
+   }
+}
+
+

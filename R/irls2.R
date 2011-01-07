@@ -2,7 +2,7 @@
 library(glmnet)
 library(MASS)
 
-irls <- function(x, y, lambda=0, dispersion=1, maxiter=250, scale=TRUE)
+irls <- function(x, y, lambda=0, dispersion=1, maxiter=250, scale=FALSE)
 {
    if(NROW(x) != length(y))
       stop("NROW(x) != length(y)")
@@ -32,10 +32,11 @@ irls <- function(x, y, lambda=0, dispersion=1, maxiter=250, scale=TRUE)
    L <- diag(c(0, rep(lambda, p - 1)))
 
    cat(dim(x), "\n")
+   dev <- Inf
 
    while(iter <= maxiter)
    {
-      cat("iter", iter, "\n")
+      cat("iter", iter, "dev:", dev, "\n")
       lp <- drop(x1 %*% beta)
       lpinv <- 1 / (1 + exp(-lp))
       w <- lpinv * (1 - lpinv)
@@ -59,7 +60,7 @@ irls <- function(x, y, lambda=0, dispersion=1, maxiter=250, scale=TRUE)
 	 dev.old <- dev
       }
 
-      dev <- sum(log(1 + exp(lp)) - y * lp) + sum(beta^2)
+      dev <- sum(log(1 + exp(lp)) - y * lp) + lambda * sum(beta^2)
 
       if(iter > 1 && abs(dev - dev.old) / (abs(dev) + 0.1) < 1e-8)
 	 break
@@ -80,7 +81,7 @@ irls <- function(x, y, lambda=0, dispersion=1, maxiter=250, scale=TRUE)
       zscore=as.numeric(zscore),
       pvalue=as.numeric(pval))
 
-   list(coef=res, dev=dev, hessian=hess)
+   list(coef=res, dev=dev, hessian=hess, lambda=lambda)
 }
 
 cv.irls <- function(x, y, nfolds=10, nreps=10)

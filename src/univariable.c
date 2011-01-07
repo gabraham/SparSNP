@@ -38,7 +38,7 @@ int irls(double *x, double *y, double *beta, double *invhessian,
    while(iter <= maxiter) 
    {
       if(verbose)
-	 printf("IRLS iter %d\n", iter);
+	 printf("IRLS iter %d\tdev=%.3f\n", iter, loss);
       
       if(iter > 1)
 	 loss_old = loss;
@@ -320,7 +320,9 @@ int run_train(Opt *opt, gmatrix *g)
 		* intercept */
 	       activeselected[0] = FALSE;
 	       if(!thin(x, n, nums1, activeselected,
-		     THIN_COR_MAX, THIN_WINDOW_SIZE, THIN_STEP_SIZE))
+		     /*THIN_COR_MAX, THIN_WINDOW_SIZE, THIN_STEP_SIZE))*/
+		     THIN_COR_MAX, nums1, nums1
+		  ))
 	       return FAILURE;
 
 	       /* Count the remaining SNPs post thinning, add one for

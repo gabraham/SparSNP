@@ -6,6 +6,7 @@ void sqmvprod(double *x, double *y, double *z, int m);
 void copyshrink(double *x, double *y, int n, int p, int *active, int m);
 void copyshrinkrange(double *x, double *y, int n, int p, int from, int to);
 void printmatrix(double *x, int n, int p);
+void printmatrix0(double *x, int n, int p);
 int cov(double *x, double *S, int n, int p);
 void cov2cor(double *S, double *P, int p);
 
