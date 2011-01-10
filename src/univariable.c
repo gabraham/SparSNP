@@ -368,18 +368,6 @@ int run_train(Opt *opt, gmatrix *g)
 	       FREENULL(xthinned);
 	    }
 
-	    /* copy estimated beta back to the array for all SNPs */
-	    /*k = 0;
-	    for(j = 0 ; j < p1 ; j++)
-	    {
-	       if(g->active[j])
-	       {
-		  g->beta[j] = beta[k];
-		  se[j] = sqrt(invhessian[k * nums1 + k]);
-		  k++;
-	       }
-	    }*/
-
 	    /* Copy estimated beta back to the array for all SNPs. Due to
 	     * thinning, not all columns used (pselected <= nums1),
 	     * so check if they were */
@@ -502,12 +490,7 @@ int run_predict_beta(gmatrix *g, predict predict_func,
       {
 	 g->nextcol(g, &sm, j, NA_ACTION_ZERO);
 	 for(i = 0 ; i < n ; i++)
-	 {
 	    lp[i] += sm.x[i] * beta[j];
-	    if(i == 1)
-	       printf("beta[%d]=%.3f sm.x[%d]=%.0f lp[%d]=%.3f\n",
-		     j, beta[j], j, sm.x[i], i, lp[i]);
-	 }
       }
    }
    
