@@ -567,7 +567,7 @@ int do_predict(gmatrix *g, Opt *opt, char *tmp)
 	    break;
 
 	 /* write y file */
-	 snprintf(tmp, 5, "y.%02d", k);
+	 snprintf(tmp, 14, "multivar_y.%02d", k);
 	 printf("writing y file: %s\n", tmp);
 	 if(!(ret &= writevectorf(tmp, g->y, g->ncurr)))
 	    break;
