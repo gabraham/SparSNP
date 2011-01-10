@@ -82,9 +82,8 @@ int opt_defaults(Opt *opt, short caller)
    opt->zthresh[3] = 9.262340;
    opt->zthresh[4] = 6.361341;
    opt->zthresh[5] = 4.264891;
-   opt->zthresh[6] = 3.719016;
-   opt->zthresh[7] = 3.090232;*/
-   opt->zthresh[0] = 20;
+   opt->zthresh[6] = 3.719016;*/
+   opt->zthresh[0] = 3.090232;
 
    opt->lambda2_univar = 1e-3;
    opt->lambda2_multivar = 0;

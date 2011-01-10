@@ -237,7 +237,8 @@ int run_train(Opt *opt, gmatrix *g)
 	  *se = NULL,
 	  *invhessian = NULL;
    char tmp[MAX_STR_LEN];
-   int *activeselected = NULL;
+   int *activeselected = NULL,
+       *activeselected_ind = NULL;
 
    CALLOCTEST(zscore, p1, sizeof(double));
    CALLOCTEST(beta, p1, sizeof(double));
@@ -282,6 +283,7 @@ int run_train(Opt *opt, gmatrix *g)
 	       opt->zthresh[i]);
 
 	 FREENULL(se);
+	 /* standard error for ALL SNPs 0 to p1 */
 	 CALLOCTEST(se, p1, sizeof(double));
 
 	 FREENULL(x);
@@ -292,8 +294,12 @@ int run_train(Opt *opt, gmatrix *g)
 	 {
 	    MALLOCTEST(x, sizeof(double) * n * nums1);
 	    CALLOCTEST(invhessian, nums1 * nums1, sizeof(double));
-	    CALLOCTEST(beta, nums1, sizeof(double));
+
+	    /* flags for columns of x that are active, ie a subset of g->active */
 	    CALLOCTEST(activeselected, nums1, sizeof(int));
+
+	    /* which of the columns 0:p1 are active */
+	    CALLOCTEST(activeselected_ind, nums1, sizeof(int));
 
 	    /* read the chosen variables into memory, including the intercept */
 	    if(!gmatrix_read_matrix(g, x, g->active, nums1))
@@ -306,12 +312,13 @@ int run_train(Opt *opt, gmatrix *g)
 	       /* Slice the active vector for this window. We start off by
 		* making all variables active, then thin() will make some
 		* inactive. Ignore intercept for thinning. */
-	       k = 0;
+	       k = 1;
 	       for(j = 1 ; j < p1 ; j++)
 	       {
 		  if(g->active[j])
 		  {
 		     activeselected[k] = TRUE;
+		     activeselected_ind[k] = j;
 		     k++;
 		  }
 	       }
@@ -319,14 +326,12 @@ int run_train(Opt *opt, gmatrix *g)
 	       /* activeselected[0] must be FALSE, we don't want to thin the
 		* intercept */
 	       activeselected[0] = FALSE;
-	       if(!thin(x, n, nums1, activeselected,
-		     /*THIN_COR_MAX, THIN_WINDOW_SIZE, THIN_STEP_SIZE))*/
-		     THIN_COR_MAX, nums1, nums1
-		  ))
-	       return FAILURE;
+	       if(!thin(x, n, nums1, activeselected, THIN_COR_MAX, nums1, nums1))
+		  return FAILURE;
 
 	       /* Count the remaining SNPs post thinning, add one for
 		* intercept  */
+	       activeselected_ind[0] = 0;
 	       activeselected[0] = TRUE;
 	       pselected = 0;
 	       for(j = 0 ; j < nums1 ; j++)
@@ -343,6 +348,9 @@ int run_train(Opt *opt, gmatrix *g)
 	       xthinned = x;
 	       pselected = nums1;
 	    }
+
+	    /* coefs only for SNPs that survived thinning */
+	    CALLOCTEST(beta, pselected, sizeof(double));
 
 	    /* train un-penalised multivariable model on
 	     * the selected SNPs, with lambda=0 */
@@ -361,12 +369,26 @@ int run_train(Opt *opt, gmatrix *g)
 	    }
 
 	    /* copy estimated beta back to the array for all SNPs */
-	    k = 0;
+	    /*k = 0;
 	    for(j = 0 ; j < p1 ; j++)
 	    {
 	       if(g->active[j])
 	       {
 		  g->beta[j] = beta[k];
+		  se[j] = sqrt(invhessian[k * nums1 + k]);
+		  k++;
+	       }
+	    }*/
+
+	    /* Copy estimated beta back to the array for all SNPs. Due to
+	     * thinning, not all columns used (pselected <= nums1),
+	     * so check if they were */
+	    k = 0; /* should run up to pselected */
+	    for(j = 0 ; j < nums1 ; j++)
+	    {
+	       if(activeselected[j])
+	       {
+		  g->beta[activeselected_ind[j]] = beta[k];
 		  se[j] = sqrt(invhessian[k * nums1 + k]);
 		  k++;
 	       }
@@ -395,6 +417,7 @@ int run_train(Opt *opt, gmatrix *g)
    FREENULL(se);
    FREENULL(zscore);
    FREENULL(activeselected);
+   FREENULL(activeselected_ind);
 
    return SUCCESS;
 }
