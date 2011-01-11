@@ -10,6 +10,10 @@
 /*
  * Iteratively-Reweighted Least Squares for logistic regression
  * with l2 penalties
+ *
+ * \hat{\beta}_{t+1} = \hat{\beta}_t - (X^T W X + \lambda I)^{\dagger} X^T y
+ *
+ * dagger is pseudoinverse
  */
 int irls(double *x, double *y, double *beta, double *invhessian,
       int n, int p, double lambda2, int verbose)
@@ -80,7 +84,7 @@ int irls(double *x, double *y, double *beta, double *invhessian,
       /* hessian */
       wcrossprod(x, x, w, hessian, n, p, p);
 
-      /* Add l2 penalty to diagonal, except the intercept */
+      /* Add l2 penalty to diagonal of X^T X, except the intercept */
       for(j = 1 ; j < p ; j++)
 	 hessian[j * p + j] += lambda2;
 
@@ -89,14 +93,25 @@ int irls(double *x, double *y, double *beta, double *invhessian,
       /* Compute the Newton step */
       sqmvprod(invhessian, grad, s, p);
 
-      /*converged = TRUE;*/
+      if(loss <= IRLS_DEVIANCE_MIN)
+      {
+      	 diverged = TRUE;
+	 break;
+      }
+      
       diverged = FALSE;
       for(j = 0 ; j < p ; j++)
       {
 	 beta[j] -= s[j];
-	 /*converged &= (fabs(s[j]) <= IRLS_THRESH);*/
-	 diverged |= (fabs(beta[j]) >= IRLS_THRESH_MAX);
+	 if(fabs(beta[j]) >= IRLS_THRESH_MAX)
+	 {
+	    diverged = TRUE;
+	    break;
+	 }
       }
+
+      if(diverged)
+	 break;
 
       /*if(converged)
 	 break;*/
@@ -226,10 +241,10 @@ int run_train(Opt *opt, gmatrix *g)
    int i, j, k,
        n = g->ncurr,
        p1 = g->p + 1,
-       numselected = 0,
        nums1 = 0,
        ret = 0,
-       pselected = 0;
+       *numselected = NULL,
+       *pselected = NULL;
    double *x = NULL,
 	  *xthinned = NULL,
 	  *zscore = NULL,
@@ -242,6 +257,8 @@ int run_train(Opt *opt, gmatrix *g)
 
    CALLOCTEST(zscore, p1, sizeof(double));
    CALLOCTEST(beta, p1, sizeof(double));
+   CALLOCTEST(numselected, opt->nzthresh, sizeof(int));
+   CALLOCTEST(pselected, opt->nzthresh, sizeof(int));
 
    if(opt->verbose)
       printf("%d training samples, %d test samples\n",
@@ -270,16 +287,16 @@ int run_train(Opt *opt, gmatrix *g)
       {
 	 gmatrix_zero_model(g); /* reset active variables */
 
-	 numselected = 0; 
+	 numselected[i] = 0; 
 	 g->active[0] = TRUE;
 	 for(j = 1 ; j < p1 ; j++)
 	 {
 	    g->active[j] &= (fabs(zscore[j]) >= opt->zthresh[i]);
 	    if(g->active[j])
-	       numselected++;
+	       numselected[i]++;
 	 }
-	 nums1 = numselected + 1;
-	 printf("total %d SNPs exceeded z-score=%.3f\n", numselected,
+	 nums1 = numselected[i] + 1;
+	 printf("total %d SNPs exceeded z-score=%.3f\n", numselected[i],
 	       opt->zthresh[i]);
 
 	 FREENULL(se);
@@ -290,7 +307,7 @@ int run_train(Opt *opt, gmatrix *g)
 	 FREENULL(beta);
 	 FREENULL(invhessian);
 
-	 if(numselected > 0)
+	 if(numselected[i] > 0)
 	 {
 	    MALLOCTEST(x, sizeof(double) * n * nums1);
 	    CALLOCTEST(invhessian, nums1 * nums1, sizeof(double));
@@ -333,28 +350,28 @@ int run_train(Opt *opt, gmatrix *g)
 		* intercept  */
 	       activeselected_ind[0] = 0;
 	       activeselected[0] = TRUE;
-	       pselected = 0;
-	       for(j = 0 ; j < nums1 ; j++)
-	          pselected += activeselected[j];
+	       pselected[i] = 0;
+	       for(j = 1 ; j < nums1 ; j++)
+	          pselected[i] += activeselected[j];
 
 	       printf("After thinning, %d of %d SNPs left (excluding intercept)\n",
-		     pselected - 1, numselected);
+		     pselected[i] - 1, numselected[i]);
 
-	       MALLOCTEST(xthinned, sizeof(double) * n * pselected);
-	       copyshrink(x, xthinned, n, nums1, activeselected, pselected);
+	       MALLOCTEST(xthinned, sizeof(double) * n * (pselected[i] + 1));
+	       copyshrink(x, xthinned, n, nums1, activeselected, pselected[i] + 1);
 	    }
 	    else /* no thinning */
 	    {
 	       xthinned = x;
-	       pselected = nums1;
+	       pselected[i] = numselected[i];
 	    }
 
 	    /* coefs only for SNPs that survived thinning */
-	    CALLOCTEST(beta, pselected, sizeof(double));
+	    CALLOCTEST(beta, pselected[i] + 1, sizeof(double));
 
 	    /* train un-penalised multivariable model on
 	     * the selected SNPs, with lambda=0 */
-	    ret = irls(xthinned, g->y, beta, invhessian, n, pselected,
+	    ret = irls(xthinned, g->y, beta, invhessian, n, pselected[i] + 1,
 		  opt->lambda2_multivar, TRUE);
 	    printf("IRLS returned %d\n", ret);	    
 
@@ -392,12 +409,17 @@ int run_train(Opt *opt, gmatrix *g)
 	 snprintf(tmp, MAX_STR_LEN, "multivar_%s_se.%02d.%02d", opt->beta_files[0], i, g->fold);
 	 if(!writevectorf(tmp, se, g->p + 1))
 	    return FAILURE;
-
-	 /* number of selected variables */
-	 snprintf(tmp, MAX_STR_LEN, "multivar_%s.%02d.%02d", opt->numnz_file, i, g->fold);
-	 if(!writevectorl(tmp, &numselected, 1))
-	    return FAILURE;
       }
+
+      /* number of selected variables, pre thinning */
+      snprintf(tmp, MAX_STR_LEN, "multivar_%s.%02d", opt->numnz_file, g->fold);
+      if(!writevectorl(tmp, numselected, opt->nzthresh))
+	 return FAILURE;
+
+      /* number of selected variables, post thinning */
+      snprintf(tmp, MAX_STR_LEN, "multivar_%s_thinned.%02d", opt->numnz_file, g->fold);
+      if(!writevectorl(tmp, pselected, opt->nzthresh))
+	 return FAILURE;
    }
 
    FREENULL(beta);
@@ -406,6 +428,8 @@ int run_train(Opt *opt, gmatrix *g)
    FREENULL(zscore);
    FREENULL(activeselected);
    FREENULL(activeselected_ind);
+   FREENULL(numselected);
+   FREENULL(pselected);
 
    return SUCCESS;
 }
