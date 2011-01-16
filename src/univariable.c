@@ -340,24 +340,24 @@ int run_train(Opt *opt, gmatrix *g)
 	    if(!gmatrix_read_matrix(g, x, g->active, nums1))
 	       return FAILURE;
 
+	    /* Slice the active vector for this window. We start off by
+	     * making all variables active, then thin() will make some
+	     * inactive. Ignore intercept for thinning. */
+	    k = 1;
+	    for(j = 1 ; j < p1 ; j++)
+	    {
+	       if(g->active[j])
+	       {
+		  activeselected[k] = TRUE;
+		  activeselected_ind[k] = j;
+		  k++;
+	       }
+	    }
+
 	    /* thin the SNPs based on correlation, but only if there are at
 	     * least two SNPs (don't forget intercept adds one) */
 	    if(nums1 > 2)
 	    {
-	       /* Slice the active vector for this window. We start off by
-		* making all variables active, then thin() will make some
-		* inactive. Ignore intercept for thinning. */
-	       k = 1;
-	       for(j = 1 ; j < p1 ; j++)
-	       {
-		  if(g->active[j])
-		  {
-		     activeselected[k] = TRUE;
-		     activeselected_ind[k] = j;
-		     k++;
-		  }
-	       }
-
 	       /* activeselected[0] must be FALSE, we don't want to thin the
 		* intercept */
 	       activeselected[0] = FALSE;
@@ -407,6 +407,7 @@ int run_train(Opt *opt, gmatrix *g)
 	     * thinning, not all columns used (pselected <= nums1),
 	     * so check if they were */
 	    k = 0; /* should run up to pselected */
+	    activeselected[0] = TRUE;
 	    for(j = 0 ; j < nums1 ; j++)
 	    {
 	       if(activeselected[j])
