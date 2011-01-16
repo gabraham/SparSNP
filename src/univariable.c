@@ -421,12 +421,14 @@ int run_train(Opt *opt, gmatrix *g)
 	 /* estimated coefficients */
 	 snprintf(tmp, MAX_STR_LEN, "multivar_%s.%02d.%02d",
 	       opt->beta_files[0], i, g->fold);
+	 printf("writing %s\n", tmp);
 	 if(!writevectorf(tmp, g->beta, g->p + 1))
 	    return FAILURE;
 
 	 /* standard errors */
 	 snprintf(tmp, MAX_STR_LEN, "multivar_%s_se.%02d.%02d",
 	       opt->beta_files[0], i, g->fold);
+	 printf("writing %s\n", tmp);
 	 if(!writevectorf(tmp, se, g->p + 1))
 	    return FAILURE;
       }
