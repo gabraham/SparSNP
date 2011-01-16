@@ -19,7 +19,7 @@ int irls(double *x, double *y, double *beta, double *invhessian,
       int n, int p, double lambda2, int verbose)
 {
    int i, j, 
-       iter = 1, maxiter = 30,
+       iter = 1, maxiter = 50,
        converged = FALSE, diverged = FALSE,
        ret = SUCCESS;
 
@@ -242,7 +242,6 @@ int run_train(Opt *opt, gmatrix *g)
        n = g->ncurr,
        p1 = g->p + 1,
        nums1 = 0,
-       ret = 0,
        *numselected = NULL,
        *pselected = NULL;
    double *x = NULL,
@@ -303,6 +302,7 @@ int run_train(Opt *opt, gmatrix *g)
    {
       for(i = 0 ; i < opt->nzthresh ; i++)
       {
+	 printf("Threshold %d: %.5f\n", i, opt->zthresh[i]);
 	 gmatrix_zero_model(g); /* reset active variables */
 
 	 numselected[i] = 0; 
@@ -365,7 +365,7 @@ int run_train(Opt *opt, gmatrix *g)
 		  return FAILURE;
 
 	       /* Count the remaining SNPs post thinning, add one for
-		* intercept  */
+		* intercept (pselected doesn't include intercept)  */
 	       activeselected_ind[0] = 0;
 	       activeselected[0] = TRUE;
 	       pselected[i] = 0;
@@ -373,7 +373,7 @@ int run_train(Opt *opt, gmatrix *g)
 	          pselected[i] += activeselected[j];
 
 	       printf("After thinning, %d of %d SNPs left (excluding intercept)\n",
-		     pselected[i] - 1, numselected[i]);
+		     pselected[i], numselected[i]);
 
 	       MALLOCTEST(xthinned, sizeof(double) * n * (pselected[i] + 1));
 	       copyshrink(x, xthinned, n, nums1, activeselected, pselected[i] + 1);
@@ -391,7 +391,7 @@ int run_train(Opt *opt, gmatrix *g)
 	     * the selected SNPs, with lambda=0 */
 	    rets[i] = irls(xthinned, g->y, beta, invhessian, n, pselected[i] + 1,
 		  opt->lambda2_multivar, TRUE);
-	    printf("IRLS returned %d\n", ret);	    
+	    printf("IRLS returned %d\n", rets[i]);	    
 
 	    if(xthinned == x)
 	    {
@@ -432,6 +432,8 @@ int run_train(Opt *opt, gmatrix *g)
 	 printf("writing %s\n", tmp);
 	 if(!writevectorf(tmp, se, g->p + 1))
 	    return FAILURE;
+
+	 printf("\n");
       }
 
       /* number of selected variables, pre thinning */
