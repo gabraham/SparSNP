@@ -270,10 +270,12 @@ int run_train(Opt *opt, gmatrix *g)
    if(opt->existing_univar)
    {
       snprintf(tmp, MAX_STR_LEN, "univar_beta.00.%02d", g->fold);
+      printf("reading %s\n", tmp);
       if(!load_beta(beta, tmp, g->p + 1))
 	 return FAILURE;
 
       snprintf(tmp, MAX_STR_LEN, "univar_zscore.00.%02d", g->fold);
+      printf("reading %s\n", tmp);
       if(!load_beta(zscore, tmp, g->p + 1))
 	 return FAILURE;
    }
@@ -432,17 +434,20 @@ int run_train(Opt *opt, gmatrix *g)
       /* number of selected variables, pre thinning */
       snprintf(tmp, MAX_STR_LEN, "multivar_%s.%02d",
 	    opt->numnz_file, g->fold);
+      printf("writing %s\n", tmp);
       if(!writevectorl(tmp, numselected, opt->nzthresh))
 	 return FAILURE;
 
       /* number of selected variables, post thinning */
       snprintf(tmp, MAX_STR_LEN, "multivar_%s_thinned.%02d",
 	    opt->numnz_file, g->fold);
+      printf("writing %s\n", tmp);
       if(!writevectorl(tmp, pselected, opt->nzthresh))
 	 return FAILURE;
 
       /* IRLS exit codes */
       snprintf(tmp, MAX_STR_LEN, "multivar_irls.%02d", g->fold);
+      printf("writing %s\n", tmp);
       if(!writevectorl(tmp, rets, opt->nzthresh))
 	 return FAILURE;
    }
