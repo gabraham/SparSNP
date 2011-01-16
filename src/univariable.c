@@ -253,31 +253,47 @@ int run_train(Opt *opt, gmatrix *g)
 	  *invhessian = NULL;
    char tmp[MAX_STR_LEN];
    int *activeselected = NULL,
-       *activeselected_ind = NULL;
+       *activeselected_ind = NULL,
+       *rets = NULL;
 
    CALLOCTEST(zscore, p1, sizeof(double));
    CALLOCTEST(beta, p1, sizeof(double));
    CALLOCTEST(numselected, opt->nzthresh, sizeof(int));
    CALLOCTEST(pselected, opt->nzthresh, sizeof(int));
+   CALLOCTEST(rets, opt->nzthresh, sizeof(int));
 
    if(opt->verbose)
       printf("%d training samples, %d test samples\n",
 	    g->ntrain[g->fold], g->ntest[g->fold]);
 
-   /* Get coefs and z-scores for each SNP using the
-    * univariable method */
-   if(!univar_gmatrix(opt, g, beta, zscore))
-      return FAILURE;
+   /* read existing univar files */
+   if(opt->existing_univar)
+   {
+      snprintf(tmp, MAX_STR_LEN, "univar_beta.00.%02d", g->fold);
+      if(!load_beta(beta, tmp, g->p + 1))
+	 return FAILURE;
 
-   /* univariable coefs */
-   snprintf(tmp, MAX_STR_LEN, "univar_beta.00.%02d", g->fold);
-   if(!writevectorf(tmp, beta, g->p + 1))
-      return FAILURE;
+      snprintf(tmp, MAX_STR_LEN, "univar_zscore.00.%02d", g->fold);
+      if(!load_beta(zscore, tmp, g->p + 1))
+	 return FAILURE;
+   }
+   else /* compute beta and zscore */
+   {
+      /* Get coefs and z-scores for each SNP using the
+       * univariable method */
+      if(!univar_gmatrix(opt, g, beta, zscore))
+         return FAILURE;
 
-   /* univariable z scores */
-   snprintf(tmp, MAX_STR_LEN, "univar_zscore.00.%02d", g->fold);
-   if(!writevectorf(tmp, zscore, g->p + 1))
-      return FAILURE;
+      /* univariable coefs */
+      snprintf(tmp, MAX_STR_LEN, "univar_beta.00.%02d", g->fold);
+      if(!writevectorf(tmp, beta, g->p + 1))
+         return FAILURE;
+
+      /* univariable z scores */
+      snprintf(tmp, MAX_STR_LEN, "univar_zscore.00.%02d", g->fold);
+      if(!writevectorf(tmp, zscore, g->p + 1))
+         return FAILURE;
+   }
 
    printf("univariate selection done\n");
 
@@ -371,7 +387,7 @@ int run_train(Opt *opt, gmatrix *g)
 
 	    /* train un-penalised multivariable model on
 	     * the selected SNPs, with lambda=0 */
-	    ret = irls(xthinned, g->y, beta, invhessian, n, pselected[i] + 1,
+	    rets[i] = irls(xthinned, g->y, beta, invhessian, n, pselected[i] + 1,
 		  opt->lambda2_multivar, TRUE);
 	    printf("IRLS returned %d\n", ret);	    
 
@@ -401,24 +417,33 @@ int run_train(Opt *opt, gmatrix *g)
 	 }
 
 	 /* estimated coefficients */
-	 snprintf(tmp, MAX_STR_LEN, "multivar_%s.%02d.%02d", opt->beta_files[0], i, g->fold);
+	 snprintf(tmp, MAX_STR_LEN, "multivar_%s.%02d.%02d",
+	       opt->beta_files[0], i, g->fold);
 	 if(!writevectorf(tmp, g->beta, g->p + 1))
 	    return FAILURE;
 
 	 /* standard errors */
-	 snprintf(tmp, MAX_STR_LEN, "multivar_%s_se.%02d.%02d", opt->beta_files[0], i, g->fold);
+	 snprintf(tmp, MAX_STR_LEN, "multivar_%s_se.%02d.%02d",
+	       opt->beta_files[0], i, g->fold);
 	 if(!writevectorf(tmp, se, g->p + 1))
 	    return FAILURE;
       }
 
       /* number of selected variables, pre thinning */
-      snprintf(tmp, MAX_STR_LEN, "multivar_%s.%02d", opt->numnz_file, g->fold);
+      snprintf(tmp, MAX_STR_LEN, "multivar_%s.%02d",
+	    opt->numnz_file, g->fold);
       if(!writevectorl(tmp, numselected, opt->nzthresh))
 	 return FAILURE;
 
       /* number of selected variables, post thinning */
-      snprintf(tmp, MAX_STR_LEN, "multivar_%s_thinned.%02d", opt->numnz_file, g->fold);
+      snprintf(tmp, MAX_STR_LEN, "multivar_%s_thinned.%02d",
+	    opt->numnz_file, g->fold);
       if(!writevectorl(tmp, pselected, opt->nzthresh))
+	 return FAILURE;
+
+      /* IRLS exit codes */
+      snprintf(tmp, MAX_STR_LEN, "multivar_irls.%02d", g->fold);
+      if(!writevectorl(tmp, rets, opt->nzthresh))
 	 return FAILURE;
    }
 
@@ -430,6 +455,7 @@ int run_train(Opt *opt, gmatrix *g)
    FREENULL(activeselected_ind);
    FREENULL(numselected);
    FREENULL(pselected);
+   FREENULL(rets);
 
    return SUCCESS;
 }
