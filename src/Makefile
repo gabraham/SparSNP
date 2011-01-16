@@ -15,7 +15,7 @@ CCFLAGS = -std=gnu99 -Wall -ggdb3 \
 	  -ffast-math \
 	  -fstrict-aliasing \
 	  -D_FILE_OFFSET_BITS=$(LONG_BIT) \
-	  -DMACOSX
+	 # -DMACOSX
 
 targets = cd scale transpose hapgen2bin hapgen2ped \
 	  cbind split unpack univariable
@@ -25,11 +25,11 @@ debug: CCFLAGS = -Wall \
    		 -ggdb3 \
 		 -std=gnu99 \
 		 -D_FILE_OFFSET_BITS=$(LONG_BIT) \
-		 -DMACOSX
+	#	 -DMACOSX
 
 debug: $(targets)
 
-LIBRARIES = -lm # -llapack -lblas -lgfortran
+LIBRARIES = -lm  -llapack -lblas -lgfortran
 
 cd: common.c coder.c ind.c gmatrix.c loss.c util.c options.c main.c cd.c
 	$(CC) $(CCFLAGS) $(LIBRARIES) $^ -o cd

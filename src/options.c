@@ -94,6 +94,7 @@ int opt_defaults(Opt *opt, short caller)
    opt->lambda2_multivar = 0;
 
    opt->do_multivar = TRUE;
+   opt->existing_univar = FALSE;
 
    return SUCCESS;
 }
@@ -278,6 +279,10 @@ int opt_parse(int argc, char* argv[], Opt* opt)
       {
 	 opt->do_multivar = FALSE;
       }
+      else if(strcmp2(argv[i], "-existingunivar"))
+      {
+	 opt->existing_univar = TRUE;
+      }
    }
 
    if(opt->caller == OPTIONS_CALLER_CD) /* coordinate descent */
@@ -307,7 +312,7 @@ onl   y using the first one\n");
          printf("usage: univariable [-train|-predict] -model <model> \
 -bin <filename> -n <#samples> -p <#variables>  \
 [-betafiles <beta filename/s>] \
-[-foldind <foldsfile>] \
+[-foldind <foldsfile>] [-skipunivar] \
 [-pred <prediction file>] [-nomultivar] [-v] [-vv]\n");
          return FAILURE;
       }
