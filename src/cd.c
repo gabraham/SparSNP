@@ -144,7 +144,7 @@ double step_regular_logistic(sample *s, gmatrix *g,
 
 /*
  * Squared hinge loss, assumes y \in {-1,1},
- * and that X is scaled so that the 2nd derivative is always 1
+ * and that X is scaled so that the 2nd derivative is always N
  */
 double step_regular_sqrhinge(sample *s, gmatrix *g,
       phi1 phi1_func, phi2 phi2_func)

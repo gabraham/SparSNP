@@ -77,24 +77,26 @@ int opt_defaults(Opt *opt, short caller)
    opt->nzthresh = 12;
    MALLOCTEST(opt->zthresh, sizeof(double) * opt->nzthresh);
 
-   opt->zthresh[0] = 20.16469;
-   opt->zthresh[1] = 18.99164;
-   opt->zthresh[2] = 17.74164;
-   opt->zthresh[3] = 16.39728;
-   opt->zthresh[4] = 14.93334;
-   opt->zthresh[5] = 13.31092;
-   opt->zthresh[6] = 11.46403;
-   opt->zthresh[7] = 9.262340;
-   opt->zthresh[8] = 6.361341;
-   opt->zthresh[9] = 4.264891;
-   opt->zthresh[10] = 3.719016;
-   opt->zthresh[11] = 3.090232;
+   opt->zthresh[0] = 20.16469;  /* 1e-90 */
+   opt->zthresh[1] = 18.99164;  /* 1e-80 */
+   opt->zthresh[2] = 17.74164;  /* 1e-70 */
+   opt->zthresh[3] = 16.39728;  /* 1e-60 */
+   opt->zthresh[4] = 14.93334;  /* 1e-50 */
+   opt->zthresh[5] = 13.31092;  /* 1e-40 */
+   opt->zthresh[6] = 11.46403;  /* 1e-30 */
+   opt->zthresh[7] = 9.262340;  /* 1e-20 */
+   opt->zthresh[8] = 6.361341;  /* 1e-10 */
+   opt->zthresh[9] = 4.264891;  /* 1e-5  */
+   opt->zthresh[10] = 3.719016; /* 1e-4  */
+   opt->zthresh[11] = 3.090232; /* 1e-3  */
 
-   opt->lambda2_univar = 1e-3;
+   /*opt->lambda2_univar = 1e-3;*/
+   opt->lambda2_univar = 0;
    opt->lambda2_multivar = 0;
 
    opt->do_multivar = TRUE;
    opt->existing_univar = FALSE;
+   opt->do_thinning = TRUE;
 
    return SUCCESS;
 }
@@ -282,6 +284,10 @@ int opt_parse(int argc, char* argv[], Opt* opt)
       else if(strcmp2(argv[i], "-existingunivar"))
       {
 	 opt->existing_univar = TRUE;
+      }
+      else if(strcmp2(argv[i], "-nothin"))
+      {
+	 opt->do_thinning = FALSE;
       }
    }
 

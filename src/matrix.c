@@ -136,7 +136,7 @@ void wcrossprod(double *x, double *y, double *w, double *z,
 }
 
 /*
- * Square-Matrix-vector product
+ * Product of Square-Matrix with Vector
  *
  * z = X y
  *

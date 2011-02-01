@@ -14,12 +14,14 @@
  * \hat{\beta}_{t+1} = \hat{\beta}_t - (X^T W X + \lambda I)^{\dagger} X^T y
  *
  * dagger is pseudoinverse
+ *
+ * The argument p includes the intercept
  */
 int irls(double *x, double *y, double *beta, double *invhessian,
       int n, int p, double lambda2, int verbose)
 {
    int i, j, 
-       iter = 1, maxiter = 50,
+       iter = 1, maxiter = 100,
        converged = FALSE, diverged = FALSE,
        ret = SUCCESS;
 
@@ -42,7 +44,7 @@ int irls(double *x, double *y, double *beta, double *invhessian,
    while(iter <= maxiter) 
    {
       if(verbose)
-	 printf("IRLS iter %d\tdev=%.3f\n", iter, loss);
+	 printf("IRLS iter %d\tdev=%.7f\n", iter, loss);
       
       if(iter > 1)
 	 loss_old = loss;
@@ -62,6 +64,8 @@ int irls(double *x, double *y, double *beta, double *invhessian,
 	 loss += log(1 + exp(lp[i])) - y[i] * lp[i];
       }
 
+      loss /= n;
+
       /* same convergence test as in R's glm.fit */
       if(fabs(loss - loss_old) / (fabs(loss) + 0.1) <= IRLS_THRESH)
       {
@@ -73,20 +77,20 @@ int irls(double *x, double *y, double *beta, double *invhessian,
       for(j = 0 ; j < p ; j++)
       {
 	 grad[j] = 0.0;
-	 for(i = n - 1; i >= 0 ; --i)
+	 for(i = n - 1 ; i >= 0 ; --i)
 	    grad[j] += x[i * p + j] * (lp_invlogit[i] - y[i]);
       }
 
       /* weights */
-      for(i = n - 1; i >= 0 ; --i)
+      for(i = n - 1 ; i >= 0 ; --i)
 	 w[i] = lp_invlogit[i] * (1 - lp_invlogit[i]);
 
       /* hessian */
       wcrossprod(x, x, w, hessian, n, p, p);
 
       /* Add l2 penalty to diagonal of X^T X, except the intercept */
-      for(j = 1 ; j < p ; j++)
-	 hessian[j * p + j] += lambda2;
+      /*for(j = 1 ; j < p ; j++)
+	 hessian[j * p + j] += lambda2;*/
 
       pseudoinverse(hessian, &p, &p, invhessian);
 
@@ -102,7 +106,9 @@ int irls(double *x, double *y, double *beta, double *invhessian,
       diverged = FALSE;
       for(j = 0 ; j < p ; j++)
       {
+	 /* Newton-Raphson step */
 	 beta[j] -= s[j];
+	 /*printf("beta[%d]: %.5f\n", j, beta[j]);*/
 	 if(fabs(beta[j]) >= IRLS_THRESH_MAX)
 	 {
 	    diverged = TRUE;
@@ -356,7 +362,7 @@ int run_train(Opt *opt, gmatrix *g)
 
 	    /* thin the SNPs based on correlation, but only if there are at
 	     * least two SNPs (don't forget intercept adds one) */
-	    if(nums1 > 2)
+	    if(nums1 > 2 && opt->do_thinning)
 	    {
 	       /* activeselected[0] must be FALSE, we don't want to thin the
 		* intercept */

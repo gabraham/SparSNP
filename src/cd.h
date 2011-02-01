@@ -71,6 +71,7 @@ typedef struct Opt {
    double lambda2_multivar;
    int do_multivar;
    int existing_univar;
+   int do_thinning;
 } Opt;
 
 int cd_gmatrix(gmatrix *g,

@@ -6,7 +6,8 @@
 #include "common.h"
 #include "svd.h"
 
-#define EPS 1e-9
+/* same as MASS::ginv */
+#define EPS 1.490116e-09
 
 /*
  * This declaration is necessary since /usr/lib/clapack.h on Linux doesn't

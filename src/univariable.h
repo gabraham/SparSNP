@@ -1,6 +1,6 @@
 #define OPTIONS_CALLER univariable
 
-#define IRLS_THRESH 1e-8
+#define IRLS_THRESH 1e-3
 #define IRLS_THRESH_MAX 30
 #define IRLS_DEVIANCE_MIN 1e-2
 

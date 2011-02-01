@@ -44,11 +44,9 @@ int thin(double *x, int n, int p, int *active,
 
    stepsize = (stepsize > windowsize) ? windowsize : stepsize;
 
-   /*printf(">>>>p=%d\n", p); fflush(stdout);*/
    j = 0;
    while(j < p && ws > 1)
    {
-      /*printf("ws=%d\tstepsize=%d\n", ws, stepsize); fflush(stdout);*/
       /* Consider SNPs in the window only */
       MALLOCTEST(xwin, sizeof(double) * ws * n);
       copyshrinkrange(x, xwin, n, p, j, j + ws);
@@ -68,10 +66,12 @@ int thin(double *x, int n, int p, int *active,
       {
 	 for(k = 0 ; k < i; k++)
 	 {
-	    /*printf("i:%d j:%d k:%d ws:%d\n", i, j, k, ws); fflush(stdout);*/
 	    /* remove the first member of each pair, if both are active */
 	    if(fabs(P[i * ws + k]) > cormax && active[i + j] && active[k + j])
+	    {
 	       active[i + j] = FALSE;
+	       /*printf("var %d filtered, P[%d,%d]: %.5f\n", i + j, i, k, P[i * ws + k]);*/
+	    }
 	 }
       }
 
