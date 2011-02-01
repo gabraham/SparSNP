@@ -64,7 +64,6 @@ irls <- function(x, y, lambda=0, dispersion=1, maxiter=250, scale=FALSE,
 
       dev <- mean(log(1 + exp(lp)) - y * lp) #+ lambda * sum(beta^2)
 
-      browser()
       if(any(abs(beta) > 30) || dev <= 1e-2)
       {
 	 converged <- FALSE
