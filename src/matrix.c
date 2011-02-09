@@ -79,6 +79,8 @@ int cov(double *x, double *S, int n, int p)
  * good is an n by p boolean matrix indicating whether x values are good or
  * missing
  *
+ * Equivalent to pairwise deletion in R's cov
+ *
  */
 int covmiss(double *x, double *S, int n, int p, int *good)
 {
