@@ -71,6 +71,85 @@ int cov(double *x, double *S, int n, int p)
    return SUCCESS;
 }
 
+/* Compute covariance matrix with missing values in x
+ *
+ * x is n by p row major matrix
+ * S is p by p row major matrix
+ *
+ * good is an n by p boolean matrix indicating whether x values are good or
+ * missing
+ *
+ */
+int covmiss(double *x, double *S, int n, int p, int *good)
+{
+   int i, j, k, p2 = p * p;
+   int q;
+   double *mean = NULL;
+   int *n1 = NULL;
+   int *n2 = NULL; /* counts of pairwise good observations */
+   int jpk, ipk, ipj, kpj;
+   int good1;
+
+   CALLOCTEST(n1, p, sizeof(int));
+   CALLOCTEST(n2, p * p, sizeof(int));
+
+   /* column means */
+   CALLOCTEST(mean, p, sizeof(double));
+   for(j = 0 ; j < p ; j++)
+   {
+      for(i = 0 ; i < n ; i++)
+      {
+	 q = i * p + j;
+	 n1[j] += good[q];
+	 mean[j] += good[q] ? x[q] : 0;
+      }
+      mean[j] /= n1[j];
+   }
+
+   /* rows of S */
+   for(j = 0 ; j < p ; j++)
+   {
+      /* columns of S */
+      for(k = 0 ; k <= j ; k++)
+      {
+	 i = 0;
+	 ipk = i * p + k;
+	 ipj = i * p + j;
+	 jpk = j * p + k;
+	 kpj = k * p + j;
+
+	 /* count how many pairs are non-missing */
+	 good1 = good[ipk] & good[ipj];
+	 n2[jpk] = good1;
+	 S[jpk] = good1 ? (x[ipk] - mean[k]) * (x[ipj] - mean[j]) : 0;
+
+	 for(i = 1 ; i < n ; i++)
+	 {
+	    ipk = i * p + k;
+	    ipj = i * p + j;
+	    jpk = j * p + k;
+	    kpj = k * p + j;
+	    good1 = good[ipk] & good[ipj];
+	    n2[jpk] += good1;
+	    S[jpk] += good1 ? (x[ipk] - mean[k]) * (x[ipj] - mean[j]) : 0;
+	 }
+
+	 S[kpj] = S[jpk];
+	 n2[kpj] = n2[jpk];
+      }
+   }
+
+   /* divide S by n-1 */
+   for(i = 0 ; i < p2 ; i++)
+      S[i] /= n2[i] - 1;
+
+   FREENULL(mean);
+   FREENULL(n1);
+   FREENULL(n2);
+
+   return SUCCESS;
+}
+
 /* Converts a p by p covariance matrix S to a p by p correlation matrix P
  */
 void cov2cor(double *S, double *P, int p)

@@ -5,6 +5,8 @@
 int main(void)
 {
    int i;
+   int n = 50, p = 10;
+   int p2 = p * p;
    double mse = 0;
 
    double x[500] = {
@@ -138,39 +140,65 @@ int main(void)
 	 0.134152573509193, 1
    };
 
-   double *S1 = malloc(sizeof(double) * 100);
-   double *P1 = malloc(sizeof(double) * 100);
+   int *good = NULL;
 
-   if(!cov(x, S1, 50, 10))
+   double *S1 = malloc(sizeof(double) * p2);
+   double *P1 = malloc(sizeof(double) * p2);
+
+   good = malloc(sizeof(int) * n * p);
+   for(i = 0 ; i < n * p ; i++)
+      good[i] = 1;
+
+   /********************/
+   if(!cov(x, S1, n, p))
       return EXIT_FAILURE;
 
-   for(i = 0 ; i < 100 ; i++)
+   for(i = 0 ; i < p2 ; i++)
       mse += (S[i] - S1[i]) * (S[i] - S1[i]);
 
    printf("MSE: %.3f\n", mse);
 
    printf("Expected:\n");
-   printmatrix(S, 10, 10);
+   printmatrix(S, p, p);
 
    printf("Actual:\n");
-   printmatrix(S1, 10, 10);
+   printmatrix(S1, p, p);
 
-   cov2cor(S1, P1, 10);
+   /********************/
+   cov2cor(S1, P1, p);
    mse = 0;
 
-   for(i = 0 ; i < 100 ; i++)
+   for(i = 0 ; i < p2 ; i++)
       mse += (P[i] - P1[i]) * (P[i] - P1[i]);
 
    printf("\n\nMSE: %.3f\n", mse);
 
    printf("Expected:\n");
-   printmatrix(P, 10, 10);
+   printmatrix(P, p, p);
 
    printf("Actual:\n");
-   printmatrix(P1, 10, 10);
+   printmatrix(P1, p, p);
+
+   /********************/
+   if(!covmiss(x, S1, n, p, good))
+      return EXIT_FAILURE;
+
+   mse = 0;
+   for(i = 0 ; i < p2 ; i++)
+      mse += (S[i] - S1[i]) * (S[i] - S1[i]);
+
+   printf("MSE: %.3f\n", mse);
+
+   printf("Expected:\n");
+   printmatrix(S, p, p);
+
+   printf("Actual:\n");
+   printmatrix(S1, p, p);
+
 
    free(S1);
    free(P1);
+   free(good);
 
    return EXIT_SUCCESS;
 }

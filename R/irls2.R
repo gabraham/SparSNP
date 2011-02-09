@@ -45,7 +45,7 @@ irls <- function(x, y, lambda=0, dispersion=1, maxiter=250, scale=FALSE,
       w <- lpinv * (1 - lpinv)
 
       grad <- crossprod(x1, lpinv - y)
-      hess <- crossprod(x1, diag(w)) %*% x1# + L
+      hess <- crossprod(x1, diag(w)) %*% x1 # + L
       invhess <- ginv(hess)
       beta <- beta - invhess %*% grad
 

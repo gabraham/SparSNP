@@ -38,6 +38,8 @@ typedef struct cache {
 
 typedef struct sample {
    int n;
+   int ngood;
+   int *good;
    double *x;
    double *y;
    double *x2;
