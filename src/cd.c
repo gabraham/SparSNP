@@ -104,7 +104,7 @@ void updatelp(gmatrix *g, const double update,
       }
    }
 
-   loss /= n;
+   loss *= g->ncurr_recip;
    g->loss = loss;
 }
 
