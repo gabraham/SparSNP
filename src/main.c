@@ -66,6 +66,7 @@ int run_train(Opt *opt, gmatrix *g)
       printf("%d training samples, %d test samples\n",
 	    g->ntrain[g->fold], g->ntest[g->fold]);
    
+   /* first numnz is always zero by definition */
    CALLOCTEST(g->numnz, opt->nlambda1, sizeof(int));
 
    /* don't start from zero, getlambda1max already computed that */
@@ -82,15 +83,18 @@ int run_train(Opt *opt, gmatrix *g)
 	    opt->maxepochs, opt->maxiters,
 	    opt->lambda1path[i], opt->lambda2,
 	    opt->threshold, opt->verbose, opt->trunc);
-      g->numnz[i] = ret;
 
-      gmatrix_reset(g);
-
+      /*g->numnz[i] = ret;
+      gmatrix_reset(g);*/
+      
       if(ret == CDFAILURE)
       {
 	 printf("failed to converge after %d epochs\n", opt->maxepochs);
 	 break;
       } 
+
+      g->numnz[i] = ret;
+      gmatrix_reset(g);
 
       snprintf(tmp, MAX_STR_LEN, "%s.%02d.%02d",
 	    opt->beta_files[0], i, g->fold);
@@ -108,6 +112,7 @@ int run_train(Opt *opt, gmatrix *g)
       {
 	 printf("maximum number of non-zero variables \
 reached or exceeded: %d\n", opt->nzmax);
+	 i++; /* increment to correct number of models fitted successfully */
 	 break;
       }
    }
@@ -115,7 +120,7 @@ reached or exceeded: %d\n", opt->nzmax);
    snprintf(tmp, MAX_STR_LEN, "%s.%02d", opt->numnz_file, g->fold);
    /* number of non-zero variables for each successful fit and the all-zero
     * fit, excluding intercept */
-   if(!writevectorl(tmp, g->numnz, i + 1))
+   if(!writevectorl(tmp, g->numnz, i))
       return FAILURE;
 
    FREENULL(g->numnz);
