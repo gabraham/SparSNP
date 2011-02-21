@@ -33,9 +33,12 @@ int gmatrix_init(gmatrix *g, char *filename, int n, int p,
    g->yidx = 0;
    g->y = NULL;
    g->y_orig = NULL;
+   g->loss = 0;
    g->lp = NULL;
    g->ylp = NULL;
    g->ylp_neg = NULL;
+   g->ylp_neg_y = NULL;
+   g->ylp_neg_y_ylp = NULL;
    g->lp_invlogit = NULL;
    g->loss_func = NULL;
    g->loss_pt_func = loss_pt_func;
@@ -186,6 +189,8 @@ void gmatrix_free(gmatrix *g)
    FREENULL(g->lp);
    FREENULL(g->ylp);
    FREENULL(g->ylp_neg);
+   FREENULL(g->ylp_neg_y);
+   FREENULL(g->ylp_neg_y_ylp);
    FREENULL(g->lp_invlogit);
    FREENULL(g->beta);
    FREENULL(g->beta_orig);
@@ -323,6 +328,7 @@ int gmatrix_disk_nextcol(gmatrix *g, sample *s, int j, int na_action)
       /* don't need to worry about cross-validation etc
        * because the intercept is all 1s */
       s->x = g->intercept;
+      s->x2 = g->intercept;
       s->y = g->y_orig;
       s->n = g->ncurr;
       return SUCCESS;
@@ -401,6 +407,8 @@ inputs in gmatrix_disk_nextcol\n");
 	 for(i = n1 ; i >= 0 ; --i)
 	 {
 	    /* different between train and test */
+	    /* this can be replaced by a list of pointers to the training and
+	     * testing samples */
 	    if((g->mode == MODE_PREDICT) ^ g->folds[f + i])
 	    {
 	       g->xtmp[k--] = g->lookup[l1 + g->tmp[i]];
@@ -446,6 +454,12 @@ inputs in gmatrix_disk_nextcol\n");
    /*cache_put(g->ca, j, g->xtmp, g->ncurr);*/
    s->x = g->xtmp;
    s->y = g->ytmp;
+
+   /*if(get_x2)
+   {
+      for(i = s->n - 1 ; i >= 0 ; --i)
+	 s->x2[i] = s->x[i] * s->x[i];
+   }*/
 
    return SUCCESS;
 }
@@ -684,8 +698,12 @@ void gmatrix_zero_model(gmatrix *g)
       {
 	 g->ylp[i] = -1;    /* y * 0 - 1 = -1  */
 	 g->ylp_neg[i] = 1; /* ylp < 0 => true */
+	 g->ylp_neg_y[i] = g->y[i];
+	 g->ylp_neg_y_ylp[i] = g->ylp_neg_y[i] * g->ylp[i];
       }
    }
+
+   g->loss = 0;
 }
 
 int gmatrix_init_lp(gmatrix *g)
@@ -700,6 +718,10 @@ int gmatrix_init_lp(gmatrix *g)
       CALLOCTEST(g->ylp, g->ncurr, sizeof(double));
       FREENULL(g->ylp_neg);
       CALLOCTEST(g->ylp_neg, g->ncurr, sizeof(double));
+      FREENULL(g->ylp_neg_y);
+      CALLOCTEST(g->ylp_neg_y, g->ncurr, sizeof(double));
+      FREENULL(g->ylp_neg_y_ylp);
+      CALLOCTEST(g->ylp_neg_y_ylp, g->ncurr, sizeof(double));
    }
    return SUCCESS;
 }

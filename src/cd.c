@@ -22,37 +22,90 @@ void updatelp(gmatrix *g, const double update,
       const double *restrict x)
 {
    int i, n = g->ncurr;
+   double tmp;
    double *restrict lp_invlogit = g->lp_invlogit,
 	  *restrict lp = g->lp,
 	  *restrict y = g->y,
 	  *restrict ylp = g->ylp,
-	  *restrict ylp_neg = g->ylp_neg;
+	  *restrict ylp_neg = g->ylp_neg,
+	  *restrict ylp_neg_y = g->ylp_neg_y,
+	  *restrict ylp_neg_y_ylp = g->ylp_neg_y_ylp;
+   double loss = 0;
 
-   if(x)
+   if(g->model == MODEL_LINEAR)
    {
-      for(i = n - 1 ; i >= 0 ; --i)
-	 lp[i] += x[i] * update;
+      if(x)
+      {
+	 for(i = n - 1 ; i >= 0 ; --i)
+	 {
+	    lp[i] += x[i] * update;
+	    tmp = y[i] - lp[i];
+	    loss += tmp * tmp;
+	 }
+      }
+      else
+      {
+	 for(i = n - 1 ; i >= 0 ; --i)
+	 {
+	    lp[i] = update;
+	    tmp = y[i] - lp[i];
+	    loss += tmp * tmp;
+	 }
+      }
    }
-   else /* update from intercept, lp[i] is zero and x[i] is one */
+   else if(g->model == MODEL_LOGISTIC)
    {
-      for(i = n - 1 ; i >= 0 ; --i)
-	 lp[i] = update;
-   }
-
-   /* update functions of linear predictor */
-   if(g->model == MODEL_LOGISTIC)
-   {
-      for(i = n - 1 ; i >= 0 ; --i)
-	 lp_invlogit[i] = 1 / (1 + exp(-lp[i]));
+      if(x)
+      {
+	 for(i = n - 1 ; i >= 0 ; --i)
+	 {
+	    lp[i] += x[i] * update;
+	    lp_invlogit[i] = 1 / (1 + exp(-lp[i]));
+	    loss += log(1 + exp(lp[i])) - y[i] * lp[i];
+	 }
+      }
+      else
+      {
+	 for(i = n - 1 ; i >= 0 ; --i)
+	 {
+	    lp[i] += update;
+	    lp_invlogit[i] = 1 / (1 + exp(-lp[i]));
+	    loss += log(1 + exp(lp[i])) - y[i] * lp[i];
+	 }
+      }
    }
    else if(g->model == MODEL_SQRHINGE)
    {
-      for(i = n - 1 ; i >= 0 ; --i)
+      if(x)
       {
-	 ylp[i] = y[i] * lp[i] - 1;
-	 ylp_neg[i] = (ylp[i] < 0);
+	 for(i = n - 1 ; i >= 0 ; --i)
+      	 {
+      	    lp[i] += x[i] * update;
+      	    ylp[i] = y[i] * lp[i] - 1;
+      	    ylp_neg[i] = (ylp[i] < 0);
+      	    ylp_neg_y[i] = ylp_neg[i] * g->y[i];
+      	    ylp_neg_y_ylp[i] = ylp_neg_y[i] * ylp[i];
+	    tmp = ylp_neg[i] * ylp[i];
+	    loss += tmp * tmp;
+      	 }
+      }
+      else
+      {
+	 for(i = n - 1 ; i >= 0 ; --i)
+      	 {
+      	    lp[i] += update;
+      	    ylp[i] = y[i] * lp[i] - 1;
+      	    ylp_neg[i] = (ylp[i] < 0);
+      	    ylp_neg_y[i] = ylp_neg[i] * g->y[i];
+      	    ylp_neg_y_ylp[i] = ylp_neg_y[i] * ylp[i];
+	    tmp = ylp_neg[i] * ylp[i];
+	    loss += tmp * tmp;
+      	 }
       }
    }
+
+   loss /= n;
+   g->loss = loss;
 }
 
 /* 
@@ -109,13 +162,13 @@ double step_regular_linear(sample *s, gmatrix *g,
 {
    int i;
    double grad = 0;
-   double *restrict x_tmp = s->x, 
-          *restrict lp_tmp = g->lp,
-	  *restrict y_tmp = g->y;
+   double *restrict x = s->x, 
+          *restrict lp = g->lp,
+	  *restrict y = g->y;
 
    /* compute gradient */
    for(i = g->ncurr - 1 ; i >= 0 ; --i)
-      grad += x_tmp[i] * (lp_tmp[i] - y_tmp[i]);
+      grad += x[i] * (lp[i] - y[i]);
 
    return grad * g->ncurr_recip;
 }
@@ -125,18 +178,22 @@ double step_regular_logistic(sample *s, gmatrix *g,
 {
    int i, n = g->ncurr;
    double grad = 0, d2 = 0;
-   double *restrict y_tmp = g->y,
-	  *restrict lp_invlogit_tmp = g->lp_invlogit,
-	  *restrict x_tmp = s->x;
+   double *restrict y = g->y,
+	  *restrict lp_invlogit = g->lp_invlogit,
+	  *restrict x = s->x;
 	  /**restrict x2_tmp = s->x2;*/
 
-   /* compute gradient */
+   /* compute 1st and 2nd derivatives */
    for(i = n - 1 ; i >= 0 ; --i)
    {
-      grad += x_tmp[i] * (lp_invlogit_tmp[i] - y_tmp[i]);
-      d2 += x_tmp[i] * x_tmp[i] 
-	 * lp_invlogit_tmp[i] * (1 - lp_invlogit_tmp[i]);
+      grad += x[i] * (lp_invlogit[i] - y[i]);
+      d2 += x[i] * x[i] * lp_invlogit[i] * (1 - lp_invlogit[i]);
    }
+
+   /* pre-divide for numerical stability */
+   grad *= g->ncurr_recip;
+   d2 *= g->ncurr_recip;
+
    if(d2 == 0)
       return 0;
    return grad / d2;
@@ -151,14 +208,13 @@ double step_regular_sqrhinge(sample *s, gmatrix *g,
 {
    int i, n = g->ncurr;
    double grad = 0;
-   const double *restrict x_tmp = s->x,
-	        *restrict y_tmp = g->y,
-		*restrict ylp_tmp = g->ylp,
-		*restrict ylp_neg_tmp = g->ylp_neg;
+   const double *restrict x = s->x,
+		*restrict ylp_neg_y_ylp = g->ylp_neg_y_ylp;
 
    /* compute gradient */
    for(i = n - 1 ; i >= 0 ; --i)
-      grad += ylp_neg_tmp[i] * y_tmp[i] * x_tmp[i] * ylp_tmp[i];
+      grad += ylp_neg_y_ylp[i] * x[i];
+
    return grad * g->ncurr_recip; /* avoid division */
 }
 
@@ -181,10 +237,12 @@ int cd_gmatrix(gmatrix *g,
        good = FALSE;
    int *active_old = NULL;
    double s_old = 0, s = 0, beta_new;
-   const double truncl = log2((1 - trunc) / trunc),
+   const double truncl = log((1 - trunc) / trunc),
 	        l2recip = 1 / (1 + lambda2);
    double *beta_old = NULL, *m = NULL;
    sample sm;
+   double old_loss = 0;
+   int conv = 0;
 
    if(!sample_init(&sm))
       return FAILURE;
@@ -211,9 +269,12 @@ int cd_gmatrix(gmatrix *g,
       {
 	 iter = 0;
 	 s_old = 0;
+	 conv = TRUE;
 	 if(g->active[j])
 	 {
+	    conv = FALSE;
 	    g->nextcol(g, &sm, j, NA_ACTION_ZERO);
+	    old_loss = g->loss;
 
 	    /* iterate over jth variable */
       	    while(iter < maxiters)
@@ -224,34 +285,46 @@ int cd_gmatrix(gmatrix *g,
       	          beta_new = soft_threshold(beta_new, lambda1) * l2recip;
       	       beta_new = clip(beta_new, -truncl, truncl);
       	       beta_new = zero(beta_new, ZERO_THRESH);
-      
+
 	       /* beta_new may have changed by thresholding */
 	       s = beta_new - g->beta[j];
-
-	       /* no need to update if beta hasn't changed much */
-	       if(fabs(s) <= thresh)
-		  break;
-
 	       updatelp(g, s, sm.x);
 	       g->beta[j] = beta_new;
 
-	       if(iter > 0 && sign(s) != sign(s_old) && m[j] >= 1e-10)
+	       /*if(fabs(s) <= ZERO_THRESH)
+		  break;*/
+	       /*printf("%.10f\n", g->loss);*/
+
+	       if(fabs(s) <= ZERO_THRESH
+		     || fabs(old_loss - g->loss) / g->loss <= 1e-4
+		     || g->loss <= 1e-6
+		  )
+	       {
+		  conv = TRUE;
+		  break;
+	       }
+
+	       /*if(iter > 0 && sign(s) != sign(s_old) && m[j] >= 1e-10)
 	       {
 		  m[j] *= 1.0 / 2.0;
 		  printf("step halving for j: %d  m:%.15f\n", j, m[j]);
-	       }
+	       }*/
 	       s_old = s;
       	       iter++;
       	    }
+
+	    /*printf("%d loss: %.10f\n", j, g->loss);*/
 	 }
 
 	 g->active[j] = (g->beta[j] != 0);
 	 numactive += g->active[j];
-	 numconverged += fabs(beta_old[j] - g->beta[j]) <= thresh;
+	 /*numconverged += fabs(beta_old[j] - g->beta[j]) <= thresh;*/
+	 numconverged += conv;
 
 	 if(iter >= maxiters)
 	    printfverb("max number of internal iterations (%d) \
-reached for variable: %d  s: %.15f\n", maxiters, j, s);
+reached for variable: %d  s: %.15f  old_loss: %.10f  loss: %.10f\n",
+	       maxiters, j, s, old_loss, g->loss);
 	 beta_old[j] = g->beta[j];
       }
 

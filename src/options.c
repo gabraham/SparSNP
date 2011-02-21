@@ -37,12 +37,12 @@ int opt_defaults(Opt *opt, short caller)
    opt->model = 0;
    opt->nlambda1 = 100;
    opt->l1minratio = 1e-2;
-   opt->maxepochs = 1000;
+   opt->maxepochs = 10000;
    opt->maxiters = 100;
    opt->lambda1 = -1;
    opt->lambda2 = 0;
-   opt->threshold = 1e-6;
-   opt->trunc = 1e-15;
+   opt->threshold = 1e-5;
+   opt->trunc = 1e-10;
    opt->nzmax = 0;
    opt->n = 0;
    opt->p = 0;
@@ -68,6 +68,7 @@ int opt_defaults(Opt *opt, short caller)
    opt->binformat = BINFORMAT_BIN;
    opt->beta_files_fold = NULL;
    opt->numnz_file = "nonzero.csv";
+   opt->unscale = TRUE;
 
    MALLOCTEST(opt->beta_files, sizeof(char*));
    MALLOCTEST(opt->beta_files[0], sizeof(char) * (strlen(beta_default) + 1));
