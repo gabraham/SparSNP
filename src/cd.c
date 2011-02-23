@@ -239,7 +239,7 @@ int cd_gmatrix(gmatrix *g,
    double s_old = 0, s = 0, beta_new;
    const double truncl = log((1 - trunc) / trunc),
 	        l2recip = 1 / (1 + lambda2);
-   double *beta_old = NULL, *m = NULL;
+   double /**beta_old = NULL,*/ *m = NULL;
    sample sm;
    double old_loss = 0;
    int conv = 0;
@@ -247,7 +247,7 @@ int cd_gmatrix(gmatrix *g,
    if(!sample_init(&sm))
       return FAILURE;
 
-   CALLOCTEST(beta_old, p1, sizeof(double));
+   /*CALLOCTEST(beta_old, p1, sizeof(double));*/
    CALLOCTEST(active_old, p1, sizeof(int));
    CALLOCTEST(m, p1, sizeof(double));
 
@@ -257,7 +257,7 @@ int cd_gmatrix(gmatrix *g,
    for(j = p ; j >= 0 ; --j)
    {
       active_old[j] = g->active[j];
-      beta_old[j] = g->beta[j];
+      /*beta_old[j] = g->beta[j];*/
       m[j] = 1.0;
    }
 
@@ -325,7 +325,7 @@ int cd_gmatrix(gmatrix *g,
 	    printfverb("max number of internal iterations (%d) \
 reached for variable: %d  s: %.15f  old_loss: %.10f  loss: %.10f\n",
 	       maxiters, j, s, old_loss, g->loss);
-	 beta_old[j] = g->beta[j];
+	 /*beta_old[j] = g->beta[j];*/
       }
 
       printfverb("fold: %d  epoch: %d  numactive: %d  numconverged: %d\n", 
@@ -383,7 +383,7 @@ with %d active vars\n", time(NULL), epoch, numactive);
    }
    printfverb("\n");
 
-   free(beta_old);
+   /*free(beta_old);*/
    free(active_old);
    free(m);
 
