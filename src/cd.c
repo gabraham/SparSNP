@@ -26,11 +26,11 @@ void updatelp(gmatrix *g, const double update,
    double *restrict lp_invlogit = g->lp_invlogit,
 	  *restrict lp = g->lp,
 	  *restrict y = g->y,
-	  *restrict ylp = g->ylp,
-	  *restrict ylp_neg = g->ylp_neg,
-	  *restrict ylp_neg_y = g->ylp_neg_y,
+	  /**restrict ylp = g->ylp,*/
+	  /**restrict ylp_neg = g->ylp_neg,*/
+	  /**restrict ylp_neg_y = g->ylp_neg_y,*/
 	  *restrict ylp_neg_y_ylp = g->ylp_neg_y_ylp;
-   double loss = 0;
+   double loss = 0, ylp = 0, ylp_neg = 0, ylp_neg_y;
 
    if(g->model == MODEL_LINEAR)
    {
@@ -81,11 +81,11 @@ void updatelp(gmatrix *g, const double update,
 	 for(i = n - 1 ; i >= 0 ; --i)
       	 {
       	    lp[i] += x[i] * update;
-      	    ylp[i] = y[i] * lp[i] - 1;
-      	    ylp_neg[i] = (ylp[i] < 0);
-      	    ylp_neg_y[i] = ylp_neg[i] * g->y[i];
-      	    ylp_neg_y_ylp[i] = ylp_neg_y[i] * ylp[i];
-	    tmp = ylp_neg[i] * ylp[i];
+      	    ylp = y[i] * lp[i] - 1;
+      	    ylp_neg = (ylp < 0);
+      	    ylp_neg_y = ylp_neg * g->y[i];
+      	    ylp_neg_y_ylp[i] = ylp_neg_y * ylp;
+	    tmp = ylp_neg * ylp;
 	    loss += tmp * tmp;
       	 }
       }
@@ -94,11 +94,11 @@ void updatelp(gmatrix *g, const double update,
 	 for(i = n - 1 ; i >= 0 ; --i)
       	 {
       	    lp[i] += update;
-      	    ylp[i] = y[i] * lp[i] - 1;
-      	    ylp_neg[i] = (ylp[i] < 0);
-      	    ylp_neg_y[i] = ylp_neg[i] * g->y[i];
-      	    ylp_neg_y_ylp[i] = ylp_neg_y[i] * ylp[i];
-	    tmp = ylp_neg[i] * ylp[i];
+      	    ylp = y[i] * lp[i] - 1;
+      	    ylp_neg = (ylp < 0);
+      	    ylp_neg_y = ylp_neg * g->y[i];
+      	    ylp_neg_y_ylp[i] = ylp_neg_y * ylp;
+	    tmp = ylp_neg * ylp;
 	    loss += tmp * tmp;
       	 }
       }
