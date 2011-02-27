@@ -98,7 +98,7 @@ int gmatrix_init(gmatrix *g, char *filename, int n, int p,
    for(i = n - 1 ; i >= 0 ; --i)
       g->intercept[i] = 1.0;
 
-   MALLOCTEST(g->tmp, sizeof(dtype) * g->n);
+   MALLOCTEST(g->tmp, sizeof(dtype) * g->nencb * PACK_DENSITY);
 
    if(encoded)
       MALLOCTEST(g->encbuf, sizeof(unsigned char) * g->nencb);

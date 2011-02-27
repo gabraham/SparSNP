@@ -104,6 +104,8 @@ int opt_defaults(Opt *opt, short caller)
    opt->existing_univar = FALSE;
    opt->do_thinning = TRUE;
 
+   opt->multivar = OPTIONS_MULTIVAR_NR;
+
    return SUCCESS;
 }
 
@@ -295,6 +297,14 @@ int opt_parse(int argc, char* argv[], Opt* opt)
       {
 	 opt->do_thinning = FALSE;
       }
+      else if(strcmp2(argv[i], "-filter"))
+      {
+	 opt->do_lasso_filter = TRUE;
+      }
+      else if(strcmp2(argv[i], "-multivarlasso"))
+      {
+	 opt->multivar = OPTIONS_MULTIVAR_LASSO;
+      }
    }
 
    if(opt->caller == OPTIONS_CALLER_CD) /* coordinate descent */
@@ -307,7 +317,8 @@ int opt_parse(int argc, char* argv[], Opt* opt)
 [-betafiles <beta filename/s>] \
 [-maxepochs <maxepochs>] [-maxiters <maxiters>] [-l1 <lambda1>] \
 -l2 <lambda2>] [-thresh <threshold>] [-foldind <foldsfile>] \
-[-pred <prediction file>] [-v] [-vv]\n");
+[-pred <prediction file>] [-filter] \
+[-v] [-vv]\n");
          return FAILURE;
       }
       else if(opt->n_beta_files > 1 && opt->mode == MODE_TRAIN)
