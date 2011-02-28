@@ -2,6 +2,8 @@
 #define NR_THRESH_MAX 30
 #define NR_DEVIANCE_MIN 1e-2
 
+#define NR_SUCCESS 1
+
 /* didn't converge within predefined iterations */
 #define NR_ERR_NO_CONVERGENCE 2 
 

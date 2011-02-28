@@ -22,7 +22,7 @@ int nr(double *x, double *y, double *beta, double *invhessian,
    int i, j, 
        iter = 1, maxiter = 100,
        converged = FALSE, diverged = FALSE,
-       ret = SUCCESS;
+       ret = NR_SUCCESS;
 
    double *grad = NULL,
 	  *hessian = NULL,

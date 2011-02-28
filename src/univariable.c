@@ -185,6 +185,11 @@ int run_train(Opt *opt, gmatrix *g)
 	 if(!writevectorf(tmp, se, g->p + 1))
 	    return FAILURE;
 
+	 /* no point in testing looser z-scores since they won't converge as
+	  * well */
+	 if(rets[i] == NR_ERR_NO_CONVERGENCE)
+	    break;
+
 	 printf("\n");
       }
 
