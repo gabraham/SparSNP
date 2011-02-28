@@ -75,7 +75,7 @@ int opt_defaults(Opt *opt, short caller)
    strcpy(opt->beta_files[0], beta_default);
    opt->n_beta_files = 1;
 
-   opt->nzthresh = 17;
+   opt->nzthresh = 20;
    MALLOCTEST(opt->zthresh, sizeof(double) * opt->nzthresh);
 
    opt->zthresh[0] = 30.20559;  /* 1e-200 */
@@ -94,7 +94,10 @@ int opt_defaults(Opt *opt, short caller)
    opt->zthresh[13] = 6.361341; /* 1e-10 */
    opt->zthresh[14] = 4.264891; /* 1e-5  */
    opt->zthresh[15] = 3.719016; /* 1e-4  */
-   opt->zthresh[16] = 3.090232; /* 1e-3  */
+   opt->zthresh[16] = 3.570974; /* 1e-4  */
+   opt->zthresh[17] = 3.417300; /* 1e-4  */
+   opt->zthresh[18] = 3.257323; /* 1e-4  */
+   opt->zthresh[19] = 3.090232; /* 1e-3  */
 
    /*opt->lambda2_univar = 1e-3;*/
    opt->lambda2_univar = 0;
