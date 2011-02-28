@@ -11,6 +11,9 @@
 #define OPTIONS_CALLER_CD 1
 #define OPTIONS_CALLER_UNIVARIABLE 2
 
+#define OPTIONS_MULTIVAR_NR 1
+#define OPTIONS_MULTIVAR_LASSO 2
+
 typedef double (*predict_pt)(double);
 typedef double (*phi1)(double);
 typedef double (*phi2)(double);
@@ -73,6 +76,8 @@ typedef struct Opt {
    int existing_univar;
    int do_thinning;
    int unscale;
+   int do_lasso_filter;
+   int multivar;
 } Opt;
 
 int cd_gmatrix(gmatrix *g,
