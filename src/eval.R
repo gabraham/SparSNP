@@ -3,16 +3,14 @@ library(gdata)
 library(ROCR)
 
 dir <- "~/Software/hapgen_1.3"
-roots <- c("sim8", "sim7", "sim6")
+roots <- c("sim6", "sim7", "sim8")
 resdirs <- c("./", "./", "./")
-nums <- c(30000, 10000, 1000)
-resdirs <- c("./", "./", "./")
-nums <- c(30000, 10000, 1000)
+nums <- c(1000, 10000, 30000)
 p <- 185805
 legend <- sprintf(
    "%s/HapMap/genotypes_chr1_JPT+CHB_r22_nr.b36_fwd_legend.txt",
    dir)
-nexpers <- c(25, 30, 40)
+nexpers <- c(40, 30, 25)
 resultsdir.cd <- "results4"
 resultsdir.plink <- "results"
 
@@ -43,7 +41,7 @@ analyse <- function(k)
    exper <- paste(resdirs[k], paste(root, ".", 1:nexper, sep=""), sep="/")
    
    # Get indices of causal SNPs
-   cat("Getting true SNP loci ... ")
+   cat("Getting true SNP loci ...\n")
    snplist <- read.csv(legend, sep="\t")
    ysnp <- lapply(exper, function(ex) {
       cat(ex, "\n")
