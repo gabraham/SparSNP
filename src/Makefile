@@ -29,35 +29,40 @@ debug: CCFLAGS = -Wall \
 
 debug: $(targets)
 
-LIBRARIES = -lm -llapack -lblas -lgfortran
+static: CCFLAGS += -static
+
+static: $(targets)       
+
+LIBRARIES = -llapack -lblas -lgfortran -lm
 
 cd: common.c coder.c ind.c gmatrix.c loss.c util.c options.c main.c cd.c
-	$(CC) $(CCFLAGS) $(LIBRARIES) $^ -o cd
+	$(CC) $(CCFLAGS) $^ $(LIBRARIES) -o cd
 
 scale: common.c coder.c ind.c gmatrix.c util.c cd.c scale.c
-	$(CC) $(CCFLAGS) $(LIBRARIES) $^ -o scale
+	$(CC) $(CCFLAGS) $^ $(LIBRARIES) -o scale
 
 transpose: common.c coder.c transpose.c
-	$(CC) $(CCFLAGS) $(LIBRARIES) $^ -o transpose
+	$(CC) $(CCFLAGS) $^ $(LIBRARIES) -o transpose
 
 hapgen2bin: common.c util.c coder.c hapgen2bin.c
-	$(CC) $(CCFLAGS) $(LIBRARIES) $^ -o hapgen2bin
+	$(CC) $(CCFLAGS) $^ $(LIBRARIES) -o hapgen2bin
 
 hapgen2ped: common.c hapgen2ped.c
-	$(CC) $(CCFLAGS) $(LIBRARIES) $^ -o hapgen2ped
+	$(CC) $(CCFLAGS) $^ $(LIBRARIES) -o hapgen2ped
 
 cbind: common.c cbind.c
-	$(CC) $(CCFLAGS) $(LIBRARIES) $^ -o cbind
+	$(CC) $(CCFLAGS) $^ $(LIBRARIES) -o cbind
 
 split: common.c util.c ind.c split.c
-	$(CC) $(CCFLAGS) $(LIBRARIES) $^ -o split
+	$(CC) $(CCFLAGS) $^ $(LIBRARIES) -o split
 
 unpack: common.c coder.c ind.c gmatrix.c unpack.c
-	$(CC) $(CCFLAGS) $(LIBRARIES) $^ -o unpack
+	$(CC) $(CCFLAGS) $^ $(LIBRARIES) -o unpack
 
 univariable: common.c coder.c ind.c gmatrix.c loss.c util.c \
    options.c cd.c svd.c matrix.c thin.c multivariable.c univariable.c
-	$(CC) $(CCFLAGS) $(LIBRARIES) -llapack -lblas -lm $^ -o univariable
+	$(CC) $(CCFLAGS) -llapack -lblas -lm $^ $(LIBRARIES) -o univariable \
+	-Wl,--allow-multiple-definition # hack for xerbla clash between lapack and blas
 
 #pcor: common.c gmatrix.c loss.c util.c cd.c pcor.c
 #	$(CC) -Dintype=double $(CCFLAGS) $(LIBRARIES) $^ -o pcor
