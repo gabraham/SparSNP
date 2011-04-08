@@ -111,6 +111,7 @@ int opt_defaults(Opt *opt, short caller)
 
    opt->multivar = OPTIONS_MULTIVAR_NR;
 
+
    return SUCCESS;
 }
 

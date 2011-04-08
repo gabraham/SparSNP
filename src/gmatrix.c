@@ -20,7 +20,7 @@ int sample_init(sample *s)
 int gmatrix_init(gmatrix *g, char *filename, int n, int p,
       char *scalefile, short yformat, int model,
       short encoded, short binformat, char *folds_ind_file,
-      short mode, loss_pt loss_pt_func)
+      short mode, loss_pt loss_pt_func, char *subsample_file)
 {
    int i, j, p1;
 
@@ -76,6 +76,11 @@ int gmatrix_init(gmatrix *g, char *filename, int n, int p,
    g->nseek = sizeof(dtype) * (encoded ? g->nencb : g->n);
    g->beta_orig = NULL;
    g->numnz = NULL;
+
+   g->nsubsamples = n;
+
+   if(!gmatrix_load_subsamples(g, subsample_file))
+      return FAILURE;
 
    CALLOCTEST(g->beta_orig, p1, sizeof(double));
 
@@ -135,6 +140,8 @@ int gmatrix_init(gmatrix *g, char *filename, int n, int p,
    MALLOCTEST(g->xtmp, sizeof(double) * g->n);
    MALLOCTEST(g->ytmp, sizeof(double) * g->n);
    /*MALLOCTEST(g->good, sizeof(double) * g->n);*/
+
+
 
    return SUCCESS;
 }
@@ -322,6 +329,8 @@ int gmatrix_disk_nextcol(gmatrix *g, sample *s, int j, int na_action)
    int f = g->fold * n;
    int ngood = 0;
    dtype d;
+   dtype *x1 = NULL,
+	 *x2 = NULL;
 
    if(j == 0)
    {
@@ -338,8 +347,7 @@ int gmatrix_disk_nextcol(gmatrix *g, sample *s, int j, int na_action)
    /*if((s->x = cache_get(g->ca, j)))
       return SUCCESS;*/
 
-   /* Get data from disk and unpack.
-    * Skip y. Try to put data in cache. */
+   /* Get data from disk and unpack, skip y. */
    FSEEKOTEST(g->file, j * g->nseek, SEEK_SET);
    FREADTEST(g->encbuf, sizeof(dtype), g->nencb, g->file);
    g->decode(g->tmp, g->encbuf, g->nencb);
@@ -452,14 +460,33 @@ inputs in gmatrix_disk_nextcol\n");
    }
 
    /*cache_put(g->ca, j, g->xtmp, g->ncurr);*/
-   s->x = g->xtmp;
-   s->y = g->ytmp;
 
    /*if(get_x2)
    {
       for(i = s->n - 1 ; i >= 0 ; --i)
 	 s->x2[i] = s->x[i] * s->x[i];
    }*/
+
+   if(g->subsample)
+   {
+      k = 0;
+      MALLOCTEST(x1, sizeof(double) * g->nsubsamples);
+      MALLOCTEST(x2, sizeof(double) * g->nsubsamples);
+      for(i = s->n - 1 ; i >= 0 ;--)
+      {
+	 x1[k] = g->xtmp[i];
+	 x2[k++] = g->ytmp[i];
+      }
+      s->x = x1;
+      s->y = x2;
+      FREENULL(x1);
+      FREENULL(x2);
+   }
+   else
+   {
+      s->x = g->xtmp;
+      s->y = g->ytmp;
+   }
 
    return SUCCESS;
 }
@@ -723,6 +750,18 @@ int gmatrix_init_lp(gmatrix *g)
       FREENULL(g->ylp_neg_y_ylp);
       CALLOCTEST(g->ylp_neg_y_ylp, g->ncurr, sizeof(double));
    }
+   return SUCCESS;
+}
+
+int gmatrix_load_subsamples(gmatrix *g, char *filename)
+{
+   int i;
+   if(!load_beta(g->subsamples, subsample_file, g->n))
+      return FAILURE;
+
+   for(i = 0 ; i < g->n ; i++)
+      g->nsubsamples += (g->subsamples != 0);
+
    return SUCCESS;
 }
 

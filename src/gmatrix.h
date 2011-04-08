@@ -113,7 +113,7 @@ int sample_init(sample *);
 int gmatrix_init(gmatrix *g, char *filename, int n, int p,
       char *scalefile, short yformat, int model,
       short encoded, short binformat, char *folds_ind_file,
-      short mode, loss_pt);
+      short mode, loss_pt, char *subsample_file);
 int gmatrix_reset(gmatrix *);
 void gmatrix_free(gmatrix *);
 int gmatrix_disk_nextcol(gmatrix *, sample *, int skip, int na_action);
@@ -137,4 +137,5 @@ void cache_free(cache *ht);
 int cache_put(cache *ht, int key, double *value, int n);
 double* cache_get(cache *ht, int key);
 /*static inline int hash(int key);*/
+int gmatrix_load_subsamples(gmatrix *g, char *filename);
 
