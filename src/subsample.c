@@ -19,7 +19,7 @@ int subsample(gmatrix *g, char *filename_out, int *subvec, int nsub)
    MALLOCTEST(enc_buf, sizeof(unsigned char) * numencb);
    FOPENTEST(out, filename_out, "wb");
 
-   printf("Using %d samples\n", nsub);
+   printf("Using %d samples, %d variables (exc. intercept)\n", nsub, g->p);
    k = 0;
    for(i = 0 ; i < g->n ; i++)
       if(subvec[i])
@@ -51,8 +51,8 @@ int subsample(gmatrix *g, char *filename_out, int *subvec, int nsub)
    return SUCCESS;
 }
 
-/* Populate the array subvec with random 0/1, so that the total number of 1s
- * is roughly ns (out of n).
+/* Populate the array subvec with random 0/1, so that the
+ * total number of 1s is roughly ns (out of n).
  */
 int init_subsamples(int *subvec, int n, int ns, double *y)
 {
@@ -74,7 +74,6 @@ int init_subsamples(int *subvec, int n, int ns, double *y)
       {
          subvec[i] = (drand48() < prop);
          num1 += subvec[i];
-         /*printf("%d\n", subvec[i]);*/
       }
       printf("n: %d\tnum1: %d\n", n, num1);
 
@@ -141,7 +140,6 @@ int main(int argc, char *argv[])
    /* clip to reasonable range */
    ns = (ns <= 1) ? 1 : (ns >= n - 1 ? n - 1 : ns);
    nsemp = init_subsamples(subvec, n, ns, g.y);
-   printf("nsemp: %d\n", nsemp);
 
    if(!subsample(&g, filename_out, subvec, nsemp))
    {
