@@ -4,6 +4,7 @@
 #include "gmatrix.h"
 #include "coder.h"
 #include "ind.h"
+#include "util.h"
 
 static inline int hash(int key);
 
@@ -20,7 +21,7 @@ int sample_init(sample *s)
 int gmatrix_init(gmatrix *g, char *filename, int n, int p,
       char *scalefile, short yformat, int model,
       short encoded, short binformat, char *folds_ind_file,
-      short mode, loss_pt loss_pt_func, char *subsample_file)
+      short mode, loss_pt loss_pt_func, char *subset_file)
 {
    int i, j, p1;
 
@@ -48,6 +49,8 @@ int gmatrix_init(gmatrix *g, char *filename, int n, int p,
    g->mean = NULL;
    g->sd = NULL;
    g->tmp = NULL;
+   g->xtmp = NULL;
+   g->ytmp = NULL;
    g->ignore = NULL;
    g->yformat = yformat;
    g->beta = NULL;
@@ -67,20 +70,24 @@ int gmatrix_init(gmatrix *g, char *filename, int n, int p,
    g->ntestrecip = NULL;
    g->ncurr = 0;
    g->ncurr_j = NULL; /* current number of samples, depending on
-		    whether we're in training or testing and
-		    which fold we're in, etc. */
+			 whether we're in training or testing and
+			 which fold we're in, etc. */
    g->ncurr_recip_j = NULL; /* reciprocal of ncurr to
-			    allow multiplication instead
-			    of division */
+			       allow multiplication instead
+			       of division */
    g->mode = mode;
    g->nseek = sizeof(dtype) * (encoded ? g->nencb : g->n);
    g->beta_orig = NULL;
    g->numnz = NULL;
 
-   g->nsubsamples = n;
+   /*g->subsets = NULL;
+   g->nsubsets = n;
+   g->subset_file = subset_file;*/
 
-   if(!gmatrix_load_subsamples(g, subsample_file))
-      return FAILURE;
+   /*printf("subset_file: %s\n", subset_file);*/
+
+   /*if(subset_file && !gmatrix_load_subsets(g))
+      return FAILURE;*/
 
    CALLOCTEST(g->beta_orig, p1, sizeof(double));
 
@@ -139,9 +146,6 @@ int gmatrix_init(gmatrix *g, char *filename, int n, int p,
 
    MALLOCTEST(g->xtmp, sizeof(double) * g->n);
    MALLOCTEST(g->ytmp, sizeof(double) * g->n);
-   /*MALLOCTEST(g->good, sizeof(double) * g->n);*/
-
-
 
    return SUCCESS;
 }
@@ -211,6 +215,8 @@ void gmatrix_free(gmatrix *g)
    FREENULL(g->numnz);
    FREENULL(g->ncurr_j);
    FREENULL(g->ncurr_recip_j);
+   /*FREENULL(g->subsets);
+   FREENULL(g->subset_file);*/
 
    if(g->ca)
    {
@@ -329,8 +335,8 @@ int gmatrix_disk_nextcol(gmatrix *g, sample *s, int j, int na_action)
    int f = g->fold * n;
    int ngood = 0;
    dtype d;
-   dtype *x1 = NULL,
-	 *x2 = NULL;
+   /*double *x1 = NULL,
+	 *x2 = NULL;*/
 
    if(j == 0)
    {
@@ -467,12 +473,13 @@ inputs in gmatrix_disk_nextcol\n");
 	 s->x2[i] = s->x[i] * s->x[i];
    }*/
 
-   if(g->subsample)
+   /* use a subset of the sample */
+   /*if(g->subset_file)
    {
       k = 0;
-      MALLOCTEST(x1, sizeof(double) * g->nsubsamples);
-      MALLOCTEST(x2, sizeof(double) * g->nsubsamples);
-      for(i = s->n - 1 ; i >= 0 ;--)
+      MALLOCTEST(x1, sizeof(double) * g->nsubsets);
+      MALLOCTEST(x2, sizeof(double) * g->nsubsets);
+      for(i = s->n - 1 ; i >= 0 ; --i)
       {
 	 x1[k] = g->xtmp[i];
 	 x2[k++] = g->ytmp[i];
@@ -486,7 +493,9 @@ inputs in gmatrix_disk_nextcol\n");
    {
       s->x = g->xtmp;
       s->y = g->ytmp;
-   }
+   }*/
+   s->x = g->xtmp;
+   s->y = g->ytmp;
 
    return SUCCESS;
 }
@@ -753,15 +762,19 @@ int gmatrix_init_lp(gmatrix *g)
    return SUCCESS;
 }
 
-int gmatrix_load_subsamples(gmatrix *g, char *filename)
+/*int gmatrix_load_subsets(gmatrix *g)
 {
    int i;
-   if(!load_beta(g->subsamples, subsample_file, g->n))
+
+   MALLOCTEST(g->subsets, sizeof(int) * g->n);
+   if(!readvectorl(g->subset_file, g->subsets, g->n))
       return FAILURE;
 
    for(i = 0 ; i < g->n ; i++)
-      g->nsubsamples += (g->subsamples != 0);
+      g->nsubsets += (g->subsets != 0);
+
+   printf("nsubsets: %d\n", g->nsubsets);
 
    return SUCCESS;
-}
+}*/
 

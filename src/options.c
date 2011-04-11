@@ -57,7 +57,7 @@ int opt_defaults(Opt *opt, short caller)
    opt->seed = time(NULL);
    opt->nzmax = 0;
    opt->ntrain = opt->n;
-   opt->subsetfile = "subset.csv";
+   opt->subset_file = NULL;
    opt->lambda1pathfile = "lambda1path.csv";
    opt->step_func = NULL;
    opt->scalefile = NULL;
@@ -310,6 +310,11 @@ int opt_parse(int argc, char* argv[], Opt* opt)
       else if(strcmp2(argv[i], "-multivarlasso"))
       {
 	 opt->multivar = OPTIONS_MULTIVAR_LASSO;
+      }
+      else if(strcmp2(argv[i], "-subset"))
+      {
+	 i++;
+	 opt->subset_file = argv[i];
       }
    }
 

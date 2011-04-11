@@ -84,6 +84,22 @@ int load_beta(double *beta, char *filename, int p)
    return SUCCESS;
 }
 
+int readvectorl(char *filename, int *x, int n)
+{
+   int i = 0;
+   FILE *in = NULL;
+   FOPENTEST(in, filename, "rt");
+
+   while(!feof(in))
+   {
+      if(fscanf(in, "%d", x + i) == EOF)
+	 break;
+      i++;
+   } 
+   fclose(in);
+   return SUCCESS;
+}
+
 /* takes beta on original scale and puts it on scaled scale */
 void scale_beta(double *beta2, double *beta1,
       double *mean, double *sd, int p)

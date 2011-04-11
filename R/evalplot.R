@@ -75,16 +75,15 @@ plot.apr2 <- function(m.cd, m.pl, suf, nz.breaks)
 
 
 legend <- "~/Software/hapgen_1.3/HapMap/genotypes_chr1_JPT+CHB_r22_nr.b36_fwd_legend.txt"
-nums <- c(1000, 10000, 30000)
+nums <- c(1000, 3000, 10000, 30000)
 resultsdir.cd <- "results4"
-roots <- c("sim6", "sim7", "sim8")
+roots <- c("sim6", "sim7.3", "sim7", "sim8")
 nz.breaks <- c(1, 2, 3, 5, 10, 15, 20, 25, 30, 40, 50, 75, 100, 150, 200, 250, 512)
 
-lapply(seq(along=roots), function(i) {
+#lapply(seq(along=roots), function(i) {
+i   <- 2
    load(sprintf("eval_%s.RData", roots[i]))
-   #rm(suf)
-
    # Use the second version, nosign
    plot.apr2(res$m.cd.all[[2]], res$m.pl, roots[i], nz.breaks)
-})
+#})
 

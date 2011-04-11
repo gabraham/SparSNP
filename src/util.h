@@ -8,4 +8,4 @@ void unscale_beta(double *beta2, double *beta1,
       double *mean, double *sd, int p);
 int writebinvectorf(char* file, double* x, int p);
 int writebinvectorl(char* file, int* x, int p);
-
+int readvectorl(char *file, int *x, int n);

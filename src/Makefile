@@ -18,7 +18,7 @@ CCFLAGS = -std=gnu99 -Wall -ggdb3 \
 	  #-DMACOSX
 
 targets = cd scale transpose hapgen2bin hapgen2ped \
-	  cbind split unpack univariable
+	  cbind split unpack univariable subsample
 all: $(targets)
 
 debug: CCFLAGS = -Wall \
@@ -38,7 +38,7 @@ LIBRARIES = -llapack -lblas -lgfortran -lm
 cd: common.c coder.c ind.c gmatrix.c loss.c util.c options.c main.c cd.c
 	$(CC) $(CCFLAGS) $^ $(LIBRARIES) -o cd
 
-scale: common.c coder.c ind.c gmatrix.c util.c cd.c scale.c
+scale: common.c coder.c ind.c gmatrix.c cd.c scale.c util.c
 	$(CC) $(CCFLAGS) $^ $(LIBRARIES) -o scale
 
 transpose: common.c coder.c transpose.c
@@ -56,13 +56,18 @@ cbind: common.c cbind.c
 split: common.c util.c ind.c split.c
 	$(CC) $(CCFLAGS) $^ $(LIBRARIES) -o split
 
-unpack: common.c coder.c ind.c gmatrix.c unpack.c
+unpack: common.c coder.c ind.c gmatrix.c unpack.c util.c
 	$(CC) $(CCFLAGS) $^ $(LIBRARIES) -o unpack
 
 univariable: common.c coder.c ind.c gmatrix.c loss.c util.c \
    options.c cd.c svd.c matrix.c thin.c multivariable.c univariable.c
 	$(CC) $(CCFLAGS) -llapack -lblas -lm $^ $(LIBRARIES) -o univariable \
-	-Wl,--allow-multiple-definition # hack for xerbla clash between lapack and blas
+	-Wl,--allow-multiple-definition # hack for xerbla clash
+				        # between lapack and blas
+
+subsample: common.c util.c coder.c ind.c gmatrix.c subsample.c
+	$(CC) $(CCFLAGS) $^ $(LIBRARIES) -o subsample
+
 
 #pcor: common.c gmatrix.c loss.c util.c cd.c pcor.c
 #	$(CC) -Dintype=double $(CCFLAGS) $(LIBRARIES) $^ -o pcor

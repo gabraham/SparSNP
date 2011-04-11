@@ -53,7 +53,6 @@ typedef struct Opt {
    int nzmax;
    int ntrain;
    int *trainf;
-   char *subsetfile;
    char *lambda1pathfile;
    step step_func;
    short inmemory;
@@ -78,6 +77,7 @@ typedef struct Opt {
    int unscale;
    int do_lasso_filter;
    int multivar;
+   char *subset_file;
 } Opt;
 
 int cd_gmatrix(gmatrix *g,

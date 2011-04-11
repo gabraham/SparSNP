@@ -3,14 +3,14 @@ library(gdata)
 library(ROCR)
 
 dir <- "~/Software/hapgen_1.3"
-roots <- c("sim6", "sim7", "sim8")
-resdirs <- c("./", "./", "./")
-nums <- c(1000, 10000, 30000)
+roots <- c("sim6", "sim7.3", "sim7", "sim8")
+resdirs <- c("./", "./", "./", "./")
+nums <- c(1000, 3000, 10000, 30000)
 p <- 185805
 legend <- sprintf(
    "%s/HapMap/genotypes_chr1_JPT+CHB_r22_nr.b36_fwd_legend.txt",
    dir)
-nexpers <- c(40, 30, 25)
+nexpers <- c(40, 30, 30, 25)
 resultsdir.cd <- "results4"
 resultsdir.plink <- "results"
 
@@ -106,8 +106,9 @@ analyse <- function(k)
 	       path=dir, full.names=TRUE)
          if(length(files) == 0)
             stop("no files found")
-         id <- sapply(strsplit(files, "\\."), tail, n=1)
-         files <- files[order(as.numeric(id))]
+         #id <- sapply(strsplit(files, "\\."), tail, n=1)
+	 #browser()
+         #files <- files[order(as.numeric(id))]
       
          b.cd <- try(sapply(files, function(f) {
             read.csv(f, header=FALSE)[-1,1]
@@ -124,7 +125,7 @@ analyse <- function(k)
             runperf(f)
          })
       
-         list(measure=mes, df=df.cd, nsim=length(id))
+         list(measure=mes, df=df.cd, nsim=length(files))
       })
    })
 
@@ -137,8 +138,9 @@ analyse <- function(k)
 	 path=dir, full.names=TRUE)
       if(length(files) == 0)
 	 stop("no files found")
-      id <- sapply(strsplit(files, "\\."), tail, n=3)[1,]
-      files <- files[order(as.numeric(id))]
+      #id <- sapply(strsplit(files, "\\."), tail, n=3)[1,]
+      #browser()
+      #files <- files[order(as.numeric(id))]
 
       b.cd <- lapply(files, function(x) scan(x)[-1])
       df.cd <- sapply(b.cd, function(x) sum(x != 0))
@@ -171,5 +173,8 @@ lapply(seq(along=roots), function(k) {
    res <- analyse(k)
    save(res, file=sprintf("%s/eval_%s.RData", resdirs[k], roots[k]))
 })
+#k <- 2
+#res <- analyse(k)
+#save(res, file=sprintf("%s/eval_%s.RData", resdirs[k], roots[k]))
 
 

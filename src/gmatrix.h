@@ -107,6 +107,9 @@ typedef struct gmatrix {
    loss_pt loss_pt_func;
    int *ngood;
    double *x;
+   char *subset_file;
+   int *subsets;
+   int nsubsets;
 } gmatrix;
 
 int sample_init(sample *);
@@ -137,5 +140,5 @@ void cache_free(cache *ht);
 int cache_put(cache *ht, int key, double *value, int n);
 double* cache_get(cache *ht, int key);
 /*static inline int hash(int key);*/
-int gmatrix_load_subsamples(gmatrix *g, char *filename);
+int gmatrix_load_subsets(gmatrix *g);
 
