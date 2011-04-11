@@ -57,28 +57,29 @@ int subsample(gmatrix *g, char *filename_out, int *subvec, int nsub)
 int init_subsamples(int *subvec, int n, int ns, double *y)
 {
    int i;
-   int num1 = 0;
-   /*double prop1 = 0.5;*/
+   int num1 = 0; /* number of 1s in subvec */
    long seed = time(NULL);
-   /*long seed = 123L;*/
    double prop = (double)ns / n;
    int monoclass = TRUE;
+   int ny1 = 0;
 
    srand48(seed);
 
    while(monoclass)
    {
       num1 = 0;
-      /* unbalanced */
+      ny1 = 0;
       for(i = 0 ; i < n ; i++)
       {
          subvec[i] = (drand48() < prop);
          num1 += subvec[i];
+	 ny1 += subvec[i] && y[i];
       }
-      printf("n: %d\tnum1: %d\n", n, num1);
 
-      monoclass = (num1 == 0 || num1 == n);
+      monoclass = (ny1 == 0 || ny1 == n);
    }
+
+   printf("Class balance (0/1): %d/%d, total=%d\n", num1-ny1, ny1, num1);
 
    return num1;
 }
