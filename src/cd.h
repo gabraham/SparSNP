@@ -11,7 +11,7 @@
 #define OPTIONS_CALLER_CD 1
 #define OPTIONS_CALLER_UNIVARIABLE 2
 
-#define OPTIONS_MULTIVAR_NR 1
+#define OPTIONS_MULTIVAR_NEWTON 1
 #define OPTIONS_MULTIVAR_LASSO 2
 
 typedef double (*predict_pt)(double);

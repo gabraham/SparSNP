@@ -47,15 +47,15 @@ int univar_gmatrix(Opt *opt, gmatrix *g, double *beta, double *zscore)
       }
 
       beta2[0] = beta2[1] = 0.0;
-      ret = nr(x, sm.y, beta2, invhessian, sm.n, 2,
+      ret = newton(x, sm.y, beta2, invhessian, sm.n, 2,
 	    opt->lambda2_univar, FALSE);
       FREENULL(x);
 
       if(ret == FAILURE)
 	 return FAILURE;
-      else if(ret == NR_ERR_NO_CONVERGENCE)
+      else if(ret == NEWTON_ERR_NO_CONVERGENCE)
       {
-	 printf("NR didn't converge for variable %d\n", j);
+	 printf("Newton didn't converge for variable %d\n", j);
 	 beta[j] = zscore[j] = 0.0;
       }
       else
@@ -64,8 +64,8 @@ int univar_gmatrix(Opt *opt, gmatrix *g, double *beta, double *zscore)
 	 zscore[j] = beta2[1] / sqrt(invhessian[3]);
 	 beta[j] = beta2[1];
 
-	 if(ret == NR_ERR_DIVERGENCE)
-	    printf("NR diverged for variable %d, z=%.3f\n",
+	 if(ret == NEWTON_ERR_DIVERGENCE)
+	    printf("NEWTON diverged for variable %d, z=%.3f\n",
 		  j, zscore[j]);
       }
    }
@@ -163,8 +163,8 @@ int run_train(Opt *opt, gmatrix *g)
 
 	 if(numselected[i] > 0)
 	 {
-	    if(opt->multivar == OPTIONS_MULTIVAR_NR)
-	       multivariable_nr(opt, g, nums1,
+	    if(opt->multivar == OPTIONS_MULTIVAR_NEWTON)
+	       multivariable_newton(opt, g, nums1,
 		     pselected + i, numselected + i, rets + i);
 	    else
 	       multivariable_lasso(opt, g, nums1,
@@ -187,7 +187,7 @@ int run_train(Opt *opt, gmatrix *g)
 
 	 /* no point in testing looser z-scores since they won't converge as
 	  * well */
-	 if(rets[i] == NR_ERR_NO_CONVERGENCE)
+	 if(rets[i] == NEWTON_ERR_NO_CONVERGENCE)
 	    break;
 
 	 printf("\n");
@@ -207,7 +207,7 @@ int run_train(Opt *opt, gmatrix *g)
       if(!writevectorl(tmp, pselected, opt->nzthresh))
 	 return FAILURE;
 
-      /* NR exit codes */
+      /* Newton exit codes */
       snprintf(tmp, MAX_STR_LEN, "multivar_status.%02d", g->fold);
       printf("writing %s\n", tmp);
       if(!writevectorl(tmp, rets, opt->nzthresh))

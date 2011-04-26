@@ -8,7 +8,7 @@
 #include "thin.h"
 
 /*
- * Newton-Raphson for logistic regression with l2 penalties
+ * Newton's method for logistic regression with l2 penalties
  *
  * \hat{\beta}_{t+1} = \hat{\beta}_t - (X^T W X + \lambda I)^{\dagger} X^T y
  *
@@ -16,13 +16,13 @@
  *
  * The argument p includes the intercept
  */
-int nr(double *x, double *y, double *beta, double *invhessian,
+int newton(double *x, double *y, double *beta, double *invhessian,
       int n, int p, double lambda2, int verbose)
 {
    int i, j, 
        iter = 1, maxiter = 100,
        converged = FALSE, diverged = FALSE,
-       ret = NR_SUCCESS;
+       ret = NEWTON_SUCCESS;
 
    double *grad = NULL,
 	  *hessian = NULL,
@@ -43,7 +43,7 @@ int nr(double *x, double *y, double *beta, double *invhessian,
    while(iter <= maxiter) 
    {
       if(verbose)
-	 printf("NR iter %d\tdev=%.7f\n", iter, loss);
+	 printf("NEWTON iter %d\tdev=%.7f\n", iter, loss);
       
       if(iter > 1)
 	 loss_old = loss;
@@ -66,7 +66,7 @@ int nr(double *x, double *y, double *beta, double *invhessian,
       loss /= n;
 
       /* same convergence test as in R's glm.fit */
-      if(fabs(loss - loss_old) / (fabs(loss) + 0.1) <= NR_THRESH)
+      if(fabs(loss - loss_old) / (fabs(loss) + 0.1) <= NEWTON_THRESH)
       {
 	 converged = TRUE;
 	 break;
@@ -96,7 +96,7 @@ int nr(double *x, double *y, double *beta, double *invhessian,
       /* Compute the Newton step */
       sqmvprod(invhessian, grad, s, p);
 
-      if(loss <= NR_DEVIANCE_MIN)
+      if(loss <= NEWTON_DEVIANCE_MIN)
       {
       	 diverged = TRUE;
 	 break;
@@ -105,10 +105,10 @@ int nr(double *x, double *y, double *beta, double *invhessian,
       diverged = FALSE;
       for(j = 0 ; j < p ; j++)
       {
-	 /* Newton-Raphson step */
+	 /* Newton step */
 	 beta[j] -= s[j];
 	 /*printf("beta[%d]: %.5f\n", j, beta[j]);*/
-	 if(fabs(beta[j]) >= NR_THRESH_MAX)
+	 if(fabs(beta[j]) >= NEWTON_THRESH_MAX)
 	 {
 	    diverged = TRUE;
 	    break;
@@ -125,9 +125,9 @@ int nr(double *x, double *y, double *beta, double *invhessian,
    }
 
    if(iter >= maxiter)
-      ret = NR_ERR_NO_CONVERGENCE;
+      ret = NEWTON_ERR_NO_CONVERGENCE;
    else if(diverged)
-      ret = NR_ERR_DIVERGENCE;
+      ret = NEWTON_ERR_DIVERGENCE;
 
    FREENULL(grad);
    FREENULL(hessian);
@@ -172,7 +172,7 @@ int make_hessian(double *hessian, double *x,
    return SUCCESS;
 }
 
-int multivariable_nr(Opt *opt, gmatrix *g, int nums1,
+int multivariable_newton(Opt *opt, gmatrix *g, int nums1,
       int *pselected, int *numselected, int *rets)
 {
    int n = g->ncurr, j, k, p1 = g->p + 1;
@@ -247,9 +247,9 @@ int multivariable_nr(Opt *opt, gmatrix *g, int nums1,
 
    /* train un-penalised multivariable model on
     * the selected SNPs, with lambda=0 */
-   *rets = nr(xthinned, g->y, beta, invhessian, n, (*pselected) + 1,
+   *rets = newton(xthinned, g->y, beta, invhessian, n, (*pselected) + 1,
 	 opt->lambda2_multivar, TRUE);
-   printf("NR returned %d\n", *rets);	    
+   printf("NEWTON returned %d\n", *rets);	    
 
    if(xthinned == x)
    {

@@ -109,7 +109,7 @@ int opt_defaults(Opt *opt, short caller)
    opt->existing_univar = FALSE;
    opt->do_thinning = TRUE;
 
-   opt->multivar = OPTIONS_MULTIVAR_NR;
+   opt->multivar = OPTIONS_MULTIVAR_NEWTON;
 
 
    return SUCCESS;
