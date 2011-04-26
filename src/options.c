@@ -75,7 +75,7 @@ int opt_defaults(Opt *opt, short caller)
    strcpy(opt->beta_files[0], beta_default);
    opt->n_beta_files = 1;
 
-   opt->nzthresh = 22;
+   opt->nzthresh = 25;
    MALLOCTEST(opt->zthresh, sizeof(double) * opt->nzthresh);
 
    opt->zthresh[0] = 30.20559;  /* 1e-200 */
@@ -92,14 +92,17 @@ int opt_defaults(Opt *opt, short caller)
    opt->zthresh[11] = 11.46403; /* 1e-30 */
    opt->zthresh[12] = 9.262340; /* 1e-20 */
    opt->zthresh[13] = 6.361341; /* 1e-10 */
-   opt->zthresh[14] = 5.326724; /* 5e-8 */
-   opt->zthresh[15] = 5.199338; /* 1e-7 */
+   opt->zthresh[14] = 5.326724; /* 5e-8  */
+   opt->zthresh[15] = 5.199338; /* 1e-7  */
    opt->zthresh[16] = 4.264891; /* 1e-5  */
    opt->zthresh[17] = 3.719016; /* 1e-4  */
    opt->zthresh[18] = 3.570974; /* 1e-4  */
    opt->zthresh[19] = 3.417300; /* 1e-4  */
    opt->zthresh[20] = 3.257323; /* 1e-4  */
    opt->zthresh[21] = 3.090232; /* 1e-3  */
+   opt->zthresh[22] = 2.326348; /* 1e-2  */
+   opt->zthresh[23] = 1.281552; /* 1e-1  */
+   opt->zthresh[24] = 0;
 
    /*opt->lambda2_univar = 1e-3;*/
    opt->lambda2_univar = 0;
@@ -346,7 +349,7 @@ onl   y using the first one\n");
          printf("usage: univariable [-train|-predict] -model <model> \
 -bin <filename> -n <#samples> -p <#variables>  \
 [-betafiles <beta filename/s>] \
-[-foldind <foldsfile>] [-skipunivar] \
+[-foldind <foldsfile>] [-existingunivar] \
 [-pred <prediction file>] [-nomultivar] [-v] [-vv]\n");
          return FAILURE;
       }

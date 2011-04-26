@@ -7,6 +7,29 @@
 #include "matrix.h"
 #include "thin.h"
 
+/*
+ * Returns true if the standard deviation of the samples in x is larger than
+ * SD_THRESH, false otherwise.
+ */
+int checkvar(double *x, int n)
+{
+   int i;
+   double mean = 0,
+          var = 0,
+	  delta = 0;
+
+   for(i = 0 ; i < n ; i++)
+   {
+      delta = x[i] - mean;
+      mean += delta / (i + 1);
+      var += delta * (x[i] - mean);
+   }
+
+   /*printf("%.10f %.10f\n", mean, sqrt(var / (n - 1)));*/
+
+   return sqrt(var / (n - 1)) > SDTHRESH;
+}
+
 /* Two stages:
  *
  * 1) Select the top k SNPs by univariable p values, using each
@@ -26,7 +49,7 @@ int univar_gmatrix(Opt *opt, gmatrix *g, double *beta, double *zscore)
    if(!sample_init(&sm))
       return FAILURE;
 
-   MALLOCTEST(invhessian, sizeof(double) * 4);
+   CALLOCTEST(invhessian, 4, sizeof(double));
 
    /* get p-values per SNP, skip intercept */
    for(j = 1 ; j < p1 ; j++)
@@ -38,12 +61,22 @@ int univar_gmatrix(Opt *opt, gmatrix *g, double *beta, double *zscore)
 	 continue;
       }
       
-      g->nextcol(g, &sm, j, NA_ACTION_DELETE);
+      gmatrix_disk_nextcol(g, &sm, j, NA_ACTION_DELETE);
       CALLOCTEST(x, 2 * sm.n, sizeof(double));
       for(i = sm.n - 1 ; i >= 0 ; --i)
       {
 	 x[2 * i] = 1.0;
 	 x[2 * i + 1] = sm.x[i];
+      }
+
+      /* check for zero-variance */
+      g->ignore[j] = !checkvar(sm.x, sm.n);
+
+      if(g->ignore[j])
+      {
+	 beta[j] = zscore[j] = 0.0;
+	 /*printf("skipped variable %d\n: low variance", j);*/
+	 continue;
       }
 
       beta2[0] = beta2[1] = 0.0;
@@ -150,8 +183,8 @@ int run_train(Opt *opt, gmatrix *g)
 	       numselected[i]++;
 	 }
 	 nums1 = numselected[i] + 1;
-	 printf("total %d SNPs exceeded z-score=%.3f\n", numselected[i],
-	       opt->zthresh[i]);
+	 printf("total %d SNPs exceeded z-score=%.3f (inc. intercept)\n",
+	    numselected[i], opt->zthresh[i]);
 
 	 FREENULL(se);
 	 /* standard error for ALL SNPs 0 to p1 */
@@ -235,6 +268,8 @@ int do_train(gmatrix *g, Opt *opt, char tmp[])
 	    opt->loss_pt_func, opt->subset_file))
       return FAILURE;
 
+   g->nextcol = gmatrix_mem_nextcol;
+
    printf("%d CV folds\n", g->nfolds);
 
    /* cross-validation: training stage */
@@ -303,7 +338,7 @@ int run_predict_beta(gmatrix *g, predict predict_func,
    {
       if(beta[j] != 0)
       {
-	 g->nextcol(g, &sm, j, NA_ACTION_ZERO);
+	 gmatrix_disk_nextcol(g, &sm, j, NA_ACTION_ZERO);
 	 for(i = 0 ; i < n ; i++)
 	    lp[i] += sm.x[i] * beta[j];
       }
@@ -362,6 +397,8 @@ int do_predict(gmatrix *g, Opt *opt, char *tmp)
 	    opt->binformat, opt->folds_ind_file, opt->mode,
 	    opt->loss_pt_func, opt->subset_file))
       return FAILURE;
+
+   g->nextcol = gmatrix_mem_nextcol;
 
    if(g->nfolds > 1)
    {

@@ -231,7 +231,8 @@ void gmatrix_free(gmatrix *g)
 
 }
 
-/* y_orig stays in memory and never changes */
+/* y_orig is the original vector of labels/responses, it 
+ * stays in memory and NEVER changes after reading it from disk */
 int gmatrix_disk_read_y(gmatrix *g)
 {
    int i, n = g->n, n1 = g->n - 1;
@@ -289,28 +290,23 @@ int gmatrix_split_y(gmatrix *g)
 }
 
 /*
- * Read all the data into a preallocated row-major n by m matrix, which
- * variables are read is determined by the p+1 array ind
+ * Read all the data into a preallocated row-major n by m matrix, for n
+ * samples and m variables.
+ * The variables to be read are determined by the p+1 array ``ind''.
  *
- * For each vector of samples x_i, if any of the observations are missing then
- * the entire sample is zeroed out and ignored.
  */
 int gmatrix_read_matrix(gmatrix *g, int *ind, int m)
 {
    int i, j, k = 0,
-       p1 = g->p + 1,
-       n = g->ncurr;
+       p1 = g->p + 1;
    sample sm;
-   int *missing = NULL;
-
-   CALLOCTEST(missing, n, sizeof(int));
 
    for(j = 0 ; j < p1 ; j++)
    {
       if(ind[j])
       {
 	 /* must not delete obs otherwise matrix structure will break */
-	 if(!g->nextcol(g, &sm, j, NA_ACTION_ZERO))
+	 if(!gmatrix_disk_nextcol(g, &sm, j, NA_ACTION_ZERO))
 	    return FAILURE;
    
          for(i = 0 ; i < sm.n ; i++)
@@ -319,7 +315,21 @@ int gmatrix_read_matrix(gmatrix *g, int *ind, int m)
       }
    }
 
-   FREENULL(missing);
+   return SUCCESS;
+}
+
+/* Returns one vector of samples from the in-memory matrix. Only used
+ * for in-memory lasso.
+ *
+ * Due to the matrix structure, all columns are of same length,
+ * regardless of missing values (missing values are imputed).
+ */
+int gmatrix_mem_nextcol(gmatrix *g, sample *sm, int j, int na_action)
+{
+   int i, n = g->ncurr, p1 = g->p + 1;
+   sm->y = g->y; 
+   for(i = 0 ; i < sm->n ; i++)
+      sm->x[i] = g->x[i * n + p1];
 
    return SUCCESS;
 }
@@ -329,6 +339,9 @@ int gmatrix_read_matrix(gmatrix *g, int *ind, int m)
  * Takes into account whether we're doing cross-validation or not
  * and if so which fold we're currently in, and how we choose to 
  * handle missing values.
+ *
+ * This function does all the heavy lifting in terms of determining
+ * which samples belong in the current cross-validation fold etc.
  *
  * na_action: one of NA_ACTION_ZERO, NA_ACTION_DELETE
  */
@@ -348,8 +361,11 @@ int gmatrix_disk_nextcol(gmatrix *g, sample *s, int j, int na_action)
        * because the intercept is all 1s */
       s->x = g->intercept;
       s->x2 = g->intercept;
-      s->y = g->y_orig;
+
+      /*s->y = g->y_orig;*/
+      s->y = g->y;
       s->n = g->ncurr;
+
       return SUCCESS;
    }
 

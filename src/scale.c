@@ -4,8 +4,9 @@
 #include "coder.h"
 
 /*
- * Converts a matrix encoded as chars (one byte per entry), scales it, and
- * saves it as a matrix of doubles (8 bytes per entry).
+ * Converts a matrix encoded as chars (one byte per entry),
+ * scales it, and saves it as a matrix of doubles (8 bytes
+ * per entry).
  *
  * Expects data in column major ordering
  */
