@@ -286,6 +286,13 @@ int multivariable_newton(Opt *opt, gmatrix *g, int nums1,
 int multivariable_lasso(Opt *opt, gmatrix *g, int nums1,
       int *pselected, int *numselected, int *rets)
 {
-   
+   int ret;
+   ret = cd_gmatrix(
+	    g, opt->phi1_func, opt->phi2_func,
+	    opt->step_func,
+	    opt->maxepochs, opt->maxiters,
+	    opt->lambda1path[i], opt->lambda2,
+	    opt->threshold, opt->verbose, opt->trunc);
+ 
    return SUCCESS;
 }

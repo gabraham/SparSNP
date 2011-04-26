@@ -84,9 +84,6 @@ int run_train(Opt *opt, gmatrix *g)
 	    opt->lambda1path[i], opt->lambda2,
 	    opt->threshold, opt->verbose, opt->trunc);
 
-      /*g->numnz[i] = ret;
-      gmatrix_reset(g);*/
-      
       if(ret == CDFAILURE)
       {
 	 printf("failed to converge after %d epochs\n", opt->maxepochs);
