@@ -176,15 +176,13 @@ int multivariable_newton(Opt *opt, gmatrix *g, int nums1,
       int *pselected, int *numselected, int *rets)
 {
    int n = g->ncurr, j, k, p1 = g->p + 1;
-   double *x = NULL,
-	  *invhessian = NULL,
-	  *xthinned = NULL,
+   double *invhessian = NULL,
 	  *beta = NULL;
 	  /**se = NULL;*/
    int *activeselected = NULL,
        *activeselected_ind = NULL;
 
-   MALLOCTEST(x, sizeof(double) * n * nums1);
+   MALLOCTEST(g->x, sizeof(double) * n * nums1);
    CALLOCTEST(invhessian, nums1 * nums1, sizeof(double));
 
    /* flags for columns of x that are active, ie a subset of g->active */
@@ -194,7 +192,7 @@ int multivariable_newton(Opt *opt, gmatrix *g, int nums1,
    CALLOCTEST(activeselected_ind, nums1, sizeof(int));
 
    /* read the chosen variables into memory, including the intercept */
-   if(!gmatrix_read_matrix(g, x, g->active, nums1))
+   if(!gmatrix_read_matrix(g, g->active, nums1))
       return FAILURE;
 
    /* Slice the active vector for this window. We start off by
@@ -218,7 +216,7 @@ int multivariable_newton(Opt *opt, gmatrix *g, int nums1,
       /* activeselected[0] must be FALSE, we don't want to thin the
        * intercept */
       activeselected[0] = FALSE;
-      if(!thin(x, n, nums1, activeselected, THIN_COR_MAX, nums1, nums1))
+      if(!thin(g->x, n, nums1, activeselected, THIN_COR_MAX, nums1, nums1))
 	 return FAILURE;
 
       /* Count the remaining SNPs post thinning, add one for
@@ -232,12 +230,12 @@ int multivariable_newton(Opt *opt, gmatrix *g, int nums1,
       printf("After thinning, %d of %d SNPs left (excluding intercept)\n",
 	    *pselected, *numselected);
 
-      MALLOCTEST(xthinned, sizeof(double) * n * (*pselected + 1));
-      copyshrink(x, xthinned, n, nums1, activeselected, (*pselected) + 1);
+      MALLOCTEST(g->xthinned, sizeof(double) * n * (*pselected + 1));
+      copyshrink(g->x, g->xthinned, n, nums1, activeselected, (*pselected) + 1);
    }
    else /* no thinning */
    {
-      xthinned = x;
+      g->xthinned = g->x;
       *pselected = *numselected;
    }
 
@@ -247,18 +245,18 @@ int multivariable_newton(Opt *opt, gmatrix *g, int nums1,
 
    /* train un-penalised multivariable model on
     * the selected SNPs, with lambda=0 */
-   *rets = newton(xthinned, g->y, beta, invhessian, n, (*pselected) + 1,
+   *rets = newton(g->xthinned, g->y, beta, invhessian, n, (*pselected) + 1,
 	 opt->lambda2_multivar, TRUE);
    printf("NEWTON returned %d\n", *rets);	    
 
-   if(xthinned == x)
+   if(g->xthinned == g->x)
    {
-      FREENULL(x);
+      FREENULL(g->x);
    }
    else
    {
-      FREENULL(x);
-      FREENULL(xthinned);
+      FREENULL(g->x);
+      FREENULL(g->xthinned);
    }
 
    /* Copy estimated beta back to the array for all SNPs. Due to
@@ -288,5 +286,6 @@ int multivariable_newton(Opt *opt, gmatrix *g, int nums1,
 int multivariable_lasso(Opt *opt, gmatrix *g, int nums1,
       int *pselected, int *numselected, int *rets)
 {
+   
    return SUCCESS;
 }

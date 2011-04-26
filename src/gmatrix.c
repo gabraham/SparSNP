@@ -51,6 +51,8 @@ int gmatrix_init(gmatrix *g, char *filename, int n, int p,
    g->tmp = NULL;
    g->xtmp = NULL;
    g->ytmp = NULL;
+   g->x = NULL;
+   g->xthinned = NULL;
    g->ignore = NULL;
    g->yformat = yformat;
    g->beta = NULL;
@@ -192,6 +194,8 @@ void gmatrix_free(gmatrix *g)
    FREENULL(g->y_orig);
    FREENULL(g->xtmp);
    FREENULL(g->ytmp);
+   FREENULL(g->x);
+   FREENULL(g->xthinned);
    /*FREENULL(g->good);*/
    FREENULL(g->ignore);
    FREENULL(g->tmp);
@@ -291,7 +295,7 @@ int gmatrix_split_y(gmatrix *g)
  * For each vector of samples x_i, if any of the observations are missing then
  * the entire sample is zeroed out and ignored.
  */
-int gmatrix_read_matrix(gmatrix *g, double *x, int *ind, int m)
+int gmatrix_read_matrix(gmatrix *g, int *ind, int m)
 {
    int i, j, k = 0,
        p1 = g->p + 1,
@@ -310,7 +314,7 @@ int gmatrix_read_matrix(gmatrix *g, double *x, int *ind, int m)
 	    return FAILURE;
    
          for(i = 0 ; i < sm.n ; i++)
-	    x[i * m + k] = sm.x[i];
+	    g->x[i * m + k] = sm.x[i];
 	 k++;
       }
    }
