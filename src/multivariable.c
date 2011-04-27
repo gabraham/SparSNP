@@ -274,6 +274,13 @@ int multivariable_newton(Opt *opt, gmatrix *g, int nums1,
       }
    }
 
+   if(opt->unscale)
+   {
+      unscale_beta(g->beta_orig, g->beta, g->mean, g->sd, g->p + 1);
+      FREENULL(g->beta);
+      g->beta = g->beta_orig;
+   }
+
    FREENULL(activeselected);
    FREENULL(activeselected_ind);
    FREENULL(beta);
@@ -304,7 +311,7 @@ int multivariable_lasso(Opt *opt, gmatrix *g, int threshind)
       /* return value is number of nonzero variables,
        * including the intercept */
       ret = cd_gmatrix(
-	    g, opt->step_func,
+	    g, opt->step_func2,
 	    opt->maxepochs, opt->maxiters,
 	    opt->lambda1path[i], opt->lambda2,
 	    opt->threshold, opt->verbose, opt->trunc);
@@ -388,7 +395,7 @@ int make_lambda1path(Opt *opt, gmatrix *g, int threshind)
       /* create lambda1 path */
       /* get lambda1 max */
       opt->lambda1max = get_lambda1max_gmatrix(g,
-	    opt->inv_func, opt->step_func);
+	    opt->inv_func2, opt->step_func2);
       if(opt->verbose)
 	 printf("lambda1max: %.20f\n", opt->lambda1max);
       opt->lambda1path[0] = opt->lambda1max;

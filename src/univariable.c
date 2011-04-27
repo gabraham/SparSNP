@@ -1,3 +1,5 @@
+#include <glob.h>
+
 #include "common.h"
 #include "cd.h"
 #include "util.h"
@@ -213,25 +215,6 @@ int run_train(Opt *opt, gmatrix *g)
 	    }
 	    else 
 	    {
-	       /* TODO: hack, allow user to choose */
-	       /*g->model = MODEL_SQRHINGE; 
-	       opt->inv_func = &sqrhingeinv;
-	       opt->step_func = &step_regular_sqrhinge;
-	       opt->yformat = YFORMAT11;
-	       opt->model = MODEL_SQRHINGE;
-	       opt->predict_func = &linearphi1;
-	       opt->loss_func = &sqrhinge_loss;
-	       opt->loss_pt_func = &sqrhinge_loss_pt;*/
-
-	       opt->model = g->model = MODEL_LINEAR;
-	       opt->inv_func = &linearinv;
-	       opt->step_func = &step_regular_linear;
-	       opt->model = MODEL_LINEAR;
-	       opt->predict_func = &linearphi1;
-	       opt->loss_func = &linear_loss;
-	       opt->loss_pt_func = &linear_loss_pt;
-	       gmatrix_init_lp(g);
-
 	       /* TODO: multivariable_lasso doesn't load the matrix into
 		* memory like multivariable_newton does */
 	       g->nextcol = gmatrix_disk_nextcol;
@@ -445,33 +428,38 @@ int run_predict(gmatrix *g, predict predict_func, char **beta_files,
    return SUCCESS;
 }
 
+/* Prediction using the 2nd stage multivariable model */
 int do_predict(gmatrix *g, Opt *opt, char *tmp)
 {
-     int ret = SUCCESS, b, k, len;
+   int ret = SUCCESS, b, k, len, gret = 0;
+   glob_t gl;
 
    if(!gmatrix_init(g, opt->filename, opt->n, opt->p,
-	    NULL, opt->yformat, opt->model, opt->encoded,
+	    NULL, opt->yformat2, opt->model2, opt->encoded,
 	    opt->binformat, opt->folds_ind_file, opt->mode,
-	    opt->loss_pt_func, opt->subset_file))
+	    opt->loss_pt_func2, opt->subset_file))
       return FAILURE;
 
    g->nextcol = gmatrix_mem_nextcol;
 
    if(g->nfolds > 1)
    {
-      if(!opt->beta_files_fold)
+      /*if(!opt->beta_files_fold)
 	 MALLOCTEST2(opt->beta_files_fold,
 	       sizeof(char*) * opt->n_beta_files);
       for(b = 0 ; b < opt->n_beta_files ; b++)
-	 opt->beta_files_fold[b] = NULL;
+	 opt->beta_files_fold[b] = NULL;*/
 
       /* cross-validation: prediction stage */
       for(k = 0 ; k < g->nfolds ; k++)
       {
-	 /*len = strlen(opt->scalefile) + 1 + 3;
+	 len = strlen(opt->scalefile) + 1 + 3;
 	 snprintf(tmp, len, "%s.%02d", opt->scalefile, k);
 	 g->scalefile = tmp;
-	 printf("reading scale file: %s\n", tmp);*/
+	 printf("reading scale file: %s\n", tmp);
+	 if(!gmatrix_read_scaling(g, g->scalefile))
+	    return FAILURE;
+
 	 if(!(ret &= gmatrix_set_fold(g, k)))
 	    break;
 
@@ -481,33 +469,51 @@ int do_predict(gmatrix *g, Opt *opt, char *tmp)
 	 if(!(ret &= writevectorf(tmp, g->y, g->ncurr)))
 	    break;
 
+	 /* glob must end in numbers, not "pred" or anything like that */
+	 snprintf(tmp, MAX_STR_LEN, "multivar_%s.%02d.*[0-9][0-9]",
+	       opt->beta_files[0], k);
+	 printf("Searching for glob %s\n", tmp);
+      	 if((gret = glob(tmp, 0, NULL, &gl)))
+      	 {
+      	    fprintf(stderr, "glob error: %d\n", gret);
+      	    return FAILURE;
+      	 }
+
+	 for(b = 0 ; b < gl.gl_pathc ; b++)
+	    printf("found file: %s\n", gl.gl_pathv[b]);
+
 	 /*gmatrix_zero_model(&g);*/
 	 gmatrix_reset(g);
 
-	 /* set up correct file names */
-	 for(b = 0 ; b < opt->n_beta_files ; b++)
-	 {
-	    len = strlen(opt->beta_files[b]);
-	    if(!opt->beta_files_fold[b])
-	       MALLOCTEST2(opt->beta_files_fold[b], len + 1 + 3);
-	    snprintf(opt->beta_files_fold[b], MAX_STR_LEN, "%s.%02d",
-		  opt->beta_files[b], k);
-	 }
-
-	 if(!(ret &= run_predict(g, opt->predict_func,
-		     opt->beta_files_fold, opt->n_beta_files)))
+	 if(!(ret &= run_predict(g, opt->predict_func2,
+		     gl.gl_pathv, gl.gl_pathc)));
 	    break;
       }
    }
    else
    {
-      /*g->scalefile = opt->scalefile;
+      /* a bit of duplication */
+      snprintf(tmp, MAX_STR_LEN, "%s.%02d.*[0-9][0-9]",
+	    opt->beta_files[0], k);
+      printf("Searching for glob %s\n", tmp);
+      if((gret = glob(tmp, 0, NULL, &gl)))
+      {
+	 fprintf(stderr, "glob error: %d\n", gret);
+	 return FAILURE;
+      }
+
+      for(b = 0 ; b < gl.gl_pathc ; b++)
+	 printf("found file: %s\n", gl.gl_pathv[b]);
+
+      g->scalefile = opt->scalefile;
       if(!gmatrix_read_scaling(g, g->scalefile))
-	 return FAILURE;*/
+	 return FAILURE;
       gmatrix_zero_model(g);
-      ret = run_predict(g, opt->predict_func,
+      ret = run_predict(g, opt->predict_func2,
 	    opt->beta_files, opt->n_beta_files);
    }
+
+   globfree(&gl);
 
    return ret;
 }

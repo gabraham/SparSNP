@@ -1,4 +1,6 @@
 #include <stdlib.h>
+#include <glob.h>
+
 #include "cd.h"
 #include "util.h"
 #include "multivariable.h"
@@ -64,11 +66,9 @@ int run_predict(gmatrix *g, predict predict_func, char **beta_files,
 	 continue;
       }
 
-      /* scale beta using the scales for this data (beta
+      /* Scale beta using the scales for this data (beta
        * should already be on original scale, not scaled to zero-mean and
        * unit-variance) */
-      /*for(int j = 0 ; j < g->p + 1 ; j++)
-	 g->beta[j] = g->beta_orig[j];*/
       scale_beta(g->beta, g->beta_orig, g->mean, g->sd, g->p + 1);
 
       snprintf(tmp, MAX_STR_LEN, "%s.pred", beta_files[i]);
@@ -130,7 +130,8 @@ int do_train(gmatrix *g, Opt *opt, char tmp[])
 
 int do_predict(gmatrix *g, Opt *opt, char tmp[])
 {
-   int ret = SUCCESS, b, k, len;
+   int ret = SUCCESS, b, k = 0, len, gret = 0;
+   glob_t gl;
 
    if(!gmatrix_init(g, opt->filename, opt->n, opt->p,
 	    NULL, opt->yformat, opt->model, opt->encoded,
@@ -140,12 +141,6 @@ int do_predict(gmatrix *g, Opt *opt, char tmp[])
 
    if(g->nfolds > 1)
    {
-      if(!opt->beta_files_fold)
-	 MALLOCTEST2(opt->beta_files_fold,
-	       sizeof(char*) * opt->n_beta_files);
-      for(b = 0 ; b < opt->n_beta_files ; b++)
-	 opt->beta_files_fold[b] = NULL;
-
       /* cross-validation: prediction stage */
       for(k = 0 ; k < g->nfolds ; k++)
       {
@@ -153,6 +148,9 @@ int do_predict(gmatrix *g, Opt *opt, char tmp[])
 	 snprintf(tmp, len, "%s.%02d", opt->scalefile, k);
 	 g->scalefile = tmp;
 	 printf("reading scale file: %s\n", tmp);
+	 if(!gmatrix_read_scaling(g, g->scalefile))
+	    return FAILURE;
+
 	 if(!(ret &= gmatrix_set_fold(g, k)))
 	    break;
 
@@ -162,33 +160,51 @@ int do_predict(gmatrix *g, Opt *opt, char tmp[])
 	 if(!(ret &= writevectorf(tmp, g->y, g->ncurr)))
 	    break;
 
-	 /*gmatrix_zero_model(&g);*/
+	 snprintf(tmp, MAX_STR_LEN, "%s.%02d.[0-9][0-9]",
+	       opt->beta_files[0], k);
+	 printf("Searching for glob %s\n", tmp);
+      	 if((gret = glob(tmp, 0, NULL, &gl)))
+      	 {
+      	    fprintf(stderr, "glob error: %d\n", gret);
+      	    return FAILURE;
+      	 }
+
+	 for(b = 0 ; b < gl.gl_pathc ; b++)
+	    printf("found file: %s\n", gl.gl_pathv[b]);
+
 	 gmatrix_reset(g);
 
-	 /* set up correct file names */
-	 for(b = 0 ; b < opt->n_beta_files ; b++)
-	 {
-	    len = strlen(opt->beta_files[b]);
-	    if(!opt->beta_files_fold[b])
-	       MALLOCTEST2(opt->beta_files_fold[b], len + 1 + 3);
-	    snprintf(opt->beta_files_fold[b], MAX_STR_LEN, "%s.%02d",
-		  opt->beta_files[b], k);
-	 }
-
 	 if(!(ret &= run_predict(g, opt->predict_func,
-		     opt->beta_files_fold, opt->n_beta_files)))
+		     gl.gl_pathv, gl.gl_pathc)))
 	    break;
+
+	 printf("\n");
       }
    }
    else
    {
+      /* a bit of duplication */
+      snprintf(tmp, MAX_STR_LEN, "%s.%02d.[0-9][0-9]",
+	    opt->beta_files[0], k);
+      printf("Searching for glob %s\n", tmp);
+      if((gret = glob(tmp, 0, NULL, &gl)))
+      {
+	 fprintf(stderr, "glob error: %d\n", gret);
+	 return FAILURE;
+      }
+
+      for(b = 0 ; b < gl.gl_pathc ; b++)
+	 printf("found file: %s\n", gl.gl_pathv[b]);
+
       g->scalefile = opt->scalefile;
       if(!gmatrix_read_scaling(g, g->scalefile))
 	 return FAILURE;
       gmatrix_zero_model(g);
       ret = run_predict(g, opt->predict_func,
-	    opt->beta_files, opt->n_beta_files);
+	    gl.gl_pathv, gl.gl_pathc);
    }
+
+   globfree(&gl);
 
    return ret;
 }
@@ -199,7 +215,7 @@ int main(int argc, char* argv[])
 
    Opt opt;
    gmatrix g;
-   char tmp[MAX_STR_LEN];
+   char tmp[MAX_STR_LEN + 1];
 
    setbuf(stdout, NULL);
 

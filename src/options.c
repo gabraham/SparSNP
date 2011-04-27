@@ -62,6 +62,7 @@ int opt_defaults(Opt *opt, short caller)
    opt->step_func = NULL;
    opt->scalefile = NULL;
    opt->yformat = YFORMAT01;
+   opt->yformat2 = YFORMAT01;
    opt->predict_func = NULL;
    opt->predict_file = "predicted.csv";
    opt->encoded = TRUE;
@@ -75,36 +76,33 @@ int opt_defaults(Opt *opt, short caller)
    strcpy(opt->beta_files[0], beta_default);
    opt->n_beta_files = 1;
 
-   /*opt->nzthresh = 25;*/
-   opt->nzthresh = 1;
+   opt->nzthresh = 24;
    MALLOCTEST(opt->zthresh, sizeof(double) * opt->nzthresh);
 
-   /*opt->zthresh[0] = 30.20559; */ /* 1e-200 */
-   /*opt->zthresh[1] = 27.82780; */ /* 1e-170 */
-   /*opt->zthresh[2] = 26.12296; */ /* 1e-150 */
-   /*opt->zthresh[3] = 23.33408; */ /* 1e-120 */
-   /*opt->zthresh[4] = 22.32745; */ /* 1e-110 */
-   /*opt->zthresh[5] = 20.16469; */ /* 1e-90 */
-   /*opt->zthresh[6] = 18.99164; */ /* 1e-80 */
-   /*opt->zthresh[7] = 17.74164; */ /* 1e-70 */
-   /*opt->zthresh[8] = 16.39728; */ /* 1e-60 */
-   /*opt->zthresh[9] = 14.93334; */ /* 1e-50 */
-   /*opt->zthresh[10] = 13.31092;*/ /* 1e-40 */
-   /*opt->zthresh[11] = 11.46403;*/ /* 1e-30 */
-   /*opt->zthresh[12] = 9.262340;*/ /* 1e-20 */
-   /*opt->zthresh[13] = 6.361341;*/ /* 1e-10 */
-   /*opt->zthresh[14] = 5.326724;*/ /* 5e-8  */
-   /*opt->zthresh[15] = 5.199338;*/ /* 1e-7  */
-   /*opt->zthresh[16] = 4.264891;*/ /* 1e-5  */
-   /*opt->zthresh[17] = 3.719016;*/ /* 1e-4  */
-   /*opt->zthresh[18] = 3.570974;*/ /* 1e-4  */
-   /*opt->zthresh[19] = 3.417300;*/ /* 1e-4  */
-   /*opt->zthresh[20] = 3.257323;*/ /* 1e-4  */
-   /*opt->zthresh[21] = 3.090232;*/ /* 1e-3  */
-   /*opt->zthresh[22] = 2.326348;*/ /* 1e-2  */
-   /*opt->zthresh[23] = 1.281552;*/ /* 1e-1  */
-   /*opt->zthresh[24] = 0; */
-   opt->zthresh[0] = 0;
+   opt->zthresh[0] = 30.20559;  /* 1e-200 */
+   opt->zthresh[1] = 27.82780;  /* 1e-170 */
+   opt->zthresh[2] = 26.12296;  /* 1e-150 */
+   opt->zthresh[3] = 23.33408;  /* 1e-120 */
+   opt->zthresh[4] = 22.32745;  /* 1e-110 */
+   opt->zthresh[5] = 20.16469;  /* 1e-90 */
+   opt->zthresh[6] = 18.99164;  /* 1e-80 */
+   opt->zthresh[7] = 17.74164;  /* 1e-70 */
+   opt->zthresh[8] = 16.39728;  /* 1e-60 */
+   opt->zthresh[9] = 14.93334;  /* 1e-50 */
+   opt->zthresh[10] = 13.31092; /* 1e-40 */
+   opt->zthresh[11] = 11.46403; /* 1e-30 */
+   opt->zthresh[12] = 9.262340; /* 1e-20 */
+   opt->zthresh[13] = 6.361341; /* 1e-10 */
+   opt->zthresh[14] = 5.326724; /* 5e-8  */
+   opt->zthresh[15] = 5.199338; /* 1e-7  */
+   opt->zthresh[16] = 4.264891; /* 1e-5  */
+   opt->zthresh[17] = 3.719016; /* 1e-4  */
+   opt->zthresh[18] = 3.570974; /* 1e-4  */
+   opt->zthresh[19] = 3.417300; /* 1e-4  */
+   opt->zthresh[20] = 3.257323; /* 1e-4  */
+   opt->zthresh[21] = 3.090232; /* 1e-3  */
+   opt->zthresh[22] = 2.326348; /* 1e-2  */
+   opt->zthresh[23] = 1.281552; /* 1e-1  */
 
    /*opt->lambda2_univar = 1e-3;*/
    opt->lambda2_univar = 0;
@@ -122,7 +120,7 @@ int opt_defaults(Opt *opt, short caller)
 
 int opt_parse(int argc, char* argv[], Opt* opt)
 {
-   int i, j, k;
+   int i;
 
    for(i = 1 ; i < argc ; i++)
    {
@@ -196,7 +194,7 @@ int opt_parse(int argc, char* argv[], Opt* opt)
 	 {
 	    opt->inv_func2 = &sqrhingeinv;
 	    opt->step_func2 = &step_regular_sqrhinge;
-	    opt->yformat = YFORMAT11;
+	    opt->yformat2 = YFORMAT11;
 	    opt->model2 = MODEL_SQRHINGE;
 	    opt->predict_func2 = &linearphi1;
 	    opt->loss_func2 = &sqrhinge_loss;
@@ -301,9 +299,9 @@ int opt_parse(int argc, char* argv[], Opt* opt)
       {
 	 opt->warmrestarts = FALSE;
       }
-      else if(strcmp2(argv[i], "-betafiles"))
+      /*else if(strcmp2(argv[i], "-betafiles"))
       {
-	 /* first free the default filename */
+	 * first free the default filename *
 	 free(opt->beta_files[0]);
 	 free(opt->beta_files);
 	 opt->beta_files = NULL;
@@ -311,7 +309,7 @@ int opt_parse(int argc, char* argv[], Opt* opt)
 	 j = ++i;
 	 k = 0;
 
-	 /* look ahead to find more tokens */
+	 * look ahead to find more tokens *
 	 while(j < argc && argv[j][0] != '-')
 	 {
 	    k++;
@@ -326,7 +324,7 @@ int opt_parse(int argc, char* argv[], Opt* opt)
 
 	 if(j < argc && argv[j][0] == '-')
 	    i = j - 1;
-      }
+      }*/
       else if(strcmp2(argv[i], "-notencoded"))
 	 opt->encoded = FALSE;
       else if(strcmp2(argv[i], "-plink"))
@@ -382,11 +380,11 @@ int opt_parse(int argc, char* argv[], Opt* opt)
 [-v] [-vv]\n");
          return FAILURE;
       }
-      else if(opt->n_beta_files > 1 && opt->mode == MODE_TRAIN)
+      /*else if(opt->n_beta_files > 1 && opt->mode == MODE_TRAIN)
       {
          printf("warning: multiple beta filenames provided in training mode, \
 onl   y using the first one\n");
-      }
+      }*/
    }
    else /* univariable selection */
    {
@@ -400,11 +398,11 @@ onl   y using the first one\n");
 [-pred <prediction file>] [-nomultivar] [-v] [-vv]\n");
          return FAILURE;
       }
-      else if(opt->n_beta_files > 1 && opt->mode == MODE_TRAIN)
+      /*else if(opt->n_beta_files > 1 && opt->mode == MODE_TRAIN)
       {
          printf("warning: multiple beta filenames provided in training mode, \
                only using the first one\n");
-      }
+      }*/
    }
 
    if(!opt->encoded)

@@ -62,6 +62,7 @@ typedef struct Opt {
    short inmemory;
    char *scalefile;
    short yformat;
+   short yformat2;
    predict predict_func;
    predict predict_func2;
    char **beta_files;

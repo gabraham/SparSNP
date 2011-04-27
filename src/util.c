@@ -100,7 +100,10 @@ int readvectorl(char *filename, int *x, int n)
    return SUCCESS;
 }
 
-/* takes beta on original scale and puts it on scaled scale */
+/* Takes beta on original scale and puts it on 0 mean unit variance scale,
+ * i.e. what would beta be if it was the result of a model fitted to
+ * standardised data.
+ */
 void scale_beta(double *beta2, double *beta1,
       double *mean, double *sd, int p)
 {
@@ -118,7 +121,10 @@ void scale_beta(double *beta2, double *beta1,
    beta2[0] += s;
 }
 
-/* assumes beta_0 is intercept.
+/* Converts beta to the 0-mean unit-variance scale to the original scale of
+ * the data.
+ *
+ * Assumes beta_0 is intercept
  * 
  * beta_j = beta_j^* / sd_j
  *
