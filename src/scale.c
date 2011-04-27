@@ -28,18 +28,18 @@ int scale(gmatrix *g)
 
    MALLOCTEST(tmp, sizeof(double) * n);
    
-   /* read intercept and ignore it*/
-   g->nextcol(g, &sm, 0, NA_ACTION_ZERO);
+   /* read intercept and ignore it */
+   g->nextcol(g, &sm, 0);
 
    for(j = 1 ; j < p1 ; j++)
    {
       printf("%d of %d", j, p1);
-      g->nextcol(g, &sm, j, NA_ACTION_ZERO);
+      g->nextcol(g, &sm, j);
       ngood = g->mean[j] = g->sd[j] = 0;
       for(i = 0 ; i < n ; i++)
       {
 	 /* skip missing observations */
-	 if(sm.x[i] != X_LEVEL_NA)
+	 /*if(sm.x[i] != X_LEVEL_NA)*/
 	 {
 	    delta = sm.x[i] - g->mean[j];
 	    g->mean[j] += delta / (i + 1);

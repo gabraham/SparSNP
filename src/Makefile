@@ -35,7 +35,8 @@ static: $(targets)
 
 LIBRARIES = -llapack -lblas -lgfortran -lm
 
-cd: common.c coder.c ind.c gmatrix.c loss.c util.c options.c main.c cd.c
+cd: common.c coder.c ind.c gmatrix.c loss.c svd.c thin.c matrix.c \
+      multivariable.c util.c options.c main.c cd.c
 	$(CC) $(CCFLAGS) $^ $(LIBRARIES) -o cd
 
 scale: common.c coder.c ind.c gmatrix.c cd.c scale.c util.c

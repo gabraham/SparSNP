@@ -41,7 +41,7 @@ typedef struct sample {
    int ngood;
    int *good;
    double *x;
-   double *y;
+   /*double *y;*/
    double *x2;
    short intercept;
    short cached;
@@ -82,7 +82,7 @@ typedef struct gmatrix {
    int bufsize;
    int bufidx;
    int yidx; /* only used for pcor */
-   int (*nextcol)(struct gmatrix*, sample*, int skip, int na_action);
+   int (*nextcol)(struct gmatrix*, sample*, int skip);
    char *scalefile;
    dtype *tmp;
    unsigned char *encbuf;
@@ -120,8 +120,8 @@ int gmatrix_init(gmatrix *g, char *filename, int n, int p,
       short mode, loss_pt, char *subsample_file);
 int gmatrix_reset(gmatrix *);
 void gmatrix_free(gmatrix *);
-int gmatrix_disk_nextcol(gmatrix *g, sample *sm, int skip, int na_action);
-int gmatrix_mem_nextcol(gmatrix *g, sample *sm, int j, int na_action);
+int gmatrix_disk_nextcol(gmatrix *g, sample *sm, int skip);
+int gmatrix_mem_nextcol(gmatrix *g, sample *sm, int j);
 int gmatrix_disk_read_y(gmatrix *g);
 int gmatrix_disk_skipcol(gmatrix *g);
 int gmatrix_disk_skipcol(gmatrix *g);

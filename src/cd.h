@@ -18,8 +18,7 @@ typedef double (*predict_pt)(double);
 typedef double (*phi1)(double);
 typedef double (*phi2)(double);
 typedef double (*inv)(double);
-typedef double (*step)(sample *s, gmatrix *g,
-      phi1 phi1_func, phi2 phi2_func);
+typedef double (*step)(sample *s, gmatrix *g);
 
 typedef double (*predict)(double x);
 
@@ -27,6 +26,7 @@ typedef struct Opt {
    short caller;
    short mode;
    short model;
+   short model2;
    int maxepochs;
    int maxiters;
    double lambda1;
@@ -36,10 +36,13 @@ typedef struct Opt {
    int nlambda1;
    double trunc;
    loss loss_func;
+   loss loss_func2;
    loss_pt loss_pt_func;
+   loss_pt loss_pt_func2;
    phi1 phi1_func;
    phi2 phi2_func;
    inv inv_func;
+   inv inv_func2;
    short nofit;
    int n, p;
    short warmrestarts;
@@ -55,10 +58,12 @@ typedef struct Opt {
    int *trainf;
    char *lambda1pathfile;
    step step_func;
+   step step_func2;
    short inmemory;
    char *scalefile;
    short yformat;
    predict predict_func;
+   predict predict_func2;
    char **beta_files;
    char **beta_files_fold;
    int n_beta_files;
@@ -81,8 +86,6 @@ typedef struct Opt {
 } Opt;
 
 int cd_gmatrix(gmatrix *g,
-      phi1 phi1_func,
-      phi2 phi2_func,
       step step_func,
       const int maxepochs, const int maxiters,
       const double lambda1, const double lambda2,
@@ -90,8 +93,6 @@ int cd_gmatrix(gmatrix *g,
       const double trunc);
 
 double get_lambda1max_gmatrix(gmatrix *g,
-      phi1 phi1_func,
-      phi2 phi2_func,
       inv inv_func,
       step step_func
 );
@@ -100,21 +101,13 @@ int cvsplit(Opt *opt);
 void opt_free(Opt *opt);
 int opt_defaults(Opt *opt, short caller);
 int opt_parse(int argc, char* argv[], Opt* opt);
-int make_lambda1path(Opt *opt, gmatrix *g);
 int run(Opt *opt, gmatrix *g);
 void zero_model(gmatrix *g);
 
-double step_generic(sample *s, gmatrix *g,
-      phi1 phi1_func, phi2 phi2_func);
-
-double step_regular_linear(sample *s, gmatrix *g,
-      phi1 phi1_func, phi2 phi2_func);
-
-double step_regular_logistic(sample *s, gmatrix *g,
-      phi1 phi1_func, phi2 phi2_func);
-
-double step_regular_sqrhinge(sample *s, gmatrix *g,
-      phi1 phi1_func, phi2 phi2_func);
+double step_generic(sample *s, gmatrix *g);
+double step_regular_linear(sample *s, gmatrix *g);
+double step_regular_logistic(sample *s, gmatrix *g);
+double step_regular_sqrhinge(sample *s, gmatrix *g);
 
 void updatelp(gmatrix *g, const double update,
       const double *restrict x);

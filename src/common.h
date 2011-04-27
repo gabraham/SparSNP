@@ -1,4 +1,5 @@
 #include <stdlib.h>
+
  
 #define VERBOSE 1
 
@@ -55,9 +56,9 @@ typedef DTYPE dtype;
 #define FMAX(a, b) (a < b ? b : a) 
 #define FMIN(a, b) (a < b ? a : b)
 
-/* Macros with built in error checking */
-
 size_t retval;
+
+/* Macros with built in error checking */
 
 #define MALLOCTEST(x, size) \
 if(!(x = malloc(size))) { \

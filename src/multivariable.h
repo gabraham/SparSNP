@@ -19,6 +19,6 @@ int make_hessian(double *hessian, double *x,
 int multivariable_newton(Opt *opt, gmatrix *g, int nums1,
       int *pselected, int *numselected, int *rets);
 
-int multivariable_lasso(Opt *opt, gmatrix *g, int nums1,
-      int *pselected, int *numselected, int *rets);
+int multivariable_lasso(Opt *opt, gmatrix *g, int threshind);
+int make_lambda1path(Opt *opt, gmatrix *g, int threshind);
 

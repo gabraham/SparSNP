@@ -20,13 +20,12 @@ int checkvar(double *x, int n)
 
    for(i = 0 ; i < n ; i++)
    {
+      /* TODO: ignores issue of X_LEVEL_NA, see scale.c */
       delta = x[i] - mean;
       mean += delta / (i + 1);
       var += delta * (x[i] - mean);
    }
-
-   /*printf("%.10f %.10f\n", mean, sqrt(var / (n - 1)));*/
-
+   
    return sqrt(var / (n - 1)) > SDTHRESH;
 }
 
@@ -57,11 +56,27 @@ int univar_gmatrix(Opt *opt, gmatrix *g, double *beta, double *zscore)
       printf("%d\r", j);
       if(!g->active[j])
       {
-	 printf("skipped variable %d\n", j);
+	 if(opt->verbose)
+	    printf("skipped variable %d\n", j);
 	 continue;
       }
       
-      gmatrix_disk_nextcol(g, &sm, j, NA_ACTION_DELETE);
+      gmatrix_disk_nextcol(g, &sm, j);
+
+      /* check for zero-variance */
+      if(g->scalefile)
+	 g->ignore[j] = g->sd[j] < SDTHRESH;
+      else
+	 g->ignore[j] = !checkvar(sm.x, sm.n);
+
+      if(g->ignore[j])
+      {
+	 beta[j] = zscore[j] = 0.0;
+	 if(opt->verbose)
+	    printf("skipped variable %d\n: low variance", j);
+	 continue;
+      }
+
       CALLOCTEST(x, 2 * sm.n, sizeof(double));
       for(i = sm.n - 1 ; i >= 0 ; --i)
       {
@@ -69,23 +84,17 @@ int univar_gmatrix(Opt *opt, gmatrix *g, double *beta, double *zscore)
 	 x[2 * i + 1] = sm.x[i];
       }
 
-      /* check for zero-variance */
-      g->ignore[j] = !checkvar(sm.x, sm.n);
-
-      if(g->ignore[j])
-      {
-	 beta[j] = zscore[j] = 0.0;
-	 /*printf("skipped variable %d\n: low variance", j);*/
-	 continue;
-      }
-
+      /* Logistic regression on two variables: intercept + one SNP */
       beta2[0] = beta2[1] = 0.0;
-      ret = newton(x, sm.y, beta2, invhessian, sm.n, 2,
+      ret = newton(x, g->y, beta2, invhessian, sm.n, 2,
 	    opt->lambda2_univar, FALSE);
       FREENULL(x);
 
       if(ret == FAILURE)
+      {
+	 printf("Failure\n");
 	 return FAILURE;
+      }
       else if(ret == NEWTON_ERR_NO_CONVERGENCE)
       {
 	 printf("Newton didn't converge for variable %d\n", j);
@@ -174,6 +183,7 @@ int run_train(Opt *opt, gmatrix *g)
 	 printf("Threshold %d: %.5f\n", i, opt->zthresh[i]);
 	 gmatrix_zero_model(g); /* reset active variables */
 
+	 /* check which SNPs to include in model */
 	 numselected[i] = 0; 
 	 g->active[0] = TRUE;
 	 for(j = 1 ; j < p1 ; j++)
@@ -183,7 +193,7 @@ int run_train(Opt *opt, gmatrix *g)
 	       numselected[i]++;
 	 }
 	 nums1 = numselected[i] + 1;
-	 printf("total %d SNPs exceeded z-score=%.3f (inc. intercept)\n",
+	 printf("total %d SNPs exceeded z-score=%.3f\n",
 	    numselected[i], opt->zthresh[i]);
 
 	 FREENULL(se);
@@ -197,31 +207,69 @@ int run_train(Opt *opt, gmatrix *g)
 	 if(numselected[i] > 0)
 	 {
 	    if(opt->multivar == OPTIONS_MULTIVAR_NEWTON)
+	    {
 	       multivariable_newton(opt, g, nums1,
 		     pselected + i, numselected + i, rets + i);
-	    else
-	       multivariable_lasso(opt, g, nums1,
-		     pselected + i, numselected + i, rets + i);
+	    }
+	    else 
+	    {
+	       /* TODO: hack, allow user to choose */
+	       /*g->model = MODEL_SQRHINGE; 
+	       opt->inv_func = &sqrhingeinv;
+	       opt->step_func = &step_regular_sqrhinge;
+	       opt->yformat = YFORMAT11;
+	       opt->model = MODEL_SQRHINGE;
+	       opt->predict_func = &linearphi1;
+	       opt->loss_func = &sqrhinge_loss;
+	       opt->loss_pt_func = &sqrhinge_loss_pt;*/
+
+	       opt->model = g->model = MODEL_LINEAR;
+	       opt->inv_func = &linearinv;
+	       opt->step_func = &step_regular_linear;
+	       opt->model = MODEL_LINEAR;
+	       opt->predict_func = &linearphi1;
+	       opt->loss_func = &linear_loss;
+	       opt->loss_pt_func = &linear_loss_pt;
+	       gmatrix_init_lp(g);
+
+	       /* TODO: multivariable_lasso doesn't load the matrix into
+		* memory like multivariable_newton does */
+	       g->nextcol = gmatrix_disk_nextcol;
+
+	       gmatrix_zero_model(g);
+	       make_lambda1path(opt, g, i);
+	       gmatrix_reset(g);
+	       multivariable_lasso(opt, g, i);
+	       rets[i] = NEWTON_SUCCESS; /* lasso can't fail like Newton can */
+	    }
 	 }
 
-	 /* estimated coefficients */
-	 snprintf(tmp, MAX_STR_LEN, "multivar_%s.%02d.%02d",
-	       opt->beta_files[0], i, g->fold);
-	 printf("writing %s\n", tmp);
-	 if(!writevectorf(tmp, g->beta, g->p + 1))
-	    return FAILURE;
+	 /* Write out zero coefs in case no SNPs were selected.
+	  * Logistic regression produces one set of coefs, but lasso produces
+	  * multiple - one for each lambda, inside the loop (see
+	  * multivariable_lasso).
+	  * */
+	 if(opt->multivar == OPTIONS_MULTIVAR_NEWTON)
+	 {
+	    /* estimated coefficients */
+	    snprintf(tmp, MAX_STR_LEN, "multivar_%s.%02d.%02d",
+	          opt->beta_files[0], i, g->fold);
+	    printf("writing %s\n", tmp);
+	    if(!writevectorf(tmp, g->beta, g->p + 1))
+	       return FAILURE;
 
-	 /* standard errors */
-	 snprintf(tmp, MAX_STR_LEN, "multivar_%s_se.%02d.%02d",
-	       opt->beta_files[0], i, g->fold);
-	 printf("writing %s\n", tmp);
-	 if(!writevectorf(tmp, se, g->p + 1))
-	    return FAILURE;
+	    /* standard errors */
+	    snprintf(tmp, MAX_STR_LEN, "multivar_%s_se.%02d.%02d",
+	          opt->beta_files[0], i, g->fold);
+	    printf("writing %s\n", tmp);
+	    if(!writevectorf(tmp, se, g->p + 1))
+	       return FAILURE;
 
-	 /* no point in testing looser z-scores since they won't converge as
-	  * well */
-	 if(rets[i] == NEWTON_ERR_NO_CONVERGENCE)
-	    break;
+	    /* no point in testing looser z-scores since they won't converge as
+	     * well */
+	    if(rets[i] == NEWTON_ERR_NO_CONVERGENCE)
+	       break;
+	 }
 
 	 printf("\n");
       }
@@ -260,7 +308,7 @@ int run_train(Opt *opt, gmatrix *g)
 
 int do_train(gmatrix *g, Opt *opt, char tmp[])
 {
-   int ret = SUCCESS, k;
+   int ret = SUCCESS, k, len;
 
    if(!gmatrix_init(g, opt->filename, opt->n, opt->p,
 	    NULL, opt->yformat, opt->model, opt->encoded,
@@ -278,9 +326,14 @@ int do_train(gmatrix *g, Opt *opt, char tmp[])
       for(k = 0 ; k < g->nfolds ; k++)
       {
 	 printf("CV fold: %d\n", k);
-	 /*len = strlen(opt->scalefile) + 1 + 3;
-	 snprintf(tmp, len, "%s.%02d", opt->scalefile, k);
-	 g->scalefile = tmp;*/
+
+	 if(opt->scalefile)
+	 {
+	    len = strlen(opt->scalefile) + 1 + 3;
+	    snprintf(tmp, len, "%s.%02d", opt->scalefile, k);
+	    g->scalefile = tmp;
+	 }
+
 	 if(!(ret &= gmatrix_set_fold(g, k)))
 	    break;
 
@@ -299,9 +352,13 @@ int do_train(gmatrix *g, Opt *opt, char tmp[])
    }
    else
    {
-      /*g->scalefile = opt->scalefile;
-      if(!gmatrix_read_scaling(g, g->scalefile))
-	 return FAILURE;*/
+      if(opt->scalefile)
+      {
+         g->scalefile = opt->scalefile;
+         if(!gmatrix_read_scaling(g, g->scalefile))
+	    return FAILURE;
+      }
+
       gmatrix_zero_model(g);
       /*make_lambda1path(opt, g);*/
       gmatrix_reset(g);
@@ -338,7 +395,7 @@ int run_predict_beta(gmatrix *g, predict predict_func,
    {
       if(beta[j] != 0)
       {
-	 gmatrix_disk_nextcol(g, &sm, j, NA_ACTION_ZERO);
+	 gmatrix_disk_nextcol(g, &sm, j);
 	 for(i = 0 ; i < n ; i++)
 	    lp[i] += sm.x[i] * beta[j];
       }

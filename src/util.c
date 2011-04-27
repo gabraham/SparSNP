@@ -118,7 +118,7 @@ void scale_beta(double *beta2, double *beta1,
    beta2[0] += s;
 }
 
-/* assumes beta0 is intercept.
+/* assumes beta_0 is intercept.
  * 
  * beta_j = beta_j^* / sd_j
  *

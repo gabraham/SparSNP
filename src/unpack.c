@@ -23,7 +23,7 @@ int unpack(gmatrix *g, char *filename_out)
    for(j = 1 ; j < p1 ; j++)
    {
       printf("%d of %d", j, p1);
-      g->nextcol(g, &sm, j, NA_ACTION_ZERO);
+      g->nextcol(g, &sm, j);
       /*FWRITETEST(sm.x, sizeof(double), g->n, out);*/
       for(i = g->n - 1 ; i >= 0 ; --i)
 	 tmp[i] = (char)sm.x[i];

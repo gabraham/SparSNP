@@ -35,7 +35,7 @@ int opt_defaults(Opt *opt, short caller)
    opt->caller = caller;
    opt->mode = MODE_TRAIN;
    opt->model = 0;
-   opt->nlambda1 = 100;
+   opt->nlambda1 = 30;
    opt->l1minratio = 1e-2;
    opt->maxepochs = 10000;
    opt->maxiters = 100;
@@ -75,34 +75,36 @@ int opt_defaults(Opt *opt, short caller)
    strcpy(opt->beta_files[0], beta_default);
    opt->n_beta_files = 1;
 
-   opt->nzthresh = 25;
+   /*opt->nzthresh = 25;*/
+   opt->nzthresh = 1;
    MALLOCTEST(opt->zthresh, sizeof(double) * opt->nzthresh);
 
-   opt->zthresh[0] = 30.20559;  /* 1e-200 */
-   opt->zthresh[1] = 27.82780;  /* 1e-170 */
-   opt->zthresh[2] = 26.12296;  /* 1e-150 */
-   opt->zthresh[3] = 23.33408;  /* 1e-120 */
-   opt->zthresh[4] = 22.32745;  /* 1e-110 */
-   opt->zthresh[5] = 20.16469;  /* 1e-90 */
-   opt->zthresh[6] = 18.99164;  /* 1e-80 */
-   opt->zthresh[7] = 17.74164;  /* 1e-70 */
-   opt->zthresh[8] = 16.39728;  /* 1e-60 */
-   opt->zthresh[9] = 14.93334;  /* 1e-50 */
-   opt->zthresh[10] = 13.31092; /* 1e-40 */
-   opt->zthresh[11] = 11.46403; /* 1e-30 */
-   opt->zthresh[12] = 9.262340; /* 1e-20 */
-   opt->zthresh[13] = 6.361341; /* 1e-10 */
-   opt->zthresh[14] = 5.326724; /* 5e-8  */
-   opt->zthresh[15] = 5.199338; /* 1e-7  */
-   opt->zthresh[16] = 4.264891; /* 1e-5  */
-   opt->zthresh[17] = 3.719016; /* 1e-4  */
-   opt->zthresh[18] = 3.570974; /* 1e-4  */
-   opt->zthresh[19] = 3.417300; /* 1e-4  */
-   opt->zthresh[20] = 3.257323; /* 1e-4  */
-   opt->zthresh[21] = 3.090232; /* 1e-3  */
-   opt->zthresh[22] = 2.326348; /* 1e-2  */
-   opt->zthresh[23] = 1.281552; /* 1e-1  */
-   opt->zthresh[24] = 0;
+   /*opt->zthresh[0] = 30.20559; */ /* 1e-200 */
+   /*opt->zthresh[1] = 27.82780; */ /* 1e-170 */
+   /*opt->zthresh[2] = 26.12296; */ /* 1e-150 */
+   /*opt->zthresh[3] = 23.33408; */ /* 1e-120 */
+   /*opt->zthresh[4] = 22.32745; */ /* 1e-110 */
+   /*opt->zthresh[5] = 20.16469; */ /* 1e-90 */
+   /*opt->zthresh[6] = 18.99164; */ /* 1e-80 */
+   /*opt->zthresh[7] = 17.74164; */ /* 1e-70 */
+   /*opt->zthresh[8] = 16.39728; */ /* 1e-60 */
+   /*opt->zthresh[9] = 14.93334; */ /* 1e-50 */
+   /*opt->zthresh[10] = 13.31092;*/ /* 1e-40 */
+   /*opt->zthresh[11] = 11.46403;*/ /* 1e-30 */
+   /*opt->zthresh[12] = 9.262340;*/ /* 1e-20 */
+   /*opt->zthresh[13] = 6.361341;*/ /* 1e-10 */
+   /*opt->zthresh[14] = 5.326724;*/ /* 5e-8  */
+   /*opt->zthresh[15] = 5.199338;*/ /* 1e-7  */
+   /*opt->zthresh[16] = 4.264891;*/ /* 1e-5  */
+   /*opt->zthresh[17] = 3.719016;*/ /* 1e-4  */
+   /*opt->zthresh[18] = 3.570974;*/ /* 1e-4  */
+   /*opt->zthresh[19] = 3.417300;*/ /* 1e-4  */
+   /*opt->zthresh[20] = 3.257323;*/ /* 1e-4  */
+   /*opt->zthresh[21] = 3.090232;*/ /* 1e-3  */
+   /*opt->zthresh[22] = 2.326348;*/ /* 1e-2  */
+   /*opt->zthresh[23] = 1.281552;*/ /* 1e-1  */
+   /*opt->zthresh[24] = 0; */
+   opt->zthresh[0] = 0;
 
    /*opt->lambda2_univar = 1e-3;*/
    opt->lambda2_univar = 0;
@@ -170,6 +172,51 @@ int opt_parse(int argc, char* argv[], Opt* opt)
 	    opt->step_func = &step_regular_linear;
 	    opt->model = MODEL_LINEAR;
 	    opt->predict_func = linearphi1;
+	 }
+	 else
+	 {
+	    printf("model not available\n");
+	    return FAILURE;
+	 }
+      }
+      /* for the second multivariable model (after univariable screening) */
+      else if(strcmp2(argv[i], "-model2"))
+      {
+	 i++;
+	 if(strcmp2(argv[i], MODEL_NAME_LOGISTIC))
+	 {
+	    opt->inv_func2 = &loginv;
+	    opt->step_func2 = &step_regular_logistic;
+	    opt->model2 = MODEL_LOGISTIC;
+	    opt->predict_func2 = &logphi1;
+	    opt->loss_func2 = &log_loss;
+	    opt->loss_pt_func2 = &log_loss_pt;
+	 }
+	 else if(strcmp2(argv[i], MODEL_NAME_SQRHINGE))
+	 {
+	    opt->inv_func2 = &sqrhingeinv;
+	    opt->step_func2 = &step_regular_sqrhinge;
+	    opt->yformat = YFORMAT11;
+	    opt->model2 = MODEL_SQRHINGE;
+	    opt->predict_func2 = &linearphi1;
+	    opt->loss_func2 = &sqrhinge_loss;
+	    opt->loss_pt_func2 = &sqrhinge_loss_pt;
+	 }
+	 else if(strcmp2(argv[i], MODEL_NAME_LINEAR))
+	 {
+	    opt->inv_func2 = &linearinv;
+	    opt->step_func2 = &step_regular_linear;
+	    opt->model2 = MODEL_LINEAR;
+	    opt->predict_func2 = &linearphi1;
+	    opt->loss_func2 = &linear_loss;
+	    opt->loss_pt_func2 = &linear_loss_pt;
+	 }
+	 else if(strcmp2(argv[i], MODEL_NAME_PCOR))
+	 {
+	    opt->inv_func2 = &linearinv;
+	    opt->step_func2 = &step_regular_linear;
+	    opt->model2 = MODEL_LINEAR;
+	    opt->predict_func2 = linearphi1;
 	 }
 	 else
 	 {

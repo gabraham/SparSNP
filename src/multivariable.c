@@ -140,7 +140,7 @@ int newton(double *x, double *y, double *beta, double *invhessian,
 }
 
 /* 
- * Evaluate the 2 by 2 Hessian at beta
+ * Evaluate the 2 by 2 Hessian of logistic loss at beta
  *
  * in R:
  *
@@ -227,7 +227,7 @@ int multivariable_newton(Opt *opt, gmatrix *g, int nums1,
       for(j = 1 ; j < nums1 ; j++)
 	 *pselected += activeselected[j];
 
-      printf("After thinning, %d of %d SNPs left (excluding intercept)\n",
+      printf("After thinning, %d of %d SNPs left\n",
 	    *pselected, *numselected);
 
       MALLOCTEST(g->xthinned, sizeof(double) * n * (*pselected + 1));
@@ -260,7 +260,7 @@ int multivariable_newton(Opt *opt, gmatrix *g, int nums1,
    }
 
    /* Copy estimated beta back to the array for all SNPs. Due to
-    * thinning, not all columns used (pselected <= nums1),
+    * thinning, not all columns were used (pselected <= nums1),
     * so check if they were */
    k = 0; /* should run up to pselected */
    activeselected[0] = TRUE;
@@ -283,16 +283,147 @@ int multivariable_newton(Opt *opt, gmatrix *g, int nums1,
    return SUCCESS;
 }
 
-int multivariable_lasso(Opt *opt, gmatrix *g, int nums1,
-      int *pselected, int *numselected, int *rets)
+int multivariable_lasso(Opt *opt, gmatrix *g, int threshind)
 {
-   int ret;
-   ret = cd_gmatrix(
-	    g, opt->phi1_func, opt->phi2_func,
-	    opt->step_func,
+   int i, ret;
+   char tmp[MAX_STR_LEN];
+
+   if(opt->verbose)
+      printf("%d training samples, %d test samples\n",
+	    g->ntrain[g->fold], g->ntest[g->fold]);
+   
+   /* first numnz is always zero by definition */
+   CALLOCTEST(g->numnz, opt->nlambda1, sizeof(int));
+
+   /* don't start from zero, getlambda1max already computed that */
+   for(i = 1 ; i < opt->nlambda1 ; i++)
+   {
+      if(opt->verbose)
+	 printf("\nFitting with lambda1=%.20f\n", opt->lambda1path[i]);
+
+      /* return value is number of nonzero variables,
+       * including the intercept */
+      ret = cd_gmatrix(
+	    g, opt->step_func,
 	    opt->maxepochs, opt->maxiters,
 	    opt->lambda1path[i], opt->lambda2,
 	    opt->threshold, opt->verbose, opt->trunc);
- 
+
+      if(ret == CDFAILURE)
+      {
+	 printf("failed to converge after %d epochs\n", opt->maxepochs);
+	 break;
+      } 
+
+      g->numnz[i] = ret;
+      gmatrix_reset(g);
+
+      if(opt->caller == OPTIONS_CALLER_CD)
+      {
+	 snprintf(tmp, MAX_STR_LEN, "%s.%02d.%02d",
+	       opt->beta_files[0], g->fold, i);
+      }
+      else
+      {
+	 snprintf(tmp, MAX_STR_LEN, "multivar_%s.%02d.%02d.%02d",
+	       opt->beta_files[0], g->fold, threshind, i);
+      }
+
+      if(opt->unscale)
+      {
+	 unscale_beta(g->beta_orig, g->beta, g->mean, g->sd, g->p + 1);
+	 if(!writevectorf(tmp, g->beta_orig, g->p + 1))
+	    return FAILURE;
+      }
+      else if(!writevectorf(tmp, g->beta, g->p + 1))
+	 return FAILURE;
+
+      if(opt->nzmax != 0 && opt->nzmax <= ret - 1)
+      {
+	 printf("maximum number of non-zero variables \
+reached or exceeded: %d\n", opt->nzmax);
+	 i++; /* increment to correct number of models fitted successfully */
+	 break;
+      }
+   }
+
+   /* filename for number of non-zero variables */
+   if(opt->caller == OPTIONS_CALLER_CD)
+   {
+      snprintf(tmp, MAX_STR_LEN, "%s.%02d", opt->numnz_file, g->fold);
+   }
+   else
+   {
+      snprintf(tmp, MAX_STR_LEN, "multivar_%s.%02d.%02d.%2d",
+	    opt->numnz_file, g->fold, threshind, i);
+   }
+
+   /* number of non-zero variables for each successful fit and the all-zero
+    * fit, excluding intercept */
+   if(!writevectorl(tmp, g->numnz, i))
+      return FAILURE;
+
+   FREENULL(g->numnz);
+
    return SUCCESS;
 }
+
+/*
+ * Creates a vector of lambda1 penalties
+ */
+int make_lambda1path(Opt *opt, gmatrix *g, int threshind)
+{
+   int i;
+   double s;
+   char tmp[MAX_STR_LEN];
+
+   if(opt->lambda1 >= 0)
+   {
+      opt->lambda1max = opt->lambda1;
+      opt->l1minratio = 1;
+      opt->nlambda1 = 1;
+   }
+   else
+   {
+      /* create lambda1 path */
+      /* get lambda1 max */
+      opt->lambda1max = get_lambda1max_gmatrix(g,
+	    opt->inv_func, opt->step_func);
+      if(opt->verbose)
+	 printf("lambda1max: %.20f\n", opt->lambda1max);
+      opt->lambda1path[0] = opt->lambda1max;
+   }
+   
+   opt->lambda1min = opt->lambda1max * opt->l1minratio;
+   opt->lambda1path[opt->nlambda1 - 1] = opt->lambda1min;
+   s = (log2(opt->lambda1max) - log2(opt->lambda1min)) / opt->nlambda1; 
+   for(i = 1 ; i < opt->nlambda1 ; i++)
+      opt->lambda1path[i] = pow(2, log2(opt->lambda1max) - s * i);
+
+   /* Write the coefs for model with intercept only */
+   if(opt->caller == OPTIONS_CALLER_CD)
+      snprintf(tmp, MAX_STR_LEN, "%s.%02d.%02d",
+	    opt->beta_files[0], g->fold, 0);
+   else
+      snprintf(tmp, MAX_STR_LEN, "multivar_%s.%02d.%02d.%2d",
+	    opt->beta_files[0], g->fold, threshind, i);
+
+   if(opt->unscale)
+   {
+      unscale_beta(g->beta_orig, g->beta, g->mean, g->sd, g->p + 1);
+      if(!writevectorf(tmp, g->beta_orig, g->p + 1))
+	 return FAILURE;
+   }
+   else
+      if(!writevectorf(tmp, g->beta, g->p + 1))
+	 return FAILURE;
+
+   if(opt->caller == OPTIONS_CALLER_CD)
+      snprintf(tmp, MAX_STR_LEN, "%s.%02d", opt->lambda1pathfile, g->fold);
+   else
+      snprintf(tmp, MAX_STR_LEN, "%s.%02d.%02d", opt->lambda1pathfile,
+	    g->fold, threshind);
+
+   return writevectorf(tmp, opt->lambda1path, opt->nlambda1);
+}
+
