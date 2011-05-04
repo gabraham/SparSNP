@@ -1,7 +1,19 @@
 
 .PHONY: all
 
-#CC=gcc
+CC=gcc
+
+# Mac 10.6 differences:
+#
+# * linker won't accept -allow-multiple-definition, required on Linux 
+#   as a hack for xerbla clash between lapack and blas
+# * Accelerate.h headers
+MULDEF = -Wl,--allow-multiple-definition 
+UNAME := $(shell uname)
+ifeq ($(UNAME), Darwin)
+   OS = -DMACOSX
+   MULDEF =
+endif
 
 # Allow large-file seeking with fseeko
 LONG_BIT = $(shell getconf LONG_BIT)
@@ -15,7 +27,7 @@ CCFLAGS = -std=gnu99 -Wall -ggdb3 \
 	  -ffast-math \
 	  -fstrict-aliasing \
 	  -D_FILE_OFFSET_BITS=$(LONG_BIT) \
-	  -DMACOSX
+	  $(OS)
 
 targets = cd scale transpose hapgen2bin hapgen2ped \
 	  cbind split unpack univariable subsample
@@ -25,7 +37,7 @@ debug: CCFLAGS = -Wall \
    		 -ggdb3 \
 		 -std=gnu99 \
 		 -D_FILE_OFFSET_BITS=$(LONG_BIT) \
-		 -DMACOSX
+		 $(OS)
 
 debug: $(targets)
 
@@ -61,16 +73,11 @@ unpack: common.c coder.c ind.c gmatrix.c unpack.c util.c
 
 univariable: common.c coder.c ind.c gmatrix.c loss.c util.c \
    options.c cd.c svd.c matrix.c thin.c multivariable.c univariable.c
-	$(CC) $(CCFLAGS) -llapack -lblas -lm $^ $(LIBRARIES) -o univariable #\
-	#-Wl,--allow-multiple-definition # hack for xerbla clash
-				        # between lapack and blas
+	$(CC) $(CCFLAGS) -llapack -lblas -lm $^ $(LIBRARIES) -o univariable \
+	$(MULDEF)
 
 subsample: common.c util.c coder.c ind.c gmatrix.c subsample.c
 	$(CC) $(CCFLAGS) $^ $(LIBRARIES) -o subsample
-
-
-#pcor: common.c gmatrix.c loss.c util.c cd.c pcor.c
-#	$(CC) -Dintype=double $(CCFLAGS) $(LIBRARIES) $^ -o pcor
 
 clean:
 	/bin/rm -f $(targets)
