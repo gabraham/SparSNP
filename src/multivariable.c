@@ -283,7 +283,7 @@ int multivariable_newton(Opt *opt, gmatrix *g, int nums1,
    return SUCCESS;
 }
 
-int multivariable_lasso(Opt *opt, gmatrix *g, int nums1,
+/*int multivariable_lasso(Opt *opt, gmatrix *g, int nums1,
       int *pselected, int *numselected, int *rets)
 {
    int ret;
@@ -295,4 +295,5 @@ int multivariable_lasso(Opt *opt, gmatrix *g, int nums1,
 	    opt->threshold, opt->verbose, opt->trunc);
  
    return SUCCESS;
-}
+}*/
+

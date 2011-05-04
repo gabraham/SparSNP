@@ -15,7 +15,7 @@ CCFLAGS = -std=gnu99 -Wall -ggdb3 \
 	  -ffast-math \
 	  -fstrict-aliasing \
 	  -D_FILE_OFFSET_BITS=$(LONG_BIT) \
-	  #-DMACOSX
+	  -DMACOSX
 
 targets = cd scale transpose hapgen2bin hapgen2ped \
 	  cbind split unpack univariable subsample
@@ -25,7 +25,7 @@ debug: CCFLAGS = -Wall \
    		 -ggdb3 \
 		 -std=gnu99 \
 		 -D_FILE_OFFSET_BITS=$(LONG_BIT) \
-		 #-DMACOSX
+		 -DMACOSX
 
 debug: $(targets)
 
@@ -61,8 +61,8 @@ unpack: common.c coder.c ind.c gmatrix.c unpack.c util.c
 
 univariable: common.c coder.c ind.c gmatrix.c loss.c util.c \
    options.c cd.c svd.c matrix.c thin.c multivariable.c univariable.c
-	$(CC) $(CCFLAGS) -llapack -lblas -lm $^ $(LIBRARIES) -o univariable \
-	-Wl,--allow-multiple-definition # hack for xerbla clash
+	$(CC) $(CCFLAGS) -llapack -lblas -lm $^ $(LIBRARIES) -o univariable #\
+	#-Wl,--allow-multiple-definition # hack for xerbla clash
 				        # between lapack and blas
 
 subsample: common.c util.c coder.c ind.c gmatrix.c subsample.c

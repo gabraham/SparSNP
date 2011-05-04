@@ -199,9 +199,9 @@ int run_train(Opt *opt, gmatrix *g)
 	    if(opt->multivar == OPTIONS_MULTIVAR_NEWTON)
 	       multivariable_newton(opt, g, nums1,
 		     pselected + i, numselected + i, rets + i);
-	    else
+	    /*else
 	       multivariable_lasso(opt, g, nums1,
-		     pselected + i, numselected + i, rets + i);
+		     pselected + i, numselected + i, rets + i);*/
 	 }
 
 	 /* estimated coefficients */
