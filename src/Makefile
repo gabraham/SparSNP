@@ -72,7 +72,8 @@ unpack: common.c coder.c ind.c gmatrix.c unpack.c util.c
 	$(CC) $(CCFLAGS) $^ $(LIBRARIES) -o unpack
 
 univariable: common.c coder.c ind.c gmatrix.c loss.c util.c \
-   options.c cd.c svd.c matrix.c thin.c multivariable.c univariable.c
+	     options.c cd.c svd.c matrix.c thin.c \
+	     multivariable.c univariable.c
 	$(CC) $(CCFLAGS) -llapack -lblas -lm $^ $(LIBRARIES) -o univariable \
 	$(MULDEF)
 

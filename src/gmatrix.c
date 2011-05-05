@@ -82,15 +82,6 @@ int gmatrix_init(gmatrix *g, char *filename, int n, int p,
    g->beta_orig = NULL;
    g->numnz = NULL;
 
-   /*g->subsets = NULL;
-   g->nsubsets = n;
-   g->subset_file = subset_file;*/
-
-   /*printf("subset_file: %s\n", subset_file);*/
-
-   /*if(subset_file && !gmatrix_load_subsets(g))
-      return FAILURE;*/
-
    CALLOCTEST(g->beta_orig, p1, sizeof(double));
 
    CALLOCTEST(g->ncurr_j, p1, sizeof(int));
@@ -196,7 +187,6 @@ void gmatrix_free(gmatrix *g)
    FREENULL(g->ytmp);
    FREENULL(g->x);
    FREENULL(g->xthinned);
-   /*FREENULL(g->good);*/
    FREENULL(g->ignore);
    FREENULL(g->tmp);
    FREENULL(g->intercept);
@@ -219,8 +209,6 @@ void gmatrix_free(gmatrix *g)
    FREENULL(g->numnz);
    FREENULL(g->ncurr_j);
    FREENULL(g->ncurr_recip_j);
-   /*FREENULL(g->subsets);
-   FREENULL(g->subset_file);*/
 
    if(g->ca)
    {
@@ -352,8 +340,6 @@ int gmatrix_disk_nextcol(gmatrix *g, sample *s, int j, int na_action)
    int f = g->fold * n;
    int ngood = 0;
    dtype d;
-   /*double *x1 = NULL,
-	 *x2 = NULL;*/
 
    if(j == 0)
    {
@@ -368,10 +354,6 @@ int gmatrix_disk_nextcol(gmatrix *g, sample *s, int j, int na_action)
 
       return SUCCESS;
    }
-
-   /* column is in cache */
-   /*if((s->x = cache_get(g->ca, j)))
-      return SUCCESS;*/
 
    /* Get data from disk and unpack, skip y. */
    FSEEKOTEST(g->file, j * g->nseek, SEEK_SET);
@@ -485,35 +467,6 @@ inputs in gmatrix_disk_nextcol\n");
       }
    }
 
-   /*cache_put(g->ca, j, g->xtmp, g->ncurr);*/
-
-   /*if(get_x2)
-   {
-      for(i = s->n - 1 ; i >= 0 ; --i)
-	 s->x2[i] = s->x[i] * s->x[i];
-   }*/
-
-   /* use a subset of the sample */
-   /*if(g->subset_file)
-   {
-      k = 0;
-      MALLOCTEST(x1, sizeof(double) * g->nsubsets);
-      MALLOCTEST(x2, sizeof(double) * g->nsubsets);
-      for(i = s->n - 1 ; i >= 0 ; --i)
-      {
-	 x1[k] = g->xtmp[i];
-	 x2[k++] = g->ytmp[i];
-      }
-      s->x = x1;
-      s->y = x2;
-      FREENULL(x1);
-      FREENULL(x2);
-   }
-   else
-   {
-      s->x = g->xtmp;
-      s->y = g->ytmp;
-   }*/
    s->x = g->xtmp;
    s->y = g->ytmp;
 
@@ -781,20 +734,4 @@ int gmatrix_init_lp(gmatrix *g)
    }
    return SUCCESS;
 }
-
-/*int gmatrix_load_subsets(gmatrix *g)
-{
-   int i;
-
-   MALLOCTEST(g->subsets, sizeof(int) * g->n);
-   if(!readvectorl(g->subset_file, g->subsets, g->n))
-      return FAILURE;
-
-   for(i = 0 ; i < g->n ; i++)
-      g->nsubsets += (g->subsets != 0);
-
-   printf("nsubsets: %d\n", g->nsubsets);
-
-   return SUCCESS;
-}*/
 
