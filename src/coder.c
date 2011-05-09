@@ -10,7 +10,7 @@
  * with zeros if the number of bytes is not a multiple of 4. This function
  * does not check for alignment!
  * 
- * n: length of in
+ * n: length of "in" buffer
  *
  */
 void encode(unsigned char *out, const unsigned char *in, const int n)
@@ -28,7 +28,7 @@ void encode(unsigned char *out, const unsigned char *in, const int n)
 }
 
 /*
- * n: length of in
+ * n: length of "in" buffer
  *
  * out must be a pointer of length sizeof(char) * n * PACK_DENSITY
  */
@@ -43,81 +43,47 @@ void decode(unsigned char *out, const unsigned char *in, const int n)
       k = PACK_DENSITY * i;
       out[k++] = (tmp & MASK0); 
       out[k++] = (tmp & MASK1) >> 2; 
-      out[k++] = (tmp & MASK2) >> 4;; 
+      out[k++] = (tmp & MASK2) >> 4; 
       out[k]   = (tmp & MASK3) >> 6; 
    }
 }
 
-/* plink used the convention:
- * 
- * AA => 0 => 00
- * AB => 1 => 01
- * BB => 2 => 11 
- * NA => 3 => 10
+/* 
+ *                   plink               sparsnp
+ * homozyous:        00 => numeric 0     00 => numeric 0
+ * heterozygous:     10 => numeric 2     01 => numeric 1
+ * homozygous other: 11 => numeric 3     10 => numeric 2
+ * missing:          01 => numeric 1     11 => numeric 3
  *
- * Note that 11 isn't numerically equal to 2 and 3 isn't numerically 10, this
- * requires special unpacking --- read the bit-pair as '3' and interpret them
- * it as '2'.
+ * Note that this is reverse order to what the table in
+ * http://pngu.mgh.harvard.edu/~purcell/plink/binary.shtml says, since 
+ * the bytes in plink are read backwards HGFEDCBA, not GHEFCDAB
  *
  */
 void decode_plink(unsigned char *out, const unsigned char *in, const int n)
 {
-   int i, j;
-   unsigned char val, tmp;
+   int i, k;
+   unsigned char tmp;
 
-   /* 3 is 11 in binary, we need a 2 bit mask for each of the 4 positions */
-   const unsigned char masks[PACK_DENSITY] = {
-      3 << 2 * 0,
-      3 << 2 * 1,
-      3 << 2 * 2,
-      3 << 2 * 3
-   };
-
-   for(i = 0 ; i < n ; i++)
+   for(i = 0 ; i < n ; ++i)
    {
       tmp = in[i];
-      for(j = 0; j < PACK_DENSITY ; j++)
-      {
-	 val = (in[i] & masks[j]) >> (2 * j);
-	 if(val == 3)
-	    out[PACK_DENSITY * i + j] = 2; 
-	 else
-	    out[PACK_DENSITY * i + j] = val; 
-	 tmp -= val;
-      }
+      k = PACK_DENSITY * i;
+      
+      out[k] = (tmp & MASK0); 
+      out[k] = (out[k] == 1) ? 3 : ((out[k] == 3) ? 2 : (out[k] == 2 ? 1 : 0));
+      k++;
+
+      out[k] = (tmp & MASK1) >> 2; 
+      out[k] = (out[k] == 1) ? 3 : ((out[k] == 3) ? 2 : (out[k] == 2 ? 1 : 0));
+      k++;
+
+      out[k] = (tmp & MASK2) >> 4; 
+      out[k] = (out[k] == 1) ? 3 : ((out[k] == 3) ? 2 : (out[k] == 2 ? 1 : 0));
+      k++;
+
+      out[k] = (tmp & MASK3) >> 6; 
+      out[k] = (out[k] == 1) ? 3 : ((out[k] == 3) ? 2 : (out[k] == 2 ? 1 : 0));
    }
 }
-
-/* int main(void)
-{
-   int i;
-   const unsigned char in[12] = {
-      0, 1, 2, 3,
-      1, 0, 2, 0,
-      1, 3, 0, 1
-   };
-   unsigned char out[3] = {0, 0, 0};
-   unsigned char out2[12] = {
-      0, 0, 0, 0,
-      0, 0, 0, 0,
-      0, 0, 0, 0
-   };
-
-   encode(out, in, 12);
-
-   for(i = 0 ; i < 3 ; i++)
-      printf("encode: %d\n", out[i]);
-   printf("\n");
-
-   decode(out2, out, 3);
-
-   for(i = 0 ; i < 12 ; i++)
-      printf("decode: %d (%d)\n", out2[i], in[i]);
-   printf("\n");
-
-
-   
-   return EXIT_SUCCESS;
-}
-*/
 

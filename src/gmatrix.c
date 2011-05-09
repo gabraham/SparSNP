@@ -21,7 +21,8 @@ int sample_init(sample *s)
 int gmatrix_init(gmatrix *g, char *filename, int n, int p,
       char *scalefile, short yformat, int model,
       short encoded, short binformat, char *folds_ind_file,
-      short mode, loss_pt loss_pt_func, char *subset_file)
+      short mode, loss_pt loss_pt_func, char *subset_file, 
+      char *famfilename)
 {
    int i, j, p1;
 
@@ -82,6 +83,8 @@ int gmatrix_init(gmatrix *g, char *filename, int n, int p,
    g->beta_orig = NULL;
    g->numnz = NULL;
 
+   g->famfilename = famfilename;
+
    CALLOCTEST(g->beta_orig, p1, sizeof(double));
 
    CALLOCTEST(g->ncurr_j, p1, sizeof(int));
@@ -108,16 +111,27 @@ int gmatrix_init(gmatrix *g, char *filename, int n, int p,
    if(encoded)
       MALLOCTEST(g->encbuf, sizeof(unsigned char) * g->nencb);
 
-   if(g->binformat == BINFORMAT_PLINK)
-      g->decode = &decode_plink;
-
    g->nextcol = gmatrix_disk_nextcol;
-
    if(!gmatrix_reset(g))
       return FAILURE;
 
-   if(!gmatrix_disk_read_y(g))
-      return FAILURE;
+   if(g->binformat == BINFORMAT_PLINK)
+   {
+      printf("FAM file: %s\n", g->famfilename);
+     /* printf("BINFORMAT: plink\n");*/
+      g->offset = 3 - g->nseek;
+      g->decode = &decode_plink;
+      if(!gmatrix_fam_read_y(g))
+	 return FAILURE;
+   }
+   else
+   {
+      /*printf("BINFORMAT: bin\n");*/
+      g->offset = 0;
+      g->decode = &decode;
+      if(!gmatrix_disk_read_y(g))
+	 return FAILURE;
+   }
 
    CALLOCTEST(g->beta, p1, sizeof(double));
    CALLOCTEST(g->active, p1, sizeof(int));
@@ -131,7 +145,7 @@ int gmatrix_init(gmatrix *g, char *filename, int n, int p,
 
    gmatrix_set_ncurr(g);
    
-   if(!gmatrix_split_y(g))
+   if(g->y_orig && !gmatrix_split_y(g))
       return FAILURE;
 
    if(!gmatrix_init_lp(g))
@@ -340,6 +354,7 @@ int gmatrix_disk_nextcol(gmatrix *g, sample *s, int j, int na_action)
    int f = g->fold * n;
    int ngood = 0;
    dtype d;
+   off_t seek;
 
    if(j == 0)
    {
@@ -355,8 +370,13 @@ int gmatrix_disk_nextcol(gmatrix *g, sample *s, int j, int na_action)
       return SUCCESS;
    }
 
+   /* how much to seek by */
+   seek = j * g->nseek + g->offset;
+
+  /* printf("seek: %llu\n", (unsigned long long)seek);*/
+
    /* Get data from disk and unpack, skip y. */
-   FSEEKOTEST(g->file, j * g->nseek, SEEK_SET);
+   FSEEKOTEST(g->file, seek, SEEK_SET);
    FREADTEST(g->encbuf, sizeof(dtype), g->nencb, g->file);
    g->decode(g->tmp, g->encbuf, g->nencb);
 
@@ -469,6 +489,51 @@ inputs in gmatrix_disk_nextcol\n");
 
    s->x = g->xtmp;
    s->y = g->ytmp;
+
+   return SUCCESS;
+}
+
+/* 
+ * Reads a plink FAM file and gets the phenotype from the 6th column, using
+ * any sort of whitespace separator.
+ *
+ * Should be able to handle both and 0/1, 1/2 labels
+ *
+ * TODO: missing phenotype -9
+ */
+int gmatrix_fam_read_y(gmatrix *g)
+{
+   int i = 0;
+   FILE* famfile = NULL;
+   char *famid = NULL,
+        *individ = NULL,
+	*patid = NULL,
+	*matid = NULL;
+   int sex = 0, pheno = 0;
+
+   CALLOCTEST(g->y_orig, g->n, sizeof(double));
+
+   MALLOCTEST(famid, sizeof(char) * 20);
+   MALLOCTEST(individ, sizeof(char) * 20);
+   MALLOCTEST(patid, sizeof(char) * 20);
+   MALLOCTEST(matid, sizeof(char) * 20);
+
+   FOPENTEST(famfile, g->famfilename, "r");
+
+   while(i < g->n &&
+	 EOF != fscanf(famfile, "%s %s %s %s %d %d",
+	    famid, individ, patid, matid, &sex, &pheno) && i < g->n)
+   {
+      g->y_orig[i] = pheno;
+      i++;
+   }
+
+
+   fclose(famfile);
+   FREENULL(famid);
+   FREENULL(individ);
+   FREENULL(patid);
+   FREENULL(matid);
 
    return SUCCESS;
 }
@@ -679,7 +744,7 @@ int gmatrix_set_fold(gmatrix *g, int fold)
       return FAILURE;
    if(g->scalefile && !gmatrix_read_scaling(g, g->scalefile))
       return FAILURE;
-   return gmatrix_split_y(g);
+   return (g->y_orig) && gmatrix_split_y(g);
 }
 
 /* zero the lp and adjust the lp-functions */

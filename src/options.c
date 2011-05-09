@@ -113,6 +113,7 @@ int opt_defaults(Opt *opt, short caller)
    opt->do_thinning = TRUE;
 
    opt->multivar = OPTIONS_MULTIVAR_NEWTON;
+   opt->famfilename = NULL;
 
 
    return SUCCESS;
@@ -318,6 +319,11 @@ int opt_parse(int argc, char* argv[], Opt* opt)
       {
 	 i++;
 	 opt->subset_file = argv[i];
+      }
+      else if(strcmp2(argv[i], "-fam"))
+      {
+	 i++;
+	 opt->famfilename = argv[i];
       }
    }
 

@@ -10,6 +10,7 @@
 #define NUM_X_LEVELS 4
 #define X_LEVELS {0, 1, 2, 3}
 #define X_LEVEL_NA 3
+#define PLINK_X_LEVEL_NA 2
 
 #define YFORMAT01 1
 #define YFORMAT11 2
@@ -111,13 +112,16 @@ typedef struct gmatrix {
    char *subset_file;
    int *subsets;
    int nsubsets;
+   int offset;
+   char *famfilename;
 } gmatrix;
 
 int sample_init(sample *);
 int gmatrix_init(gmatrix *g, char *filename, int n, int p,
       char *scalefile, short yformat, int model,
       short encoded, short binformat, char *folds_ind_file,
-      short mode, loss_pt, char *subsample_file);
+      short mode, loss_pt, char *subsample_file,
+      char *famfilename);
 int gmatrix_reset(gmatrix *);
 void gmatrix_free(gmatrix *);
 int gmatrix_disk_nextcol(gmatrix *g, sample *sm, int skip, int na_action);
@@ -135,6 +139,7 @@ void gmatrix_zero_model(gmatrix *g);
 int gmatrix_init_lp(gmatrix *g);
 int gmatrix_split_y(gmatrix *g);
 int gmatrix_disk_read_y(gmatrix *g);
+int gmatrix_fam_read_y(gmatrix *g);
 int gmatrix_read_matrix(gmatrix *g, int *ind, int m);
 
 int cache_init(cache *ht, int nkeys);

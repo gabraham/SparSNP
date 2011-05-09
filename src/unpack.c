@@ -3,24 +3,35 @@
 
 int unpack(gmatrix *g, char *filename_out)
 {
-   int i, j, p1 = g->p + 1;
+   int i, j, p1;
    sample sm;
-   FILE *out;
+   FILE *out = NULL;
    char *tmp = NULL;
+   int start;
 
    if(!sample_init(&sm))
       return FAILURE;
 
    MALLOCTEST(tmp, sizeof(char) * g->n);
-
    FOPENTEST(out, filename_out, "wb");
-   /*FWRITETEST(g->y, sizeof(double), g->n, out);*/
-   for(i = g->n - 1; i >= 0 ; --i)
-      tmp[i] = (char)g->y[i];
-   FWRITETEST(tmp, sizeof(char), g->n, out);
+
+   if(g->binformat == BINFORMAT_BIN)
+   {
+      /*FWRITETEST(g->y, sizeof(double), g->n, out);*/
+      for(i = g->n - 1; i >= 0 ; --i)
+         tmp[i] = (char)g->y[i];
+      FWRITETEST(tmp, sizeof(char), g->n, out);
+      start = 1;
+      p1 = g->p + 1;
+   }
+   else
+   {
+      start = 1;
+      p1 = g->p + 1;
+   }
 
    /* ignore intercept */
-   for(j = 1 ; j < p1 ; j++)
+   for(j = start ; j < p1 ; j++)
    {
       printf("%d of %d", j, p1);
       g->nextcol(g, &sm, j, NA_ACTION_ZERO);
@@ -70,6 +81,10 @@ int main(int argc, char *argv[])
 	 i++;
 	 p = (int)atof(argv[i]);
       }
+      else if(strcmp2(argv[i], "-plink"))
+      {
+	 binformat = BINFORMAT_PLINK;
+      }
    }
 
    if(!filename_bin || !filename_out || n == 0 || p == 0)
@@ -81,7 +96,7 @@ int main(int argc, char *argv[])
 
    if(!gmatrix_init(&g, filename_bin, n, p, NULL,
 	 YFORMAT01, MODEL_LINEAR, TRUE, binformat,
-	 NULL, MODE_TRAIN, NULL, NULL))
+	 NULL, MODE_TRAIN, NULL, NULL, NULL))
       return EXIT_FAILURE;
 
    if(!unpack(&g, filename_out))
