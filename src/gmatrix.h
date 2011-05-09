@@ -148,4 +148,5 @@ int cache_put(cache *ht, int key, double *value, int n);
 double* cache_get(cache *ht, int key);
 /*static inline int hash(int key);*/
 int gmatrix_load_subsets(gmatrix *g);
+int gmatrix_plink_check_pheno(gmatrix *g);
 

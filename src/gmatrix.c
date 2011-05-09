@@ -121,8 +121,12 @@ int gmatrix_init(gmatrix *g, char *filename, int n, int p,
      /* printf("BINFORMAT: plink\n");*/
       g->offset = 3 - g->nseek;
       g->decode = &decode_plink;
-      if(!gmatrix_fam_read_y(g))
-	 return FAILURE;
+      if(g->famfilename)
+      {
+	 if(!gmatrix_fam_read_y(g))
+	    return FAILURE;
+	 gmatrix_plink_check_pheno(g);
+      }
    }
    else
    {
@@ -534,6 +538,33 @@ int gmatrix_fam_read_y(gmatrix *g)
    FREENULL(individ);
    FREENULL(patid);
    FREENULL(matid);
+
+   return SUCCESS;
+}
+
+/*
+ * plink phenotypes can be 0/1 and 1/2, so check for 1/2 and convert as
+ * necessary
+ */
+int gmatrix_plink_check_pheno(gmatrix *g)
+{
+   int i = 0;
+   int twofound = FALSE;
+
+   for(i = 0 ; i < g->n ; i++)
+      if((twofound = (g->y_orig[i] == 2)))
+	 break;
+
+   if(twofound)
+   {
+      for(i = 0 ; i < g->n ; i++)
+      {
+	 if(g->yformat == YFORMAT01) 
+	    g->y_orig[i] -= 1;
+	 else 
+	    g->y_orig[i] = 2.0 * g->y_orig[i] - 3.0;
+      }
+   }
 
    return SUCCESS;
 }

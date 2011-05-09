@@ -366,6 +366,13 @@ onl   y using the first one\n");
       }
    }
 
+   if(opt->binformat == BINFORMAT_PLINK && !opt->famfilename)
+   {
+      printf("Error: you must provide a FAM filename (-fam) when using plink BED input\n");
+      return FAILURE;
+   }
+	 
+
    if(!opt->encoded)
    {
       printf("non-encoded (switch -notencoded) data not currently \
