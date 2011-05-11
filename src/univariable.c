@@ -265,7 +265,8 @@ int do_train(gmatrix *g, Opt *opt, char tmp[])
    if(!gmatrix_init(g, opt->filename, opt->n, opt->p,
 	    NULL, opt->yformat, opt->model, opt->encoded,
 	    opt->binformat, opt->folds_ind_file, opt->mode,
-	    opt->loss_pt_func, opt->subset_file))
+	    opt->loss_pt_func, opt->subset_file,
+	    opt->famfilename))
       return FAILURE;
 
    g->nextcol = gmatrix_mem_nextcol;
@@ -395,7 +396,8 @@ int do_predict(gmatrix *g, Opt *opt, char *tmp)
    if(!gmatrix_init(g, opt->filename, opt->n, opt->p,
 	    NULL, opt->yformat, opt->model, opt->encoded,
 	    opt->binformat, opt->folds_ind_file, opt->mode,
-	    opt->loss_pt_func, opt->subset_file))
+	    opt->loss_pt_func, opt->subset_file,
+	    opt->famfilename))
       return FAILURE;
 
    g->nextcol = gmatrix_mem_nextcol;

@@ -21,7 +21,8 @@ int sample_init(sample *s)
 int gmatrix_init(gmatrix *g, char *filename, int n, int p,
       char *scalefile, short yformat, int model,
       short encoded, short binformat, char *folds_ind_file,
-      short mode, loss_pt loss_pt_func, char *subset_file)
+      short mode, loss_pt loss_pt_func, char *subset_file, 
+      char *famfilename)
 {
    int i, j, p1;
 
@@ -82,14 +83,7 @@ int gmatrix_init(gmatrix *g, char *filename, int n, int p,
    g->beta_orig = NULL;
    g->numnz = NULL;
 
-   /*g->subsets = NULL;
-   g->nsubsets = n;
-   g->subset_file = subset_file;*/
-
-   /*printf("subset_file: %s\n", subset_file);*/
-
-   /*if(subset_file && !gmatrix_load_subsets(g))
-      return FAILURE;*/
+   g->famfilename = famfilename;
 
    CALLOCTEST(g->beta_orig, p1, sizeof(double));
 
@@ -117,16 +111,31 @@ int gmatrix_init(gmatrix *g, char *filename, int n, int p,
    if(encoded)
       MALLOCTEST(g->encbuf, sizeof(unsigned char) * g->nencb);
 
-   if(g->binformat == BINFORMAT_PLINK)
-      g->decode = &decode_plink;
-
    g->nextcol = gmatrix_disk_nextcol;
-
    if(!gmatrix_reset(g))
       return FAILURE;
 
-   if(!gmatrix_disk_read_y(g))
-      return FAILURE;
+   if(g->binformat == BINFORMAT_PLINK)
+   {
+      printf("FAM file: %s\n", g->famfilename);
+     /* printf("BINFORMAT: plink\n");*/
+      g->offset = 3 - g->nseek;
+      g->decode = &decode_plink;
+      if(g->famfilename)
+      {
+	 if(!gmatrix_fam_read_y(g))
+	    return FAILURE;
+	 gmatrix_plink_check_pheno(g);
+      }
+   }
+   else
+   {
+      /*printf("BINFORMAT: bin\n");*/
+      g->offset = 0;
+      g->decode = &decode;
+      if(!gmatrix_disk_read_y(g))
+	 return FAILURE;
+   }
 
    CALLOCTEST(g->beta, p1, sizeof(double));
    CALLOCTEST(g->active, p1, sizeof(int));
@@ -140,7 +149,7 @@ int gmatrix_init(gmatrix *g, char *filename, int n, int p,
 
    gmatrix_set_ncurr(g);
    
-   if(!gmatrix_split_y(g))
+   if(g->y_orig && !gmatrix_split_y(g))
       return FAILURE;
 
    if(!gmatrix_init_lp(g))
@@ -196,7 +205,6 @@ void gmatrix_free(gmatrix *g)
    FREENULL(g->ytmp);
    FREENULL(g->x);
    FREENULL(g->xthinned);
-   /*FREENULL(g->good);*/
    FREENULL(g->ignore);
    FREENULL(g->tmp);
    FREENULL(g->intercept);
@@ -219,8 +227,6 @@ void gmatrix_free(gmatrix *g)
    FREENULL(g->numnz);
    FREENULL(g->ncurr_j);
    FREENULL(g->ncurr_recip_j);
-   /*FREENULL(g->subsets);
-   FREENULL(g->subset_file);*/
 
    if(g->ca)
    {
@@ -352,8 +358,7 @@ int gmatrix_disk_nextcol(gmatrix *g, sample *s, int j, int na_action)
    int f = g->fold * n;
    int ngood = 0;
    dtype d;
-   /*double *x1 = NULL,
-	 *x2 = NULL;*/
+   off_t seek;
 
    if(j == 0)
    {
@@ -369,12 +374,13 @@ int gmatrix_disk_nextcol(gmatrix *g, sample *s, int j, int na_action)
       return SUCCESS;
    }
 
-   /* column is in cache */
-   /*if((s->x = cache_get(g->ca, j)))
-      return SUCCESS;*/
+   /* how much to seek by */
+   seek = j * g->nseek + g->offset;
+
+  /* printf("seek: %llu\n", (unsigned long long)seek);*/
 
    /* Get data from disk and unpack, skip y. */
-   FSEEKOTEST(g->file, j * g->nseek, SEEK_SET);
+   FSEEKOTEST(g->file, seek, SEEK_SET);
    FREADTEST(g->encbuf, sizeof(dtype), g->nencb, g->file);
    g->decode(g->tmp, g->encbuf, g->nencb);
 
@@ -485,37 +491,80 @@ inputs in gmatrix_disk_nextcol\n");
       }
    }
 
-   /*cache_put(g->ca, j, g->xtmp, g->ncurr);*/
-
-   /*if(get_x2)
-   {
-      for(i = s->n - 1 ; i >= 0 ; --i)
-	 s->x2[i] = s->x[i] * s->x[i];
-   }*/
-
-   /* use a subset of the sample */
-   /*if(g->subset_file)
-   {
-      k = 0;
-      MALLOCTEST(x1, sizeof(double) * g->nsubsets);
-      MALLOCTEST(x2, sizeof(double) * g->nsubsets);
-      for(i = s->n - 1 ; i >= 0 ; --i)
-      {
-	 x1[k] = g->xtmp[i];
-	 x2[k++] = g->ytmp[i];
-      }
-      s->x = x1;
-      s->y = x2;
-      FREENULL(x1);
-      FREENULL(x2);
-   }
-   else
-   {
-      s->x = g->xtmp;
-      s->y = g->ytmp;
-   }*/
    s->x = g->xtmp;
    s->y = g->ytmp;
+
+   return SUCCESS;
+}
+
+/* 
+ * Reads a plink FAM file and gets the phenotype from the 6th column, using
+ * any sort of whitespace separator.
+ *
+ * Should be able to handle both and 0/1, 1/2 labels
+ *
+ * TODO: missing phenotype -9
+ */
+int gmatrix_fam_read_y(gmatrix *g)
+{
+   int i = 0;
+   FILE* famfile = NULL;
+   char *famid = NULL,
+        *individ = NULL,
+	*patid = NULL,
+	*matid = NULL;
+   int sex = 0, pheno = 0;
+
+   CALLOCTEST(g->y_orig, g->n, sizeof(double));
+
+   MALLOCTEST(famid, sizeof(char) * 20);
+   MALLOCTEST(individ, sizeof(char) * 20);
+   MALLOCTEST(patid, sizeof(char) * 20);
+   MALLOCTEST(matid, sizeof(char) * 20);
+
+   FOPENTEST(famfile, g->famfilename, "r");
+
+   while(i < g->n &&
+	 EOF != fscanf(famfile, "%s %s %s %s %d %d",
+	    famid, individ, patid, matid, &sex, &pheno) && i < g->n)
+   {
+      g->y_orig[i] = pheno;
+      i++;
+   }
+
+
+   fclose(famfile);
+   FREENULL(famid);
+   FREENULL(individ);
+   FREENULL(patid);
+   FREENULL(matid);
+
+   return SUCCESS;
+}
+
+/*
+ * plink phenotypes can be 0/1 and 1/2, so check for 1/2 and convert as
+ * necessary
+ */
+int gmatrix_plink_check_pheno(gmatrix *g)
+{
+   int i = 0;
+   int twofound = FALSE;
+
+   for(i = 0 ; i < g->n ; i++)
+      if((twofound = (g->y_orig[i] == 2)))
+	 break;
+
+   if(twofound)
+   {
+      for(i = 0 ; i < g->n ; i++)
+      {
+	 if(g->yformat == YFORMAT01) 
+	    g->y_orig[i] -= 1;
+	 else 
+	    g->y_orig[i] = 2.0 * g->y_orig[i] - 3.0;
+      }
+   }
 
    return SUCCESS;
 }
@@ -726,7 +775,7 @@ int gmatrix_set_fold(gmatrix *g, int fold)
       return FAILURE;
    if(g->scalefile && !gmatrix_read_scaling(g, g->scalefile))
       return FAILURE;
-   return gmatrix_split_y(g);
+   return (g->y_orig) && gmatrix_split_y(g);
 }
 
 /* zero the lp and adjust the lp-functions */
@@ -781,20 +830,4 @@ int gmatrix_init_lp(gmatrix *g)
    }
    return SUCCESS;
 }
-
-/*int gmatrix_load_subsets(gmatrix *g)
-{
-   int i;
-
-   MALLOCTEST(g->subsets, sizeof(int) * g->n);
-   if(!readvectorl(g->subset_file, g->subsets, g->n))
-      return FAILURE;
-
-   for(i = 0 ; i < g->n ; i++)
-      g->nsubsets += (g->subsets != 0);
-
-   printf("nsubsets: %d\n", g->nsubsets);
-
-   return SUCCESS;
-}*/
 

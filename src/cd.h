@@ -78,6 +78,7 @@ typedef struct Opt {
    int do_lasso_filter;
    int multivar;
    char *subset_file;
+   char *famfilename;
 } Opt;
 
 int cd_gmatrix(gmatrix *g,

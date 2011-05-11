@@ -75,7 +75,7 @@ int opt_defaults(Opt *opt, short caller)
    strcpy(opt->beta_files[0], beta_default);
    opt->n_beta_files = 1;
 
-   opt->nzthresh = 25;
+   opt->nzthresh = 21;
    MALLOCTEST(opt->zthresh, sizeof(double) * opt->nzthresh);
 
    opt->zthresh[0] = 30.20559;  /* 1e-200 */
@@ -99,10 +99,10 @@ int opt_defaults(Opt *opt, short caller)
    opt->zthresh[18] = 3.570974; /* 1e-4  */
    opt->zthresh[19] = 3.417300; /* 1e-4  */
    opt->zthresh[20] = 3.257323; /* 1e-4  */
-   opt->zthresh[21] = 3.090232; /* 1e-3  */
-   opt->zthresh[22] = 2.326348; /* 1e-2  */
-   opt->zthresh[23] = 1.281552; /* 1e-1  */
-   opt->zthresh[24] = 0;
+   /*opt->zthresh[21] = 3.090232;*/ /* 1e-3  */
+   /*opt->zthresh[22] = 2.326348;*/ /* 1e-2  */
+   /*opt->zthresh[23] = 1.281552;*/ /* 1e-1  */
+   /*opt->zthresh[24] = 0; */
 
    /*opt->lambda2_univar = 1e-3;*/
    opt->lambda2_univar = 0;
@@ -113,6 +113,7 @@ int opt_defaults(Opt *opt, short caller)
    opt->do_thinning = TRUE;
 
    opt->multivar = OPTIONS_MULTIVAR_NEWTON;
+   opt->famfilename = NULL;
 
 
    return SUCCESS;
@@ -319,6 +320,11 @@ int opt_parse(int argc, char* argv[], Opt* opt)
 	 i++;
 	 opt->subset_file = argv[i];
       }
+      else if(strcmp2(argv[i], "-fam"))
+      {
+	 i++;
+	 opt->famfilename = argv[i];
+      }
    }
 
    if(opt->caller == OPTIONS_CALLER_CD) /* coordinate descent */
@@ -359,6 +365,13 @@ onl   y using the first one\n");
                only using the first one\n");
       }
    }
+
+   if(opt->binformat == BINFORMAT_PLINK && !opt->famfilename)
+   {
+      printf("Error: you must provide a FAM filename (-fam) when using plink BED input\n");
+      return FAILURE;
+   }
+	 
 
    if(!opt->encoded)
    {
