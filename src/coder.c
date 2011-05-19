@@ -79,7 +79,7 @@ void decode_plink(unsigned char *out, const unsigned char *in, const int n)
       tmp = in[i];
       k = PACK_DENSITY * i;
       
-      /* geno is interpreted as a char, a1 and a2 are bits for allele 1 and
+      /* geno is interpreted as a char, however a1 and a2 are bits for allele 1 and
        * allele 2. The final genotype is the sum of the alleles, except for 01
        * which denotes missing.
        */
