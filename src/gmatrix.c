@@ -6,14 +6,11 @@
 #include "ind.h"
 #include "util.h"
 
-static inline int hash(int key);
-
 int sample_init(sample *s)
 {
    s->n = 0;
    s->x = NULL;
    s->y = NULL;
-   s->cached = FALSE;
    s->intercept = FALSE;
    return SUCCESS;
 }
@@ -90,12 +87,6 @@ int gmatrix_init(gmatrix *g, char *filename, int n, int p,
    CALLOCTEST(g->ncurr_j, p1, sizeof(int));
    CALLOCTEST(g->ncurr_recip_j, p1, sizeof(double));
    
-   MALLOCTEST(g->ca, sizeof(cache));
-   if(!cache_init(g->ca, p1)) /* +1 not for intercept, which isn't
-				       stored in cache, but we need to maintain
-				       indexing consistency */
-      return FAILURE;
-
    if(filename)
       FOPENTEST(g->file, filename, "rb");
 
@@ -117,6 +108,7 @@ int gmatrix_init(gmatrix *g, char *filename, int n, int p,
 
    if(g->binformat == BINFORMAT_PLINK)
    {
+      printf("Using PLINK binary format\n");
       printf("FAM file: %s\n", g->famfilename);
      /* printf("BINFORMAT: plink\n");*/
       g->offset = 3 - g->nseek;
@@ -125,7 +117,8 @@ int gmatrix_init(gmatrix *g, char *filename, int n, int p,
       {
 	 if(!gmatrix_fam_read_y(g))
 	    return FAILURE;
-	 gmatrix_plink_check_pheno(g);
+	 /*if(g->model != MODEL_LINEAR)*/
+	    gmatrix_plink_check_pheno(g);
       }
    }
    else
@@ -227,14 +220,6 @@ void gmatrix_free(gmatrix *g)
    FREENULL(g->numnz);
    FREENULL(g->ncurr_j);
    FREENULL(g->ncurr_recip_j);
-
-   if(g->ca)
-   {
-      cache_free(g->ca);
-      free(g->ca);
-   }
-   g->ca = NULL;
-
 }
 
 /* y_orig is the original vector of labels/responses, it 
@@ -654,107 +639,6 @@ void count_fold_samples(int *ntrain, int *ntest,
    }
 }
 
-/* Hashtable as cache. Each variable has an associated weight,
- * i.e. the number of requests for it, and putting a variable
- * only works if it has higher weight than the variable in
- * the same bucket (if they both hash to the same bucket).*/
-int cache_init(cache *ca, int nkeys)
-{
-   int i;
-   ca->nkeys = nkeys;
-   ca->size = HASH_SIZE;
-   ca->active = 0;
-
-   MALLOCTEST(ca->buckets, sizeof(bucket) * ca->size);
-   CALLOCTEST(ca->weights, nkeys, sizeof(ca->weights));
-   CALLOCTEST(ca->keys, nkeys, sizeof(ca->keys));
-
-   for(i = 0 ; i < ca->size ; i++)
-   {
-      ca->buckets[i].active = FALSE;
-      ca->buckets[i].key = 0.0;
-      ca->buckets[i].n = 0;
-      ca->buckets[i].value = NULL;
-   }
-
-   return SUCCESS;
-}
-
-void cache_free(cache *ca)
-{
-   int i;
-
-   for(i = 0 ; i < ca->size ; i++)
-      FREENULL(ca->buckets[i].value);
-
-   FREENULL(ca->buckets);
-   FREENULL(ca->weights);
-   FREENULL(ca->keys);
-   ca->active = 0;
-}
-
-int cache_put(cache *ca, int key, double *value, int n)
-{
-   int i;
-   bucket *bk = NULL;
-   int hval = hash(key);
-
-   bk = &ca->buckets[hval];
-
-   /* accept new value only if bucket is empty and if new weight is higher
-    * than old weight */
-   if(!bk->active || ca->weights[key] > ca->weights[bk->key])
-   {
-      ca->keys[bk->key] = FALSE;
-      bk->key = key;
-      bk->n = n;
-      FREENULL(bk->value);
-      MALLOCTEST(bk->value, sizeof(double) * n);
-      for(i = n - 1 ; i >= 0 ; --i)
-	 bk->value[i] = value[i];
-      ca->keys[key] = TRUE;
-      if(!bk->active)
-      {
-	 bk->active = TRUE;
-	 ca->active++;
-      }
-      return SUCCESS;
-   }
-
-   return FAILURE;
-}
-
-double* cache_get(cache *ca, int key)
-{
-   bucket *bk;
-   int hval = 0;
-   
-   if(!ca->keys[key])
-      return NULL;
-
-   hval = hash(key);
-   ca->weights[key]++;
-
-   bk = &ca->buckets[hval];
-   if(bk && bk->active && bk->key == key)
-      return bk->value;
-
-   return NULL;
-}
-
-/* assumes 32 bit ints */
-static inline int hash(int key)
-{
-   int s = 0;
-   s += key & 1;
-   s += key & 2;
-   s += key & 4;
-   s += key & 8;
-   s += key & 16;
-   s += key & 32;
-   return s;
-}
-
 /* Sets the number of samples for actual use in CD */
 void gmatrix_set_ncurr(gmatrix *g)
 {
@@ -768,9 +652,6 @@ int gmatrix_set_fold(gmatrix *g, int fold)
 {
    g->fold = fold;
    gmatrix_set_ncurr(g);
-   cache_free(g->ca);
-   if(!cache_init(g->ca, g->p + 1))
-      return FAILURE;
    if(!gmatrix_init_lp(g))
       return FAILURE;
    if(g->scalefile && !gmatrix_read_scaling(g, g->scalefile))

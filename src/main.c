@@ -43,12 +43,12 @@ int make_lambda1path(Opt *opt, gmatrix *g)
    if(opt->unscale)
    {
       unscale_beta(g->beta_orig, g->beta, g->mean, g->sd, g->p + 1);
+      /*memcpy(g->beta_orig, g->beta, sizeof(double) * (g->p+1));*/
       if(!writevectorf(tmp, g->beta_orig, g->p + 1))
 	 return FAILURE;
    }
-   else
-      if(!writevectorf(tmp, g->beta, g->p + 1))
-	 return FAILURE;
+   else if(!writevectorf(tmp, g->beta, g->p + 1))
+      return FAILURE;
 
    snprintf(tmp, MAX_STR_LEN, "%s.%02d", opt->lambda1pathfile, g->fold);
    return writevectorf(tmp, opt->lambda1path, opt->nlambda1);
@@ -98,12 +98,13 @@ int run_train(Opt *opt, gmatrix *g)
       if(opt->unscale)
       {
 	 unscale_beta(g->beta_orig, g->beta, g->mean, g->sd, g->p + 1);
+	 /*memcpy(g->beta_orig, g->beta, sizeof(double) * (g->p+1));*/
+
 	 if(!writevectorf(tmp, g->beta_orig, g->p + 1))
 	    return FAILURE;
       }
-      else
-	 if(!writevectorf(tmp, g->beta, g->p + 1))
-	    return FAILURE;
+      else if(!writevectorf(tmp, g->beta, g->p + 1))
+	 return FAILURE;
 
       if(opt->nzmax != 0 && opt->nzmax <= ret - 1)
       {
@@ -190,6 +191,7 @@ int run_predict(gmatrix *g, predict predict_func, char **beta_files,
       /*for(int j = 0 ; j < g->p + 1 ; j++)
 	 g->beta[j] = g->beta_orig[j];*/
       scale_beta(g->beta, g->beta_orig, g->mean, g->sd, g->p + 1);
+      /*memcpy(g->beta, g->beta_orig, sizeof(double) * (g->p+1));*/
 
       snprintf(tmp, MAX_STR_LEN, "%s.pred", beta_files[i]);
       if(!run_predict_beta(g, predict_func, tmp))

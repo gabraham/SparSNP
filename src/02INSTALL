@@ -1,0 +1,14 @@
+Operating System:
+   * tested on 64 bit Ubuntu and 64-bit OSX 10.6.7
+
+Requirements:
+   * make
+   * gcc
+   * lapack (liblapack-dev on Debian)
+   * blas (libblas-dev on Debian)
+   * libgfortran (libgfortran on Debian, gfortran on OSX brew)
+   
+Compiling:
+   make
+   
+

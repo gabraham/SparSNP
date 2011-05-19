@@ -49,41 +49,106 @@ void decode(unsigned char *out, const unsigned char *in, const int n)
 }
 
 /* 
- *                   plink               sparsnp
- * homozyous:        00 => numeric 0     00 => numeric 0
+ *                   plink BED           sparsnp
+ * minor homozyous:  00 => numeric 0     10 => numeric 2
  * heterozygous:     10 => numeric 2     01 => numeric 1
- * homozygous other: 11 => numeric 3     10 => numeric 2
+ * major homozygous: 11 => numeric 3     00 => numeric 0
  * missing:          01 => numeric 1     11 => numeric 3
  *
- * Note that this is reverse order to what the table in
- * http://pngu.mgh.harvard.edu/~purcell/plink/binary.shtml says, since 
- * the bytes in plink are read backwards HGFEDCBA, not GHEFCDAB
  *
+ * http://pngu.mgh.harvard.edu/~purcell/plink/binary.shtml says,
+ * The bytes in plink are read backwards HGFEDCBA, not GHEFCDAB, but we read
+ * them forwards as a character (a proper byte)
+ *
+ * By default, plink usage dosage of the *major* allele, since allele A1 is
+ * usually the minor allele and the code "1" refers to the second allele A2,
+ * so that "11" is A2/A2 or major/major.
+ *
+ * We always use minor allele dosage, to be consistent with the output from
+ * plink --recodeA which used minor allele dosage by default.
+ * 
  */
 void decode_plink(unsigned char *out, const unsigned char *in, const int n)
 {
    int i, k;
-   unsigned char tmp;
+   unsigned char tmp, geno;
+   int a1, a2;
 
    for(i = 0 ; i < n ; ++i)
    {
       tmp = in[i];
       k = PACK_DENSITY * i;
       
-      out[k] = (tmp & MASK0); 
-      out[k] = (out[k] == 1) ? 3 : ((out[k] == 3) ? 2 : (out[k] == 2 ? 1 : 0));
+      /* geno is interpreted as a char, a1 and a2 are bits for allele 1 and
+       * allele 2. The final genotype is the sum of the alleles, except for 01
+       * which denotes missing.
+       */
+      geno = (tmp & MASK0);
+      a1 = !(geno & 1);
+      a2 = !(geno >> 1);
+      out[k] = (geno == 1) ? 3 : a1 + a2;
       k++;
 
-      out[k] = (tmp & MASK1) >> 2; 
-      out[k] = (out[k] == 1) ? 3 : ((out[k] == 3) ? 2 : (out[k] == 2 ? 1 : 0));
+      geno = (tmp & MASK1) >> 2; 
+      a1 = !(geno & 1);
+      a2 = !(geno >> 1);
+      out[k] = (geno == 1) ? 3 : a1 + a2;
       k++;
 
-      out[k] = (tmp & MASK2) >> 4; 
-      out[k] = (out[k] == 1) ? 3 : ((out[k] == 3) ? 2 : (out[k] == 2 ? 1 : 0));
+      geno = (tmp & MASK2) >> 4; 
+      a1 = !(geno & 1);
+      a2 = !(geno >> 1);
+      out[k] = (geno == 1) ? 3 : a1 + a2;
       k++;
 
-      out[k] = (tmp & MASK3) >> 6; 
-      out[k] = (out[k] == 1) ? 3 : ((out[k] == 3) ? 2 : (out[k] == 2 ? 1 : 0));
+      geno = (tmp & MASK3) >> 6; 
+      a1 = !(geno & 1);
+      a2 = !(geno >> 1);
+      out[k] = (geno == 1) ? 3 : a1 + a2;
    }
 }
+
+/* same as decode_plink_major but interpret dosages as doses of minor allele
+ */
+void decode_plink_minor(unsigned char *out, const unsigned char *in, const int n)
+{
+   int i, k;
+   unsigned char tmp, geno;
+   int a1, a2;
+
+   for(i = 0 ; i < n ; ++i)
+   {
+      tmp = in[i];
+      k = PACK_DENSITY * i;
+      
+      /* geno is interpreted as a char, a1 and a2 are bits for allele 1 and
+       * allele 2. The final genotype is the sum of the alleles, except for 01
+       * which denotes missing.
+       */
+      geno = (tmp & MASK0);
+      a1 = !(geno & 1);
+      a2 = !(geno >> 1);
+      out[k] = (geno == 1) ? 3 : a1 + a2;
+      k++;
+
+      geno = (tmp & MASK1) >> 2; 
+      a1 = !(geno & 1);
+      a2 = !(geno >> 1);
+      out[k] = (geno == 1) ? 3 : a1 + a2;
+      k++;
+
+      geno = (tmp & MASK2) >> 4; 
+      a1 = !(geno & 1);
+      a2 = !(geno >> 1);
+      out[k] = (geno == 1) ? 3 : a1 + a2;
+      k++;
+
+      geno = (tmp & MASK3) >> 6; 
+      a1 = !(geno & 1);
+      a2 = !(geno >> 1);
+      out[k] = (geno == 1) ? 3 : a1 + a2;
+   }
+
+}
+
 

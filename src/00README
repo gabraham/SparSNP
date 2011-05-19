@@ -1,0 +1,79 @@
+
+################################################################################
+SparSNP --- Sparse SNP analysis
+################################################################################
+
+(1) Introduction
+================
+
+SparSNP is a set of tools for fitting large scale lasso models to SNP data. It
+can be used to build classifiers for case/control data.
+
+(2) Usage
+===============
+
+Compile the code or use the prebuilt binaries.
+
+Assuming you have a PLINK dataset in binary format (BED/BIM/FAM files) called
+GWAS, i.e., you have
+   GWAS.bed
+   GWAS.bim
+   GWAS.fam
+
+IMPORTANT: the code assumes that the binary data are coded using the
+default PLINK encoding (which is in effect major allele dosage). The
+definition of which allele is major and which is minor may change
+between different datasets.  Therefore, we recommend using PLINK to
+either merge them into one, so as to make the encoding consistent, and
+then to split them, or to change the reference allele in one to match
+the other (essentially making a new dataset for one of them).
+
+
+Cross-validation: use the helper script cv3.sh to run 3-fold cross-validation, 
+
+   ./cv3.sh GWAS
+
+each cross-validation replication will be stored in it's own crossvalXX
+directory. By default, the script will skip existing directories.
+
+Results: in each crossvalXX directory, there will be files:
+   folds.ind, a binary file representing the split into crossval folds
+   folds.txt, a text file representing which fold each sample belongs to
+   scale.bin.XX, a binary file of means and std devs for each SNP in each fold
+	 XX
+   lambda1path.csv.XX, a text file of the grid of lambda1 penalties in each
+	 fold XX
+   beta.csv.YY.XX, a text file of estimated coefficients in fold XX for the
+	 YYth penalty
+   beta.csv.YY.XX.pred, a text file of predicted outputs (classes/responses)
+	 in fold XX for the YYth penalty for the *test data*
+   y.XX: the *test* output/classes/responses for the XXth fold
+
+
+(3) Analysis after Model Fitting
+=================================
+
+To run this you need R (http://r-project.org) and the packages:
+   * ggplot2
+   * Hmisc
+   * glmnet
+   * ROCR
+
+The script auc.sh can be used to analyse the AUC and explained phenotypic
+variance over the cross-validation replications:
+
+To calculate AUC
+   ./auc.sh <numreps> <title>
+   i.e.
+   ./auc.sh 3 GWAS
+
+To calculate AUC and explained variance we need the prevalence:
+   ./auc.sh <numreps> <title> prev=XX
+   i.e.
+   ./auc.sh 3 GWAS prev=0.01
+
+where title is the title of the file, e.g. GWAS, and prev is the prevalence as
+a proportion (not in percent).
+
+   The output is two files: GWAS_AUC.pdf and GWAS_VarExp.pdf
+

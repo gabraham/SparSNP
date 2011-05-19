@@ -18,8 +18,7 @@ typedef double (*predict_pt)(double);
 typedef double (*phi1)(double);
 typedef double (*phi2)(double);
 typedef double (*inv)(double);
-typedef double (*step)(sample *s, gmatrix *g,
-      phi1 phi1_func, phi2 phi2_func);
+typedef double (*step)(sample *s, gmatrix *g);
 
 typedef double (*predict)(double x);
 
@@ -105,17 +104,9 @@ int make_lambda1path(Opt *opt, gmatrix *g);
 int run(Opt *opt, gmatrix *g);
 void zero_model(gmatrix *g);
 
-double step_generic(sample *s, gmatrix *g,
-      phi1 phi1_func, phi2 phi2_func);
-
-double step_regular_linear(sample *s, gmatrix *g,
-      phi1 phi1_func, phi2 phi2_func);
-
-double step_regular_logistic(sample *s, gmatrix *g,
-      phi1 phi1_func, phi2 phi2_func);
-
-double step_regular_sqrhinge(sample *s, gmatrix *g,
-      phi1 phi1_func, phi2 phi2_func);
+double step_regular_linear(sample *s, gmatrix *g);
+double step_regular_logistic(sample *s, gmatrix *g);
+double step_regular_sqrhinge(sample *s, gmatrix *g);
 
 void updatelp(gmatrix *g, const double update,
       const double *restrict x);

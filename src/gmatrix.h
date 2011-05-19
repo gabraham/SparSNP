@@ -99,7 +99,7 @@ typedef struct gmatrix {
    int nfolds;
    int *folds;
    int fold;
-   short mode;
+   int mode;
    cache *ca;
    int nseek;
    double *beta_orig;
