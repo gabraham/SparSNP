@@ -1,6 +1,9 @@
 
 ################################################################################
-SparSNP --- Sparse SNP analysis
+# SparSNP --- Sparse SNP analysis
+#
+# Contact: Gad Abraham, gabraham@csse.unimelb.edu.au
+#
 ################################################################################
 
 (1) Introduction
@@ -24,9 +27,11 @@ IMPORTANT: the code assumes that the binary data are coded using the
 default PLINK encoding (which is in effect major allele dosage). The
 definition of which allele is major and which is minor may change
 between different datasets.  Therefore, we recommend using PLINK to
-either merge them into one, so as to make the encoding consistent, and
-then to split them, or to change the reference allele in one to match
-the other (essentially making a new dataset for one of them).
+either merge them into one
+(http://pngu.mgh.harvard.edu/~purcell/plink/dataman.shtml#merge), so
+as to make the encoding consistent, and then to split them, or to
+change the reference allele in one to match the other
+(http://pngu.mgh.harvard.edu/~purcell/plink/dataman.shtml#refallele).
 
 
 Cross-validation: use the helper script cv3.sh to run 3-fold cross-validation, 

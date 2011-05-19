@@ -46,7 +46,7 @@ cv.auc <- lapply(folds, function(fold) {
       auc=cbind(
 	 lambda=lambda[1:length(res)],
 	 AUC=res,
-	 NonZero=nz[1:length(res)],
+	 NonZero=nz[1:length(res)]
       ),
       prediction=pred
    )

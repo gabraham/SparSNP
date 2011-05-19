@@ -26,7 +26,7 @@ cat("prevalence:", prev, "\n")
 for(i in exper)
 {
    setwd(sprintf("crossval%s", i))
-   source("~/WTCCC/code/evalpred.R")
+   source("../evalpred.R")
    setwd("../")
 }
 
@@ -62,7 +62,7 @@ vars <- if(is.null(prev)) {
 
 if(!is.null(prev))
 {
-   source("~/WTCCC/code/varexp.R")
+   source("varexp.R")
    cv\$VarExp <- varexp(K=prev, auc=cv\$AUC)[, "varexp"]
    if(uni) {
       cv.uni\$VarExp <- varexp(K=prev, auc=cv.uni\$AUC)[, "varexp"]
