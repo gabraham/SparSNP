@@ -1,6 +1,6 @@
 library(glmnet)
 
-options(digits=9)
+options(error=dump.frames)
 
 #set.seed(439)
 
@@ -25,13 +25,59 @@ soft <- function(b, g)
    sign(b) * pmax(abs(b) - g, 0)
 }
 
-cd.plain <- function(x, y, lambda1=0, maxepoch=100, maxiter=50,
-      eps=1e-9)
+# assumes scaled inputs
+step.linear <- function(xj, lp, y)
+{
+   drop(crossprod(xj, lp - y)) / length(y)
+}
+
+# assumes scaled inputs
+step.logis <- function(xj, lp, y)
+{
+   p <- 1 / (1 + exp(-lp))
+   d1 <- mean(xj * (p - y))
+   q <- p * (1 - p)
+   d2 <- mean(xj^2 * q)
+   d1 / d2
+}
+
+# assumes scaled inputs
+step.sqrhinge <- function(xj, lp, y)
+{
+   z <- y * lp - 1
+
+   mean(y * xj * z * (z < 0))
+}
+
+loss.linear <- function(lp, y)
+{
+   lp <- cbind(lp)
+   apply(lp, 2, function(l) {
+      mean((l - y)^2)
+   })
+}
+
+loss.logis <- function(lp, y)
+{
+   lp <- cbind(lp)
+   apply(lp, 2, function(l) {
+      mean(log(1 + exp(l * y)) - y * l)
+   })
+}
+
+loss.sqrhinge <- function(lp, y)
+{
+   mean(pmax(0, 1 - y * lp)^2)
+}
+
+cd.plain <- function(x, y, step, loss, lambda1=0, maxepoch=100,
+      maxiter=50, eps=1e-9)
 {
    p <- ncol(x)
    n <- nrow(x)
    lp <- numeric(n)
    beta <- numeric(p)
+   loss_new <- loss_old <- Inf
    
    for(epoch in 1:maxepoch)
    {
@@ -39,23 +85,30 @@ cd.plain <- function(x, y, lambda1=0, maxepoch=100, maxiter=50,
       {
 	 for(iter in 1:maxiter)
 	 {
-	    s <- drop(crossprod(x[,j], lp - y)) / n
+	    #s <- drop(crossprod(x[,j], lp - y)) / n
+	    s <- step(x[,j], lp, y)
 	    beta_new <- beta[j] - s
 	    if(j > 1)
 	       beta_new <- soft(beta_new, lambda1)
 
+	    #if(abs(s) > 100)
+	       #browser()
+
 	    diff <- beta_new - beta[j]
 	    lp <- lp + x[, j] * diff
 	    beta[j] <- beta_new
-	    if(abs(diff) < eps)
+	    loss_new <- loss(lp, y)
+	    cat("loss_old", loss_old, "loss_new", loss_new, "\n")
+	    if(abs(loss_new - loss_old) < 1e-2 || abs(diff) < eps)
 	       break
+	    loss_old <- loss_new
 	 }
       }
    }
    beta
 }
 
-cd.activeset <- function(x, y, lambda1=0, beta=numeric(ncol(x)),
+cd.activeset <- function(x, y, step, lambda1=0, beta=numeric(ncol(x)),
    lp=numeric(nrow(x)), maxepoch=500, maxiter=50, eps=1e-4)
 {
    p <- ncol(x)
@@ -74,7 +127,8 @@ cd.activeset <- function(x, y, lambda1=0, beta=numeric(ncol(x)),
 	 {
 	    for(iter in 1:maxiter)
 	    {
-	       s <- sum(x[,j] * (lp - y)) / n
+	       #s <- sum(x[,j] * (lp - y)) / n
+	       s <- step(x[,j], lp, y)
                beta_new <- beta[j] - s
                if(j > 1)
                   beta_new <- soft(beta_new, lambda1)
@@ -120,7 +174,7 @@ cd.activeset <- function(x, y, lambda1=0, beta=numeric(ncol(x)),
 }
 
 # Slightly different formulation
-cd.activeset2 <- function(x, y, lambda1=0, lambda1max=0, beta=numeric(ncol(x)),
+cd.activeset2 <- function(x, y, step, lambda1=0, lambda1max=0, beta=numeric(ncol(x)),
    lp=numeric(nrow(x)), maxepoch=500, maxiter=50, eps=1e-4)
 {
    p <- ncol(x)
@@ -145,7 +199,8 @@ cd.activeset2 <- function(x, y, lambda1=0, lambda1max=0, beta=numeric(ncol(x)),
 	 {
 	    for(iter in 1:maxiter)
 	    {
-	       s <- sum(x[,j] * (lp - y)) / n
+	       #s <- sum(x[,j] * (lp - y)) / n
+	       s <- step(x[,j], lp, y)
 	       beta_new <- beta[j] - s
 	       if(j > 1)
 		  beta_new <- soft(beta_new, lambda1)
@@ -197,48 +252,57 @@ cd.activeset2 <- function(x, y, lambda1=0, lambda1max=0, beta=numeric(ncol(x)),
 }
 
 
-#system.time({
-#   g <- glmnet(x, y, nlambda=20)
-#})
-#b.glmnet <- as.matrix(coef(g))
-#nlambda <- length(g$lambda)
-#
-#matplot(g$lambda, t(b.glmnet), type="l", lty=1, col=1, lwd=5,
-#      log="x", pch=21)
-#points(rep(min(g$lambda), p+1), coef(lm(y ~ x)))
-#
-#b.cd.as <- matrix(0, p + 1, nlambda + 1)
-#system.time({
-#   for(i in 1:nlambda + 1)
-#   {
-#      b <- b.cd.as[, i - 1]
-#      lp <- drop(x1 %*% b)
-#      b.cd.as[, i] <- cd.activeset(x=x1, y=y, beta=b,
-#	    lp=lp, lambda1=g$lambda[i-1])
-#   }
-#})
-#b.cd.as <- b.cd.as[, -1]
-#
-#matlines(g$lambda, t(b.cd.as), type="l", lty=1, col=2, pch=21, lwd=3)
-#
-#b.cd.as2 <- matrix(0, p + 1, nlambda + 1)
-#system.time({
-#   for(i in 1:nlambda + 1)
-#   {
-#      b <- b.cd.as2[, i - 1]
-#      lp <- drop(x1 %*% b)
-#      b.cd.as2[, i] <- cd.activeset2(x=x1, y=y, beta=b,
-#	    lp=lp, lambda1=g$lambda[i-1], lambda1max=g$lambda[1])
-#   }
-#})
-#b.cd.as2 <- b.cd.as2[, -1]
-#
-#matlines(g$lambda, t(b.cd.as2), type="l", lty=1, col=3, pch=21, lwd=3)
-#sqrt(mean((b.glmnet - b.cd.as2)^2))
+set.seed(31827)
+n <- 100
+p <- 10
+x <- matrix(rnorm(n * p), n, p)
+x <- cbind(1, scale(x))
+#beta <- rnorm(p + 1) * sample(0:1, p + 1, replace=TRUE)
+#y <- as.numeric(1 / (1 + exp(-x %*% beta + rnorm(n, 0, 2))) >= 0.5)
+#y <- rep(0:1, each=50)
+y <- sample(0:1, n, TRUE)
 
-#system.time({
-#   b.cd.plain <- sapply(g$lambda, cd.plain, x=x1, y=y)
-#})
-#matlines(g$lambda, t(b.cd.plain), type="l", lty=1, col=7, pch=21)
-#sqrt(mean((b.glmnet - b.cd.plain)^2))
+
+#g <- glm(y ~ x - 1, binomial)
+#cor(coef(g), beta)
+
+#g.cd <- cd.plain(x=x, y=y, step=step.logis)
+#cor(coef(g), g.cd)
+
+gl <- glmnet(x[,-1], y, family="gaussian")
+b.gl <- as.matrix(coef(gl))
+#g.cd2 <- cd.plain(x=x, y=y, step=step.logis, loss=loss.logis, lambda1=gl$lambda[w])
+#gl.dev <- loss.logis(x %*% b.gl, y) * 2 * n
+#nulldev <- loss.logis(x %*% numeric(p+1), y) * 2 * n
+#cd.dev <- loss.logis(x %*% g.cd2, y) * 2 * n
+gl.dev <- loss.linear(x %*% b.gl, y) * n
+nulldev <- loss.linear(x %*% c(mean(y), numeric(p)), y) * n
+l <- cbind(gl$dev, 1 - gl.dev / nulldev)
+matplot(l)
+
+gl <- glmnet(x[,-1], factor(y), family="binomial")
+b.gl <- as.matrix(coef(gl))
+gl.dev <- loss.logis(x %*% b.gl, y) * 2 * n
+nulldev <- loss.logis(x %*% c(log(mean(y) / (1 - mean(y))), numeric(p)), y) * 2 * n
+l <- cbind(gl$dev, 1 - (-152 - gl.dev) / (-152- nulldev))
+matplot(l)
+
+
+#g.cd3 <- cd.activeset(x=x, y=y, step=step.logis, lambda1=l)
+#g.cd4 <- cd.activeset2(x=x, y=y, step=step.logis, lambda1=l)
+#cor(cbind(as.matrix(coef(gl))[,l], g.cd2, g.cd3, g.cd4))
+
+#gl <- glmnet(x[,-1], y, family="gaussian")
+#w <- min(50, length(gl$lambda))
+#b.gl <- as.matrix(coef(gl))[,w]
+#g.cd2 <- cd.plain(x=x, y=y, step=step.linear, loss=loss.linear,
+#      lambda1=gl$lambda[w])
+#loss.linear(x %*% b.gl, y)
+#loss.linear(x %*% g.cd2, y)
+
+
+
+#cor(b.gl, g.cd2)
+#plot(b.gl, g.cd2)
+#abline(0, 1)
 
