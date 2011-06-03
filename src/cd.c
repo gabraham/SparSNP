@@ -19,6 +19,7 @@ inline static double zero(const double x, const double thresh)
 /* Update linear predictor and related variables.
  *
  * The updates where x is null are for the get_lambda1max_gmatrix updates
+ * i.e. x_i=1 for all i
  * */
 void updatelp(gmatrix *g, const double update,
       const double *restrict x, int j)
@@ -78,7 +79,7 @@ void updatelp(gmatrix *g, const double update,
 	    d2 += x[i] * x[i] * lp_invlogit[i] * (1 - lp_invlogit[i]);
 	 }
       }
-      newtonstep[j] = d1 / d2;
+      newtonstep[j] = (d2 == 0) ? 0 : d1 / d2;
    }
    else if(g->model == MODEL_SQRHINGE)
    {
@@ -228,6 +229,25 @@ double step_regular_sqrhinge(sample *s, gmatrix *g)
    return grad * g->ncurr_recip; /* avoid division */
 }
 
+/* Initialise the Newton step for when all variables are zero */
+int init_newton(gmatrix *g)
+{
+   int j;
+   int p1 = g->p + 1;
+   sample sm;
+
+   if(!sample_init(&sm))
+      return FAILURE;
+
+   for(j = 0 ; j < p1 ; j++)
+   {
+      g->nextcol(g, &sm, j, NA_ACTION_ZERO);
+      updatelp(g, 0, sm.x, j);
+   }
+
+   return SUCCESS;
+}
+
 /* coordinate descent */
 int cd_gmatrix(gmatrix *g,
       phi1 phi1_func,
@@ -252,17 +272,21 @@ int cd_gmatrix(gmatrix *g,
    sample sm;
    double old_loss = 0;
    int conv = 0;
+   int *zero = NULL;
 
    if(!sample_init(&sm))
       return FAILURE;
 
    CALLOCTEST(active_old, p1, sizeof(int));
+   CALLOCTEST(zero, p1, sizeof(int));
 
    /* start off with all variables marked active
     * even though they're all zero, unless they're
     * marked as ignore */
    for(j = p ; j >= 0 ; --j)
       active_old[j] = g->active[j];
+
+   init_newton(g);
 
    while(epoch <= maxepochs)
    {
@@ -272,6 +296,10 @@ int cd_gmatrix(gmatrix *g,
       {
 	 iter = 0;
 	 conv = TRUE;
+	 
+	 /* check if it is possible for this variable to become active
+	  * under the current penalty */ 
+	 /*if(g->active[j] && (!zero[j] || (zero[j] && fabs(g->newtonstep[j]) > lambda1)))*/
 	 if(g->active[j])
 	 {
 	    conv = FALSE;
@@ -288,6 +316,14 @@ int cd_gmatrix(gmatrix *g,
 
 	       /* beta_new may have changed by thresholding */
 	       s = beta_new - g->beta[j];
+	       
+	       /* beta hasn't changed, no need to update anything else*/
+	       /*if(s == 0)
+	       {
+		  conv = TRUE;
+		  break;
+	       }*/
+
 	       updatelp(g, s, sm.x, j);
 	       g->beta[j] = beta_new;
 
@@ -303,7 +339,8 @@ int cd_gmatrix(gmatrix *g,
       	    }
 	 }
 
-	 g->active[j] = (g->beta[j] != 0);
+	 zero[j] = g->beta[j] == 0;
+	 g->active[j] = !zero[j];
 	 numactive += g->active[j];
 	 numconverged += conv;
 
@@ -368,7 +405,8 @@ with %d active vars\n", time(NULL), epoch, numactive);
    }
    printfverb("\n");
 
-   free(active_old);
+   FREENULL(active_old);
+   FREENULL(zero);
 
    return good ? numactive : CDFAILURE;
 }
