@@ -100,7 +100,8 @@ int readvectorl(char *filename, int *x, int n)
    return SUCCESS;
 }
 
-/* takes beta on original scale and puts it on scaled scale */
+/* takes beta on original scale and puts it on zero-mean unit-variance scale 
+ * of new data */
 void scale_beta(double *beta2, double *beta1,
       double *mean, double *sd, int p)
 {
@@ -118,11 +119,11 @@ void scale_beta(double *beta2, double *beta1,
    beta2[0] += s;
 }
 
-/* assumes beta0 is intercept.
+/* assumes beta0 is intercept, i.e. beta runs from 0 to p (inclusive).
  * 
  * beta_j = beta_j^* / sd_j
  *
- * beta_0 = beta_0^* - \sum_{j=1}^{p+1} beta_j^* mean_j / sd_j
+ * beta_0 = beta_0^* - \sum_{j=1}^p beta_j^* mean_j / sd_j
  *
  * Note that zero beta^* remains zero in beta
  * */

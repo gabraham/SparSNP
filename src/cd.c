@@ -17,16 +17,19 @@ inline static double zero(const double x, const double thresh)
 }
 
 /* Update linear predictor and related variables.
+ *
+ * The updates where x is null are for the get_lambda1max_gmatrix updates
  * */
 void updatelp(gmatrix *g, const double update,
-      const double *restrict x)
+      const double *restrict x, int j)
 {
    int i, n = g->ncurr;
-   double tmp;
+   double err, d1 = 0, d2 = 0;
    double *restrict lp_invlogit = g->lp_invlogit,
 	  *restrict lp = g->lp,
 	  *restrict y = g->y,
-	  *restrict ylp_neg_y_ylp = g->ylp_neg_y_ylp;
+	  *restrict ylp_neg_y_ylp = g->ylp_neg_y_ylp,
+	  *restrict newtonstep = g->newtonstep;
    double loss = 0, ylp = 0;
 
    if(g->model == MODEL_LINEAR)
@@ -36,8 +39,9 @@ void updatelp(gmatrix *g, const double update,
 	 for(i = n - 1 ; i >= 0 ; --i)
 	 {
 	    lp[i] += x[i] * update;
-	    tmp = y[i] - lp[i];
-	    loss += tmp * tmp;
+	    err = lp[i] - y[i];
+	    loss += err * err;
+	    newtonstep[j] += x[i] * err;
 	 }
       }
       else
@@ -45,10 +49,12 @@ void updatelp(gmatrix *g, const double update,
 	 for(i = n - 1 ; i >= 0 ; --i)
 	 {
 	    lp[i] = update;
-	    tmp = y[i] - lp[i];
-	    loss += tmp * tmp;
+	    err = lp[i] - y[i];
+	    loss += err * err;
+	    newtonstep[j] += err;
 	 }
       }
+      newtonstep[j] *= g->ncurr_recip;
    }
    else if(g->model == MODEL_LOGISTIC)
    {
@@ -68,8 +74,11 @@ void updatelp(gmatrix *g, const double update,
 	    lp[i] += update;
 	    lp_invlogit[i] = 1 / (1 + exp(-lp[i]));
 	    loss += log(1 + exp(lp[i])) - y[i] * lp[i];
+	    d1 += x[i] * (lp_invlogit[i] - y[i]);
+	    d2 += x[i] * x[i] * lp_invlogit[i] * (1 - lp_invlogit[i]);
 	 }
       }
+      newtonstep[j] = d1 / d2;
    }
    else if(g->model == MODEL_SQRHINGE)
    {
@@ -84,6 +93,7 @@ void updatelp(gmatrix *g, const double update,
 	    {
       	       ylp_neg_y_ylp[i] = y[i] * ylp;
 	       loss += ylp * ylp;
+	       newtonstep[j] += ylp_neg_y_ylp[i] * x[i];
 	    }
 	    else
 	       ylp_neg_y_ylp[i] = 0;
@@ -100,11 +110,13 @@ void updatelp(gmatrix *g, const double update,
 	    {
       	       ylp_neg_y_ylp[i] = y[i] * ylp;
 	       loss += ylp * ylp;
+	       newtonstep[j] += ylp_neg_y_ylp[i];
 	    }
 	    else
 	       ylp_neg_y_ylp[i] = 0;
       	 }
       }
+      newtonstep[j] *= g->ncurr_recip;
    }
 
    loss *= g->ncurr_recip;
@@ -135,7 +147,7 @@ double get_lambda1max_gmatrix(gmatrix *g,
       s += g->y[i];
 
    beta_new = inv_func(s / n);
-   updatelp(g, beta_new, NULL);
+   updatelp(g, beta_new, NULL, 0);
    printf("intercept: %.15f (%d samples)\n", beta_new, n);
 
    /* find smallest lambda1 that makes all coefficients zero, by
@@ -234,10 +246,9 @@ int cd_gmatrix(gmatrix *g,
        epoch = 1, numconverged = 0,
        good = FALSE;
    int *active_old = NULL;
-   double s_old = 0, s = 0, beta_new;
-   const double truncl = log((1 - trunc) / trunc),
-	        l2recip = 1 / (1 + lambda2);
-   double *m = NULL;
+   double s = 0, beta_new;
+   const double truncl = log((1 - trunc) / trunc);
+   /*const double l2recip = 1 / (1 + lambda2);*/
    sample sm;
    double old_loss = 0;
    int conv = 0;
@@ -245,18 +256,13 @@ int cd_gmatrix(gmatrix *g,
    if(!sample_init(&sm))
       return FAILURE;
 
-   /*CALLOCTEST(beta_old, p1, sizeof(double));*/
    CALLOCTEST(active_old, p1, sizeof(int));
-   CALLOCTEST(m, p1, sizeof(double));
 
    /* start off with all variables marked active
     * even though they're all zero, unless they're
     * marked as ignore */
    for(j = p ; j >= 0 ; --j)
-   {
       active_old[j] = g->active[j];
-      m[j] = 1.0;
-   }
 
    while(epoch <= maxepochs)
    {
@@ -265,7 +271,6 @@ int cd_gmatrix(gmatrix *g,
       for(j = 0 ; j < p1; j++)
       {
 	 iter = 0;
-	 s_old = 0;
 	 conv = TRUE;
 	 if(g->active[j])
 	 {
@@ -276,16 +281,14 @@ int cd_gmatrix(gmatrix *g,
 	    /* iterate over jth variable */
       	    while(iter < maxiters)
       	    {
-      	       s = step_func(&sm, g) * m[j];
-      	       beta_new = g->beta[j] - s;
+	       beta_new = g->beta[j] - g->newtonstep[j];
       	       if(j > 0) /* don't penalise intercept */
-      	          beta_new = soft_threshold(beta_new, lambda1) * l2recip;
+      	          beta_new = soft_threshold(beta_new, lambda1);/* * l2recip;*/
       	       beta_new = clip(beta_new, -truncl, truncl);
-      	       beta_new = zero(beta_new, ZERO_THRESH);
 
 	       /* beta_new may have changed by thresholding */
 	       s = beta_new - g->beta[j];
-	       updatelp(g, s, sm.x);
+	       updatelp(g, s, sm.x, j);
 	       g->beta[j] = beta_new;
 
 	       if(fabs(s) <= ZERO_THRESH
@@ -296,11 +299,8 @@ int cd_gmatrix(gmatrix *g,
 		  conv = TRUE;
 		  break;
 	       }
-	       s_old = s;
       	       iter++;
       	    }
-
-	    /*printfverb("%d loss: %.10f\n", j, g->loss);*/
 	 }
 
 	 g->active[j] = (g->beta[j] != 0);
@@ -368,9 +368,7 @@ with %d active vars\n", time(NULL), epoch, numactive);
    }
    printfverb("\n");
 
-   /*free(beta_old);*/
    free(active_old);
-   free(m);
 
    return good ? numactive : CDFAILURE;
 }

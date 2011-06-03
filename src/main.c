@@ -169,8 +169,8 @@ int run_predict_beta(gmatrix *g, predict predict_func,
    return SUCCESS;
 }
 
-int run_predict(gmatrix *g, predict predict_func, char **beta_files,
-      int n_beta_files)
+int run_predict(gmatrix *g, predict predict_func, int unscale,
+      char **beta_files, int n_beta_files)
 {
    int i;
    char tmp[MAX_STR_LEN];
@@ -186,12 +186,14 @@ int run_predict(gmatrix *g, predict predict_func, char **beta_files,
       }
 
       /* scale beta using the scales for this data (beta
-       * should already be on original scale, not scaled to zero-mean and
+       * should already be on original data scale, not scaled to zero-mean and
        * unit-variance) */
       /*for(int j = 0 ; j < g->p + 1 ; j++)
 	 g->beta[j] = g->beta_orig[j];*/
-      scale_beta(g->beta, g->beta_orig, g->mean, g->sd, g->p + 1);
-      /*memcpy(g->beta, g->beta_orig, sizeof(double) * (g->p+1));*/
+      if(unscale)
+	 scale_beta(g->beta, g->beta_orig, g->mean, g->sd, g->p + 1);
+      else
+	 memcpy(g->beta, g->beta_orig, sizeof(double) * (g->p+1));
 
       snprintf(tmp, MAX_STR_LEN, "%s.pred", beta_files[i]);
       if(!run_predict_beta(g, predict_func, tmp))
@@ -296,7 +298,7 @@ int do_predict(gmatrix *g, Opt *opt, char tmp[])
 		  opt->beta_files[b], k);
 	 }
 
-	 if(!(ret &= run_predict(g, opt->predict_func,
+	 if(!(ret &= run_predict(g, opt->predict_func, opt->unscale,
 		     opt->beta_files_fold, opt->n_beta_files)))
 	    break;
       }
@@ -307,7 +309,7 @@ int do_predict(gmatrix *g, Opt *opt, char tmp[])
       if(!gmatrix_read_scaling(g, g->scalefile))
 	 return FAILURE;
       gmatrix_zero_model(g);
-      ret = run_predict(g, opt->predict_func,
+      ret = run_predict(g, opt->predict_func, opt->unscale,
 	    opt->beta_files, opt->n_beta_files);
    }
 

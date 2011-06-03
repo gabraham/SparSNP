@@ -39,6 +39,7 @@ int gmatrix_init(gmatrix *g, char *filename, int n, int p,
    g->ylp_neg_y = NULL;
    g->ylp_neg_y_ylp = NULL;
    g->lp_invlogit = NULL;
+   g->newtonstep = NULL;
    g->loss_func = NULL;
    g->loss_pt_func = loss_pt_func;
    g->scalefile = scalefile;
@@ -208,6 +209,7 @@ void gmatrix_free(gmatrix *g)
    FREENULL(g->ylp_neg_y);
    FREENULL(g->ylp_neg_y_ylp);
    FREENULL(g->lp_invlogit);
+   FREENULL(g->newtonstep);
    FREENULL(g->beta);
    FREENULL(g->beta_orig);
    FREENULL(g->encbuf);
@@ -668,6 +670,7 @@ void gmatrix_zero_model(gmatrix *g)
    {
       g->beta[j] = 0;
       g->active[j] = !g->ignore[j];
+      g->newtonstep[j] = 0;
    }
 
    for(i = n - 1 ; i >= 0 ; --i)
@@ -694,18 +697,29 @@ void gmatrix_zero_model(gmatrix *g)
 
 int gmatrix_init_lp(gmatrix *g)
 {
+   printf("gmatrix_init_lp\n"); fflush(stdout);
    FREENULL(g->lp);
    CALLOCTEST(g->lp, g->ncurr, sizeof(double));
-   if(g->model == MODEL_LOGISTIC) {
+
+   FREENULL(g->newtonstep);
+   CALLOCTEST(g->newtonstep, g->p + 1, sizeof(double));
+
+   if(g->model == MODEL_LOGISTIC) 
+   {
       FREENULL(g->lp_invlogit);
       CALLOCTEST(g->lp_invlogit, g->ncurr, sizeof(double));
-   } else if(g->model == MODEL_SQRHINGE) {
+   } 
+   else if(g->model == MODEL_SQRHINGE) 
+   {
       FREENULL(g->ylp);
       CALLOCTEST(g->ylp, g->ncurr, sizeof(double));
+
       FREENULL(g->ylp_neg);
       CALLOCTEST(g->ylp_neg, g->ncurr, sizeof(double));
+
       FREENULL(g->ylp_neg_y);
       CALLOCTEST(g->ylp_neg_y, g->ncurr, sizeof(double));
+
       FREENULL(g->ylp_neg_y_ylp);
       CALLOCTEST(g->ylp_neg_y_ylp, g->ncurr, sizeof(double));
    }

@@ -68,7 +68,7 @@ int opt_defaults(Opt *opt, short caller)
    opt->binformat = BINFORMAT_BIN;
    opt->beta_files_fold = NULL;
    opt->numnz_file = "nonzero.csv";
-   opt->unscale = TRUE;
+   opt->unscale = FALSE;
 
    MALLOCTEST(opt->beta_files, sizeof(char*));
    MALLOCTEST(opt->beta_files[0], sizeof(char) * (strlen(beta_default) + 1));
@@ -381,8 +381,13 @@ supported\n");
    }
 
    if(opt->verbose)
+   {
       printf("Mode: %s\n",
 	    (opt->mode == MODE_TRAIN) ? "train" : "predict");
+      printf("Model: %s\n",
+	    (opt->model == MODEL_LINEAR) ? "linear" :
+	       (opt->model == MODEL_SQRHINGE) ? "sqrhinge" : "logistic");
+   }
 
    srand(opt->seed);
 

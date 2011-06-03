@@ -109,5 +109,5 @@ double step_regular_logistic(sample *s, gmatrix *g);
 double step_regular_sqrhinge(sample *s, gmatrix *g);
 
 void updatelp(gmatrix *g, const double update,
-      const double *restrict x);
+      const double *restrict x, int j);
 

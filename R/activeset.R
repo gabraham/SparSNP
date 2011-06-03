@@ -85,20 +85,48 @@ cd.plain <- function(x, y, step, loss, lambda1=0, maxepoch=100,
       {
 	 for(iter in 1:maxiter)
 	 {
-	    #s <- drop(crossprod(x[,j], lp - y)) / n
 	    s <- step(x[,j], lp, y)
 	    beta_new <- beta[j] - s
 	    if(j > 1)
 	       beta_new <- soft(beta_new, lambda1)
 
-	    #if(abs(s) > 100)
-	       #browser()
+	    diff <- beta_new - beta[j]
+	    lp <- lp + x[, j] * diff
+	    beta[j] <- beta_new
+	    loss_new <- loss(lp, y)
+	    if(abs(loss_new - loss_old) < 1e-2 || abs(diff) < eps)
+	       break
+	    loss_old <- loss_new
+	 }
+      }
+   }
+   beta
+}
+
+cd.plain <- function(x, y, step, loss, lambda1=0, maxepoch=100,
+      maxiter=50, eps=1e-9)
+{
+   p <- ncol(x)
+   n <- nrow(x)
+   lp <- numeric(n)
+   beta <- numeric(p)
+   loss_new <- loss_old <- Inf
+   
+   for(epoch in 1:maxepoch)
+   {
+      for(j in 1:p)
+      {
+	 for(iter in 1:maxiter)
+	 {
+	    s <- step(x[,j], lp, y)
+	    beta_new <- beta[j] - s
+	    if(j > 1)
+	       beta_new <- soft(beta_new, lambda1)
 
 	    diff <- beta_new - beta[j]
 	    lp <- lp + x[, j] * diff
 	    beta[j] <- beta_new
 	    loss_new <- loss(lp, y)
-	    cat("loss_old", loss_old, "loss_new", loss_new, "\n")
 	    if(abs(loss_new - loss_old) < 1e-2 || abs(diff) < eps)
 	       break
 	    loss_old <- loss_new
@@ -127,7 +155,6 @@ cd.activeset <- function(x, y, step, lambda1=0, beta=numeric(ncol(x)),
 	 {
 	    for(iter in 1:maxiter)
 	    {
-	       #s <- sum(x[,j] * (lp - y)) / n
 	       s <- step(x[,j], lp, y)
                beta_new <- beta[j] - s
                if(j > 1)
@@ -252,40 +279,44 @@ cd.activeset2 <- function(x, y, step, lambda1=0, lambda1max=0, beta=numeric(ncol
 }
 
 
-set.seed(31827)
-n <- 100
-p <- 10
-x <- matrix(rnorm(n * p), n, p)
-x <- cbind(1, scale(x))
-#beta <- rnorm(p + 1) * sample(0:1, p + 1, replace=TRUE)
-#y <- as.numeric(1 / (1 + exp(-x %*% beta + rnorm(n, 0, 2))) >= 0.5)
-#y <- rep(0:1, each=50)
-y <- sample(0:1, n, TRUE)
+#set.seed(3187)
+#n <- 500
+#p <- 50
+#x <- matrix(rnorm(n * p), n, p)
+#x <- cbind(1, scale(x))
+##beta <- rnorm(p + 1) * sample(0:1, p + 1, replace=TRUE)
+##y <- as.numeric(1 / (1 + exp(-x %*% beta + rnorm(n, 0, 2))) >= 0.5)
+##y <- rep(0:1, each=50)
+#y <- sample(0:1, n, TRUE)
+#
+#
+##g <- glm(y ~ x - 1, binomial)
+##cor(coef(g), beta)
+#
+#l <- coef(lm(y ~ x - 1))
+#g.cd <- cd.plain(x=x, y=y, step=step.linear, loss=loss.linear)
+#plot(l, g.cd)
+#abline(0, 1)
 
-
-#g <- glm(y ~ x - 1, binomial)
-#cor(coef(g), beta)
-
-#g.cd <- cd.plain(x=x, y=y, step=step.logis)
 #cor(coef(g), g.cd)
 
-gl <- glmnet(x[,-1], y, family="gaussian")
-b.gl <- as.matrix(coef(gl))
-#g.cd2 <- cd.plain(x=x, y=y, step=step.logis, loss=loss.logis, lambda1=gl$lambda[w])
+#gl <- glmnet(x[,-1], y, family="gaussian")
+#b.gl <- as.matrix(coef(gl))
+##g.cd2 <- cd.plain(x=x, y=y, step=step.logis, loss=loss.logis, lambda1=gl$lambda[w])
+##gl.dev <- loss.logis(x %*% b.gl, y) * 2 * n
+##nulldev <- loss.logis(x %*% numeric(p+1), y) * 2 * n
+##cd.dev <- loss.logis(x %*% g.cd2, y) * 2 * n
+#gl.dev <- loss.linear(x %*% b.gl, y) * n
+#nulldev <- loss.linear(x %*% c(mean(y), numeric(p)), y) * n
+#l <- cbind(gl$dev, 1 - gl.dev / nulldev)
+#matplot(l)
+#
+#gl <- glmnet(x[,-1], factor(y), family="binomial")
+#b.gl <- as.matrix(coef(gl))
 #gl.dev <- loss.logis(x %*% b.gl, y) * 2 * n
-#nulldev <- loss.logis(x %*% numeric(p+1), y) * 2 * n
-#cd.dev <- loss.logis(x %*% g.cd2, y) * 2 * n
-gl.dev <- loss.linear(x %*% b.gl, y) * n
-nulldev <- loss.linear(x %*% c(mean(y), numeric(p)), y) * n
-l <- cbind(gl$dev, 1 - gl.dev / nulldev)
-matplot(l)
-
-gl <- glmnet(x[,-1], factor(y), family="binomial")
-b.gl <- as.matrix(coef(gl))
-gl.dev <- loss.logis(x %*% b.gl, y) * 2 * n
-nulldev <- loss.logis(x %*% c(log(mean(y) / (1 - mean(y))), numeric(p)), y) * 2 * n
-l <- cbind(gl$dev, 1 - (-152 - gl.dev) / (-152- nulldev))
-matplot(l)
+#nulldev <- loss.logis(x %*% c(log(mean(y) / (1 - mean(y))), numeric(p)), y) * 2 * n
+#l <- cbind(gl$dev, 1 - (-152 - gl.dev) / (-152- nulldev))
+#matplot(l)
 
 
 #g.cd3 <- cd.activeset(x=x, y=y, step=step.logis, lambda1=l)
