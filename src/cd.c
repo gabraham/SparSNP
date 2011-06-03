@@ -124,6 +124,113 @@ void updatelp(gmatrix *g, const double update,
    g->loss = loss;
 }
 
+/* Recalculate the lp from scratch using the beta and x, to reduce the
+ * accumulation of numerical error
+ */
+int calibrate_lp_linear(gmatrix *g)
+{
+   int i, j;
+   int p1 = g->p + 1, n = g->ncurr;
+   sample sm;
+   double err;
+
+   if(!sample_init(&sm))
+      return FAILURE;
+
+   for(i = 0 ; i < n ; i++)
+      g->lp[i] = 0;
+
+   for(j = 0 ; j < p1 ; j++)
+   {
+      if(g->beta != 0)
+      {
+	 for(i = 0 ; i < n ; i++)
+      	 {
+	    g->nextcol(g, &sm, j, NA_ACTION_ZERO);
+	    g->lp[i] += sm.x[i] * g->beta[j];
+	    err = g->lp[i] - g->y[i];
+	    g->loss += err * err;
+	    g->newtonstep[j] += sm.x[i] * err;
+      	 }
+	 g->newtonstep[j] *= g->ncurr_recip;
+      }
+   }
+   return SUCCESS;
+}
+
+int calibrate_lp_sqrhinge(gmatrix *g)
+{
+   int i, j;
+   int p1 = g->p + 1, n = g->ncurr;
+   sample sm;
+   double ylp;
+
+   if(!sample_init(&sm))
+      return FAILURE;
+
+   for(i = 0 ; i < n ; i++)
+      g->lp[i] = 0;
+
+   for(j = 0 ; j < p1 ; j++)
+   {
+      if(g->beta != 0)
+      {
+	 for(i = 0 ; i < n ; i++)
+      	 {
+	    g->nextcol(g, &sm, j, NA_ACTION_ZERO);
+
+	    g->lp[i] += sm.x[i] * g->beta[j];
+      	    ylp = g->y[i] * g->lp[i] - 1;
+      	    
+	    if(ylp < 0)
+	    {
+      	       g->ylp_neg_y_ylp[i] = g->y[i] * ylp;
+	       g->loss += ylp * ylp;
+	       g->newtonstep[j] += g->ylp_neg_y_ylp[i] * sm.x[i];
+	    }
+	    else
+	       g->ylp_neg_y_ylp[i] = 0;
+      	 }
+	 g->newtonstep[j] *= g->ncurr_recip;
+      }
+   }
+   return SUCCESS;
+}
+
+int calibrate_lp_logistic(gmatrix *g)
+{
+   int i, j;
+   int p1 = g->p + 1, n = g->ncurr;
+   sample sm;
+   double d1, d2;
+
+   if(!sample_init(&sm))
+      return FAILURE;
+
+   for(i = 0 ; i < n ; i++)
+      g->lp[i] = 0;
+
+   for(j = 0 ; j < p1 ; j++)
+   {
+      d1 = d2 = 0;
+      if(g->beta != 0)
+      {
+	 for(i = 0 ; i < n ; i++)
+      	 {
+	    g->nextcol(g, &sm, j, NA_ACTION_ZERO);
+
+	    g->lp_invlogit[i] = 1 / (1 + exp(- g->lp[i]));
+	    g->loss += log(1 + exp(g->lp[i])) - g->y[i] * g->lp[i];
+	    d1 += sm.x[i] * (g->lp_invlogit[i] - g->y[i]);
+	    d2 += sm.x[i] * sm.x[i] * g->lp_invlogit[i] * (1 - g->lp_invlogit[i]);
+      	 }
+	 g->newtonstep[j] = (d2 == 0) ? 0 : d1 / d2;
+      }
+   }
+   return SUCCESS;
+}
+
+
 /* 
  * Find smallest lambda1 that makes all coefficients
  * zero (except the intercept)
@@ -239,7 +346,10 @@ int init_newton(gmatrix *g)
    if(!sample_init(&sm))
       return FAILURE;
 
-   for(j = 0 ; j < p1 ; j++)
+   /* don't update step for intercept, it's been done already in
+    * get_lambda1max_gmatrix
+    */
+   for(j = 1 ; j < p1 ; j++)
    {
       g->nextcol(g, &sm, j, NA_ACTION_ZERO);
       updatelp(g, 0, sm.x, j);
@@ -250,9 +360,7 @@ int init_newton(gmatrix *g)
 
 /* coordinate descent */
 int cd_gmatrix(gmatrix *g,
-      phi1 phi1_func,
-      phi2 phi2_func,
-      step step_func,
+      calibrate_lp caliblp,
       const int maxepochs,
       const int maxiters,
       const double lambda1,
@@ -327,9 +435,10 @@ int cd_gmatrix(gmatrix *g,
 	       updatelp(g, s, sm.x, j);
 	       g->beta[j] = beta_new;
 
-	       if(fabs(s) <= ZERO_THRESH
-		     || fabs(old_loss - g->loss) / g->loss <= 1e-4
-		     || g->loss <= 1e-6
+	       if(/*fabs(s) <= ZERO_THRESH*/
+		     fabs(s) <= 1e-9
+		     || fabs(old_loss - g->loss) / g->loss <= 1e-2
+		   /*  || g->loss <= 1e-10*/
 		  )
 	       {
 		  conv = TRUE;
