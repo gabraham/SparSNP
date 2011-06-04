@@ -3,6 +3,7 @@
 
 #include "common.h"
 #include "loss.h"
+#include "cache.h"
 
 #define BUFSIZE 10
 
@@ -19,6 +20,19 @@
 
 #define NA_ACTION_DELETE 1
 #define NA_ACTION_ZERO 2
+
+#define CACHE_MAX_SIZE 2048
+
+#define CACHE_NOT_EXISTS -1
+
+typedef struct cache {
+   int nbins;
+   int n;
+   int *mapping;
+   int *revmapping;
+   int lastfree;
+   dtype *x;
+} cache;
 
 typedef struct sample {
    int n;
@@ -96,6 +110,7 @@ typedef struct gmatrix {
    int nsubsets;
    int offset;
    char *famfilename;
+   cache *xcache;
 } gmatrix;
 
 int sample_init(sample *);
@@ -133,4 +148,9 @@ double step_regular_logistic(sample *s, gmatrix *g);
 int init_newton(gmatrix *g);
 void updatelp(gmatrix *g, const double update,
       const double *restrict x, int j);
+
+int cache_get(cache *ca, int j, dtype **x);
+int cache_init(cache *ca, int n, int p);
+void cache_free(cache *ca);
+
 
