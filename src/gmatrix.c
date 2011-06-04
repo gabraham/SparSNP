@@ -373,7 +373,7 @@ int gmatrix_disk_nextcol(gmatrix *g, sample *s, int j, int na_action)
 
    if(ret != SUCCESS)
    {
-      printf("[%d not in cache, reading from disk]\n", j); fflush(stdout);
+      /*printf("[%d not in cache, reading from disk]\n", j); fflush(stdout);*/
       /* Get data from disk and unpack, skip y */
       seek = j * g->nseek + g->offset;
       FSEEKOTEST(g->file, seek, SEEK_SET);
