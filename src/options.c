@@ -145,7 +145,6 @@ int opt_parse(int argc, char* argv[], Opt* opt)
 	    opt->predict_func = &logphi1;
 	    opt->loss_func = &log_loss;
 	    opt->loss_pt_func = &log_loss_pt;
-	    opt->caliblp_func = &calibrate_lp_logistic;
 	 }
 	 else if(strcmp2(argv[i], MODEL_NAME_SQRHINGE))
 	 {
@@ -156,7 +155,6 @@ int opt_parse(int argc, char* argv[], Opt* opt)
 	    opt->predict_func = &linearphi1;
 	    opt->loss_func = &sqrhinge_loss;
 	    opt->loss_pt_func = &sqrhinge_loss_pt;
-	    opt->caliblp_func = &calibrate_lp_sqrhinge;
 	 }
 	 else if(strcmp2(argv[i], MODEL_NAME_LINEAR))
 	 {
@@ -166,7 +164,6 @@ int opt_parse(int argc, char* argv[], Opt* opt)
 	    opt->predict_func = &linearphi1;
 	    opt->loss_func = &linear_loss;
 	    opt->loss_pt_func = &linear_loss_pt;
-	    opt->caliblp_func = &calibrate_lp_linear;
 	 }
 	 else if(strcmp2(argv[i], MODEL_NAME_PCOR))
 	 {

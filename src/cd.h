@@ -22,7 +22,6 @@ typedef double (*step)(sample *s, gmatrix *g);
 
 typedef double (*predict)(double x);
 
-typedef int (*calibrate_lp)(gmatrix *g);
 
 typedef struct Opt {
    short caller;
@@ -80,11 +79,10 @@ typedef struct Opt {
    int multivar;
    char *subset_file;
    char *famfilename;
-   calibrate_lp caliblp_func;
 } Opt;
 
 int cd_gmatrix(gmatrix *g,
-      calibrate_lp caliblp,
+      step step_func,
       const int maxepochs, const int maxiters,
       const double lambda1, const double lambda2,
       const double threshold, const int verbose,
@@ -108,11 +106,5 @@ void zero_model(gmatrix *g);
 double step_regular_linear(sample *s, gmatrix *g);
 double step_regular_logistic(sample *s, gmatrix *g);
 double step_regular_sqrhinge(sample *s, gmatrix *g);
-
-int init_newton(gmatrix *g);
-/*int calibrate_lp(gmatrix *g);*/
-int calibrate_lp_linear(gmatrix *g);
-int calibrate_lp_sqrhinge(gmatrix *g);
-int calibrate_lp_logistic(gmatrix *g);
 
 

@@ -39,7 +39,6 @@ int gmatrix_init(gmatrix *g, char *filename, int n, int p,
    g->ylp_neg_y = NULL;
    g->ylp_neg_y_ylp = NULL;
    g->lp_invlogit = NULL;
-   g->newtonstep = NULL;
    g->loss_func = NULL;
    g->loss_pt_func = loss_pt_func;
    g->scalefile = scalefile;
@@ -209,7 +208,6 @@ void gmatrix_free(gmatrix *g)
    FREENULL(g->ylp_neg_y);
    FREENULL(g->ylp_neg_y_ylp);
    FREENULL(g->lp_invlogit);
-   FREENULL(g->newtonstep);
    FREENULL(g->beta);
    FREENULL(g->beta_orig);
    FREENULL(g->encbuf);
@@ -679,7 +677,6 @@ void gmatrix_zero_model(gmatrix *g)
    {
       g->beta[j] = 0;
       g->active[j] = !g->ignore[j];
-      g->newtonstep[j] = 0;
    }
 
    for(i = n - 1 ; i >= 0 ; --i)
@@ -709,9 +706,6 @@ int gmatrix_init_lp(gmatrix *g)
    printf("gmatrix_init_lp\n"); fflush(stdout);
    FREENULL(g->lp);
    CALLOCTEST(g->lp, g->ncurr, sizeof(double));
-
-   FREENULL(g->newtonstep);
-   CALLOCTEST(g->newtonstep, g->p + 1, sizeof(double));
 
    if(g->model == MODEL_LOGISTIC) 
    {
@@ -795,134 +789,6 @@ double step_regular_sqrhinge(sample *s, gmatrix *g)
    return grad * g->ncurr_recip; /* avoid division */
 }
 
-/* Initialise the Newton step for when all variables are zero */
-int init_newton(gmatrix *g)
-{
-   int j;
-   int p1 = g->p + 1;
-   sample sm;
-
-   if(!sample_init(&sm))
-      return FAILURE;
-
-   /* don't update step for intercept, it's been done already in
-    * get_lambda1max_gmatrix
-    */
-   for(j = 1 ; j < p1 ; j++)
-   {
-      g->nextcol(g, &sm, j, NA_ACTION_ZERO);
-      updatelp(g, 0, sm.x, j);
-   }
-
-   return SUCCESS;
-}
-
-/* Recalculate the lp from scratch using the beta and x, to reduce the
- * accumulation of numerical error
- */
-int calibrate_lp_linear(gmatrix *g)
-{
-   int i, j;
-   int p1 = g->p + 1, n = g->ncurr;
-   sample sm;
-   double err;
-
-   if(!sample_init(&sm))
-      return FAILURE;
-
-   for(i = 0 ; i < n ; i++)
-      g->lp[i] = 0;
-
-   for(j = 0 ; j < p1 ; j++)
-   {
-      if(g->beta != 0)
-      {
-	 for(i = 0 ; i < n ; i++)
-      	 {
-	    g->nextcol(g, &sm, j, NA_ACTION_ZERO);
-	    g->lp[i] += sm.x[i] * g->beta[j];
-	    err = g->lp[i] - g->y[i];
-	    g->loss += err * err;
-	    g->newtonstep[j] += sm.x[i] * err;
-      	 }
-	 g->newtonstep[j] *= g->ncurr_recip;
-      }
-   }
-   return SUCCESS;
-}
-
-int calibrate_lp_sqrhinge(gmatrix *g)
-{
-   int i, j;
-   int p1 = g->p + 1, n = g->ncurr;
-   sample sm;
-   double ylp;
-
-   if(!sample_init(&sm))
-      return FAILURE;
-
-   for(i = 0 ; i < n ; i++)
-      g->lp[i] = 0;
-
-   for(j = 0 ; j < p1 ; j++)
-   {
-      if(g->beta != 0)
-      {
-	 for(i = 0 ; i < n ; i++)
-      	 {
-	    g->nextcol(g, &sm, j, NA_ACTION_ZERO);
-
-	    g->lp[i] += sm.x[i] * g->beta[j];
-      	    ylp = g->y[i] * g->lp[i] - 1;
-      	    
-	    if(ylp < 0)
-	    {
-      	       g->ylp_neg_y_ylp[i] = g->y[i] * ylp;
-	       g->loss += ylp * ylp;
-	       g->newtonstep[j] += g->ylp_neg_y_ylp[i] * sm.x[i];
-	    }
-	    else
-	       g->ylp_neg_y_ylp[i] = 0;
-      	 }
-	 g->newtonstep[j] *= g->ncurr_recip;
-      }
-   }
-   return SUCCESS;
-}
-
-int calibrate_lp_logistic(gmatrix *g)
-{
-   int i, j;
-   int p1 = g->p + 1, n = g->ncurr;
-   sample sm;
-   double d1, d2;
-
-   if(!sample_init(&sm))
-      return FAILURE;
-
-   for(i = 0 ; i < n ; i++)
-      g->lp[i] = 0;
-
-   for(j = 0 ; j < p1 ; j++)
-   {
-      d1 = d2 = 0;
-      if(g->beta != 0)
-      {
-	 for(i = 0 ; i < n ; i++)
-      	 {
-	    g->nextcol(g, &sm, j, NA_ACTION_ZERO);
-
-	    g->lp_invlogit[i] = 1 / (1 + exp(- g->lp[i]));
-	    g->loss += log(1 + exp(g->lp[i])) - g->y[i] * g->lp[i];
-	    d1 += sm.x[i] * (g->lp_invlogit[i] - g->y[i]);
-	    d2 += sm.x[i] * sm.x[i] * g->lp_invlogit[i] * (1 - g->lp_invlogit[i]);
-      	 }
-	 g->newtonstep[j] = (d2 == 0) ? 0 : d1 / d2;
-      }
-   }
-   return SUCCESS;
-}
-
 /* Update linear predictor and related variables.
  *
  * The updates where x is null are for the get_lambda1max_gmatrix updates
@@ -936,11 +802,8 @@ void updatelp(gmatrix *g, const double update,
    double *restrict lp_invlogit = g->lp_invlogit,
 	  *restrict lp = g->lp,
 	  *restrict y = g->y,
-	  *restrict ylp_neg_y_ylp = g->ylp_neg_y_ylp,
-	  *restrict newtonstep = g->newtonstep;
+	  *restrict ylp_neg_y_ylp = g->ylp_neg_y_ylp;
    double loss = 0, ylp = 0;
-
-   newtonstep[j] = 0;
 
    if(g->model == MODEL_LINEAR)
    {
@@ -949,9 +812,7 @@ void updatelp(gmatrix *g, const double update,
 	 lp[i] += x[i] * update;
 	 err = lp[i] - y[i];
 	 loss += err * err;
-	 newtonstep[j] += x[i] * err;
       }
-      newtonstep[j] *= g->ncurr_recip;
    }
    else if(g->model == MODEL_LOGISTIC)
    {
@@ -960,10 +821,7 @@ void updatelp(gmatrix *g, const double update,
 	 lp[i] += x[i] * update;
 	 lp_invlogit[i] = 1 / (1 + exp(-lp[i]));
 	 loss += log(1 + exp(lp[i])) - y[i] * lp[i];
-	 d1 += x[i] * (lp_invlogit[i] - y[i]);
-	 d2 += x[i] * x[i] * lp_invlogit[i] * (1 - lp_invlogit[i]);
       }
-      newtonstep[j] = (d2 == 0) ? 0 : d1 / d2;
    }
    else if(g->model == MODEL_SQRHINGE)
    {
@@ -976,12 +834,10 @@ void updatelp(gmatrix *g, const double update,
 	 {
 	    ylp_neg_y_ylp[i] = y[i] * ylp;
 	    loss += ylp * ylp;
-	    newtonstep[j] += ylp_neg_y_ylp[i] * x[i];
 	 }
 	 else
 	    ylp_neg_y_ylp[i] = 0;
       }
-      newtonstep[j] *= g->ncurr_recip;
    }
 
    g->loss = loss * g->ncurr_recip;

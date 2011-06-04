@@ -63,7 +63,7 @@ double get_lambda1max_gmatrix(gmatrix *g,
 
 /* coordinate descent */
 int cd_gmatrix(gmatrix *g,
-      calibrate_lp caliblp,
+      step step_func,
       const int maxepochs,
       const int maxiters,
       const double lambda1,
@@ -93,10 +93,6 @@ int cd_gmatrix(gmatrix *g,
    CALLOCTEST(beta_old, p1, sizeof(double));
    
 
-   /*caliblp(g);*/
-
-   init_newton(g);
-
    while(epoch <= maxepochs)
    {
       numactive = 0;
@@ -112,20 +108,16 @@ int cd_gmatrix(gmatrix *g,
 
       	    while(iter < maxiters)
       	    {
-	       d = fabs(s/g->ncurr - g->newtonstep[j]);
-
-	       s /= g->ncurr;
-	       printf("diff:%.10f\n", s- g->newtonstep[j]);
-	       beta_new = g->beta[j] - g->newtonstep[j];
+	       s = step_func(&sm, g);
+	       beta_new = g->beta[j] - s;
+	       
       	       if(j > 0)
       	          beta_new = soft_threshold(beta_new, lambda1); /* l2recip;*/
       	       /*beta_new = clip(beta_new, -truncl, truncl); */
 
-
 	       beta_new = g->beta[j] - s;
       	       if(j > 0) 
       	          beta_new = soft_threshold(beta_new, lambda1);
-
 
 	       s = beta_new - g->beta[j];
 	       
@@ -182,7 +174,6 @@ int cd_gmatrix(gmatrix *g,
 	 allconverged = 0;
 	 for(j = p ; j >= 0 ; --j)
 	    g->active[j] = !g->ignore[j];
-	 /*caliblp(g);*/
       }
 
       epoch++;

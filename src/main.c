@@ -78,7 +78,7 @@ int run_train(Opt *opt, gmatrix *g)
       /* return value is number of nonzero variables,
        * including the intercept */
       ret = cd_gmatrix(
-	    g, opt->caliblp_func,
+	    g, opt->step_func,
 	    opt->maxepochs, opt->maxiters,
 	    opt->lambda1path[i], opt->lambda2,
 	    opt->threshold, opt->verbose, opt->trunc);
