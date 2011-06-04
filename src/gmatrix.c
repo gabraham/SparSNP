@@ -604,7 +604,16 @@ int gmatrix_read_scaling(gmatrix *g, char *file_scale)
 	 {
 	    l2 = l1 + k;
 	    /* Scale unless missing obs. If missing, make the observed a zero
-	     * so that it contributes nothing to the gradient later. */
+	     * so that it contributes nothing to the gradient later.
+	     * TODO: impute with a random value in {0,1,2} instead of just 0
+	     * 
+	     * Note that the zero returned here is actually zero, NOT the same
+	     * as if the genotype were zero, because in the latter case the
+	     * value is scaled (becomes some value, typically not zero),
+	     * whereas in the former case there is no scaling. It's the same
+	     * as first scaling, ignoring the missing values, then putting
+	     * zeros in place of the missing scaled values.
+	     */
 	    g->lookup[l2] = (k != X_LEVEL_NA) ?
 	       (k - g->mean[j]) / g->sd[j] : 0;
 	 }
@@ -725,4 +734,257 @@ int gmatrix_init_lp(gmatrix *g)
    }
    return SUCCESS;
 }
+
+/* In linear regression, for standardised inputs x, the 2nd derivative is
+ * always N since it is the sum of squares \sum_{i=1}^N x_{ij}^2 =
+ * \sum_{i=1}^N 1 = N
+ */
+double step_regular_linear(sample *s, gmatrix *g)
+{
+   int i;
+   double grad = 0;
+   double *restrict x = s->x, 
+          *restrict lp = g->lp,
+	  *restrict y = g->y;
+
+   /* compute gradient */
+   for(i = g->ncurr - 1 ; i >= 0 ; --i)
+      grad += x[i] * (lp[i] - y[i]);
+
+   return grad * g->ncurr_recip;
+}
+
+double step_regular_logistic(sample *s, gmatrix *g)
+{
+   int i, n = g->ncurr;
+   double grad = 0, d2 = 0;
+   double *restrict y = g->y,
+	  *restrict lp_invlogit = g->lp_invlogit,
+	  *restrict x = s->x;
+
+   /* compute 1st and 2nd derivatives */
+   for(i = n - 1 ; i >= 0 ; --i)
+   {
+      grad += x[i] * (lp_invlogit[i] - y[i]);
+      d2 += x[i] * x[i] * lp_invlogit[i] * (1 - lp_invlogit[i]);
+   }
+
+   grad *= g->ncurr_recip;
+   d2 *= g->ncurr_recip;
+
+   if(d2 == 0)
+      return 0;
+   return grad / d2;
+}
+
+/*
+ * Squared hinge loss, assumes y \in {-1,1},
+ * and that X is scaled so that the 2nd derivative is always N
+ */
+double step_regular_sqrhinge(sample *s, gmatrix *g)
+{
+   int i, n = g->ncurr;
+   double grad = 0;
+   const double *restrict x = s->x,
+		*restrict ylp_neg_y_ylp = g->ylp_neg_y_ylp;
+
+   /* compute gradient */
+   for(i = n - 1 ; i >= 0 ; --i)
+      grad += ylp_neg_y_ylp[i] * x[i];
+
+   return grad * g->ncurr_recip; /* avoid division */
+}
+
+/* Initialise the Newton step for when all variables are zero */
+int init_newton(gmatrix *g)
+{
+   int j;
+   int p1 = g->p + 1;
+   sample sm;
+
+   if(!sample_init(&sm))
+      return FAILURE;
+
+   /* don't update step for intercept, it's been done already in
+    * get_lambda1max_gmatrix
+    */
+   for(j = 1 ; j < p1 ; j++)
+   {
+      g->nextcol(g, &sm, j, NA_ACTION_ZERO);
+      updatelp(g, 0, sm.x, j);
+   }
+
+   return SUCCESS;
+}
+
+/* Recalculate the lp from scratch using the beta and x, to reduce the
+ * accumulation of numerical error
+ */
+int calibrate_lp_linear(gmatrix *g)
+{
+   int i, j;
+   int p1 = g->p + 1, n = g->ncurr;
+   sample sm;
+   double err;
+
+   if(!sample_init(&sm))
+      return FAILURE;
+
+   for(i = 0 ; i < n ; i++)
+      g->lp[i] = 0;
+
+   for(j = 0 ; j < p1 ; j++)
+   {
+      if(g->beta != 0)
+      {
+	 for(i = 0 ; i < n ; i++)
+      	 {
+	    g->nextcol(g, &sm, j, NA_ACTION_ZERO);
+	    g->lp[i] += sm.x[i] * g->beta[j];
+	    err = g->lp[i] - g->y[i];
+	    g->loss += err * err;
+	    g->newtonstep[j] += sm.x[i] * err;
+      	 }
+	 g->newtonstep[j] *= g->ncurr_recip;
+      }
+   }
+   return SUCCESS;
+}
+
+int calibrate_lp_sqrhinge(gmatrix *g)
+{
+   int i, j;
+   int p1 = g->p + 1, n = g->ncurr;
+   sample sm;
+   double ylp;
+
+   if(!sample_init(&sm))
+      return FAILURE;
+
+   for(i = 0 ; i < n ; i++)
+      g->lp[i] = 0;
+
+   for(j = 0 ; j < p1 ; j++)
+   {
+      if(g->beta != 0)
+      {
+	 for(i = 0 ; i < n ; i++)
+      	 {
+	    g->nextcol(g, &sm, j, NA_ACTION_ZERO);
+
+	    g->lp[i] += sm.x[i] * g->beta[j];
+      	    ylp = g->y[i] * g->lp[i] - 1;
+      	    
+	    if(ylp < 0)
+	    {
+      	       g->ylp_neg_y_ylp[i] = g->y[i] * ylp;
+	       g->loss += ylp * ylp;
+	       g->newtonstep[j] += g->ylp_neg_y_ylp[i] * sm.x[i];
+	    }
+	    else
+	       g->ylp_neg_y_ylp[i] = 0;
+      	 }
+	 g->newtonstep[j] *= g->ncurr_recip;
+      }
+   }
+   return SUCCESS;
+}
+
+int calibrate_lp_logistic(gmatrix *g)
+{
+   int i, j;
+   int p1 = g->p + 1, n = g->ncurr;
+   sample sm;
+   double d1, d2;
+
+   if(!sample_init(&sm))
+      return FAILURE;
+
+   for(i = 0 ; i < n ; i++)
+      g->lp[i] = 0;
+
+   for(j = 0 ; j < p1 ; j++)
+   {
+      d1 = d2 = 0;
+      if(g->beta != 0)
+      {
+	 for(i = 0 ; i < n ; i++)
+      	 {
+	    g->nextcol(g, &sm, j, NA_ACTION_ZERO);
+
+	    g->lp_invlogit[i] = 1 / (1 + exp(- g->lp[i]));
+	    g->loss += log(1 + exp(g->lp[i])) - g->y[i] * g->lp[i];
+	    d1 += sm.x[i] * (g->lp_invlogit[i] - g->y[i]);
+	    d2 += sm.x[i] * sm.x[i] * g->lp_invlogit[i] * (1 - g->lp_invlogit[i]);
+      	 }
+	 g->newtonstep[j] = (d2 == 0) ? 0 : d1 / d2;
+      }
+   }
+   return SUCCESS;
+}
+
+/* Update linear predictor and related variables.
+ *
+ * The updates where x is null are for the get_lambda1max_gmatrix updates
+ * i.e. x_i=1 for all i
+ */
+void updatelp(gmatrix *g, const double update,
+      const double *restrict x, int j)
+{
+   int i, n = g->ncurr;
+   double err, d1 = 0, d2 = 0;
+   double *restrict lp_invlogit = g->lp_invlogit,
+	  *restrict lp = g->lp,
+	  *restrict y = g->y,
+	  *restrict ylp_neg_y_ylp = g->ylp_neg_y_ylp,
+	  *restrict newtonstep = g->newtonstep;
+   double loss = 0, ylp = 0;
+
+   newtonstep[j] = 0;
+
+   if(g->model == MODEL_LINEAR)
+   {
+      for(i = n - 1 ; i >= 0 ; --i)
+      {
+	 lp[i] += x[i] * update;
+	 err = lp[i] - y[i];
+	 loss += err * err;
+	 newtonstep[j] += x[i] * err;
+      }
+      newtonstep[j] *= g->ncurr_recip;
+   }
+   else if(g->model == MODEL_LOGISTIC)
+   {
+      for(i = n - 1 ; i >= 0 ; --i)
+      {
+	 lp[i] += x[i] * update;
+	 lp_invlogit[i] = 1 / (1 + exp(-lp[i]));
+	 loss += log(1 + exp(lp[i])) - y[i] * lp[i];
+	 d1 += x[i] * (lp_invlogit[i] - y[i]);
+	 d2 += x[i] * x[i] * lp_invlogit[i] * (1 - lp_invlogit[i]);
+      }
+      newtonstep[j] = (d2 == 0) ? 0 : d1 / d2;
+   }
+   else if(g->model == MODEL_SQRHINGE)
+   {
+      for(i = n - 1 ; i >= 0 ; --i)
+      {
+	 lp[i] += x[i] * update;
+	 ylp = y[i] * lp[i] - 1;
+
+	 if(ylp < 0)
+	 {
+	    ylp_neg_y_ylp[i] = y[i] * ylp;
+	    loss += ylp * ylp;
+	    newtonstep[j] += ylp_neg_y_ylp[i] * x[i];
+	 }
+	 else
+	    ylp_neg_y_ylp[i] = 0;
+      }
+      newtonstep[j] *= g->ncurr_recip;
+   }
+
+   g->loss = loss * g->ncurr_recip;
+}
+
 

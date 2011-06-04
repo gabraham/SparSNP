@@ -109,9 +109,6 @@ double step_regular_linear(sample *s, gmatrix *g);
 double step_regular_logistic(sample *s, gmatrix *g);
 double step_regular_sqrhinge(sample *s, gmatrix *g);
 
-void updatelp(gmatrix *g, const double update,
-      const double *restrict x, int j);
-
 int init_newton(gmatrix *g);
 /*int calibrate_lp(gmatrix *g);*/
 int calibrate_lp_linear(gmatrix *g);

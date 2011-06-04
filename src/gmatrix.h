@@ -20,23 +20,6 @@
 #define NA_ACTION_DELETE 1
 #define NA_ACTION_ZERO 2
 
-typedef struct bucket {
-   int key;
-   int n;
-   double *value;
-   unsigned int active;
-   struct bucket *next;
-} bucket;
-
-typedef struct cache {
-   unsigned int size;
-   unsigned int active;
-   bucket *buckets;
-   int *keys;
-   int nkeys;
-   unsigned int *weights;
-} cache;
-
 typedef struct sample {
    int n;
    int ngood;
@@ -45,7 +28,6 @@ typedef struct sample {
    double *y;
    double *x2;
    short intercept;
-   short cached;
    int nbins;
    int *counts;
    double *values;
@@ -101,7 +83,6 @@ typedef struct gmatrix {
    int *folds;
    int fold;
    int mode;
-   cache *ca;
    int nseek;
    double *beta_orig;
    int *numnz;
@@ -143,11 +124,13 @@ int gmatrix_disk_read_y(gmatrix *g);
 int gmatrix_fam_read_y(gmatrix *g);
 int gmatrix_read_matrix(gmatrix *g, int *ind, int m);
 
-int cache_init(cache *ht, int nkeys);
-void cache_free(cache *ht);
-int cache_put(cache *ht, int key, double *value, int n);
-double* cache_get(cache *ht, int key);
-/*static inline int hash(int key);*/
 int gmatrix_load_subsets(gmatrix *g);
 int gmatrix_plink_check_pheno(gmatrix *g);
+
+double step_regular_linear(sample *s, gmatrix *g);
+double step_regular_sqrhinge(sample *s, gmatrix *g);
+double step_regular_logistic(sample *s, gmatrix *g);
+int init_newton(gmatrix *g);
+void updatelp(gmatrix *g, const double update,
+      const double *restrict x, int j);
 

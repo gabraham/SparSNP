@@ -16,221 +16,6 @@ inline static double zero(const double x, const double thresh)
    return (fabs(x) < thresh) ? 0 : x;
 }
 
-/* Update linear predictor and related variables.
- *
- * The updates where x is null are for the get_lambda1max_gmatrix updates
- * i.e. x_i=1 for all i
- * */
-void updatelp(gmatrix *g, const double update,
-      const double *restrict x, int j)
-{
-   int i, n = g->ncurr;
-   double err, d1 = 0, d2 = 0;
-   double *restrict lp_invlogit = g->lp_invlogit,
-	  *restrict lp = g->lp,
-	  *restrict y = g->y,
-	  *restrict ylp_neg_y_ylp = g->ylp_neg_y_ylp,
-	  *restrict newtonstep = g->newtonstep;
-   double loss = 0, ylp = 0;
-
-   if(g->model == MODEL_LINEAR)
-   {
-      if(x)
-      {
-	 for(i = n - 1 ; i >= 0 ; --i)
-	 {
-	    lp[i] += x[i] * update;
-	    err = lp[i] - y[i];
-	    loss += err * err;
-	    newtonstep[j] += x[i] * err;
-	 }
-      }
-      else
-      {
-	 for(i = n - 1 ; i >= 0 ; --i)
-	 {
-	    lp[i] = update;
-	    err = lp[i] - y[i];
-	    loss += err * err;
-	    newtonstep[j] += err;
-	 }
-      }
-      newtonstep[j] *= g->ncurr_recip;
-   }
-   else if(g->model == MODEL_LOGISTIC)
-   {
-      if(x)
-      {
-	 for(i = n - 1 ; i >= 0 ; --i)
-	 {
-	    lp[i] += x[i] * update;
-	    lp_invlogit[i] = 1 / (1 + exp(-lp[i]));
-	    loss += log(1 + exp(lp[i])) - y[i] * lp[i];
-	 }
-      }
-      else
-      {
-	 for(i = n - 1 ; i >= 0 ; --i)
-	 {
-	    lp[i] += update;
-	    lp_invlogit[i] = 1 / (1 + exp(-lp[i]));
-	    loss += log(1 + exp(lp[i])) - y[i] * lp[i];
-	    d1 += x[i] * (lp_invlogit[i] - y[i]);
-	    d2 += x[i] * x[i] * lp_invlogit[i] * (1 - lp_invlogit[i]);
-	 }
-      }
-      newtonstep[j] = (d2 == 0) ? 0 : d1 / d2;
-   }
-   else if(g->model == MODEL_SQRHINGE)
-   {
-      if(x)
-      {
-	 for(i = n - 1 ; i >= 0 ; --i)
-      	 {
-      	    lp[i] += x[i] * update;
-      	    ylp = y[i] * lp[i] - 1;
-      	    
-	    if(ylp < 0)
-	    {
-      	       ylp_neg_y_ylp[i] = y[i] * ylp;
-	       loss += ylp * ylp;
-	       newtonstep[j] += ylp_neg_y_ylp[i] * x[i];
-	    }
-	    else
-	       ylp_neg_y_ylp[i] = 0;
-      	 }
-      }
-      else
-      {
-	 for(i = n - 1 ; i >= 0 ; --i)
-      	 {
-      	    lp[i] += update;
-      	    ylp = y[i] * lp[i] - 1;
-
-	    if(ylp < 0)
-	    {
-      	       ylp_neg_y_ylp[i] = y[i] * ylp;
-	       loss += ylp * ylp;
-	       newtonstep[j] += ylp_neg_y_ylp[i];
-	    }
-	    else
-	       ylp_neg_y_ylp[i] = 0;
-      	 }
-      }
-      newtonstep[j] *= g->ncurr_recip;
-   }
-
-   loss *= g->ncurr_recip;
-   g->loss = loss;
-}
-
-/* Recalculate the lp from scratch using the beta and x, to reduce the
- * accumulation of numerical error
- */
-int calibrate_lp_linear(gmatrix *g)
-{
-   int i, j;
-   int p1 = g->p + 1, n = g->ncurr;
-   sample sm;
-   double err;
-
-   if(!sample_init(&sm))
-      return FAILURE;
-
-   for(i = 0 ; i < n ; i++)
-      g->lp[i] = 0;
-
-   for(j = 0 ; j < p1 ; j++)
-   {
-      if(g->beta != 0)
-      {
-	 for(i = 0 ; i < n ; i++)
-      	 {
-	    g->nextcol(g, &sm, j, NA_ACTION_ZERO);
-	    g->lp[i] += sm.x[i] * g->beta[j];
-	    err = g->lp[i] - g->y[i];
-	    g->loss += err * err;
-	    g->newtonstep[j] += sm.x[i] * err;
-      	 }
-	 g->newtonstep[j] *= g->ncurr_recip;
-      }
-   }
-   return SUCCESS;
-}
-
-int calibrate_lp_sqrhinge(gmatrix *g)
-{
-   int i, j;
-   int p1 = g->p + 1, n = g->ncurr;
-   sample sm;
-   double ylp;
-
-   if(!sample_init(&sm))
-      return FAILURE;
-
-   for(i = 0 ; i < n ; i++)
-      g->lp[i] = 0;
-
-   for(j = 0 ; j < p1 ; j++)
-   {
-      if(g->beta != 0)
-      {
-	 for(i = 0 ; i < n ; i++)
-      	 {
-	    g->nextcol(g, &sm, j, NA_ACTION_ZERO);
-
-	    g->lp[i] += sm.x[i] * g->beta[j];
-      	    ylp = g->y[i] * g->lp[i] - 1;
-      	    
-	    if(ylp < 0)
-	    {
-      	       g->ylp_neg_y_ylp[i] = g->y[i] * ylp;
-	       g->loss += ylp * ylp;
-	       g->newtonstep[j] += g->ylp_neg_y_ylp[i] * sm.x[i];
-	    }
-	    else
-	       g->ylp_neg_y_ylp[i] = 0;
-      	 }
-	 g->newtonstep[j] *= g->ncurr_recip;
-      }
-   }
-   return SUCCESS;
-}
-
-int calibrate_lp_logistic(gmatrix *g)
-{
-   int i, j;
-   int p1 = g->p + 1, n = g->ncurr;
-   sample sm;
-   double d1, d2;
-
-   if(!sample_init(&sm))
-      return FAILURE;
-
-   for(i = 0 ; i < n ; i++)
-      g->lp[i] = 0;
-
-   for(j = 0 ; j < p1 ; j++)
-   {
-      d1 = d2 = 0;
-      if(g->beta != 0)
-      {
-	 for(i = 0 ; i < n ; i++)
-      	 {
-	    g->nextcol(g, &sm, j, NA_ACTION_ZERO);
-
-	    g->lp_invlogit[i] = 1 / (1 + exp(- g->lp[i]));
-	    g->loss += log(1 + exp(g->lp[i])) - g->y[i] * g->lp[i];
-	    d1 += sm.x[i] * (g->lp_invlogit[i] - g->y[i]);
-	    d2 += sm.x[i] * sm.x[i] * g->lp_invlogit[i] * (1 - g->lp_invlogit[i]);
-      	 }
-	 g->newtonstep[j] = (d2 == 0) ? 0 : d1 / d2;
-      }
-   }
-   return SUCCESS;
-}
-
-
 /* 
  * Find smallest lambda1 that makes all coefficients
  * zero (except the intercept)
@@ -255,7 +40,7 @@ double get_lambda1max_gmatrix(gmatrix *g,
       s += g->y[i];
 
    beta_new = inv_func(s / n);
-   updatelp(g, beta_new, NULL, 0);
+   updatelp(g, beta_new, sm.x, 0);
    printf("intercept: %.15f (%d samples)\n", beta_new, n);
 
    /* find smallest lambda1 that makes all coefficients zero, by
@@ -276,88 +61,6 @@ double get_lambda1max_gmatrix(gmatrix *g,
    return zmax;
 }
 
-/* In linear regression, for standardised inputs x, the 2nd derivative is
- * always N since it is the sum of squares \sum_{i=1}^N x_{ij}^2 =
- * \sum_{i=1}^N 1 = N
- */
-double step_regular_linear(sample *s, gmatrix *g)
-{
-   int i;
-   double grad = 0;
-   double *restrict x = s->x, 
-          *restrict lp = g->lp,
-	  *restrict y = g->y;
-
-   /* compute gradient */
-   for(i = g->ncurr - 1 ; i >= 0 ; --i)
-      grad += x[i] * (lp[i] - y[i]);
-
-   return grad * g->ncurr_recip;
-}
-
-double step_regular_logistic(sample *s, gmatrix *g)
-{
-   int i, n = g->ncurr;
-   double grad = 0, d2 = 0;
-   double *restrict y = g->y,
-	  *restrict lp_invlogit = g->lp_invlogit,
-	  *restrict x = s->x;
-
-   /* compute 1st and 2nd derivatives */
-   for(i = n - 1 ; i >= 0 ; --i)
-   {
-      grad += x[i] * (lp_invlogit[i] - y[i]);
-      d2 += x[i] * x[i] * lp_invlogit[i] * (1 - lp_invlogit[i]);
-   }
-
-   grad *= g->ncurr_recip;
-   d2 *= g->ncurr_recip;
-
-   if(d2 == 0)
-      return 0;
-   return grad / d2;
-}
-
-/*
- * Squared hinge loss, assumes y \in {-1,1},
- * and that X is scaled so that the 2nd derivative is always N
- */
-double step_regular_sqrhinge(sample *s, gmatrix *g)
-{
-   int i, n = g->ncurr;
-   double grad = 0;
-   const double *restrict x = s->x,
-		*restrict ylp_neg_y_ylp = g->ylp_neg_y_ylp;
-
-   /* compute gradient */
-   for(i = n - 1 ; i >= 0 ; --i)
-      grad += ylp_neg_y_ylp[i] * x[i];
-
-   return grad * g->ncurr_recip; /* avoid division */
-}
-
-/* Initialise the Newton step for when all variables are zero */
-int init_newton(gmatrix *g)
-{
-   int j;
-   int p1 = g->p + 1;
-   sample sm;
-
-   if(!sample_init(&sm))
-      return FAILURE;
-
-   /* don't update step for intercept, it's been done already in
-    * get_lambda1max_gmatrix
-    */
-   for(j = 1 ; j < p1 ; j++)
-   {
-      g->nextcol(g, &sm, j, NA_ACTION_ZERO);
-      updatelp(g, 0, sm.x, j);
-   }
-
-   return SUCCESS;
-}
-
 /* coordinate descent */
 int cd_gmatrix(gmatrix *g,
       calibrate_lp caliblp,
@@ -370,10 +73,9 @@ int cd_gmatrix(gmatrix *g,
       const double trunc)
 {
    const int p = g->p, p1 = g->p + 1;
-   int j, iter, allconverged = 0, numactive = 0,
+   int i, j, iter, allconverged = 0, numactive = 0,
        epoch = 1, numconverged = 0,
        good = FALSE;
-   int *active_old = NULL;
    double s = 0, beta_new;
    const double truncl = log((1 - trunc) / trunc);
    /*const double l2recip = 1 / (1 + lambda2);*/
@@ -381,18 +83,17 @@ int cd_gmatrix(gmatrix *g,
    double old_loss = 0;
    int conv = 0;
    int *zero = NULL;
+   double *beta_old = NULL;
+   double d = 0;
 
    if(!sample_init(&sm))
       return FAILURE;
 
-   CALLOCTEST(active_old, p1, sizeof(int));
    CALLOCTEST(zero, p1, sizeof(int));
+   CALLOCTEST(beta_old, p1, sizeof(double));
+   
 
-   /* start off with all variables marked active
-    * even though they're all zero, unless they're
-    * marked as ignore */
-   for(j = p ; j >= 0 ; --j)
-      active_old[j] = g->active[j];
+   /*caliblp(g);*/
 
    init_newton(g);
 
@@ -400,121 +101,95 @@ int cd_gmatrix(gmatrix *g,
    {
       numactive = 0;
       numconverged = 0;
+
       for(j = 0 ; j < p1; j++)
       {
 	 iter = 0;
-	 conv = TRUE;
 	 
-	 /* check if it is possible for this variable to become active
-	  * under the current penalty */ 
-	 /*if(g->active[j] && (!zero[j] || (zero[j] && fabs(g->newtonstep[j]) > lambda1)))*/
 	 if(g->active[j])
 	 {
-	    conv = FALSE;
 	    g->nextcol(g, &sm, j, NA_ACTION_ZERO);
-	    old_loss = g->loss;
 
-	    /* iterate over jth variable */
       	    while(iter < maxiters)
       	    {
-	       beta_new = g->beta[j] - g->newtonstep[j];
-      	       if(j > 0) /* don't penalise intercept */
-      	          beta_new = soft_threshold(beta_new, lambda1);/* * l2recip;*/
-      	       beta_new = clip(beta_new, -truncl, truncl);
+	       d = fabs(s/g->ncurr - g->newtonstep[j]);
 
-	       /* beta_new may have changed by thresholding */
+	       s /= g->ncurr;
+	       printf("diff:%.10f\n", s- g->newtonstep[j]);
+	       beta_new = g->beta[j] - g->newtonstep[j];
+      	       if(j > 0)
+      	          beta_new = soft_threshold(beta_new, lambda1); /* l2recip;*/
+      	       /*beta_new = clip(beta_new, -truncl, truncl); */
+
+
+	       beta_new = g->beta[j] - s;
+      	       if(j > 0) 
+      	          beta_new = soft_threshold(beta_new, lambda1);
+
+
 	       s = beta_new - g->beta[j];
 	       
-	       /* beta hasn't changed, no need to update anything else*/
-	       /*if(s == 0)
-	       {
-		  conv = TRUE;
+	       if(s == 0)
 		  break;
-	       }*/
 
 	       updatelp(g, s, sm.x, j);
 	       g->beta[j] = beta_new;
 
-	       if(/*fabs(s) <= ZERO_THRESH*/
-		     fabs(s) <= 1e-9
-		     || fabs(old_loss - g->loss) / g->loss <= 1e-2
-		   /*  || g->loss <= 1e-10*/
+	       if(fabs(s) <= 1e-4
+		    /* || fabs(old_loss - g->loss) / g->loss <= 1e-2
+		     || g->loss <= 1e-10*/
 		  )
 	       {
-		  conv = TRUE;
 		  break;
 	       }
       	       iter++;
       	    }
+	    zero[j] = g->beta[j] == 0;
+	    g->active[j] = !zero[j];
 	 }
 
-	 zero[j] = g->beta[j] == 0;
-	 g->active[j] = !zero[j];
-	 numactive += g->active[j];
+	 conv = fabs(g->beta[j] - beta_old[j]) <= 1e-4;
+	 beta_old[j] = g->beta[j];
 	 numconverged += conv;
-
-	 if(iter >= maxiters)
-	    printfverb("max number of internal iterations (%d) \
-reached for variable: %d  s: %.15f  old_loss: %.10f  loss: %.10f\n",
-	       maxiters, j, s, old_loss, g->loss);
+	 numactive += g->active[j];
       }
 
       printfverb("fold: %d  epoch: %d  numactive: %d  numconverged: %d\n", 
 	    g->fold, epoch, numactive, numconverged);
       fflush(stdout);
 
-      /* 3-state machine for active set convergence */ 
       if(numconverged == p1) 
       {
 	 printfverb("all converged\n");
 	 allconverged++;
 
-	 /* prepare for another iteration over *all*
-	  * (non-ignored) variables, store a copy of the
-	  * current active set for later */
 	 if(allconverged == 1)
 	 {
 	    printfverb("prepare for final epoch\n");
 	    for(j = p ; j >= 0 ; --j)
-	    {
-	       active_old[j] = g->active[j];
 	       g->active[j] = !g->ignore[j];
-	    }
 	 }
-	 else /* 2nd iteration over all variables done, check
-		 whether active set has changed */
+	 else
 	 {
-	    for(j = p ; j >= 0 ; --j)
-	       if(g->active[j] != active_old[j])
-		  break;
-
-	    /* all equal, terminate */
-	    if(j < 0)
-	    {
-	       printfverb("\n[%ld] terminating at epoch %d \
-with %d active vars\n", time(NULL), epoch, numactive);
-	       good = TRUE;
-	       break;
-	    }
-
-	    printfverb("active set changed, %d active vars\n",
-		  numactive);
-
-	    /* active set has changed, iterate over
-	     * new active variables */
-	    for(j = p ; j >= 0 ; --j)
-	       active_old[j] = g->active[j];
-	    allconverged = 1;
+	    printfverb("\n[%ld] terminating at epoch %d \
+ with %d active vars\n", time(NULL), epoch, numactive);
+	    good = TRUE;
+	    break;
 	 }
       }
-      else /* reset to first state */
+      else
+      { 
 	 allconverged = 0;
+	 for(j = p ; j >= 0 ; --j)
+	    g->active[j] = !g->ignore[j];
+	 /*caliblp(g);*/
+      }
 
       epoch++;
    }
    printfverb("\n");
 
-   FREENULL(active_old);
+   FREENULL(beta_old);
    FREENULL(zero);
 
    return good ? numactive : CDFAILURE;
