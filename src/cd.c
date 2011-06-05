@@ -127,7 +127,7 @@ int cd_gmatrix(gmatrix *g,
 	       updatelp(g, s, sm.x, j);
 	       g->beta[j] = beta_new;
 
-	       if(fabs(s) <= 1e-4
+	       if(fabs(s) <= 1e-5
 		    /* || fabs(old_loss - g->loss) / g->loss <= 1e-2
 		     || g->loss <= 1e-10*/
 		  )
@@ -140,7 +140,7 @@ int cd_gmatrix(gmatrix *g,
 	    g->active[j] = !zero[j];
 	 }
 
-	 conv = fabs(g->beta[j] - beta_old[j]) <= 1e-4;
+	 conv = fabs(g->beta[j] - beta_old[j]) <= 1e-5;
 	 beta_old[j] = g->beta[j];
 	 numconverged += conv;
 	 numactive += g->active[j];

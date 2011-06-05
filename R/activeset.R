@@ -171,6 +171,74 @@ cd.activeset <- function(x, y, step, loss, lambda1=0, beta=numeric(ncol(x)),
    beta
 }
 
+cd.activeset.experimental <- function(x, y, step, loss, lambda1=0,
+   beta=numeric(ncol(x)), lp=numeric(nrow(x)), maxepoch=500,
+   maxiter=50, eps=1e-4)
+{
+   p <- ncol(x)
+   n <- nrow(x)
+   beta_old <- beta
+   active_new <-  rep(TRUE, p)
+   active_old <- rep(FALSE, p)
+   allconverged <- 0
+   numconverged <- 0
+
+   cat("lambda1:", lambda1, "\n")
+   for(epoch in 1:maxepoch)
+   {
+      for(j in 1:p)
+      {
+	 if(active_new[j]) 
+	 {
+	    conv <- FALSE
+	    for(iter in 1:maxiter)
+	    {
+	       s <- step(x[,j], lp, y)
+               beta_new <- beta[j] - s
+               if(j > 1)
+                  beta_new <- soft(beta_new, lambda1)
+
+	       diff <- beta_new - beta[j]
+	       lp <- lp + x[, j] * diff
+	       beta[j] <- beta_new
+	       if(abs(diff) < eps)
+	       {
+	          break
+	       }
+	    }
+	    if(iter == maxiter)
+	       cat("maxiter reached for variable", j, "\n")
+	    active_new[j] <- beta[j] != 0
+	 }
+      }
+
+      if(all(abs(beta - beta_old) <= eps))
+      {
+         allconverged <- allconverged + 1
+
+         if(allconverged == 1) {
+            active_old <- active_new
+            active_new[] <- TRUE
+         } else if(allconverged == 2) {
+            if(all(active_old == active_new))
+               break
+            active_old <- active_new
+            active_new[] <- TRUE
+            allconverged <- 1
+         }
+      }
+      else
+	 allconverged <- 0 
+
+      beta_old <- beta
+   }
+
+   if(epoch == maxepoch)
+      cat("failed to converged within", maxepoch, "epochs\n")
+
+   cat("\n")
+   beta
+}
 
 cd.activeset.broken <- function(x, y, step, loss, lambda1=0, beta=numeric(ncol(x)),
    lp=numeric(nrow(x)), maxepoch=500, maxiter=50, eps=1e-4)
