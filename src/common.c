@@ -1,3 +1,8 @@
+/*
+ * Copyright (c) 2011, National ICT Australia (NICTA)
+ * All rights reserved.
+ */
+
 #include <string.h>
 #include <math.h>
 #include "common.h"
