@@ -1,3 +1,8 @@
+/*
+ * Copyright (c) 2011, National ICT Australia (NICTA)
+ * All rights reserved.
+ */
+
 #define NEWTON_THRESH 1e-3
 #define NEWTON_THRESH_MAX 30
 #define NEWTON_DEVIANCE_MIN 1e-2

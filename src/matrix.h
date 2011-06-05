@@ -1,3 +1,8 @@
+/*
+ * Copyright (c) 2011, National ICT Australia (NICTA)
+ * All rights reserved.
+ */
+
 void crossprod(double *x, double *y, double *z, int m, int n, int p);
 void invert2x2(double *y, double *x);
 void wcrossprod(double *x, double *y, double *w, double *z,
