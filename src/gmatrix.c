@@ -80,12 +80,11 @@ int gmatrix_init(gmatrix *g, char *filename, int n, int p,
    g->nseek = sizeof(dtype) * (encoded ? g->nencb : g->n);
    g->beta_orig = NULL;
    g->numnz = NULL;
-   g->xcache = NULL;
+   g->xcaches = NULL;
 
    g->famfilename = famfilename;
 
    CALLOCTEST(g->beta_orig, p1, sizeof(double));
-
    CALLOCTEST(g->ncurr_j, p1, sizeof(int));
    CALLOCTEST(g->ncurr_recip_j, p1, sizeof(double));
    
@@ -104,8 +103,14 @@ int gmatrix_init(gmatrix *g, char *filename, int n, int p,
    if(encoded)
       MALLOCTEST(g->encbuf, sizeof(unsigned char) * g->nencb);
 
-   MALLOCTEST(g->xcache, sizeof(cache));
-   cache_init(g->xcache, sizeof(dtype) * g->nencb * PACK_DENSITY, g->p + 1);
+   MALLOCTEST(g->xcaches, g->nfolds * sizeof(cache));
+   for(i = 0 ; i < g->nfolds ; i++)
+   {
+      /* TODO: uses up g->n cells even though we don't really not all since in
+       * crossval there will be fewer training/test samples, but easier than
+       * figuring out exactly how many */
+      cache_init(g->xcaches + i, g->n, g->p + 1);
+   }
 
    g->nextcol = gmatrix_disk_nextcol;
    if(!gmatrix_reset(g))
@@ -153,7 +158,7 @@ int gmatrix_init(gmatrix *g, char *filename, int n, int p,
    if(!gmatrix_init_lp(g))
       return FAILURE;
 
-   MALLOCTEST(g->xtmp, sizeof(double) * g->n);
+   /*MALLOCTEST(g->xtmp, sizeof(double) * g->n);*/
    MALLOCTEST(g->ytmp, sizeof(double) * g->n);
 
    return SUCCESS;
@@ -189,6 +194,7 @@ int gmatrix_setup_folds(gmatrix *g)
 
 void gmatrix_free(gmatrix *g)
 {
+   int i;
    if(g->file)
    {
       fclose(g->file);
@@ -226,9 +232,12 @@ void gmatrix_free(gmatrix *g)
    FREENULL(g->ncurr_j);
    FREENULL(g->ncurr_recip_j);
    
-   if(g->xcache)
-      cache_free(g->xcache);
-   FREENULL(g->xcache);
+   if(g->xcaches)
+   {
+      for(i = 0 ; i < g->nfolds ; i++)
+	 cache_free(g->xcaches + i);
+   }
+   FREENULL(g->xcaches);
 }
 
 /* y_orig is the original vector of labels/responses, it 
@@ -353,7 +362,7 @@ int gmatrix_disk_nextcol(gmatrix *g, sample *s, int j, int na_action)
    int ngood = 0, ret;
    dtype d;
    off_t seek;
-   dtype *tmp = NULL;
+   double *xtmp = NULL;
 
    if(j == 0)
    {
@@ -369,17 +378,29 @@ int gmatrix_disk_nextcol(gmatrix *g, sample *s, int j, int na_action)
       return SUCCESS;
    }
 
-   ret = cache_get(g->xcache, j, &tmp);
+   /* TODO: 1. separate cache for each cross-validation fold
+    *       2. use cache only for active set because it will be needed more
+    *       often
+    */
+   /*printf("[j:%d looking in cache %d: ", j, g->fold); fflush(stdout);*/
+   
+   ret = cache_get(g->xcaches + g->fold, j, &xtmp);
 
-   if(ret != SUCCESS)
+   if(ret == SUCCESS)
    {
-      /*printf("[%d not in cache, reading from disk]\n", j); fflush(stdout);*/
-      /* Get data from disk and unpack, skip y */
-      seek = j * g->nseek + g->offset;
-      FSEEKOTEST(g->file, seek, SEEK_SET);
-      FREADTEST(g->encbuf, sizeof(dtype), g->nencb, g->file);
-      g->decode(tmp, g->encbuf, g->nencb);
+      /*printf("found\n"); fflush(stdout);*/
+      s->x = xtmp;
+      s->y = g->ytmp;
+      return SUCCESS;
    }
+
+   /*printf("not found\n"); fflush(stdout);*/
+
+   /* Get data from disk and unpack, skip y */
+   seek = j * g->nseek + g->offset;
+   FSEEKOTEST(g->file, seek, SEEK_SET);
+   FREADTEST(g->encbuf, sizeof(dtype), g->nencb, g->file);
+   g->decode(g->tmp, g->encbuf, g->nencb);
 
    /* Get the scaled versions of the genotypes */
    if(g->nfolds < 2)
@@ -399,7 +420,7 @@ inputs in gmatrix_disk_nextcol\n");
 
          l1 = j * NUM_X_LEVELS;
          for(i = n1 ; i >= 0 ; --i)
-	    g->xtmp[i] = g->lookup[l1 + tmp[i]];
+	    xtmp[i] = g->lookup[l1 + g->tmp[i]];
       }
       else
       { /* no scaling */
@@ -407,8 +428,8 @@ inputs in gmatrix_disk_nextcol\n");
 	 {
 	    for(i = n1 ; i >= 0 ; --i)
 	    {
-	       d = tmp[i];
-	       g->xtmp[i] = (d == X_LEVEL_NA ? 0 : (double)d);
+	       d = g->tmp[i];
+	       xtmp[i] = (d == X_LEVEL_NA ? 0 : (double)d);
 	    }
 	    s->n = n;
 	 }
@@ -416,10 +437,10 @@ inputs in gmatrix_disk_nextcol\n");
 	 {
 	    for(i = 0 ; i < n ; ++i)
 	    {
-	       d = tmp[i];
+	       d = g->tmp[i];
 	       if(d != X_LEVEL_NA)
 	       {
-		  g->xtmp[ngood] = (double)d;
+		  xtmp[ngood] = (double)d;
 		  g->ytmp[ngood++] = g->y_orig[i];
 	       }
 	    }
@@ -448,7 +469,7 @@ inputs in gmatrix_disk_nextcol\n");
 	     * testing samples */
 	    if((g->mode == MODE_PREDICT) ^ g->folds[f + i])
 	    {
-	       g->xtmp[k--] = g->lookup[l1 + tmp[i]];
+	       xtmp[k--] = g->lookup[l1 + g->tmp[i]];
 	       ngood++;
 	    }
 	 }
@@ -462,8 +483,8 @@ inputs in gmatrix_disk_nextcol\n");
 	    {
 	       if((g->mode == MODE_PREDICT) ^ g->folds[f + i])
 	       {
-	          d = tmp[i];
-	          g->xtmp[k--] = (d == X_LEVEL_NA ? 0 : (double)d);
+	          d = g->tmp[i];
+	          xtmp[k--] = (d == X_LEVEL_NA ? 0 : (double)d);
 		  ngood++;
 	       }
 	    }
@@ -475,10 +496,10 @@ inputs in gmatrix_disk_nextcol\n");
 	    {
 	       if((g->mode == MODE_PREDICT) ^ g->folds[f + i])
 	       {
-	          d = tmp[i];
+	          d = g->tmp[i];
 		  if(d != X_LEVEL_NA)
 		  {
-		     g->xtmp[ngood] = (double)d;
+		     xtmp[ngood] = (double)d;
 		     g->ytmp[ngood++] = g->y_orig[i];
 		  }
 	       }
@@ -488,7 +509,7 @@ inputs in gmatrix_disk_nextcol\n");
       }
    }
 
-   s->x = g->xtmp;
+   s->x = xtmp;
    s->y = g->ytmp;
 
    return SUCCESS;
@@ -859,49 +880,52 @@ void updatelp(gmatrix *g, const double update,
  * otherwise return FAILURE. This way we can read data into the cache by
  * reading it into x.
  */
-int cache_get(cache *ca, int j, dtype **x)
+int cache_get(cache *ca, int j, double **x)
 {
    int m = ca->mapping[j];
    int r;
 
-   /*printf("[cache_get j:%d mapping:%d\n", j, m);
-   fflush(stdout);*/
-
    /* in cache */
    if(m != CACHE_NOT_EXISTS)
    {
-      /*printf("[%d in cache at pos %d]\n", j, m);
-      fflush(stdout);*/
       *x = (ca->x + m * ca->n);
       return SUCCESS;
    }
    else /* provide pointer to access the cache for putting data */
    {
       /* check whether we already have data at this spot, and if it is used
-       * then reclaim it for another SNP  */
+       * then reclaim it for another SNP if the new one has been in the cache
+       * more often */
+
       r = ca->revmapping[ca->lastfree]; 
+
       if(r != CACHE_NOT_EXISTS)
       {
-	 ca->mapping[r] = CACHE_NOT_EXISTS;
+	 /* new data seen more often, replace old with new */ 
+	 if(ca->counter[j] > ca->counter[r])
+	 {
+	    ca->mapping[r] = CACHE_NOT_EXISTS;
+	    ca->mapping[j] = ca->lastfree;
+	    *x = ca->x + ca->mapping[j] * ca->n;
+	    ca->revmapping[ca->lastfree] = j;
+	    ca->lastfree++;
+	 }
+	 else /* provide temporary storage but don't put in cache */
+	    *x = ca->tmp;
       }
-
-      ca->mapping[j] = ca->lastfree;
-      *x = ca->x + ca->mapping[j] * ca->n;
-      ca->revmapping[ca->lastfree] = j;
-
-      ca->lastfree++;
+      else
+      {
+	 ca->mapping[j] = ca->lastfree;
+	 *x = ca->x + ca->mapping[j] * ca->n;
+	 ca->revmapping[ca->lastfree] = j;
+	 ca->lastfree++;
+      }
 
       /* we've run of out space, go back to beginning of buffer and allow it
        * to be over-written with new data */
       if(ca->lastfree >= ca->nbins)
-      {
-	/* printf("[cache recycling at j:%d\n", j); fflush(stdout);*/
 	 ca->lastfree = 0;
-	 /*ca->mapping[ca->revmapping[ca->lastfree]] = CACHE_NOT_EXISTS*/;
-      }
 
-      /*printf("[%d not in cache, getting pointer at pos %d]\n", j, ca->mapping[j]);
-      fflush(stdout);*/
       return FAILURE;
    }
 }
@@ -914,15 +938,18 @@ int cache_init(cache *ca, int n, int p)
 {
    int i;
 
-   printf("[cache_init n:%d p:%d]\n", n, p);
+   ca->nbins = CACHE_MAX_MEM / sizeof(double) / n;
+   ca->n = n;
+   ca->lastfree = 0;
+
+   printf("[cache_init n:%d p:%d nbins:%d]\n", n, p, ca->nbins);
    fflush(stdout);
 
-   ca->nbins = CACHE_MAX_SIZE;
-   ca->n = n;
    MALLOCTEST(ca->mapping, p * sizeof(int));
    MALLOCTEST(ca->revmapping, ca->nbins * sizeof(int));
-   MALLOCTEST(ca->x, CACHE_MAX_SIZE * n * sizeof(dtype));
-   ca->lastfree = 0;
+   CALLOCTEST(ca->counter, p, sizeof(int));
+   MALLOCTEST(ca->x, ca->nbins * n * sizeof(double));
+   MALLOCTEST(ca->tmp, n * sizeof(double));
 
    for(i = 0 ; i < p ; i++)
       ca->mapping[i] = CACHE_NOT_EXISTS;
@@ -937,6 +964,8 @@ void cache_free(cache *ca)
 {
    FREENULL(ca->mapping);
    FREENULL(ca->revmapping);
+   FREENULL(ca->tmp);
    FREENULL(ca->x);
+   FREENULL(ca->counter);
 }
 

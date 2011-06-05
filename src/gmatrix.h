@@ -21,7 +21,11 @@
 #define NA_ACTION_DELETE 1
 #define NA_ACTION_ZERO 2
 
-#define CACHE_MAX_SIZE 2048
+/* Size of cache itself, excluding the counters and mappings
+ * Remember: there are g->folds caches, not just one, so total memory required
+ * is CACHE_MAX_MEM * g->nfolds.
+ * */
+#define CACHE_MAX_MEM 134217728 /* 2^27=128MB */
 
 #define CACHE_NOT_EXISTS -1
 
@@ -30,8 +34,10 @@ typedef struct cache {
    int n;
    int *mapping;
    int *revmapping;
+   int *counter;
    int lastfree;
-   dtype *x;
+   double *x;
+   double *tmp;
 } cache;
 
 typedef struct sample {
@@ -110,7 +116,7 @@ typedef struct gmatrix {
    int nsubsets;
    int offset;
    char *famfilename;
-   cache *xcache;
+   cache *xcaches;
 } gmatrix;
 
 int sample_init(sample *);
@@ -149,7 +155,7 @@ int init_newton(gmatrix *g);
 void updatelp(gmatrix *g, const double update,
       const double *restrict x, int j);
 
-int cache_get(cache *ca, int j, dtype **x);
+int cache_get(cache *ca, int j, double **x);
 int cache_init(cache *ca, int n, int p);
 void cache_free(cache *ca);
 

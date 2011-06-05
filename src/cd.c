@@ -128,8 +128,8 @@ int cd_gmatrix(gmatrix *g,
 	       g->beta[j] = beta_new;
 
 	       if(fabs(s) <= 1e-4
-		    /* || fabs(old_loss - g->loss) / g->loss <= 1e-2
-		     || g->loss <= 1e-10*/
+		     || fabs(old_loss - g->loss) / g->loss <= 1e-2
+		     || g->loss <= 1e-9
 		  )
 	       {
 		  break;
