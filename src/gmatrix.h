@@ -21,7 +21,7 @@
 #define NA_ACTION_DELETE 1
 #define NA_ACTION_ZERO 2
 
-#define CACHE_MAX_SIZE 5000
+#define CACHE_MAX_SIZE 2048
 
 #define CACHE_NOT_EXISTS -1
 

@@ -715,7 +715,6 @@ void gmatrix_zero_model(gmatrix *g)
 
 int gmatrix_init_lp(gmatrix *g)
 {
-   printf("gmatrix_init_lp\n"); fflush(stdout);
    FREENULL(g->lp);
    CALLOCTEST(g->lp, g->ncurr, sizeof(double));
 
