@@ -85,13 +85,17 @@ int cd_gmatrix(gmatrix *g,
    int *zero = NULL;
    double *beta_old = NULL;
    double d = 0;
+   int *active_old = NULL;
 
    if(!sample_init(&sm))
       return FAILURE;
 
    CALLOCTEST(zero, p1, sizeof(int));
    CALLOCTEST(beta_old, p1, sizeof(double));
-   
+   CALLOCTEST(active_old, p1, sizeof(int));
+
+   for(j = p ; j >= 0 ; --j)
+      active_old[j] = g->active[j];
 
    while(epoch <= maxepochs)
    {
@@ -101,9 +105,11 @@ int cd_gmatrix(gmatrix *g,
       for(j = 0 ; j < p1; j++)
       {
 	 iter = 0;
+	 conv = TRUE;
 	 
 	 if(g->active[j])
 	 {
+	    conv = FALSE;
 	    g->nextcol(g, &sm, j, NA_ACTION_ZERO);
 
       	    while(iter < maxiters)
@@ -122,16 +128,20 @@ int cd_gmatrix(gmatrix *g,
 	       s = beta_new - g->beta[j];
 	       
 	       if(s == 0)
+	       {
+		  conv = TRUE;
 		  break;
+	       }  
 
 	       updatelp(g, s, sm.x, j);
 	       g->beta[j] = beta_new;
 
-	       if(fabs(s) <= 1e-5
-		    /* || fabs(old_loss - g->loss) / g->loss <= 1e-2
+	       if(fabs(s) <= 1e-10
+		     /*|| fabs(old_loss - g->loss) / g->loss <= 1e-2
 		     || g->loss <= 1e-10*/
 		  )
 	       {
+		  conv = TRUE;
 		  break;
 	       }
       	       iter++;
@@ -140,8 +150,8 @@ int cd_gmatrix(gmatrix *g,
 	    g->active[j] = !zero[j];
 	 }
 
-	 conv = fabs(g->beta[j] - beta_old[j]) <= 1e-5;
-	 beta_old[j] = g->beta[j];
+	 /*conv = fabs(g->beta[j] - beta_old[j]) <= 1e-5;*/
+	 /*beta_old[j] = g->beta[j];*/
 	 numconverged += conv;
 	 numactive += g->active[j];
       }
@@ -150,31 +160,52 @@ int cd_gmatrix(gmatrix *g,
 	    g->fold, epoch, numactive, numconverged);
       fflush(stdout);
 
+     /* 3-state machine for active set convergence */ 
       if(numconverged == p1) 
       {
 	 printfverb("all converged\n");
 	 allconverged++;
 
+	 /* prepare for another iteration over *all*
+	  * (non-ignored) variables, store a copy of the
+	  * current active set for later */
 	 if(allconverged == 1)
 	 {
 	    printfverb("prepare for final epoch\n");
 	    for(j = p ; j >= 0 ; --j)
+	    {
+	       active_old[j] = g->active[j];
 	       g->active[j] = !g->ignore[j];
+	    }
 	 }
-	 else
+	 else /* 2nd iteration over all variables done, check
+		 whether active set has changed */
 	 {
-	    printfverb("\n[%ld] terminating at epoch %d \
- with %d active vars\n", time(NULL), epoch, numactive);
-	    good = TRUE;
-	    break;
+	    for(j = p ; j >= 0 ; --j)
+	       if(g->active[j] != active_old[j])
+		  break;
+
+	    /* all equal, terminate */
+	    if(j < 0)
+	    {
+	       printfverb("\n[%ld] terminating at epoch %d \
+with %d active vars\n", time(NULL), epoch, numactive);
+	       good = TRUE;
+	       break;
+	    }
+
+	    printfverb("active set changed, %d active vars\n",
+		  numactive);
+
+	    /* active set has changed, iterate over
+	     * new active variables */
+	    for(j = p ; j >= 0 ; --j)
+	       active_old[j] = g->active[j];
+	    allconverged = 1;
 	 }
       }
-      else
-      { 
+      else /* reset to first state */
 	 allconverged = 0;
-	 for(j = p ; j >= 0 ; --j)
-	    g->active[j] = !g->ignore[j];
-      }
 
       epoch++;
    }
@@ -182,6 +213,7 @@ int cd_gmatrix(gmatrix *g,
 
    FREENULL(beta_old);
    FREENULL(zero);
+   FREENULL(active_old);
 
    return good ? numactive : CDFAILURE;
 }
