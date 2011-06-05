@@ -92,6 +92,7 @@ int run_train(Opt *opt, gmatrix *g)
       g->numnz[i] = ret;
       gmatrix_reset(g);
 
+      /* TODO: use a sparse output format */
       snprintf(tmp, MAX_STR_LEN, "%s.%02d.%02d",
 	    opt->beta_files[0], i, g->fold);
       if(opt->unscale)
@@ -127,6 +128,8 @@ reached or exceeded: %d\n", opt->nzmax);
 
 /*
  * For each beta file, predict outcome using the chosen model
+ *
+ * TODO: only use the active variables for prediction
  */
 int run_predict_beta(gmatrix *g, predict predict_func,
       char* predict_file)

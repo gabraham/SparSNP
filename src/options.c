@@ -139,12 +139,14 @@ int opt_parse(int argc, char* argv[], Opt* opt)
 	 i++;
 	 if(strcmp2(argv[i], MODEL_NAME_LOGISTIC))
 	 {
-	    opt->inv_func = &loginv;
+	    /*opt->inv_func = &loginv;
 	    opt->step_func = &step_regular_logistic;
 	    opt->model = MODEL_LOGISTIC;
 	    opt->predict_func = &logphi1;
 	    opt->loss_func = &log_loss;
-	    opt->loss_pt_func = &log_loss_pt;
+	    opt->loss_pt_func = &log_loss_pt;*/
+	    printf("model `logistic' currently not supported\n");
+	    return FAILURE;
 	 }
 	 else if(strcmp2(argv[i], MODEL_NAME_SQRHINGE))
 	 {
