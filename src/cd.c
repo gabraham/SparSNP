@@ -78,18 +78,17 @@ int cd_gmatrix(gmatrix *g,
       const double trunc)
 {
    const int p = g->p, p1 = g->p + 1;
-   int i, j, iter, allconverged = 0, numactive = 0,
+   int j, iter, allconverged = 0, numactive = 0,
        epoch = 1, numconverged = 0,
        good = FALSE;
    double s = 0, beta_new;
    const double truncl = log((1 - trunc) / trunc);
-   /*const double l2recip = 1 / (1 + lambda2);*/
+   const double l2recip = 1 / (1 + lambda2);
    sample sm;
    double old_loss = 0;
    int conv = 0;
    int *zero = NULL;
    double *beta_old = NULL;
-   double d = 0;
    int *active_old = NULL;
 
    if(!sample_init(&sm))
@@ -119,12 +118,13 @@ int cd_gmatrix(gmatrix *g,
 
       	    while(iter < maxiters)
       	    {
+	       old_loss = g->loss;
 	       s = step_func(&sm, g);
 	       beta_new = g->beta[j] - s;
 	       
       	       if(j > 0)
-      	          beta_new = soft_threshold(beta_new, lambda1); /* l2recip;*/
-      	       /*beta_new = clip(beta_new, -truncl, truncl); */
+      	          beta_new = soft_threshold(beta_new, lambda1) * l2recip;
+      	       beta_new = clip(beta_new, -truncl, truncl);
 
 	       beta_new = g->beta[j] - s;
       	       if(j > 0) 
@@ -141,9 +141,9 @@ int cd_gmatrix(gmatrix *g,
 	       updatelp(g, s, sm.x, j);
 	       g->beta[j] = beta_new;
 
-	       if(fabs(s) <= 1e-10
-		     /*|| fabs(old_loss - g->loss) / g->loss <= 1e-2
-		     || g->loss <= 1e-10*/
+	       if(fabs(s) <= ZERO_THRESH
+		     || fabs(old_loss - g->loss) / g->loss <= 1e-2
+		     || g->loss <= ZERO_THRESH 
 		  )
 	       {
 		  conv = TRUE;
@@ -155,8 +155,6 @@ int cd_gmatrix(gmatrix *g,
 	    g->active[j] = !zero[j];
 	 }
 
-	 /*conv = fabs(g->beta[j] - beta_old[j]) <= 1e-5;*/
-	 /*beta_old[j] = g->beta[j];*/
 	 numconverged += conv;
 	 numactive += g->active[j];
       }

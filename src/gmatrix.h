@@ -8,7 +8,6 @@
 
 #include "common.h"
 #include "loss.h"
-#include "cache.h"
 
 #define BUFSIZE 10
 
