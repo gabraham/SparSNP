@@ -30,8 +30,7 @@ CFLAGS = -std=gnu99 -Wall -ggdb3 \
 	  $(OS)
 
 targets = cd scale transpose hapgen2bin hapgen2ped \
-	  cbind split unpack univariable subsample \
-	  cdsimple
+	  cbind split unpack univariable subsample
 
 all: $(targets)
 
@@ -53,10 +52,6 @@ LIBRARIES = -llapack -lblas -lgfortran -lm
 
 cd: common.c coder.c ind.c gmatrix.c loss.c util.c options.c main.c cd.c
 	$(CC) $(CFLAGS) $^ $(LIBRARIES) -o cd
-
-cdsimple: common.c coder.c ind.c gmatrix.c loss.c util.c options.c \
-   	  main.c cdsimple.c
-	$(CC) $(CFLAGS) $^ $(LIBRARIES) -o cdsimple
 
 scale: common.c coder.c ind.c gmatrix.c cd.c scale.c util.c
 	$(CC) $(CFLAGS) $^ $(LIBRARIES) -o scale
