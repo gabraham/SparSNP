@@ -10,7 +10,6 @@
 #include "coder.h"
 #include "ind.h"
 #include "util.h"
-#include "cache.h"
 
 int sample_init(sample *s)
 {
