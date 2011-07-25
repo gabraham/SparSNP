@@ -9,8 +9,6 @@
 #include "common.h"
 #include "loss.h"
 
-#define BUFSIZE 10
-
 /* categorical x inputs: 0, 1, 2, 3 */
 #define NUM_X_LEVELS 4
 #define X_LEVELS {0, 1, 2, 3}
@@ -29,7 +27,8 @@
  * Remember: there are g->folds caches, not just one, so total memory required
  * is CACHE_MAX_MEM * g->nfolds.
  * */
-#define CACHE_MAX_MEM 134217728 /* 2^27=128MB */
+/*#define CACHE_MAX_MEM 134217728 */ /* 2^27=128MB */
+#define CACHE_MAX_MEM 268435456 /* 2^27=128MB */
 
 #define CACHE_NOT_EXISTS -1
 

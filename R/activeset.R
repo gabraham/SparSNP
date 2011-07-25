@@ -41,6 +41,11 @@ step.logis <- function(xj, lp, y)
    d1 / d2
 }
 
+step.logis2 <- function(xj, lp, y)
+{
+   
+}
+
 # assumes scaled inputs
 step.sqrhinge <- function(xj, lp, y)
 {
@@ -105,7 +110,7 @@ cd.plain <- function(x, y, step, loss, lambda1=0, lambda1max=0,
 }
 
 cd.activeset <- function(x, y, step, loss, lambda1=0, beta=numeric(ncol(x)),
-   lp=numeric(nrow(x)), maxepoch=500, maxiter=50, eps=1e-4)
+   lp=numeric(nrow(x)), maxepoch=1000, maxiter=50, eps=1e-4)
 {
    p <- ncol(x)
    n <- nrow(x)
@@ -113,6 +118,9 @@ cd.activeset <- function(x, y, step, loss, lambda1=0, beta=numeric(ncol(x)),
    active_new <-  rep(TRUE, p)
    active_old <- rep(FALSE, p)
    allconverged <- 0
+   loss_old <- 1e9
+   loss_new <- 1e10
+   loss_null <- loss(numeric(n) + mean(y), y)
 
    cat("lambda1:", lambda1, "\n")
    for(epoch in 1:maxepoch)
@@ -125,20 +133,28 @@ cd.activeset <- function(x, y, step, loss, lambda1=0, beta=numeric(ncol(x)),
 	    for(iter in 1:maxiter)
 	    {
 	       s <- step(x[,j], lp, y)
+	       #if(any(abs(lp) > 50)) browser()
                beta_new <- beta[j] - s
                if(j > 1)
                   beta_new <- soft(beta_new, lambda1)
 
 	       diff <- beta_new - beta[j]
-	       lp <- lp + x[, j] * diff
+	       lp <- pmin(10, pmax(lp + x[, j] * diff, -10))
+	       #if(any(is.nan(lp)))
+		#  browser()
 	       beta[j] <- beta_new
-	       if(abs(diff) < eps)
-	       {
+	       loss_new <- loss(lp, y)
+	       loss_ratio <- loss_new / loss_null
+	       #if(any(is.nan(c(loss_new, loss_new))))
+		#  browser()
+	       if(abs(diff) < eps 
+		  || abs(loss_old - loss_new) <= 1e-2
+		  || loss_new <= 1e-2
+		  || loss_ratio >= 0.99)
 	          break
-	       }
 	    }
 	    if(iter == maxiter)
-	       cat("maxiter reached for variable", j, "\n")
+	       cat("maxiter (", maxiter, ") reached for variable", j, "\n")
 	    active_new[j] <- beta[j] != 0
 	 }
       }
@@ -146,27 +162,41 @@ cd.activeset <- function(x, y, step, loss, lambda1=0, beta=numeric(ncol(x)),
       if(all(abs(beta - beta_old) <= eps))
       {
          allconverged <- allconverged + 1
+	 cat("allconverged:\n", allconverged)
 
          if(allconverged == 1) {
+	    cat("allconverged 1\n")
             active_old <- active_new
             active_new[] <- TRUE
          } else if(allconverged == 2) {
+	    cat("allconverged 2\n")
             if(all(active_old == active_new))
+	    {
+	       cat("converged\n")
                break
+	    }
             active_old <- active_new
             active_new[] <- TRUE
             allconverged <- 1
          }
       }
       else
+      {
+	 cat(epoch, "allconverged 0\n")
 	 allconverged <- 0 
+      }
+
+      if(epoch == maxepoch)
+      {
+	 cat("failed to converged within", maxepoch, "epochs\n")
+	 browser()
+      }
 
       beta_old <- beta
+      loss_old <- loss_new
    }
 
-   if(epoch == maxepoch)
-      cat("failed to converged within", maxepoch, "epochs\n")
-
+  
    cat("\n")
    beta
 }
@@ -313,7 +343,7 @@ cd.activeset.broken <- function(x, y, step, loss, lambda1=0, beta=numeric(ncol(x
 # Slightly different formulation
 cd.activeset2 <- function(x, y, step, loss, lambda1=0, lambda1max=0,
    beta=numeric(ncol(x)), lp=numeric(nrow(x)),
-   maxepoch=500, maxiter=50, eps=1e-4)
+   maxepoch=1000, maxiter=50, eps=1e-4)
 {
    p <- ncol(x)
    n <- nrow(x)

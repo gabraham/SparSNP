@@ -37,9 +37,20 @@ int make_lambda1path(Opt *opt, gmatrix *g)
    
    opt->lambda1min = opt->lambda1max * opt->l1minratio;
    opt->lambda1path[opt->nlambda1 - 1] = opt->lambda1min;
-   s = (log2(opt->lambda1max) - log2(opt->lambda1min)) / opt->nlambda1; 
+   s = (log10(opt->lambda1max) - log10(opt->lambda1min)) / (opt->nlambda1 - 1);
    for(i = 1 ; i < opt->nlambda1 ; i++)
-      opt->lambda1path[i] = pow(2, log2(opt->lambda1max) - s * i);
+      opt->lambda1path[i] = pow(10, log10(opt->lambda1max) - s * i);
+
+   /*opt->lambda1path[opt->nlambda1 - 7] = 5e-15;
+   opt->lambda1path[opt->nlambda1 - 6] = 1e-15;
+   opt->lambda1path[opt->nlambda1 - 5] = 5e-16;
+   opt->lambda1path[opt->nlambda1 - 4] = 1e-16;
+   opt->lambda1path[opt->nlambda1 - 3] = 5e-17;
+   opt->lambda1path[opt->nlambda1 - 2] = 1e-17;
+   opt->lambda1path[opt->nlambda1 - 1] = 5e-18;*/
+
+   if(opt->verbose)
+      printf("lambda1min: %.20f\n", opt->lambda1path[i]);
 
    /* Write the coefs for model with intercept only */
    snprintf(tmp, MAX_STR_LEN, "%s.%02d.%02d",
@@ -78,7 +89,7 @@ int run_train(Opt *opt, gmatrix *g)
    for(i = 1 ; i < opt->nlambda1 ; i++)
    {
       if(opt->verbose)
-	 printf("\nFitting with lambda1=%.20f\n", opt->lambda1path[i]);
+	 printf("\n[%d] Fitting with lambda1=%.20f\n", i, opt->lambda1path[i]);
 
       /* return value is number of nonzero variables,
        * including the intercept */
@@ -225,6 +236,7 @@ int do_train(gmatrix *g, Opt *opt, char tmp[])
       return FAILURE;
 
    printf("%d CV folds\n", g->nfolds);
+   printf("NZmax: %d\n", opt->nzmax);
 
    /* cross-validation: training stage */
    if(g->nfolds > 1)
