@@ -537,13 +537,7 @@ int gmatrix_fam_read_y(gmatrix *g)
 	*matid = NULL;
    int sex = 0;
    double pheno = 0.0;
-   char f_discrete[18] = "%s %s %s %s %d %d";
-   char f_continuous[19] = "%s %s %s %s %d %lf";
-   char *f = NULL;
-   
-   f = f_discrete;
-   if(g->model == MODEL_LINEAR)
-      f = f_continuous;
+   char f[19] = "%s %s %s %s %d %lf";
 
    CALLOCTEST(g->y_orig, g->n, sizeof(double));
 
@@ -560,9 +554,7 @@ int gmatrix_fam_read_y(gmatrix *g)
    {
       g->y_orig[i] = pheno;
       i++;
-      printf("%d %.3f\n", sex, pheno);
    }
-
 
    fclose(famfile);
    FREENULL(famid);

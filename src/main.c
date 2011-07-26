@@ -41,16 +41,8 @@ int make_lambda1path(Opt *opt, gmatrix *g)
    for(i = 1 ; i < opt->nlambda1 ; i++)
       opt->lambda1path[i] = pow(10, log10(opt->lambda1max) - s * i);
 
-   /*opt->lambda1path[opt->nlambda1 - 7] = 5e-15;
-   opt->lambda1path[opt->nlambda1 - 6] = 1e-15;
-   opt->lambda1path[opt->nlambda1 - 5] = 5e-16;
-   opt->lambda1path[opt->nlambda1 - 4] = 1e-16;
-   opt->lambda1path[opt->nlambda1 - 3] = 5e-17;
-   opt->lambda1path[opt->nlambda1 - 2] = 1e-17;
-   opt->lambda1path[opt->nlambda1 - 1] = 5e-18;*/
-
    if(opt->verbose)
-      printf("lambda1min: %.20f\n", opt->lambda1path[i]);
+      printf("lambda1min: %.20f\n", opt->lambda1path[i-1]);
 
    /* Write the coefs for model with intercept only */
    snprintf(tmp, MAX_STR_LEN, "%s.%02d.%02d",
