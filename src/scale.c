@@ -148,7 +148,7 @@ int main(int argc, char* argv[])
    if(doscale)
    {
       if(!gmatrix_init(&g, filename_bin, n, p,
-	    NULL, YFORMAT01, MODEL_LINEAR,
+	    NULL, YFORMAT01, MODEL_LINEAR, MODELTYPE_REGRESSION,
 	    encoded, binformat, filename_folds_ind,
 	    MODE_TRAIN, NULL, NULL, NULL))
 	 return EXIT_FAILURE;

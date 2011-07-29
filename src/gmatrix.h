@@ -95,6 +95,7 @@ typedef struct gmatrix {
    unsigned char *encbuf;
    short yformat;
    int model;
+   int modeltype;
    short encoded;
    int nencb;
    short binformat;
@@ -120,11 +121,12 @@ typedef struct gmatrix {
    int offset;
    char *famfilename;
    cache *xcaches;
+   int ncases;
 } gmatrix;
 
 int sample_init(sample *);
 int gmatrix_init(gmatrix *g, char *filename, int n, int p,
-      char *scalefile, short yformat, int model,
+      char *scalefile, short yformat, int model, int modeltype,
       short encoded, short binformat, char *folds_ind_file,
       short mode, loss_pt, char *subsample_file,
       char *famfilename);
@@ -161,5 +163,6 @@ void updatelp(gmatrix *g, const double update,
 int cache_get(cache *ca, int j, double **x);
 int cache_init(cache *ca, int n, int p);
 void cache_free(cache *ca);
+void count_cases(gmatrix* g);
 
 

@@ -21,7 +21,7 @@ int sample_init(sample *s)
 }
 
 int gmatrix_init(gmatrix *g, char *filename, int n, int p,
-      char *scalefile, short yformat, int model,
+      char *scalefile, short yformat, int model, int modeltype,
       short encoded, short binformat, char *folds_ind_file,
       short mode, loss_pt loss_pt_func, char *subset_file, 
       char *famfilename)
@@ -29,6 +29,7 @@ int gmatrix_init(gmatrix *g, char *filename, int n, int p,
    int i, j, p1;
 
    g->model = model;
+   g->modeltype = modeltype;
    g->filename = filename;
    g->i = g-> j = 0;
    g->n = n;
@@ -85,6 +86,7 @@ int gmatrix_init(gmatrix *g, char *filename, int n, int p,
    g->beta_orig = NULL;
    g->numnz = NULL;
    g->xcaches = NULL;
+   g->ncases = 0;
 
    g->famfilename = famfilename;
 
@@ -124,24 +126,27 @@ int gmatrix_init(gmatrix *g, char *filename, int n, int p,
    {
       printf("Using PLINK binary format\n");
       printf("FAM file: %s\n", g->famfilename);
-     /* printf("BINFORMAT: plink\n");*/
       g->offset = 3 - g->nseek;
       g->decode = &decode_plink;
       if(g->famfilename)
       {
 	 if(!gmatrix_fam_read_y(g))
 	    return FAILURE;
-	 /*if(g->model != MODEL_LINEAR)*/
-	    gmatrix_plink_check_pheno(g);
+	 gmatrix_plink_check_pheno(g);
       }
    }
    else
    {
-      /*printf("BINFORMAT: bin\n");*/
       g->offset = 0;
       g->decode = &decode;
       if(!gmatrix_disk_read_y(g))
 	 return FAILURE;
+   }
+
+   if(g->modeltype == MODELTYPE_CLASSIFICATION)
+   {
+      count_cases(g);
+      printf("Found %d cases, %d controls\n", g->ncases, g->n - g->ncases);
    }
 
    CALLOCTEST(g->beta, p1, sizeof(double));
@@ -257,10 +262,13 @@ int gmatrix_disk_read_y(gmatrix *g)
    FREADTEST(g->encbuf, sizeof(dtype), g->nencb, g->file);
    g->decode(g->tmp, g->encbuf, g->nencb);
  
-   if(g->yformat == YFORMAT01) {
+   if(g->yformat == YFORMAT01 || g->modeltype == MODELTYPE_REGRESSION) 
+   {
       for(i = n1 ; i >= 0 ; --i)
 	 g->y_orig[i] = (double)g->tmp[i];
-   } else {  /*  -1/1  */
+   } 
+   else if(g->yformat == YFORMAT11)
+   {  /*  -1/1  */
       for(i = n1 ; i >= 0 ; --i)
 	 g->y_orig[i] = 2.0 * g->tmp[i] - 1.0;
    }
@@ -382,23 +390,14 @@ int gmatrix_disk_nextcol(gmatrix *g, sample *s, int j, int na_action)
       return SUCCESS;
    }
 
-   /* TODO: 1. separate cache for each cross-validation fold
-    *       2. use cache only for active set because it will be needed more
-    *       often
-    */
-   /*printf("[j:%d looking in cache %d: ", j, g->fold); fflush(stdout);*/
-   
    ret = cache_get(g->xcaches + g->fold, j, &xtmp);
 
    if(ret == SUCCESS)
    {
-      /*printf("found\n"); fflush(stdout);*/
       s->x = xtmp;
       s->y = g->ytmp;
       return SUCCESS;
    }
-
-   /*printf("not found\n"); fflush(stdout);*/
 
    /* Get data from disk and unpack, skip y */
    seek = j * g->nseek + g->offset;
@@ -537,14 +536,16 @@ int gmatrix_fam_read_y(gmatrix *g)
 	*matid = NULL;
    int sex = 0;
    double pheno = 0.0;
+
+   /* spaces match tabs as well */
    char f[19] = "%s %s %s %s %d %lf";
 
    CALLOCTEST(g->y_orig, g->n, sizeof(double));
 
-   MALLOCTEST(famid, sizeof(char) * 20);
-   MALLOCTEST(individ, sizeof(char) * 20);
-   MALLOCTEST(patid, sizeof(char) * 20);
-   MALLOCTEST(matid, sizeof(char) * 20);
+   MALLOCTEST(famid, sizeof(char) * 50);
+   MALLOCTEST(individ, sizeof(char) * 50);
+   MALLOCTEST(patid, sizeof(char) * 50);
+   MALLOCTEST(matid, sizeof(char) * 50);
 
    FOPENTEST(famfile, g->famfilename, "r");
 
@@ -574,6 +575,10 @@ int gmatrix_plink_check_pheno(gmatrix *g)
    int i = 0;
    int twofound = FALSE;
 
+   /* don't change inputs for regression */
+   if(g->modeltype == MODELTYPE_REGRESSION)
+      return SUCCESS;
+
    for(i = 0 ; i < g->n ; i++)
       if((twofound = (g->y_orig[i] == 2)))
 	 break;
@@ -587,6 +592,12 @@ int gmatrix_plink_check_pheno(gmatrix *g)
 	 else 
 	    g->y_orig[i] = 2.0 * g->y_orig[i] - 3.0;
       }
+   }
+   /* input is 0/1 but we want it to be -1/1 */ 
+   else if(g->yformat == YFORMAT11)
+   {
+      for(i = 0 ; i < g->n ; i++)
+	 g->y_orig[i] = 2.0 * g->y_orig[i] - 1.0;
    }
 
    return SUCCESS;
@@ -972,5 +983,12 @@ void cache_free(cache *ca)
    FREENULL(ca->tmp);
    FREENULL(ca->x);
    FREENULL(ca->counter);
+}
+
+void count_cases(gmatrix *g)
+{
+   int i = 0;
+   for(i = 0 ; i < g->n ; i++)
+      g->ncases += g->y_orig[i] == 1;
 }
 

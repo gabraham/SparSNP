@@ -47,6 +47,9 @@ typedef DTYPE dtype;
 #define MODEL_NAME_LOGISTIC "logistic"
 #define MODEL_NAME_SQRHINGE "sqrhinge"
 
+#define MODELTYPE_CLASSIFICATION 0
+#define MODELTYPE_REGRESSION 1
+
 #define MODE_TRAIN 0
 #define MODE_PREDICT 1
 

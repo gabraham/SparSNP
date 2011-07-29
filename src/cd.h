@@ -32,6 +32,7 @@ typedef struct Opt {
    short caller;
    short mode;
    short model;
+   short modeltype;
    int maxepochs;
    int maxiters;
    double lambda1;

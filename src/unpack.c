@@ -100,7 +100,7 @@ int main(int argc, char *argv[])
    }
 
    if(!gmatrix_init(&g, filename_bin, n, p, NULL,
-	 YFORMAT01, MODEL_LINEAR, TRUE, binformat,
+	 YFORMAT01, MODEL_LINEAR, MODELTYPE_REGRESSION, TRUE, binformat,
 	 NULL, MODE_TRAIN, NULL, NULL, NULL))
       return EXIT_FAILURE;
 
