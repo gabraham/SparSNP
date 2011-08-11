@@ -220,7 +220,7 @@ int run_train(Opt *opt, gmatrix *g)
 
 	 /* no point in testing looser z-scores since they won't converge as
 	  * well */
-	 if(rets[i] == NEWTON_ERR_NO_CONVERGENCE)
+	 if(numselected[i] > 0 && rets[i] != NEWTON_SUCCESS)
 	    break;
 
 	 printf("\n");

@@ -20,7 +20,7 @@ NZMAX=512
 # number of penalties to look at
 NLAMBDA1=25
 
-# model type, other options: linear, logistic
+# model type, other options: linear
 MODEL=sqrhinge
 
 ######################################################################
