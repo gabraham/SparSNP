@@ -75,15 +75,18 @@ loss.sqrhinge <- function(lp, y)
    mean(pmax(0, 1 - y * lp)^2)
 }
 
-cd.plain <- function(x, y, step, loss, lambda1=0, lambda1max=0,
+cd.plain <- function(x, y, step=step.linear, loss=loss.linear,
+   lambda1=0, lambda1max=0,
    beta=numeric(ncol(x)), lp=numeric(nrow(x)),
-   maxepoch=500, maxiter=50, eps=1e-4)
+   maxepoch=50, maxiter=50, eps=1e-4)
 {
+   x <- cbind(1, x)
    p <- ncol(x)
    n <- nrow(x)
-   #lp <- numeric(n)
-   #beta <- numeric(p)
    loss_new <- loss_old <- Inf
+
+   grad <- matrix(0, maxepoch, p)
+   LP <- matrix(0, maxepoch, n)
    
    for(epoch in 1:maxepoch)
    {
@@ -100,13 +103,16 @@ cd.plain <- function(x, y, step, loss, lambda1=0, lambda1max=0,
 	    lp <- lp + x[, j] * diff
 	    beta[j] <- beta_new
 	    loss_new <- loss(lp, y)
+	    
 	    if(abs(loss_new - loss_old) < 1e-2 || abs(diff) < eps)
 	       break
 	    loss_old <- loss_new
 	 }
       }
+      grad[epoch, ] <- crossprod(x, lp-y)
+      LP[epoch, ] <- lp
    }
-   beta
+   list(beta=beta, grad=grad, LP=LP)
 }
 
 cd.activeset <- function(x, y, step, loss, lambda1=0, beta=numeric(ncol(x)),
@@ -477,4 +483,39 @@ cd.activeset2 <- function(x, y, step, loss, lambda1=0, lambda1max=0,
 #cor(b.gl, g.cd2)
 #plot(b.gl, g.cd2)
 #abline(0, 1)
+
+cd.group.plain <- function(x, y, step, loss, lambda1=0, lambda1max=0,
+   beta=numeric(ncol(x)), lp=numeric(nrow(x)),
+   maxepoch=500, maxiter=50, eps=1e-4)
+{
+   p <- ncol(x)
+   n <- nrow(x)
+   #lp <- numeric(n)
+   #beta <- numeric(p)
+   loss_new <- loss_old <- Inf
+   
+   for(epoch in 1:maxepoch)
+   {
+      for(j in 1:p)
+      {
+	 for(iter in 1:maxiter)
+	 {
+	    s <- step(x[,j], lp, y)
+	    beta_new <- beta[j] - s
+	    if(j > 1)
+	       beta_new <- soft(beta_new, lambda1)
+
+	    diff <- beta_new - beta[j]
+	    lp <- lp + x[, j] * diff
+	    beta[j] <- beta_new
+	    loss_new <- loss(lp, y)
+	    if(abs(loss_new - loss_old) < 1e-2 || abs(diff) < eps)
+	       break
+	    loss_old <- loss_new
+	 }
+      }
+   }
+   beta
+}
+
 

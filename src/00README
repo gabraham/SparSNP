@@ -4,6 +4,8 @@
 #
 # Contact: Gad Abraham, gabraham@csse.unimelb.edu.au
 #
+# Copyright (c) 2011, NICTA
+#
 ################################################################################
 
 (1) Introduction
@@ -62,6 +64,10 @@ either merge them into one
 as to make the encoding consistent, and then to split them, or to
 change the reference allele in one to match the other
 (http://pngu.mgh.harvard.edu/~purcell/plink/dataman.shtml#refallele).
+
+ALSO IMPORTANT: SparSNP currently does NOT handle missing phenotype
+values such as -9. These should be excluded with PLINK prior to
+running SparSNP.
 
 
 Cross-validation: use the helper script cv3.sh to run 3-fold cross-validation, 
