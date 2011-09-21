@@ -11,21 +11,31 @@ int unpack(gmatrix *g, char *filename_out)
    int i, j, p1;
    sample sm;
    FILE *out = NULL;
-   char *tmp = NULL;
+   void *tmp = NULL;
    int start;
+   int size = g->scalefile ? sizeof(double) : sizeof(char);
 
    if(!sample_init(&sm))
       return FAILURE;
 
-   MALLOCTEST(tmp, sizeof(char) * g->n);
+   MALLOCTEST(tmp, size * g->n);
    FOPENTEST(out, filename_out, "wb");
+
+   printf("unpack: size=%d scalefile=%s\n", size, g->scalefile);
 
    if(g->binformat == BINFORMAT_BIN)
    {
-      /*FWRITETEST(g->y, sizeof(double), g->n, out);*/
-      for(i = g->n - 1; i >= 0 ; --i)
-         tmp[i] = (char)g->y[i];
-      FWRITETEST(tmp, sizeof(char), g->n, out);
+      if(g->scalefile)
+      {
+	 for(i = g->n - 1; i >= 0 ; --i)
+	    *((double*)tmp + i) = (double)g->y[i];
+      }
+      else
+      {
+	 for(i = g->n - 1; i >= 0 ; --i)
+	    *((char*)tmp + i) = (char)g->y[i];
+      }
+      FWRITETEST(tmp, size, g->n, out);
       start = 1;
       p1 = g->p + 1;
    }
@@ -38,15 +48,19 @@ int unpack(gmatrix *g, char *filename_out)
    /* ignore intercept */
    for(j = start ; j < p1 ; j++)
    {
-      printf("%d of %d", j, p1);
       g->nextcol(g, &sm, j, NA_ACTION_ZERO);
-      /*FWRITETEST(sm.x, sizeof(double), g->n, out);*/
-      for(i = g->n - 1 ; i >= 0 ; --i)
-	 tmp[i] = (char)sm.x[i];
-      FWRITETEST(tmp, sizeof(char), g->n, out);
-      printf("\r");
+      if(g->scalefile)
+      {
+	 for(i = g->n - 1 ; i >= 0 ; --i)
+	    *((double*)tmp + i) = (double)sm.x[i];
+      }
+      else
+      {
+	 for(i = g->n - 1 ; i >= 0 ; --i)
+	    *((char*)tmp + i) = (char)sm.x[i];
+      }
+      FWRITETEST(tmp, size, g->n, out);
    }
-   printf("\n");
 
    fflush(out);
    fclose(out);
@@ -60,7 +74,8 @@ int main(int argc, char *argv[])
 {
    int i, n = 0, p = 0;
    char *filename_bin = NULL,
-	*filename_out = NULL;
+	*filename_out = NULL,
+	*file_scale = NULL;
    short binformat = BINFORMAT_BIN;
    gmatrix g;
 
@@ -90,6 +105,11 @@ int main(int argc, char *argv[])
       {
 	 binformat = BINFORMAT_PLINK;
       }
+      else if(strcmp2(argv[i], "-scale"))
+      {
+	 i++;
+	 file_scale = argv[i];
+      }
    }
 
    if(!filename_bin || !filename_out || n == 0 || p == 0)
@@ -99,7 +119,7 @@ int main(int argc, char *argv[])
       return EXIT_FAILURE;
    }
 
-   if(!gmatrix_init(&g, filename_bin, n, p, NULL,
+   if(!gmatrix_init(&g, filename_bin, n, p, file_scale,
 	 YFORMAT01, MODEL_LINEAR, MODELTYPE_REGRESSION, TRUE, binformat,
 	 NULL, MODE_TRAIN, NULL, NULL, NULL))
       return EXIT_FAILURE;

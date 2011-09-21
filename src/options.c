@@ -70,10 +70,10 @@ int opt_defaults(Opt *opt, short caller)
    opt->predict_func = NULL;
    opt->predict_file = "predicted.csv";
    opt->encoded = TRUE;
-   opt->binformat = BINFORMAT_BIN;
+   opt->binformat = BINFORMAT_PLINK;
    opt->beta_files_fold = NULL;
    opt->numnz_file = "nonzero.csv";
-   opt->unscale = FALSE;
+   opt->unscale = TRUE;
 
    MALLOCTEST(opt->beta_files, sizeof(char*));
    MALLOCTEST(opt->beta_files[0], sizeof(char) * (strlen(beta_default) + 1));
@@ -300,8 +300,6 @@ int opt_parse(int argc, char* argv[], Opt* opt)
       }
       else if(strcmp2(argv[i], "-notencoded"))
 	 opt->encoded = FALSE;
-      else if(strcmp2(argv[i], "-plink"))
-	 opt->binformat = BINFORMAT_PLINK;
       else if(strcmp2(argv[i], "-foldind"))
       {
 	 i++;
@@ -347,7 +345,8 @@ int opt_parse(int argc, char* argv[], Opt* opt)
    if(opt->caller == OPTIONS_CALLER_CD) /* coordinate descent */
    {
       if(opt->filename == NULL || opt->model == 0
-            || opt->n == 0 || opt->p == 0 || !opt->scalefile)
+            || opt->n == 0 || opt->p == 0 
+	    || (opt->mode == MODE_TRAIN && !opt->scalefile))
       {
          printf("usage: cd [-train|-predict] -model <model> \
 -bin <filename> -n <#samples> -p <#variables> -scale <scalefile> \
@@ -383,7 +382,8 @@ onl   y using the first one\n");
       }
    }
 
-   if(opt->binformat == BINFORMAT_PLINK && !opt->famfilename)
+   if(opt->mode == MODE_TRAIN 
+	 && opt->binformat == BINFORMAT_PLINK && !opt->famfilename)
    {
       printf("Error: you must provide a FAM filename (-fam) when using plink BED input\n");
       return FAILURE;

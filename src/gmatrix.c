@@ -143,7 +143,7 @@ int gmatrix_init(gmatrix *g, char *filename, int n, int p,
 	 return FAILURE;
    }
 
-   if(g->modeltype == MODELTYPE_CLASSIFICATION)
+   if(g->mode == MODE_TRAIN && g->modeltype == MODELTYPE_CLASSIFICATION)
    {
       count_cases(g);
       printf("Found %d cases, %d controls\n", g->ncases, g->n - g->ncases);
@@ -153,7 +153,10 @@ int gmatrix_init(gmatrix *g, char *filename, int n, int p,
    CALLOCTEST(g->active, p1, sizeof(int));
    CALLOCTEST(g->ignore, p1, sizeof(int));
 
-   if(g->scalefile && !gmatrix_read_scaling(g, scalefile))
+   /* don't scale in prediction mode */
+   if(g->mode == MODE_TRAIN 
+	 && g->scalefile 
+	 && !gmatrix_read_scaling(g, scalefile))
       return FAILURE;
 
    for(j = g->p ; j >= 0 ; --j)
@@ -161,7 +164,7 @@ int gmatrix_init(gmatrix *g, char *filename, int n, int p,
 
    gmatrix_set_ncurr(g);
    
-   if(g->y_orig && !gmatrix_split_y(g))
+   if(g->mode == MODE_TRAIN && g->y_orig && !gmatrix_split_y(g))
       return FAILURE;
 
    if(!gmatrix_init_lp(g))
@@ -624,6 +627,8 @@ int gmatrix_read_scaling(gmatrix *g, char *file_scale)
 {
    int j, k, l1, l2, p1 = g->p + 1;
    FILE *in;
+
+   printf("reading scale file %s\n", file_scale);
 
    if(!g->lookup)
       CALLOCTEST(g->lookup, NUM_X_LEVELS * p1, sizeof(double));

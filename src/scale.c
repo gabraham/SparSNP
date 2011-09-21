@@ -38,7 +38,7 @@ int scale(gmatrix *g)
 
    for(j = 1 ; j < p1 ; j++)
    {
-      printf("%d of %d", j, p1);
+      /*printf("%d of %d", j, p1);*/
       g->nextcol(g, &sm, j, NA_ACTION_ZERO);
       ngood = g->mean[j] = g->sd[j] = 0;
       for(i = 0 ; i < n ; i++)
@@ -54,9 +54,9 @@ int scale(gmatrix *g)
       }
 
       g->sd[j] = sqrt(g->sd[j] / (ngood - 1));
-      printf("\r");
+      /*printf("\r");*/
    }
-   printf("\n");
+   /*printf("\n");*/
 
    free(tmp);
 

@@ -51,7 +51,6 @@ int make_lambda1path(Opt *opt, gmatrix *g)
    if(opt->unscale)
    {
       unscale_beta(g->beta_orig, g->beta, g->mean, g->sd, g->p + 1);
-      /*memcpy(g->beta_orig, g->beta, sizeof(double) * (g->p+1));*/
       if(!writevectorf(tmp, g->beta_orig, g->p + 1))
 	 return FAILURE;
    }
@@ -105,9 +104,8 @@ int run_train(Opt *opt, gmatrix *g)
 	    opt->beta_files[0], i, g->fold);
       if(opt->unscale)
       {
+	 printf("unscaling beta\n");
 	 unscale_beta(g->beta_orig, g->beta, g->mean, g->sd, g->p + 1);
-	 /*memcpy(g->beta_orig, g->beta, sizeof(double) * (g->p+1));*/
-
 	 if(!writevectorf(tmp, g->beta_orig, g->p + 1))
 	    return FAILURE;
       }
@@ -203,9 +201,9 @@ int run_predict(gmatrix *g, predict predict_func, int unscale,
        * unit-variance) */
       /*for(int j = 0 ; j < g->p + 1 ; j++)
 	 g->beta[j] = g->beta_orig[j];*/
-      if(unscale)
+      /*if(unscale)
 	 scale_beta(g->beta, g->beta_orig, g->mean, g->sd, g->p + 1);
-      else
+      else*/
 	 memcpy(g->beta, g->beta_orig, sizeof(double) * (g->p+1));
 
       snprintf(tmp, MAX_STR_LEN, "%s.pred", beta_files[i]);
@@ -253,7 +251,7 @@ int do_train(gmatrix *g, Opt *opt, char tmp[])
    else
    {
       g->scalefile = opt->scalefile;
-      if(!gmatrix_read_scaling(g, g->scalefile))
+      if(g->scalefile && !gmatrix_read_scaling(g, g->scalefile))
 	 return FAILURE;
       gmatrix_zero_model(g);
       make_lambda1path(opt, g);
@@ -320,7 +318,7 @@ int do_predict(gmatrix *g, Opt *opt, char tmp[])
    else
    {
       g->scalefile = opt->scalefile;
-      if(!gmatrix_read_scaling(g, g->scalefile))
+      if(g->scalefile && !gmatrix_read_scaling(g, g->scalefile))
 	 return FAILURE;
       gmatrix_zero_model(g);
       ret = run_predict(g, opt->predict_func, opt->unscale,
