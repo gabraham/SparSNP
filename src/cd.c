@@ -90,6 +90,9 @@ int cd_gmatrix(gmatrix *g,
    int *zero = NULL;
    double *beta_old = NULL;
    int *active_old = NULL;
+   double *grad_marg = NULL;
+   int *grad_marg_pass = NULL;
+   int npass = 0;
 
    if(!sample_init(&sm))
       return FAILURE;
@@ -100,6 +103,8 @@ int cd_gmatrix(gmatrix *g,
 
    for(j = p ; j >= 0 ; --j)
       active_old[j] = g->active[j];
+
+   printf("%d passed gradient test\n", npass);
 
    while(epoch <= maxepochs)
    {
@@ -141,10 +146,11 @@ int cd_gmatrix(gmatrix *g,
 	       updatelp(g, s, sm.x, j);
 	       g->beta[j] = beta_new;
 
-	       if(fabs(s) <= ZERO_THRESH
+	       /* for quadratic losses the Newton step is exact */
+	       /*if(fabs(s) <= ZERO_THRESH
 		     || fabs(old_loss - g->loss) / g->loss <= 1e-2
 		     || g->loss <= ZERO_THRESH 
-		  )
+		  )*/
 	       {
 		  conv = TRUE;
 		  break;

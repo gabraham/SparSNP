@@ -28,7 +28,7 @@ soft <- function(b, g)
 # assumes scaled inputs
 step.linear <- function(xj, lp, y)
 {
-   drop(crossprod(xj, lp - y)) / length(y)
+   drop(crossprod(xj, lp - y)) / (length(y) - 1)
 }
 
 # assumes scaled inputs
@@ -116,7 +116,7 @@ cd.plain <- function(x, y, step=step.linear, loss=loss.linear,
 }
 
 cd.activeset <- function(x, y, step, loss, lambda1=0, beta=numeric(ncol(x)),
-   lp=numeric(nrow(x)), maxepoch=1000, maxiter=50, eps=1e-4, intercept=TRUE)
+   lp=numeric(nrow(x)), maxepoch=1000, maxiter=100, eps=1e-7, intercept=TRUE)
 {
    p <- ncol(x)
    n <- nrow(x)
@@ -144,14 +144,15 @@ cd.activeset <- function(x, y, step, loss, lambda1=0, beta=numeric(ncol(x)),
                   beta_new <- soft(beta_new, lambda1)
 
 	       diff <- beta_new - beta[j]
-	       lp <- pmin(10, pmax(lp + x[, j] * diff, -10))
+	       #lp <- pmin(10, pmax(lp + x[, j] * diff, -10))
+	       lp <- lp + x[,j] * diff
 	       beta[j] <- beta_new
-	       loss_new <- loss(lp, y)
-	       loss_ratio <- loss_new / loss_null
-	       if(abs(diff) < eps 
-		  || abs(loss_old - loss_new) <= 1e-2
-		  || loss_new <= 1e-2
-		  || loss_ratio >= 0.99)
+	       #loss_new <- loss(lp, y)
+	       #loss_ratio <- loss_new / loss_null
+	       #if(abs(diff) < eps 
+	       #	  || abs(loss_old - loss_new) <= 1e-3
+	       #	  || loss_new <= 1e-3
+	       #	  || loss_ratio >= 0.999)
 	          break
 	    }
 	    if(iter == maxiter)
@@ -344,7 +345,7 @@ cd.activeset.broken <- function(x, y, step, loss, lambda1=0, beta=numeric(ncol(x
 # Slightly different formulation
 cd.activeset2 <- function(x, y, step, loss, lambda1=0, lambda1max=0,
    beta=numeric(ncol(x)), lp=numeric(nrow(x)),
-   maxepoch=1000, maxiter=50, eps=1e-4)
+   maxepoch=1000, maxiter=100, eps=1e-7)
 {
    p <- ncol(x)
    n <- nrow(x)
@@ -435,17 +436,129 @@ cd.activeset.20110921 <- function(x, y, step, loss, lambda1=0,
    loss_new <- 1e10
    loss_null <- loss(numeric(n) + mean(y), y)
 
+   lp_old <- lp
+   # check unpenalised marginal gradient
+   grad_null <- numeric(p)
+   #for(j in 1:p)
+   #   grad_null[j] <- abs(step(x[,j], lp_old, y)) > lambda1
+   S <- B <- matrix(0, p, maxepoch)
+
+   cat("lambda1:", lambda1, "\n")
+   for(epoch in 1:maxepoch)
+   {
+      discord <- 0
+      for(j in 1:p)
+      {
+	 if(active_new[j])
+	 {
+	    conv <- FALSE
+	    for(iter in 1:maxiter)
+	    {
+	       s <- step(x[,j], lp, y)
+	       S[j, epoch] <- s
+               beta_new <- beta[j] - s
+               if(intercept && j > 1)
+                  beta_new <- soft(beta_new, lambda1)
+
+	       diff <- beta_new - beta[j]
+	       #lp <- pmin(10, pmax(lp + x[, j] * diff, -10))
+	       lp <- lp + x[, j] * diff
+	       beta[j] <- beta_new
+	       B[j, epoch] <- beta_new
+	#       loss_new <- loss(lp, y)
+	#       loss_ratio <- loss_new / loss_null
+	#       if(any(is.nan(c(loss_new, loss_new))))
+	#	  browser()
+	#       if(abs(diff) < eps 
+	#	  || abs(loss_old - loss_new) <= 1e-2
+	#	  || loss_new <= 1e-2
+	#	  || loss_ratio >= 0.99)
+	          break
+	    }
+	    #if(iter == maxiter)
+	     #  cat("maxiter (", maxiter, ") reached for variable", j, "\n")
+	    active_new[j] <- beta[j] != 0
+	    #d <- as.integer(active_new[j] != grad_null[j]);
+	    #if(d != 0)
+	    #   browser()
+	    #discord <- discord + d
+	 }
+      }
+
+      if(all(abs(beta - beta_old) <= eps))
+      {
+         allconverged <- allconverged + 1
+	 cat("allconverged:\n", allconverged)
+
+         if(allconverged == 1) {
+	    cat("allconverged 1\n")
+            active_old <- active_new
+            active_new[] <- TRUE
+         } else if(allconverged == 2) {
+	    cat("allconverged 2\n")
+            if(all(active_old == active_new))
+	    {
+	       cat("converged\n")
+               break
+	    }
+            active_old <- active_new
+            active_new[] <- TRUE
+            allconverged <- 1
+         }
+      }
+      else
+      {
+	 cat(epoch, "allconverged 0\n")
+	 allconverged <- 0 
+      }
+
+      if(epoch == maxepoch)
+      {
+	 cat("failed to converged within", maxepoch, "epochs\n")
+	 browser()
+      }
+
+      beta_old <- beta
+      loss_old <- loss_new
+   }
+
+   cat("epoch:", epoch, "\n")
+   S <- S[, 1:epoch]
+   B <- B[, 1:epoch]
+browser()
+  
+   cat("\n")
+   #cat("discord:", discord, "\n")
+   beta
+}
+
+cd.activeset.20110922 <- function(x, y, step, loss, lambda1=0,
+   beta=numeric(ncol(x)), lp=numeric(nrow(x)),
+   maxepoch=1000, maxiter=100, eps=1e-7, intercept=TRUE)
+{
+   p <- ncol(x)
+   n <- nrow(x)
+   beta_old <- beta
+   active_new <-  rep(TRUE, p)
+   active_old <- rep(FALSE, p)
+   allconverged <- 0
+   loss_old <- 1e9
+   loss_new <- 1e10
+   loss_null <- loss(numeric(n) + mean(y), y)
+
    # check unpenalised marginal gradient
    grad_null <- numeric(p)
    for(j in 1:p)
-      grad_null[j] <- -step(x[,j], lp, y)
+      grad_null[j] <- abs(step(x[,j], lp, y)) > lambda1
+   if(intercept)
+      grad_null[j] <- TRUE
 
    cat("lambda1:", lambda1, "\n")
    for(epoch in 1:maxepoch)
    {
       for(j in 1:p)
       {
-	 if(active_new[j] && abs(grad_null[j]) > lambda1)
+	 if(active_new[j] && grad_null[j])
 	 {
 	    conv <- FALSE
 	    for(iter in 1:maxiter)
@@ -456,17 +569,19 @@ cd.activeset.20110921 <- function(x, y, step, loss, lambda1=0,
                   beta_new <- soft(beta_new, lambda1)
 
 	       diff <- beta_new - beta[j]
-	       lp <- pmin(10, pmax(lp + x[, j] * diff, -10))
+	       #lp <- pmin(10, pmax(lp + x[, j] * diff, -10))
+	       lp <- lp + x[,j] * diff
 	       beta[j] <- beta_new
-	       loss_new <- loss(lp, y)
-	       loss_ratio <- loss_new / loss_null
-	       if(any(is.nan(c(loss_new, loss_new))))
-		  browser()
-	       if(abs(diff) < eps 
-		  || abs(loss_old - loss_new) <= 1e-2
-		  || loss_new <= 1e-2
-		  || loss_ratio >= 0.99)
-	          break
+	       #loss_new <- loss(lp, y)
+	       #loss_ratio <- loss_new / loss_null
+	       #if(any(is.nan(c(loss_new, loss_new))))
+	       #   browser()
+	       #if(abs(diff) < eps 
+	       #   || abs(loss_old - loss_new) <= 1e-3
+	       #   || loss_new <= 1e-3
+	       #   || loss_ratio >= 0.999)
+	       #   break
+	       break
 	    }
 	    if(iter == maxiter)
 	       cat("maxiter (", maxiter, ") reached for variable", j, "\n")
@@ -516,65 +631,6 @@ cd.activeset.20110921 <- function(x, y, step, loss, lambda1=0,
    beta
 }
 
-
-#set.seed(3187)
-#n <- 500
-#p <- 50
-#x <- matrix(rnorm(n * p), n, p)
-#x <- cbind(1, scale(x))
-##beta <- rnorm(p + 1) * sample(0:1, p + 1, replace=TRUE)
-##y <- as.numeric(1 / (1 + exp(-x %*% beta + rnorm(n, 0, 2))) >= 0.5)
-##y <- rep(0:1, each=50)
-#y <- sample(0:1, n, TRUE)
-#
-#
-##g <- glm(y ~ x - 1, binomial)
-##cor(coef(g), beta)
-#
-#l <- coef(lm(y ~ x - 1))
-#g.cd <- cd.plain(x=x, y=y, step=step.linear, loss=loss.linear)
-#plot(l, g.cd)
-#abline(0, 1)
-
-#cor(coef(g), g.cd)
-
-#gl <- glmnet(x[,-1], y, family="gaussian")
-#b.gl <- as.matrix(coef(gl))
-##g.cd2 <- cd.plain(x=x, y=y, step=step.logis, loss=loss.logis, lambda1=gl$lambda[w])
-##gl.dev <- loss.logis(x %*% b.gl, y) * 2 * n
-##nulldev <- loss.logis(x %*% numeric(p+1), y) * 2 * n
-##cd.dev <- loss.logis(x %*% g.cd2, y) * 2 * n
-#gl.dev <- loss.linear(x %*% b.gl, y) * n
-#nulldev <- loss.linear(x %*% c(mean(y), numeric(p)), y) * n
-#l <- cbind(gl$dev, 1 - gl.dev / nulldev)
-#matplot(l)
-#
-#gl <- glmnet(x[,-1], factor(y), family="binomial")
-#b.gl <- as.matrix(coef(gl))
-#gl.dev <- loss.logis(x %*% b.gl, y) * 2 * n
-#nulldev <- loss.logis(x %*% c(log(mean(y) / (1 - mean(y))), numeric(p)), y) * 2 * n
-#l <- cbind(gl$dev, 1 - (-152 - gl.dev) / (-152- nulldev))
-#matplot(l)
-
-
-#g.cd3 <- cd.activeset(x=x, y=y, step=step.logis, lambda1=l)
-#g.cd4 <- cd.activeset2(x=x, y=y, step=step.logis, lambda1=l)
-#cor(cbind(as.matrix(coef(gl))[,l], g.cd2, g.cd3, g.cd4))
-
-#gl <- glmnet(x[,-1], y, family="gaussian")
-#w <- min(50, length(gl$lambda))
-#b.gl <- as.matrix(coef(gl))[,w]
-#g.cd2 <- cd.plain(x=x, y=y, step=step.linear, loss=loss.linear,
-#      lambda1=gl$lambda[w])
-#loss.linear(x %*% b.gl, y)
-#loss.linear(x %*% g.cd2, y)
-
-
-
-#cor(b.gl, g.cd2)
-#plot(b.gl, g.cd2)
-#abline(0, 1)
-
 cd.group.plain <- function(x, y, step, loss, lambda1=0, lambda1max=0,
    beta=numeric(ncol(x)), lp=numeric(nrow(x)),
    maxepoch=500, maxiter=50, eps=1e-4)
@@ -609,4 +665,13 @@ cd.group.plain <- function(x, y, step, loss, lambda1=0, lambda1max=0,
    beta
 }
 
+
+#check.kkt <- function(x, y, beta, step, lambda)
+#{
+#   s <- numeric(ncol(x))
+#   for(j in 1:p)
+#   {
+#      s[j] <- abs(step(x, y)) 
+#   }
+#}
 
