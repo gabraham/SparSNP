@@ -22,6 +22,7 @@
 
 #define NA_ACTION_DELETE 1
 #define NA_ACTION_ZERO 2
+#define NA_ACTION_RANDOM 3
 
 /* Size of cache itself, excluding the counters and mappings
  * Remember: there are g->folds caches, not just one, so total memory required
@@ -165,4 +166,5 @@ int cache_init(cache *ca, int n, int p);
 void cache_free(cache *ca);
 void count_cases(gmatrix* g);
 
+int rand_geno();
 

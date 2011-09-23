@@ -83,6 +83,9 @@ univariable: common.c coder.c ind.c gmatrix.c loss.c util.c \
 subsample: common.c util.c coder.c ind.c gmatrix.c subsample.c
 	$(CC) $(CFLAGS) $^ $(LIBRARIES) -o subsample
 
+coder_test: coder.c coder_test.c
+	$(CC) $(CCFLAGS) -ggdb3 $^ $(LIBRARIES) -o coder_test
+
 clean:
 	/bin/rm -f $(targets)
 

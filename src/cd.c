@@ -90,8 +90,6 @@ int cd_gmatrix(gmatrix *g,
    int *zero = NULL;
    double *beta_old = NULL;
    int *active_old = NULL;
-   double *grad_marg = NULL;
-   int *grad_marg_pass = NULL;
 
    if(!sample_init(&sm))
       return FAILURE;

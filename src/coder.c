@@ -5,7 +5,73 @@
 
 #include <stdlib.h>
 #include <stdio.h>
+#include <string.h>
+#include "common.h"
 #include "coder.h"
+
+
+/* A precomputed PLINK mapping from BED words to allele dosage
+ *
+ * We take the BED word, interpret it as an int 0...255.
+ * For the kth int, we store 4 genotypes (minor allele dosages) {0,1,2,3}
+ *
+ * See comments for decode_plink() on the mapping
+ *
+ * */
+int mapping_init(mapping *m)
+{
+   int a1, a2;
+   int i, k;
+   unsigned char geno;
+
+   CALLOCTEST(m->map, 256, sizeof(int*));
+
+   for(i = 0 ; i < 256 ; i++)
+   {
+      CALLOCTEST(m->map[i], 4, sizeof(int));
+      /* i is interpreted in binary as 4 genotypes */
+
+      k = 0;
+
+      /* 1st genotype */
+      geno = (i & MASK0);
+      a1 = !(geno & 1);
+      a2 = !(geno >> 1);
+      m->map[i][k] = (geno == 1) ? 3 : a1 + a2;
+      k++;
+
+      /* 2nd genotype */
+      geno = (i & MASK1) >> 2; 
+      a1 = !(geno & 1);
+      a2 = !(geno >> 1);
+      m->map[i][k] = (geno == 1) ? 3 : a1 + a2;
+      k++;
+
+      /* 3rd genotype */
+      geno = (i & MASK2) >> 4; 
+      a1 = !(geno & 1);
+      a2 = !(geno >> 1);
+      m->map[i][k] = (geno == 1) ? 3 : a1 + a2;
+      k++;
+
+      /* 4th genotype */
+      geno = (i & MASK3) >> 6; 
+      a1 = !(geno & 1);
+      a2 = !(geno >> 1);
+      m->map[i][k] = (geno == 1) ? 3 : a1 + a2;
+   }
+
+   return SUCCESS;
+}
+
+void mapping_free(mapping *m)
+{
+   int i;
+   for(i = 0 ; i < 256 ; i++)
+      FREENULL(m->map[i]);
+
+   FREENULL(m->map);
+}
 
 /*
  * Converts an array of short integers {0,1,2,3} (3 is NA) to binary 
@@ -71,6 +137,10 @@ void decode(unsigned char *out, const unsigned char *in, const int n)
  *
  * We always use minor allele dosage, to be consistent with the output from
  * plink --recodeA which used minor allele dosage by default.
+ *
+ * out: array of genotypes
+ * in: array of packed genotypes
+ * n: number of packed genotypes
  * 
  */
 void decode_plink(unsigned char *out, const unsigned char *in, const int n)
@@ -113,3 +183,14 @@ void decode_plink(unsigned char *out, const unsigned char *in, const int n)
    }
 }
 
+void decode_plink_mapping(mapping *m, unsigned char *out,
+      const unsigned char *in, const int n)
+{
+   int i, k = 0;
+   for(i = 0 ; i < n ; i++)
+   {
+      memcpy(out + k, m->map + in[i], PACK_DENSITY);
+      k += PACK_DENSITY;
+   }
+}
+      

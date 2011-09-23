@@ -5,6 +5,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <time.h>
 
 #include "gmatrix.h"
 #include "coder.h"
@@ -89,6 +90,8 @@ int gmatrix_init(gmatrix *g, char *filename, int n, int p,
    g->ncases = 0;
 
    g->famfilename = famfilename;
+
+   srand48(time(NULL));
 
    CALLOCTEST(g->beta_orig, p1, sizeof(double));
    CALLOCTEST(g->ncurr_j, p1, sizeof(int));
@@ -330,7 +333,7 @@ int gmatrix_read_matrix(gmatrix *g, int *ind, int m)
       if(ind[j])
       {
 	 /* must not delete obs otherwise matrix structure will break */
-	 if(!gmatrix_disk_nextcol(g, &sm, j, NA_ACTION_ZERO))
+	 if(!gmatrix_disk_nextcol(g, &sm, j, NA_ACTION_RANDOM))
 	    return FAILURE;
    
          for(i = 0 ; i < sm.n ; i++)
@@ -358,6 +361,11 @@ int gmatrix_mem_nextcol(gmatrix *g, sample *sm, int j, int na_action)
    return SUCCESS;
 }
 
+int rand_geno()
+{
+   return lrand48() % 3;
+}
+
 /*
  * Reads one column of data from disk (all samples for one variable).
  * Takes into account whether we're doing cross-validation or not
@@ -367,7 +375,7 @@ int gmatrix_mem_nextcol(gmatrix *g, sample *sm, int j, int na_action)
  * This function does all the heavy lifting in terms of determining
  * which samples belong in the current cross-validation fold etc.
  *
- * na_action: one of NA_ACTION_ZERO, NA_ACTION_DELETE
+ * na_action: one of NA_ACTION_ZERO, NA_ACTION_DELETE, NA_ACTION_RANDOM/
  */
 int gmatrix_disk_nextcol(gmatrix *g, sample *s, int j, int na_action)
 {
@@ -417,7 +425,7 @@ int gmatrix_disk_nextcol(gmatrix *g, sample *s, int j, int na_action)
 	  * Note that na_action=NA_ACTION_DELETE is NOT supported
 	  * for scaled inputs since scaled inputs come from
 	  * the lookup table */
-	 if(na_action != NA_ACTION_ZERO)
+	 if(na_action == NA_ACTION_DELETE)
 	 {
 	    fprintf(stderr, "NA_ACTION_DELETE not supported for scaled \
 inputs in gmatrix_disk_nextcol\n");
@@ -439,7 +447,16 @@ inputs in gmatrix_disk_nextcol\n");
 	    }
 	    s->n = n;
 	 }
-	 else
+	 else if(na_action == NA_ACTION_RANDOM)
+	 {
+	    for(i = n1 ; i >= 0 ; --i)
+	    {
+	       d = g->tmp[i];
+	       xtmp[i] = (d == X_LEVEL_NA ? (double)rand_geno() : (double)d);
+	    }
+	    s->n = n;
+	 }
+	 else if(na_action == NA_ACTION_DELETE)
 	 {
 	    for(i = 0 ; i < n ; ++i)
 	    {
@@ -460,7 +477,7 @@ inputs in gmatrix_disk_nextcol\n");
       /* Get the scaled value instead of the original value */
       if(g->scalefile)
       {
-	 if(na_action != NA_ACTION_ZERO)
+	 if(na_action == NA_ACTION_DELETE)
 	 {
 	    fprintf(stderr, "NA_ACTION_DELETE not supported for scaled \
 inputs in gmatrix_disk_nextcol\n");
@@ -496,7 +513,20 @@ inputs in gmatrix_disk_nextcol\n");
 	    }
 	    s->n = ngood;
 	 } 
-	 else
+	 if(na_action == NA_ACTION_RANDOM)
+	 {
+	    for(i = n1 ; i >= 0 ; --i)
+	    {
+	       if((g->mode == MODE_PREDICT) ^ g->folds[f + i])
+	       {
+	          d = g->tmp[i];
+	          xtmp[k--] = (d == X_LEVEL_NA ? (double)rand_geno() : (double)d);
+		  ngood++;
+	       }
+	    }
+	    s->n = ngood;
+	 } 
+	 else if(na_action == NA_ACTION_DELETE)
 	 {
 	    for(i = 0 ; i < n ; ++i)
 	    {

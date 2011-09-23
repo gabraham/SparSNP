@@ -7,10 +7,19 @@
 #define MASK2 48  /* 3 << 2 * 2 */
 #define MASK3 192 /* 3 << 2 * 3 */
 
+typedef struct mapping {
+   int **map;
+} mapping;
+
 void encode(unsigned char *out, const unsigned char *in,
       const int n);
 void decode(unsigned char *out, const unsigned char *in,
       const int n);
 void decode_plink(unsigned char *out, const unsigned char *in,
       const int n);
+int mapping_init(mapping *m);
+void mapping_free(mapping *m);
+
+void decode_plink_mapping(mapping *m, unsigned char *out,
+      const unsigned char *in, const int n);
 
