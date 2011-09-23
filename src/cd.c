@@ -92,7 +92,6 @@ int cd_gmatrix(gmatrix *g,
    int *active_old = NULL;
    double *grad_marg = NULL;
    int *grad_marg_pass = NULL;
-   int npass = 0;
 
    if(!sample_init(&sm))
       return FAILURE;
@@ -103,8 +102,6 @@ int cd_gmatrix(gmatrix *g,
 
    for(j = p ; j >= 0 ; --j)
       active_old[j] = g->active[j];
-
-   printf("%d passed gradient test\n", npass);
 
    while(epoch <= maxepochs)
    {
