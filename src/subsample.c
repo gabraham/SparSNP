@@ -1,7 +1,6 @@
 #include  <time.h>
 #include "common.h"
 #include "gmatrix.h"
-#include "coder.h"
 
 int subsample(gmatrix *g, char *filename_out, int *subvec, int nsub)
 {

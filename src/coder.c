@@ -9,7 +9,6 @@
 #include "common.h"
 #include "coder.h"
 
-
 /* A precomputed PLINK mapping from BED words to allele dosage
  *
  * We take the BED word, interpret it as an int 0...255.
@@ -23,12 +22,14 @@ int mapping_init(mapping *m)
    int a1, a2;
    int i, k;
    unsigned char geno;
+   
+   m->size = 256;
 
-   CALLOCTEST(m->map, 256, sizeof(int*));
+   CALLOCTEST(m->map, m->size, sizeof(dtype*));
 
-   for(i = 0 ; i < 256 ; i++)
+   for(i = 0 ; i < m->size ; i++)
    {
-      CALLOCTEST(m->map[i], 4, sizeof(int));
+      CALLOCTEST(m->map[i], 4, sizeof(dtype));
       /* i is interpreted in binary as 4 genotypes */
 
       k = 0;
@@ -67,7 +68,7 @@ int mapping_init(mapping *m)
 void mapping_free(mapping *m)
 {
    int i;
-   for(i = 0 ; i < 256 ; i++)
+   for(i = 0 ; i < m->size ; i++)
       FREENULL(m->map[i]);
 
    FREENULL(m->map);
@@ -103,7 +104,8 @@ void encode(unsigned char *out, const unsigned char *in, const int n)
  *
  * out must be a pointer of length sizeof(char) * n * PACK_DENSITY
  */
-void decode(unsigned char *out, const unsigned char *in, const int n)
+void decode(unsigned char *out,
+      const unsigned char *in, const int n)
 {
    int i, k;
    unsigned char tmp;
@@ -139,11 +141,12 @@ void decode(unsigned char *out, const unsigned char *in, const int n)
  * plink --recodeA which used minor allele dosage by default.
  *
  * out: array of genotypes
- * in: array of packed genotypes
- * n: number of packed genotypes
+ * in: array of packed genotypes (bytes)
+ * n: number of bytes in input
  * 
  */
-void decode_plink(unsigned char *out, const unsigned char *in, const int n)
+void decode_plink(unsigned char *out,
+      const unsigned char *in, const int n)
 {
    int i, k;
    unsigned char tmp, geno;
@@ -183,14 +186,20 @@ void decode_plink(unsigned char *out, const unsigned char *in, const int n)
    }
 }
 
-void decode_plink_mapping(mapping *m, unsigned char *out,
+/* n: number of bytes in input
+ */
+void decode_plink_mapping(mapping *map, unsigned char *out,
       const unsigned char *in, const int n)
 {
    int i, k = 0;
+   dtype *tmp;
    for(i = 0 ; i < n ; i++)
    {
-      memcpy(out + k, m->map + in[i], PACK_DENSITY);
-      k += PACK_DENSITY;
+      tmp = map->map[in[i]];
+      out[k++] = tmp[0];
+      out[k++] = tmp[1];
+      out[k++] = tmp[2];
+      out[k++] = tmp[3];
    }
 }
-      
+

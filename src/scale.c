@@ -6,7 +6,6 @@
 #include "common.h"
 #include "cd.h"
 #include "util.h"
-#include "coder.h"
 
 /*
  * Converts a matrix encoded as chars (one byte per entry),

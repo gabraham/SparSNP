@@ -6,7 +6,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include "cd.h"
-#include "coder.h"
 #include "util.h"
 
 /* Assumes:

@@ -1,7 +1,6 @@
 #include "common.h"
 #include "cd.h"
 #include "util.h"
-#include "coder.h"
 #include "univariable.h"
 #include "multivariable.h"
 #include "matrix.h"

@@ -6,9 +6,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
+#include <string.h>
 
 #include "gmatrix.h"
-#include "coder.h"
 #include "ind.h"
 #include "util.h"
 
@@ -65,7 +65,7 @@ int gmatrix_init(gmatrix *g, char *filename, int n, int p,
    g->encoded = encoded;
    g->nencb = (int)ceil((double)n / PACK_DENSITY);
    g->encbuf = NULL;
-   g->decode = &decode;
+   /*g->decode = &decode;*/
    g->binformat = binformat;
    g->folds_ind_file = folds_ind_file;
    g->nfolds = 1;
@@ -90,6 +90,9 @@ int gmatrix_init(gmatrix *g, char *filename, int n, int p,
    g->ncases = 0;
 
    g->famfilename = famfilename;
+
+   MALLOCTEST(g->map, sizeof(mapping));
+   mapping_init(g->map);
 
    srand48(time(NULL));
 
@@ -130,7 +133,6 @@ int gmatrix_init(gmatrix *g, char *filename, int n, int p,
       printf("Using PLINK binary format\n");
       printf("FAM file: %s\n", g->famfilename);
       g->offset = 3 - g->nseek;
-      g->decode = &decode_plink;
       if(g->famfilename)
       {
 	 if(!gmatrix_fam_read_y(g))
@@ -141,7 +143,7 @@ int gmatrix_init(gmatrix *g, char *filename, int n, int p,
    else
    {
       g->offset = 0;
-      g->decode = &decode;
+      /*g->decode = &decode;*/
       if(!gmatrix_disk_read_y(g))
 	 return FAILURE;
    }
@@ -253,6 +255,9 @@ void gmatrix_free(gmatrix *g)
 	 cache_free(g->xcaches + i);
    }
    FREENULL(g->xcaches);
+
+   mapping_free(g->map);
+   FREENULL(g->map);
 }
 
 /* y_orig is the original vector of labels/responses, it 
@@ -266,7 +271,8 @@ int gmatrix_disk_read_y(gmatrix *g)
 
    /* The y vector may be byte packed */
    FREADTEST(g->encbuf, sizeof(dtype), g->nencb, g->file);
-   g->decode(g->tmp, g->encbuf, g->nencb);
+   /*decode_plink(g->tmp, g->encbuf, g->nencb);*/
+   decode_plink_mapping(g->map, g->tmp, g->encbuf, g->nencb);
  
    if(g->yformat == YFORMAT01 || g->modeltype == MODELTYPE_REGRESSION) 
    {
@@ -414,7 +420,16 @@ int gmatrix_disk_nextcol(gmatrix *g, sample *s, int j, int na_action)
    seek = j * g->nseek + g->offset;
    FSEEKOTEST(g->file, seek, SEEK_SET);
    FREADTEST(g->encbuf, sizeof(dtype), g->nencb, g->file);
-   g->decode(g->tmp, g->encbuf, g->nencb);
+
+   /*MALLOCTEST(g->tmp2, sizeof(dtype) * g->nencb * PACK_DENSITY);*/
+   
+   /*decode_plink(g->tmp, g->encbuf, g->nencb);*/
+   decode_plink_mapping(g->map, g->tmp, g->encbuf, g->nencb);
+
+   /*for(i = 0 ; i < n1 ; i++)
+   {
+      printf("%d: %d %d\n", i, g->tmp[i], g->tmp2[i]);
+   }*/
 
    /* Get the scaled versions of the genotypes */
    if(g->nfolds < 2)

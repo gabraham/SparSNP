@@ -8,6 +8,7 @@
 
 #include "common.h"
 #include "loss.h"
+#include "coder.h"
 
 /* categorical x inputs: 0, 1, 2, 3 */
 #define NUM_X_LEVELS 4
@@ -93,6 +94,7 @@ typedef struct gmatrix {
    int (*nextcol)(struct gmatrix*, sample*, int skip, int na_action);
    char *scalefile;
    dtype *tmp;
+   dtype *tmp2;
    unsigned char *encbuf;
    short yformat;
    int model;
@@ -100,9 +102,9 @@ typedef struct gmatrix {
    short encoded;
    int nencb;
    short binformat;
-   void (*decode)(unsigned char *out,
+   /*void (*decode)(unsigned char *out,
 	 const unsigned char *in,
-	 const int n);
+	 const int n);*/
    char *folds_ind_file;
    int nfolds;
    int *folds;
@@ -123,6 +125,7 @@ typedef struct gmatrix {
    char *famfilename;
    cache *xcaches;
    int ncases;
+   mapping *map;
 } gmatrix;
 
 int sample_init(sample *);

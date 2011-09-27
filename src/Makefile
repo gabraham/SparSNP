@@ -18,7 +18,7 @@ endif
 # Allow large-file seeking with fseeko
 LONG_BIT = $(shell getconf LONG_BIT)
 
-CFLAGS = -std=gnu99 -Wall -ggdb3 \
+CFLAGS = -std=gnu99 -Wall -ggdb3 -g3 \
 	  -O2 \
 	  -msse \
 	  -ftree-vectorize \
