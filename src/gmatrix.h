@@ -126,6 +126,7 @@ typedef struct gmatrix {
    cache *xcaches;
    int ncases;
    mapping *map;
+   int *folds_ind; /* xor of folds with mode == MODE_PREDICT */
 } gmatrix;
 
 int sample_init(sample *);

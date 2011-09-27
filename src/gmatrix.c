@@ -183,11 +183,14 @@ int gmatrix_init(gmatrix *g, char *filename, int n, int p,
 
 int gmatrix_setup_folds(gmatrix *g)
 {
+   int i;
    if(g->folds_ind_file 
 	 && !(g->nfolds = ind_getfolds(g->folds_ind_file)))
       return FAILURE;
 
    MALLOCTEST(g->folds, sizeof(int) * g->n * g->nfolds);
+   MALLOCTEST(g->folds_ind, sizeof(int) * g->n * g->nfolds);
+
    if(g->nfolds > 1 && !ind_read(g->folds_ind_file,
 	    g->folds, g->n, g->nfolds))
       return FAILURE;
@@ -198,14 +201,20 @@ int gmatrix_setup_folds(gmatrix *g)
    MALLOCTEST(g->ntestrecip, sizeof(double) * g->nfolds);
 
    if(g->folds_ind_file && g->nfolds > 1)
+   {
       count_fold_samples(g->ntrain, g->ntest,
 	    g->ntrainrecip, g->ntestrecip,
 	    g->folds, g->nfolds, g->n);
+   }
    else /* train and test sets are the same */
    {
       g->ntrain[0] = g->ntest[0] = g->n;
       g->ntrainrecip[0] = g->ntestrecip[0] = 1.0 / g->n;
    }
+
+   for(i = g->n * g->nfolds - 1; i >= 0 ; --i)
+      g->folds_ind[i] = (g->mode == MODE_PREDICT) ^ g->folds[i];
+
    return SUCCESS;
 }
 
@@ -240,6 +249,7 @@ void gmatrix_free(gmatrix *g)
    FREENULL(g->beta_orig);
    FREENULL(g->encbuf);
    FREENULL(g->folds);
+   FREENULL(g->folds_ind);
    FREENULL(g->ntrain);
    FREENULL(g->ntest);
    FREENULL(g->ntrainrecip);
@@ -310,7 +320,7 @@ int gmatrix_split_y(gmatrix *g)
    if(g->nfolds > 1) /* no cv */
    {
       for(i = n1 ; i >= 0 ; --i)
-	 if((g->mode == MODE_PREDICT) ^ g->folds[g->fold * n + i])
+	 if(g->folds_ind[g->fold * n + i])
 	    g->y[k--] = g->y_orig[i];
    }
    else 
@@ -400,7 +410,6 @@ int gmatrix_disk_nextcol(gmatrix *g, sample *s, int j, int na_action)
       s->x = g->intercept;
       s->x2 = g->intercept;
 
-      /*s->y = g->y_orig;*/
       s->y = g->y;
       s->n = g->ncurr;
 
@@ -420,16 +429,8 @@ int gmatrix_disk_nextcol(gmatrix *g, sample *s, int j, int na_action)
    seek = j * g->nseek + g->offset;
    FSEEKOTEST(g->file, seek, SEEK_SET);
    FREADTEST(g->encbuf, sizeof(dtype), g->nencb, g->file);
-
-   /*MALLOCTEST(g->tmp2, sizeof(dtype) * g->nencb * PACK_DENSITY);*/
    
-   /*decode_plink(g->tmp, g->encbuf, g->nencb);*/
    decode_plink_mapping(g->map, g->tmp, g->encbuf, g->nencb);
-
-   /*for(i = 0 ; i < n1 ; i++)
-   {
-      printf("%d: %d %d\n", i, g->tmp[i], g->tmp2[i]);
-   }*/
 
    /* Get the scaled versions of the genotypes */
    if(g->nfolds < 2)
@@ -502,10 +503,7 @@ inputs in gmatrix_disk_nextcol\n");
 	 l1 = j * NUM_X_LEVELS;
 	 for(i = n1 ; i >= 0 ; --i)
 	 {
-	    /* different between train and test */
-	    /* this can be replaced by a list of pointers to the training and
-	     * testing samples */
-	    if((g->mode == MODE_PREDICT) ^ g->folds[f + i])
+	    if(g->folds_ind[f + i])
 	    {
 	       xtmp[k--] = g->lookup[l1 + g->tmp[i]];
 	       ngood++;
@@ -519,7 +517,7 @@ inputs in gmatrix_disk_nextcol\n");
 	 {
 	    for(i = n1 ; i >= 0 ; --i)
 	    {
-	       if((g->mode == MODE_PREDICT) ^ g->folds[f + i])
+	       if(g->folds_ind[f + i])
 	       {
 	          d = g->tmp[i];
 	          xtmp[k--] = (d == X_LEVEL_NA ? 0 : (double)d);
@@ -532,7 +530,7 @@ inputs in gmatrix_disk_nextcol\n");
 	 {
 	    for(i = n1 ; i >= 0 ; --i)
 	    {
-	       if((g->mode == MODE_PREDICT) ^ g->folds[f + i])
+	       if(g->folds_ind[f + i])
 	       {
 	          d = g->tmp[i];
 	          xtmp[k--] = (d == X_LEVEL_NA ? (double)rand_geno() : (double)d);
@@ -545,7 +543,7 @@ inputs in gmatrix_disk_nextcol\n");
 	 {
 	    for(i = 0 ; i < n ; ++i)
 	    {
-	       if((g->mode == MODE_PREDICT) ^ g->folds[f + i])
+	       if(g->folds_ind[f + i])
 	       {
 	          d = g->tmp[i];
 		  if(d != X_LEVEL_NA)
