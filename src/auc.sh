@@ -166,39 +166,8 @@ if(!is.null(prev))
    print(g)
    dev.off()
 
-   m <- melt(d, measure.vars=c("AUC", "VarExp"))
-   colnames(m)[colnames(m) == "variable"] <- "Measure"
-
-   g <- if(uni) {
-      ggplot(m, aes(x=NonZero, y=value, shape=Method, colour=Measure))
-   } else {
-      ggplot(m, aes(x=NonZero, y=value, colour=Measure))
-   }
-   g <- g + geom_point(size=2.5) 
-   g <- g + scale_x_log2("Number of SNPs with non-zero weights",
-      breaks=br, labels=br)
-   
-   g <- g + theme_bw() + mytheme()
-   g <- g + scale_colour_grey(start=0, end=0.5)
-   g <- g + stat_smooth(method="loess", size=2)
-   g <- g + coord_cartesian(ylim=c(minvar, maxvar))
-   g <- g + scale_y_continuous("Measure")
-   g <- g + opts(legend.position="none")
-   g <- g + geom_text(aes(x=512, y=0.5, label="VarExp"), size=10,
-      colour="darkslategray")
-   g <- g + geom_text(aes(x=512, y=0.75, label="AUC"), size=10, colour=1)
-   g <- g + opts(plot.margin=unit(c(0, 0, 0.1, 1.5), "lines"))
-   
-   pdf(sprintf("%s_AUC_VarExp.pdf", title), width=8, height=6)
-   print(g)
-   grid.text("B", x=unit(0.025, "npc"), y=unit(0.94, "npc"),
-	 gp=gpar(fontsize=50))
-   dev.off()
-
-   
 }
 EOF
 
 Rscript .process.R
-#/bin/rm .process.R
 
