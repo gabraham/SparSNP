@@ -36,9 +36,7 @@ Requirements for code to analyse results:
    * R 
    * R packages:
       - ggplot2
-      - Hmisc
       - glmnet
-      - ROCR
    
 Compiling:
    make
@@ -96,9 +94,7 @@ Results: in each crossvalXX directory, there will be files:
 
 To run this you need R (http://r-project.org) and the packages:
    * ggplot2
-   * Hmisc
    * glmnet
-   * ROCR
 
 The script auc.sh can be used to analyse the AUC and explained phenotypic
 variance over the cross-validation replications:

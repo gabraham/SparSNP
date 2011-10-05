@@ -9,7 +9,6 @@ fi
 cat > .process.R <<EOF
 
 library(ggplot2)
-library(Hmisc)
 
 exper <- 1:$1
 title <- "$2"
