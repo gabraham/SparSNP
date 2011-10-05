@@ -92,7 +92,7 @@ int main(int argc, char* argv[])
 	*filename_folds_ind = NULL;
    short doscale = TRUE,
 	 encoded = TRUE,
-	 binformat = BINFORMAT_BIN;
+	 binformat = BINFORMAT_PLINK;
    gmatrix g;
    char tmp[100];
 
@@ -125,8 +125,6 @@ int main(int argc, char* argv[])
       }
       else if(strcmp2(argv[i], "-notencoded"))
 	 encoded = FALSE;
-      else if(strcmp2(argv[i], "-plink"))
-	 binformat = BINFORMAT_PLINK;
       else if(strcmp2(argv[i], "-foldind"))
       {
 	 i++;

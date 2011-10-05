@@ -76,7 +76,7 @@ int main(int argc, char *argv[])
    char *filename_bin = NULL,
 	*filename_out = NULL,
 	*file_scale = NULL;
-   short binformat = BINFORMAT_BIN;
+   short binformat = BINFORMAT_PLINK;
    gmatrix g;
 
    for(i = 1 ; i < argc ; i++)
@@ -101,10 +101,6 @@ int main(int argc, char *argv[])
 	 i++;
 	 p = (int)atof(argv[i]);
       }
-      else if(strcmp2(argv[i], "-plink"))
-      {
-	 binformat = BINFORMAT_PLINK;
-      }
       else if(strcmp2(argv[i], "-scale"))
       {
 	 i++;
@@ -118,6 +114,8 @@ int main(int argc, char *argv[])
 -n <#n> -p <#p>\n");
       return EXIT_FAILURE;
    }
+
+   printf("unpacking %s to file %s\n", filename_bin, filename_out);
 
    if(!gmatrix_init(&g, filename_bin, n, p, file_scale,
 	 YFORMAT01, MODEL_LINEAR, MODELTYPE_REGRESSION, TRUE, binformat,

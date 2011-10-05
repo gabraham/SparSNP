@@ -115,18 +115,22 @@ cd.plain <- function(x, y, step=step.linear, loss=loss.linear,
    list(beta=beta, grad=grad, LP=LP)
 }
 
-cd.activeset <- function(x, y, step, loss, lambda1=0, beta=numeric(ncol(x)),
-   lp=numeric(nrow(x)), maxepoch=1000, maxiter=100, eps=1e-7, intercept=TRUE)
+cd.activeset <- function(x, y, step=step.linear, loss=loss.linear,
+   lambda1=numeric(ncol(x)), beta=numeric(ncol(x)),
+   lp=numeric(nrow(x)), maxepoch=5000, maxiter=100,
+   eps=1e-4, intercept=TRUE)
 {
    p <- ncol(x)
    n <- nrow(x)
+   if(length(lambda1) == 1)
+      lambda1 <- rep(lambda1, p)
    beta_old <- beta
    active_new <-  rep(TRUE, p)
    active_old <- rep(FALSE, p)
    allconverged <- 0
-   loss_old <- 1e9
-   loss_new <- 1e10
-   loss_null <- loss(numeric(n) + mean(y), y)
+   #loss_old <- 1e9
+   #loss_new <- 1e10
+   #loss_null <- loss(numeric(n) + mean(y), y)
 
    cat("lambda1:", lambda1, "\n")
    for(epoch in 1:maxepoch)
@@ -140,12 +144,12 @@ cd.activeset <- function(x, y, step, loss, lambda1=0, beta=numeric(ncol(x)),
 	    {
 	       s <- step(x[,j], lp, y)
                beta_new <- beta[j] - s
-               if(intercept && j > 1)
-                  beta_new <- soft(beta_new, lambda1)
+	       beta_new <- soft(beta_new, lambda1[j])
 
 	       diff <- beta_new - beta[j]
 	       #lp <- pmin(10, pmax(lp + x[, j] * diff, -10))
 	       lp <- lp + x[,j] * diff
+	       #cat(max(abs(drop(lp))), "\n")
 	       beta[j] <- beta_new
 	       #loss_new <- loss(lp, y)
 	       #loss_ratio <- loss_new / loss_null
@@ -195,7 +199,7 @@ cd.activeset <- function(x, y, step, loss, lambda1=0, beta=numeric(ncol(x)),
       }
 
       beta_old <- beta
-      loss_old <- loss_new
+      #loss_old <- loss_new
    }
 
   

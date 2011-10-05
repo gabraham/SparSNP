@@ -2,7 +2,7 @@
 
 library(ggplot2)
 library(glmnet)
-library(ROCR)
+#library(ROCR)
 
 folds <- scan("folds.txt")
 folds <- unique(sort(folds))
