@@ -110,13 +110,14 @@ int cd_gmatrix(gmatrix *g,
       {
 	 iter = 0;
 	 conv = TRUE;
+	 beta_new = beta_old[j] = g->beta[j];
 	 
 	 if(g->active[j])
 	 {
-	    conv = FALSE;
+	    /*conv = FALSE;*/
 	    g->nextcol(g, &sm, j, NA_ACTION_ZERO);
 
-      	    while(iter < maxiters)
+      	    /*while(iter < maxiters)*/
       	    {
 	       old_loss = g->loss;
 	       s = step_func(&sm, g);
@@ -132,22 +133,15 @@ int cd_gmatrix(gmatrix *g,
 
 	       delta = beta_new - g->beta[j];
 	       
-	       /*if(s == 0)*/
-	       if(fabs(delta) <= ZERO_THRESH)
-	       {
-		  conv = TRUE;
+	       if(fabs(s) == ZERO_THRESH)
 		  break;
-	       }  
 
 	       updatelp(g, delta, sm.x, j);
-
-	       /*printfverb("[%d] l1: %.10f beta: %.20f beta_new: %.20f delta: %.20f s: %.20f loss: %.10f reldiff: %.10f\n",
-		     j, lambda1, g->beta[j], beta_new, delta, s, fabs(old_loss - g->loss) / g->loss, g->loss);*/
-
 	       g->beta[j] = beta_new;
 
 	       /* for quadratic losses the Newton step is exact */
 	       /*if(fabs(s) <= ZERO_THRESH
+		     
 		     || fabs(old_loss - g->loss) / g->loss <= 1e-2
 		     || g->loss <= ZERO_THRESH
 		  )
@@ -157,11 +151,16 @@ int cd_gmatrix(gmatrix *g,
 	       }*/
 	       iter++;
       	    }
+	    conv = fabs(old_loss - g->loss) / g->loss <= 1e-2 || g->loss <= ZERO_THRESH;
 	    zero[j] = g->beta[j] == 0;
 	    g->active[j] = !zero[j];
 
-	    printfverb("var %d converged in iter #%d\n", j, iter);
+	    /*printfverb("var %d converged in iter #%d\n", j, iter);*/
 	 }
+
+	 /*conv = fabs(beta_old[j] - beta_new) <= 1e-6;*/
+	 /*if(epoch >= 700 && !conv)
+	    printf("j:%d beta_new: %.20f beta_old: %.20f\n", j, beta_old[j], beta_new);*/
 
 	 numconverged += conv;
 	 numactive += g->active[j];
