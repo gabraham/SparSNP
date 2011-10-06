@@ -114,7 +114,7 @@ int cd_gmatrix(gmatrix *g,
 	 
 	 if(g->active[j])
 	 {
-	    /*conv = FALSE;*/
+	    conv = FALSE;
 	    g->nextcol(g, &sm, j, NA_ACTION_ZERO);
 
       	    /*while(iter < maxiters)*/
@@ -140,7 +140,7 @@ int cd_gmatrix(gmatrix *g,
 	       g->beta[j] = beta_new;
 
 	       /* for quadratic losses the Newton step is exact */
-	       /*if(fabs(s) <= ZERO_THRESH
+	       if(fabs(s) <= ZERO_THRESH
 		     
 		     || fabs(old_loss - g->loss) / g->loss <= 1e-2
 		     || g->loss <= ZERO_THRESH
@@ -148,10 +148,10 @@ int cd_gmatrix(gmatrix *g,
 	       {
 		  conv = TRUE;
 		  break;
-	       }*/
+	       }
 	       iter++;
       	    }
-	    conv = fabs(old_loss - g->loss) / g->loss <= 1e-2 || g->loss <= ZERO_THRESH;
+	    /*conv = fabs(old_loss - g->loss) / g->loss <= 1e-2 || g->loss <= ZERO_THRESH;*/
 	    zero[j] = g->beta[j] == 0;
 	    g->active[j] = !zero[j];
 
