@@ -79,14 +79,13 @@ int cd_gmatrix(gmatrix *g,
 {
    const int p = g->p, p1 = g->p + 1;
    int j, iter, allconverged = 0, numactive = 0,
-       epoch = 1, numconverged = 0,
+       epoch = 1,
        good = FALSE;
    double s = 0, beta_new, delta;
    const double truncl = log((1 - trunc) / trunc);
    const double l2recip = 1 / (1 + lambda2);
    sample sm;
    double old_loss = 0;
-   int conv = 0;
    int *zero = NULL;
    double *beta_old = NULL;
    int *active_old = NULL;
@@ -104,119 +103,88 @@ int cd_gmatrix(gmatrix *g,
    while(epoch <= maxepochs)
    {
       numactive = 0;
-      numconverged = 0;
 
       for(j = 0 ; j < p1; j++)
       {
 	 iter = 0;
-	 conv = TRUE;
 	 beta_new = beta_old[j] = g->beta[j];
 	 
 	 if(g->active[j])
 	 {
-	    conv = FALSE;
 	    g->nextcol(g, &sm, j, NA_ACTION_ZERO);
 
-      	    /*while(iter < maxiters)*/
-      	    {
-	       old_loss = g->loss;
-	       s = step_func(&sm, g);
-	       beta_new = g->beta[j] - s;
-	       
-      	       if(j > 0)
-      	          beta_new = soft_threshold(beta_new, lambda1) * l2recip;
-      	       beta_new = clip(beta_new, -truncl, truncl);
+	    old_loss = g->loss;
+	    s = step_func(&sm, g);
+	    beta_new = g->beta[j] - s;
+	    
+      	    if(j > 0)
+      	       beta_new = soft_threshold(beta_new, lambda1) * l2recip;
+      	    beta_new = clip(beta_new, -truncl, truncl);
 
-	       beta_new = g->beta[j] - s;
-      	       if(j > 0) 
-      	          beta_new = soft_threshold(beta_new, lambda1);
+	    beta_new = g->beta[j] - s;
+      	    if(j > 0) 
+      	       beta_new = soft_threshold(beta_new, lambda1);
 
-	       delta = beta_new - g->beta[j];
-	       
-	       if(fabs(s) == ZERO_THRESH)
-		  break;
+	    delta = beta_new - g->beta[j];
+	    
+	    if(fabs(s) == ZERO_THRESH)
+	       break;
 
-	       updatelp(g, delta, sm.x, j);
-	       g->beta[j] = beta_new;
+	    updatelp(g, delta, sm.x, j);
+	    g->beta[j] = beta_new;
 
-	       /* for quadratic losses the Newton step is exact */
-	       if(fabs(s) <= ZERO_THRESH
-		     
-		     || fabs(old_loss - g->loss) / g->loss <= 1e-2
-		     || g->loss <= ZERO_THRESH
-		  )
-	       {
-		  conv = TRUE;
-		  break;
-	       }
-	       iter++;
-      	    }
-	    /*conv = fabs(old_loss - g->loss) / g->loss <= 1e-2 || g->loss <= ZERO_THRESH;*/
 	    zero[j] = g->beta[j] == 0;
 	    g->active[j] = !zero[j];
-
-	    /*printfverb("var %d converged in iter #%d\n", j, iter);*/
 	 }
 
-	 /*conv = fabs(beta_old[j] - beta_new) <= 1e-6;*/
-	 /*if(epoch >= 700 && !conv)
-	    printf("j:%d beta_new: %.20f beta_old: %.20f\n", j, beta_old[j], beta_new);*/
-
-	 numconverged += conv;
 	 numactive += g->active[j];
       }
 
-      printfverb("fold: %d  epoch: %d  numactive: %d  numconverged: %d\n", 
-	    g->fold, epoch, numactive, numconverged);
+      printfverb("fold: %d  epoch: %d  numactive: %d\n", 
+	    g->fold, epoch, numactive);
       fflush(stdout);
 
-     /* 3-state machine for active set convergence */ 
-      if(numconverged == p1) 
+      /* State machine for active set convergence */ 
+      allconverged++;
+
+      /* prepare for another iteration over *all*
+       * (non-ignored) variables, store a copy of the
+       * current active set for later */
+      if(allconverged == 1)
       {
-	 printfverb("all converged\n");
-	 allconverged++;
-
-	 /* prepare for another iteration over *all*
-	  * (non-ignored) variables, store a copy of the
-	  * current active set for later */
-	 if(allconverged == 1)
+	 printfverb("prepare for final epoch\n");
+	 for(j = p ; j >= 0 ; --j)
 	 {
-	    printfverb("prepare for final epoch\n");
-	    for(j = p ; j >= 0 ; --j)
-	    {
-	       active_old[j] = g->active[j];
-	       g->active[j] = !g->ignore[j];
-	    }
-	 }
-	 else /* 2nd iteration over all variables done, check
-		 whether active set has changed */
-	 {
-	    for(j = p ; j >= 0 ; --j)
-	       if(g->active[j] != active_old[j])
-		  break;
-
-	    /* all equal, terminate */
-	    if(j < 0)
-	    {
-	       printfverb("\n[%ld] terminating at epoch %d \
-with %d active vars\n", time(NULL), epoch, numactive);
-	       good = TRUE;
-	       break;
-	    }
-
-	    printfverb("active set changed, %d active vars\n",
-		  numactive);
-
-	    /* active set has changed, iterate over
-	     * new active variables */
-	    for(j = p ; j >= 0 ; --j)
-	       active_old[j] = g->active[j];
-	    allconverged = 1;
+	    active_old[j] = g->active[j];
+	    g->active[j] = !g->ignore[j];
 	 }
       }
-      else /* reset to first state */
-	 allconverged = 0;
+      else /* 2nd iteration over all variables done, check
+	      whether active set has changed */
+      {
+	 for(j = p ; j >= 0 ; --j)
+	    if(g->active[j] != active_old[j])
+	       break;
 
+	 /* all equal, terminate */
+	 if(j < 0)
+	 {
+	    printfverb("\n[%ld] terminating at epoch %d \
+with %d active vars\n", time(NULL), epoch, numactive);
+	    good = TRUE;
+	    break;
+	 }
+
+	 printfverb("active set changed, %d active vars\n",
+	       numactive);
+
+	 /* active set has changed, iterate over
+	  * new active variables */
+	 for(j = p ; j >= 0 ; --j)
+	    active_old[j] = g->active[j];
+	 allconverged = 1;
+      }
+     
       epoch++;
    }
    printfverb("\n");
