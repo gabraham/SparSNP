@@ -14,6 +14,14 @@
 SparSNP is a set of tools for fitting large scale lasso models to SNP data. It
 can be used to build classifiers for case/control data.
 
+(2) Limitations
+===============
+
+Theoretically, SparSNP can handle up to 2^31 - 1 SNPs and samples,
+since it uses signed ints internally for array indicies, but has never
+been tested with that. We have tested sample sizes up to about 12,000,
+and SNPs up to about 900,000 without any issue.
+
 (3) Installation
 ================
 Operating System:
@@ -42,7 +50,7 @@ Compiling:
    make
 
 
-(2) Usage
+(4) Usage
 ===============
 
 Compile the code or use the prebuilt binaries.
@@ -89,7 +97,7 @@ Results: in each crossvalXX directory, there will be files:
    y.XX: the *test* output/classes/responses for the XXth fold
 
 
-(3) Analysis after Model Fitting
+(5) Analysis after Model Fitting
 =================================
 
 To run this you need R (http://r-project.org) and the packages:
@@ -113,4 +121,5 @@ where title is the title of the file, e.g. GWAS, and prev is the prevalence as
 a proportion (not in percent).
 
    The output is two files: GWAS_AUC.pdf and GWAS_VarExp.pdf
+
 
