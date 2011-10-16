@@ -751,7 +751,8 @@ void gmatrix_set_ncurr(gmatrix *g)
    g->ncurr = (g->mode == MODE_TRAIN) ? 
       g->ntrain[g->fold] : g->ntest[g->fold];
 
-   g->ncurr_recip = 1.0 / g->ncurr;
+   /*g->ncurr_recip = 1.0 / g->ncurr;*/
+   g->ncurr_recip = 1.0 / (g->ncurr - 1);
 }
 
 int gmatrix_set_fold(gmatrix *g, int fold)

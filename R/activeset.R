@@ -157,7 +157,9 @@ cd.activeset <- function(x, y, step=step.linear, loss=loss.linear,
 	       #	  || abs(loss_old - loss_new) <= 1e-3
 	       #	  || loss_new <= 1e-3
 	       #	  || loss_ratio >= 0.999)
-	          break
+	       #   break
+	       browser()
+	       break
 	    }
 	    if(iter == maxiter)
 	       cat("maxiter (", maxiter, ") reached for variable", j, "\n")
@@ -165,10 +167,14 @@ cd.activeset <- function(x, y, step=step.linear, loss=loss.linear,
 	 }
       }
 
+      # we can converge in the loss or converge in the weights, with slightly different
+      # results
       if(all(abs(beta - beta_old) <= eps))
       {
          allconverged <- allconverged + 1
 	 cat("allconverged:\n", allconverged)
+
+	 browser()
 
          if(allconverged == 1) {
 	    cat("allconverged 1\n")
