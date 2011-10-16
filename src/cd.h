@@ -85,6 +85,7 @@ typedef struct Opt {
    int multivar;
    char *subset_file;
    char *famfilename;
+   char *outdir;
 } Opt;
 
 int cd_gmatrix(gmatrix *g,

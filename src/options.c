@@ -74,6 +74,7 @@ int opt_defaults(Opt *opt, short caller)
    opt->beta_files_fold = NULL;
    opt->numnz_file = "nonzero.csv";
    opt->unscale = TRUE;
+   opt->outdir = "";
 
    MALLOCTEST(opt->beta_files, sizeof(char*));
    MALLOCTEST(opt->beta_files[0], sizeof(char) * (strlen(beta_default) + 1));
@@ -119,7 +120,6 @@ int opt_defaults(Opt *opt, short caller)
 
    opt->multivar = OPTIONS_MULTIVAR_NEWTON;
    opt->famfilename = NULL;
-
 
    return SUCCESS;
 }
@@ -272,6 +272,11 @@ int opt_parse(int argc, char* argv[], Opt* opt)
       {
 	 opt->warmrestarts = FALSE;
       }
+      else if(strcmp2(argv[i], "-outdir"))
+      {
+	 i++;
+	 opt->outdir = argv[i];
+      }
       else if(strcmp2(argv[i], "-betafiles"))
       {
 	 /* first free the default filename */
@@ -282,6 +287,7 @@ int opt_parse(int argc, char* argv[], Opt* opt)
 	 j = ++i;
 	 k = 0;
 
+	 printf("outdir: %s\n", opt->outdir);
 	 /* look ahead to find more tokens */
 	 while(j < argc && argv[j][0] != '-')
 	 {
@@ -289,8 +295,12 @@ int opt_parse(int argc, char* argv[], Opt* opt)
 	    REALLOCTEST(opt->beta_files, opt->beta_files,
 		  sizeof(char*) * k)
 	    MALLOCTEST(opt->beta_files[k - 1],
-		  sizeof(char) * (strlen(argv[j]) + 1))
-	    strcpy(opt->beta_files[k - 1], argv[j]);
+		  sizeof(char) * (strlen(argv[j]) + strlen(opt->outdir) + 2))
+	    /*strcpy(opt->beta_files[k - 1], argv[j]);*/
+	    if(strlen(opt->outdir) > 0)
+	       sprintf(opt->beta_files[k - 1], "%s/%s", opt->outdir, argv[j]);
+	    else
+	       sprintf(opt->beta_files[k - 1], "%s", argv[j]);
 	    j++;
 	 }
 	 opt->n_beta_files = k;

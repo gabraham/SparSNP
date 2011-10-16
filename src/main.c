@@ -4,6 +4,7 @@
  */
 
 #include <stdlib.h>
+#include <libgen.h>
 #include "cd.h"
 #include "util.h"
 
@@ -51,10 +52,12 @@ int make_lambda1path(Opt *opt, gmatrix *g)
    if(opt->unscale)
    {
       unscale_beta(g->beta_orig, g->beta, g->mean, g->sd, g->p + 1);
-      if(!writevectorf(tmp, g->beta_orig, g->p + 1))
+      /*if(!writevectorf(tmp, g->beta_orig, g->p + 1))*/
+      if(!write_beta_sparse(tmp, g->beta_orig, g->p + 1))
 	 return FAILURE;
    }
-   else if(!writevectorf(tmp, g->beta, g->p + 1))
+   /*else if(!writevectorf(tmp, g->beta, g->p + 1))*/
+   else if(!write_beta_sparse(tmp, g->beta, g->p + 1))
       return FAILURE;
 
    snprintf(tmp, MAX_STR_LEN, "%s.%02d", opt->lambda1pathfile, g->fold);
@@ -99,17 +102,18 @@ int run_train(Opt *opt, gmatrix *g)
       g->numnz[i] = ret;
       gmatrix_reset(g);
 
-      /* TODO: use a sparse output format */
       snprintf(tmp, MAX_STR_LEN, "%s.%02d.%02d",
 	    opt->beta_files[0], i, g->fold);
       if(opt->unscale)
       {
 	 printf("unscaling beta\n");
 	 unscale_beta(g->beta_orig, g->beta, g->mean, g->sd, g->p + 1);
-	 if(!writevectorf(tmp, g->beta_orig, g->p + 1))
+	 /*if(!writevectorf(tmp, g->beta_orig, g->p + 1))*/
+	 if(!write_beta_sparse(tmp, g->beta_orig, g->p + 1))
 	    return FAILURE;
       }
-      else if(!writevectorf(tmp, g->beta, g->p + 1))
+      /*else if(!writevectorf(tmp, g->beta, g->p + 1))*/
+      else if(!write_beta_sparse(tmp, g->beta, g->p + 1))
 	 return FAILURE;
 
       if(opt->nzmax != 0 && opt->nzmax <= ret - 1)
@@ -190,7 +194,8 @@ int run_predict(gmatrix *g, predict predict_func, int unscale,
    {
       gmatrix_zero_model(g);
       printf("reading %s\n", beta_files[i]);
-      if(!load_beta(g->beta_orig, beta_files[i], g->p + 1))
+      /*if(!load_beta(g->beta_orig, beta_files[i], g->p + 1))*/
+      if(!load_beta_sparse(g->beta_orig, beta_files[i], g->p + 1))
       {
 	 printf("skipping %s\n", beta_files[i]);
 	 continue;
@@ -206,7 +211,8 @@ int run_predict(gmatrix *g, predict predict_func, int unscale,
       else*/
 	 memcpy(g->beta, g->beta_orig, sizeof(double) * (g->p+1));
 
-      snprintf(tmp, MAX_STR_LEN, "%s.pred", beta_files[i]);
+      printf("full: %s, basename: %s\n", beta_files[i], basename(beta_files[i]));
+      snprintf(tmp, MAX_STR_LEN, "%s.pred", basename(beta_files[i]));
       if(!run_predict_beta(g, predict_func, tmp))
 	 return FAILURE;
    }

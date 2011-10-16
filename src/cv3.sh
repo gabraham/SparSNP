@@ -41,7 +41,6 @@ MODEL=sqrhinge
 N=$(cat $ROOT.fam | wc -l)
 P=$(cat $ROOT.bim | wc -l)
 BIN="$ROOT".bed
-PLINK="-plink"
 FAM="-fam $ROOT".fam
 SCALE=scale.bin
 FOLDIND="-foldind folds.ind"
@@ -61,19 +60,19 @@ do
       ../split -folds folds.txt -ind folds.ind -nfolds $NFOLDS -n $N
 
       # Get scale of each crossval fold
-      ../scale -bin $BIN -n $N -p $P $FOLDIND $PLINK
+      ../scale -bin $BIN -n $N -p $P $FOLDIND 
    
       # Run the model
       ../cd -train -model $MODEL -n $N -p $P \
 	 -scale $SCALE -bin $BIN -nzmax $NZMAX -nl1 $NLAMBDA1 -l1min 0.01 -v \
-	 $FOLDIND $PLINK $FAM
+	 $FOLDIND $FAM
  
       # Predict for test folds
       B=$(for((i=0;i<=NLAMBDA1;i++)); do printf 'beta.csv.%02d ' $i; done)
       ../cd -predict -model $MODEL -n $N -p $P -v \
 	 -bin $BIN -betafiles $B \
 	 -scale $SCALE \
-	 $FOLDIND $PLINK $FAM
+	 $FOLDIND $FAM
 
       popd
    else

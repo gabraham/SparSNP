@@ -88,6 +88,7 @@ int gmatrix_init(gmatrix *g, char *filename, int n, int p,
    g->numnz = NULL;
    g->xcaches = NULL;
    g->ncases = 0;
+   g->folds_ind = NULL;
 
    g->famfilename = famfilename;
 
@@ -774,6 +775,7 @@ void gmatrix_zero_model(gmatrix *g)
    for(j = p1 - 1 ; j >= 0 ; --j)
    {
       g->beta[j] = 0;
+      g->beta_orig[j] = 0;
       g->active[j] = !g->ignore[j];
    }
 

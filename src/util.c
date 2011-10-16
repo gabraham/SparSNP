@@ -146,3 +146,39 @@ void unscale_beta(double *beta2, double *beta1,
    beta2[0] -= s;
 }
 
+int write_beta_sparse(char* file, double* beta, int p)
+{
+   int j;
+   FILE* out = NULL;
+   FOPENTEST(out, file, "w")
+   
+   for(j = 0 ; j < p ; j++)
+   {
+      if(beta[j] != 0)
+	 fprintf(out, "%d:%.20f\n", j, beta[j]);
+   }
+
+   fflush(out);
+   fclose(out);
+   return SUCCESS;
+}
+
+int load_beta_sparse(double *beta, char *filename, int p)
+{
+   int j = 0, k;
+   FILE *in = NULL;
+   FOPENTEST(in, filename, "rt");
+
+   while(!feof(in))
+   {
+      fscanf(in, "%d", &k);
+      fgetc(in); 
+      if(fscanf(in, "%lf", beta + k) == EOF)
+	 break;
+      j++;
+   } 
+
+   fclose(in);
+   return SUCCESS;
+}
+
