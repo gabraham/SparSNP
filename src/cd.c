@@ -66,7 +66,13 @@ double get_lambda1max_gmatrix(gmatrix *g,
    return zmax;
 }
 
-/* coordinate descent */
+/* Coordinate descent 
+ *
+ * This function will only work for quadratic functions like linear loss and
+ * squared hinge loss, since it assumes that the Newton step for each variable
+ * is exact. It's easy to modify it to loop over the Newton steps until some
+ * convergence is achieved, e.g., for logistic loss.
+ * */
 int cd_gmatrix(gmatrix *g,
       step step_func,
       const int maxepochs,
@@ -86,14 +92,12 @@ int cd_gmatrix(gmatrix *g,
    const double l2recip = 1 / (1 + lambda2);
    sample sm;
    double old_loss = 0;
-   int *zero = NULL;
    double *beta_old = NULL;
    int *active_old = NULL;
 
    if(!sample_init(&sm))
       return FAILURE;
 
-   CALLOCTEST(zero, p1, sizeof(int));
    CALLOCTEST(beta_old, p1, sizeof(double));
    CALLOCTEST(active_old, p1, sizeof(int));
 
@@ -127,14 +131,13 @@ int cd_gmatrix(gmatrix *g,
 
 	    delta = beta_new - g->beta[j];
 	    
-	    if(fabs(s) == ZERO_THRESH)
-	       break;
+	    if(fabs(delta) > ZERO_THRESH)
+	    {
+	       updatelp(g, delta, sm.x, j);
+	       g->beta[j] = beta_new;
+	    }
 
-	    updatelp(g, delta, sm.x, j);
-	    g->beta[j] = beta_new;
-
-	    zero[j] = g->beta[j] == 0;
-	    g->active[j] = !zero[j];
+	    g->active[j] = g->beta[j] != 0;
 	 }
 
 	 numactive += g->active[j];
@@ -190,7 +193,6 @@ with %d active vars\n", time(NULL), epoch, numactive);
    printfverb("\n");
 
    FREENULL(beta_old);
-   FREENULL(zero);
    FREENULL(active_old);
 
    return good ? numactive : CDFAILURE;
