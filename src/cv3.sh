@@ -46,6 +46,19 @@ SCALE=scale.bin
 FOLDIND="-foldind folds.ind"
 ######################################################################
 
+DIR=discovery
+
+mkdir $DIR
+pushd $DIR
+
+cat >params.txt<<EOF
+NFOLDS=$NFOLDS
+NREPS=$NREPS
+NZMAX=$NZMAX
+NLAMBDA1=$NLAMBDA1
+MODEL=$MODEL
+EOF
+
 for((i=1;i<=$NREPS;i++))
 do
    dir="crossval$i"
@@ -57,19 +70,19 @@ do
       pushd $dir
 
       # Create cross-validation folds
-      ../split -folds folds.txt -ind folds.ind -nfolds $NFOLDS -n $N
+      ../../split -folds folds.txt -ind folds.ind -nfolds $NFOLDS -n $N
 
       # Get scale of each crossval fold
-      ../scale -bin $BIN -n $N -p $P $FOLDIND 
+      ../../scale -bin $BIN -n $N -p $P $FOLDIND 
    
       # Run the model
-      ../cd -train -model $MODEL -n $N -p $P \
+      ../../cd -train -model $MODEL -n $N -p $P \
 	 -scale $SCALE -bin $BIN -nzmax $NZMAX -nl1 $NLAMBDA1 -l1min 0.01 -v \
 	 $FOLDIND $FAM
  
       # Predict for test folds
       B=$(for((i=0;i<=NLAMBDA1;i++)); do printf 'beta.csv.%02d ' $i; done)
-      ../cd -predict -model $MODEL -n $N -p $P -v \
+      ../../cd -predict -model $MODEL -n $N -p $P -v \
 	 -bin $BIN -betafiles $B \
 	 -scale $SCALE \
 	 $FOLDIND $FAM
@@ -79,4 +92,6 @@ do
       echo "skipping $dir"
    fi
 done
+
+popd
 

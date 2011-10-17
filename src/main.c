@@ -211,7 +211,6 @@ int run_predict(gmatrix *g, predict predict_func, int unscale,
       else*/
 	 memcpy(g->beta, g->beta_orig, sizeof(double) * (g->p+1));
 
-      printf("full: %s, basename: %s\n", beta_files[i], basename(beta_files[i]));
       snprintf(tmp, MAX_STR_LEN, "%s.pred", basename(beta_files[i]));
       if(!run_predict_beta(g, predict_func, tmp))
 	 return FAILURE;
