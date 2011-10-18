@@ -148,21 +148,29 @@ void unscale_beta(double *beta2, double *beta1,
 
 int write_beta_sparse(char* file, double* beta, int p)
 {
-   int j;
+   int j = 0;
    FILE* out = NULL;
-   FOPENTEST(out, file, "w")
+   FOPENTEST(out, file, "w");
    
-   for(j = 0 ; j < p ; j++)
-   {
+   /* always write the intercept */
+   fprintf(out, "%d:%.20f\n", j, beta[j]);
+   for(j = 1 ; j < p ; j++)
       if(beta[j] != 0)
 	 fprintf(out, "%d:%.20f\n", j, beta[j]);
-   }
 
    fflush(out);
    fclose(out);
    return SUCCESS;
 }
 
+/* expects format:
+ * <variable index>:<variable value>
+ * %d:%lf
+ * one row per non-zero variable
+ *  
+ * index 0 is intercept
+ *
+ */
 int load_beta_sparse(double *beta, char *filename, int p)
 {
    int j = 0, k;
@@ -171,10 +179,15 @@ int load_beta_sparse(double *beta, char *filename, int p)
 
    while(!feof(in))
    {
-      fscanf(in, "%d", &k);
-      fgetc(in); 
-      if(fscanf(in, "%lf", beta + k) == EOF)
+      if(fscanf(in, "%d", &k) < 0)
 	 break;
+	 
+      /* read field separator */
+      if(fgetc(in) == EOF)
+	 return FAILURE;
+
+      if(fscanf(in, "%lf", beta + k) == EOF)
+	 return FAILURE;
       j++;
    } 
 

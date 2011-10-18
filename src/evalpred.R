@@ -167,8 +167,6 @@ evalpred.validation <- function(type=NULL, discovery.dir=NULL)
       res <- apply(pr, 2, r2, y=y)
    }
 
-   #browser()
-
    d <- data.frame(NonZero=nz, Measure=res)
    cv.d <- d[d$NonZero > 0, ]
 

@@ -32,8 +32,8 @@ NZMAX=512
 NLAMBDA1=25
 
 # model type, other options: linear
-#MODEL=sqrhinge
-MODEL=linear
+MODEL=sqrhinge
+#MODEL=linear
 
 ######################################################################
 
@@ -82,7 +82,7 @@ do
 	 $FOLDIND $FAM
  
       # Predict for test folds
-      B=$(for((i=0;i<=NLAMBDA1;i++)); do printf 'beta.csv.%02d ' $i; done)
+      B=$(for((i=0;i<NLAMBDA1;i++)); do printf 'beta.csv.%02d ' $i; done)
       ../../cd -predict -model $MODEL -n $N -p $P -v \
 	 -bin $BIN -betafiles $B \
 	 -scale $SCALE \
