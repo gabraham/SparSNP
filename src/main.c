@@ -174,10 +174,10 @@ int run_predict_beta(gmatrix *g, predict predict_func,
       /*g->loss[ += g->loss_pt(yhat[i], g->y[i]);*/
    }
 
-   printf("writing %s (%d) ... ", predict_file, n);
+   /*printf("writing %s (%d) ... ", predict_file, n);*/
    if(!writevectorf(predict_file, yhat, n))
       return FAILURE;
-   printf("done\n");
+   /*printf("done\n");*/
 
    FREENULL(yhat);
    
@@ -193,7 +193,7 @@ int run_predict(gmatrix *g, predict predict_func, int unscale,
    for(i = 0 ; i < n_beta_files ; i++)
    {
       gmatrix_zero_model(g);
-      printf("reading %s\n", beta_files[i]);
+      /*printf("reading %s\n", beta_files[i]);*/
       /*if(!load_beta(g->beta_orig, beta_files[i], g->p + 1))*/
       if(!load_beta_sparse(g->beta_orig, beta_files[i], g->p + 1))
       {

@@ -32,7 +32,8 @@ NZMAX=512
 NLAMBDA1=25
 
 # model type, other options: linear
-MODEL=sqrhinge
+#MODEL=sqrhinge
+MODEL=linear
 
 ######################################################################
 

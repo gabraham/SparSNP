@@ -1,6 +1,6 @@
 #!/usr/bin/env Rscript
 
-usage <- "usage: auc.R [title=<title>] [prev=<K>] [mode=discovery|validation]"
+usage <- "usage: eval.R [title=<title>] [prev=<K>] [mode=discovery|validation]"
 
 uni <- FALSE
 
@@ -28,7 +28,6 @@ if(exists("prev")) {
    prev <- NULL
 }
 
-
 library(ggplot2)
 source("evalpred.R")
 source("varexp.R")
@@ -46,18 +45,33 @@ if(mode == "discovery") {
    setwd("validation")
 }
 
+params <- scan(sprintf("%s/discovery/params.txt", rootdir), what="character")
+model <- strsplit(params[grep("MODEL", params)], "=")[[1]][2]
+
+measure <- if(model == "sqrhinge") {
+   "AUC"
+} else if(model == "linear") {
+   "R2"
+} else stop("unknown model in params.txt:", model)
+
+if(measure != "AUC" && !is.null(prev))
+{
+   prev <- NULL
+   cat("Model is", model, "; ignoring prev parameter\n")
+}
+
 dirs <- list.files(pattern="^crossval[[:digit:]]+$")
 for(d in dirs)
 {
    setwd(d)
-   fun(sprintf("%s/discovery/%s", rootdir, d))
+   fun(type=measure, sprintf("%s/discovery/%s", rootdir, d))
    setwd("../")
 }
 
 res <- lapply(seq(along=dirs), function(i) {
    cat("crossval", i, "\n")
    load(sprintf("crossval%s/crossval.RData", i))
-   cv.auc.d
+   cv.d
 })
 cv <- do.call(rbind, res)
 
@@ -66,7 +80,7 @@ if(uni)
 {
    res.uni <- lapply(seq(along=dirs), function(i) {
       load(sprintf("crossval%s/crossval.RData", i))
-      cv.uni.auc.d
+      cv.uni.d
    })
    cv.uni <- do.call(rbind, res.uni)
 }
@@ -76,14 +90,14 @@ save(res, cv, file=sprintf("%s.RData", title))
 cv$Method <- "lasso"
 
 vars <- if(is.null(prev)) {
-   c("NonZero", "AUC", "Method")
+   c("NonZero", "Measure", "Method")
 } else {
-   c("NonZero", "AUC", "Method", "VarExp")
+   c("NonZero", "Measure", "Method", "VarExp")
 }
 
-if(!is.null(prev))
+if(!is.null(prev) && measure == "AUC")
 {
-   cv$VarExp <- varexp(K=prev, auc=cv$AUC)[, "varexp"]
+   cv$VarExp <- varexp(K=prev, auc=cv$Measure)[, "varexp"]
 }
 
 d <- cv[, vars]
@@ -112,20 +126,21 @@ mytheme <- function(base_size=10)
 }
 
 g <- if(uni) {
-   ggplot(d, aes(x=NonZero, y=AUC, shape=Method, colour=Method))
+   ggplot(d, aes(x=NonZero, y=Measure, shape=Method, colour=Method))
 } else {
-   ggplot(d, aes(x=NonZero, y=AUC))
+   ggplot(d, aes(x=NonZero, y=Measure))
 }
 
 m <- round(max(log2(d$NonZero)))
 br <- 2^(0:m)
 g <- g + geom_point(size=2.5)
 g <- g + scale_x_log2("Number of SNPs in model", breaks=br, labels=br) 
+g <- g + scale_y_continuous(measure)
 g <- g + theme_bw() + mytheme()
 g <- g + scale_colour_grey(start=0, end=0.5)
 g <- g + stat_smooth(method="loess")
 
-pdf(sprintf("%s_AUC.pdf", title), width=14)
+pdf(sprintf("%s_%s.pdf", title, measure), width=14)
 print(g)
 dev.off()
 
