@@ -3,9 +3,10 @@
 set -e
 
 
-if [ -z "$1" ];
+if [ -z "$1" ] || [ -z "$2" ];
 then
-   echo "Usage: cv3.sh <root name of PLINK file>"
+   echo "Usage: cv3.sh <root name of PLINK file> <model>"
+   echo "where model is one of: linear, sqrhinge"
    exit 1
 fi
 
@@ -26,14 +27,12 @@ NFOLDS=3
 NREPS=3
 
 # maximum number of non-zero SNPs to consider in model
-NZMAX=512
+NZMAX=1024
 
 # number of penalties to look at
-NLAMBDA1=25
+NLAMBDA1=20
 
-# model type, other options: linear
-MODEL=sqrhinge
-#MODEL=linear
+MODEL=$2
 
 ######################################################################
 
