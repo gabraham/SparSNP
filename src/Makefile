@@ -88,7 +88,7 @@ coder_test: coder.c coder_test.c
 	$(CC) $(CCFLAGS) -ggdb3 $^ $(LIBRARIES) -o coder_test
 
 realpath: realpath.c
-	$(CC) $(CCFLAGS) -ggdb3 $^ -o realpath
+	$(CC) $(CCFLAGS) -ggdb3 $^ $(LIBRARIES) -o realpath
 
 clean:
 	/bin/rm -f $(targets)

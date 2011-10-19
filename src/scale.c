@@ -92,7 +92,6 @@ int main(int argc, char* argv[])
 	*filename_folds_ind = NULL;
    short encoded = TRUE,
 	 binformat = BINFORMAT_PLINK;
-   char *ptr = NULL;
    gmatrix g;
    char tmp[100];
 
