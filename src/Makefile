@@ -85,10 +85,10 @@ subsample: common.c util.c coder.c ind.c gmatrix.c subsample.c
 	$(CC) $(CFLAGS) $^ $(LIBRARIES) -o subsample
 
 coder_test: coder.c coder_test.c
-	$(CC) $(CCFLAGS) -ggdb3 $^ $(LIBRARIES) -o coder_test
+	$(CC) $(CFLAGS) -ggdb3 $^ $(LIBRARIES) -o coder_test
 
 realpath: realpath.c
-	$(CC) $(CCFLAGS) -ggdb3 $^ $(LIBRARIES) -o realpath
+	$(CC) $(CFLAGS) $^ -o realpath
 
 clean:
 	/bin/rm -f $(targets)
