@@ -40,8 +40,8 @@ MODEL=$2
 # Don't change these unless you know what you're doing
 N=$(cat $ROOT.fam | wc -l)
 P=$(cat $ROOT.bim | wc -l)
-BIN="$ROOT".bed
-FAM="-fam $ROOT".fam
+BIN=$(./realpath "$ROOT".bed)
+FAM=$(./realpath "$ROOT".fam)
 SCALE=scale.bin
 FOLDIND="-foldind folds.ind"
 ######################################################################
@@ -58,6 +58,8 @@ NZMAX=$NZMAX
 NLAMBDA1=$NLAMBDA1
 MODEL=$MODEL
 EOF
+
+echo "BIN: $BIN"
 
 for((i=1;i<=$NREPS;i++))
 do
@@ -78,14 +80,14 @@ do
       # Run the model
       ../../cd -train -model $MODEL -n $N -p $P \
 	 -scale $SCALE -bin $BIN -nzmax $NZMAX -nl1 $NLAMBDA1 -l1min 0.01 -v \
-	 $FOLDIND $FAM
+	 $FOLDIND -fam $FAM
  
       # Predict for test folds
       B=$(for((i=0;i<NLAMBDA1;i++)); do printf 'beta.csv.%02d ' $i; done)
       ../../cd -predict -model $MODEL -n $N -p $P -v \
 	 -bin $BIN -betafiles $B \
 	 -scale $SCALE \
-	 $FOLDIND $FAM
+	 $FOLDIND -fam $FAM
 
       popd
    else

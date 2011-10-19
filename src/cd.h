@@ -7,6 +7,7 @@
 #include <math.h>
 #include <time.h>
 #include <string.h>
+#include <errno.h>
 #include "gmatrix.h"
 
 #define MAXLP 7
@@ -18,6 +19,10 @@
 
 #define OPTIONS_MULTIVAR_NEWTON 1
 #define OPTIONS_MULTIVAR_LASSO 2
+
+#ifndef PATH_MAX
+#define PATH_MAX 8192
+#endif
 
 typedef double (*predict_pt)(double);
 typedef double (*phi1)(double);

@@ -4,7 +4,7 @@
  */
 
 #include "common.h"
-#include "gmatrix.h"
+#include "cd.h"
 
 int unpack(gmatrix *g, char *filename_out)
 {
@@ -73,9 +73,9 @@ int unpack(gmatrix *g, char *filename_out)
 int main(int argc, char *argv[])
 {
    int i, n = 0, p = 0;
-   char *filename_bin = NULL,
-	*filename_out = NULL,
-	*file_scale = NULL;
+   char *filename_bin = NULL;
+   char *filename_out = NULL;
+   char *file_scale = NULL;
    short binformat = BINFORMAT_PLINK;
    gmatrix g;
 

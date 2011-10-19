@@ -90,9 +90,9 @@ int main(int argc, char* argv[])
 	*filename_beta = NULL,
 	*filename_beta_out = NULL,
 	*filename_folds_ind = NULL;
-   short doscale = TRUE,
-	 encoded = TRUE,
+   short encoded = TRUE,
 	 binformat = BINFORMAT_PLINK;
+   char *ptr = NULL;
    gmatrix g;
    char tmp[100];
 
@@ -132,49 +132,44 @@ int main(int argc, char* argv[])
       }
    }
 
-   if((doscale && (filename_bin == NULL || n == 0 || p == 0))
-      || (!doscale && 
-	    (filename_scale == NULL || p == 0 || filename_beta == NULL)))
+   if(!filename_bin || n == 0 || p == 0)
    {
       printf("scale: -bin <filein> [-scale <fileout>] \
-[-betafile <betafile>] [-notencoded] [-plink] -n #n -p #p \
+[-betafile <betafile>] -n #n -p #p \
 [-foldind <folds ind file>]\n");
       return EXIT_FAILURE;
    }
 
-   if(doscale)
-   {
-      if(!gmatrix_init(&g, filename_bin, n, p,
+   if(!gmatrix_init(&g, filename_bin, n, p,
 	    NULL, YFORMAT01, MODEL_LINEAR, MODELTYPE_REGRESSION,
 	    encoded, binformat, filename_folds_ind,
 	    MODE_TRAIN, NULL, NULL, NULL))
-	 return EXIT_FAILURE;
+      return EXIT_FAILURE;
 
-      if(filename_folds_ind)
+   if(filename_folds_ind)
+   {
+      for(k = 0 ; k < g.nfolds ; k++)
       {
-	 for(k = 0 ; k < g.nfolds ; k++)
-	 {
-	    gmatrix_set_fold(&g, k);
+	 gmatrix_set_fold(&g, k);
 
-	    if(!scale(&g))
-	       return EXIT_FAILURE;
-
-	    len = strlen(filename_scale) + 1 + 3;
-	    snprintf(tmp, len, "%s.%02d", filename_scale, k);
-	    if(!writescale(tmp, g.mean, g.sd, p + 1))
-	       return EXIT_FAILURE;
-	 }
-      }
-      else
-      {
 	 if(!scale(&g))
 	    return EXIT_FAILURE;
-	 if(!writescale(filename_scale, g.mean, g.sd, p + 1))
+
+	 len = strlen(filename_scale) + 1 + 3;
+	 snprintf(tmp, len, "%s.%02d", filename_scale, k);
+	 if(!writescale(tmp, g.mean, g.sd, p + 1))
 	    return EXIT_FAILURE;
       }
-
-      gmatrix_free(&g);
    }
+   else
+   {
+      if(!scale(&g))
+	 return EXIT_FAILURE;
+      if(!writescale(filename_scale, g.mean, g.sd, p + 1))
+	 return EXIT_FAILURE;
+   }
+
+   gmatrix_free(&g);
      
    if(filename_beta_out)
       free(filename_beta_out);

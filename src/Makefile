@@ -30,7 +30,8 @@ CFLAGS = -std=gnu99 -Wall -ggdb3 -g3 \
 	  $(OS)
 
 targets = cd scale transpose hapgen2bin hapgen2ped \
-	  cbind split unpack univariable subsample
+	  cbind split unpack univariable subsample \
+	  realpath
 
 all: $(targets)
 
@@ -85,6 +86,9 @@ subsample: common.c util.c coder.c ind.c gmatrix.c subsample.c
 
 coder_test: coder.c coder_test.c
 	$(CC) $(CCFLAGS) -ggdb3 $^ $(LIBRARIES) -o coder_test
+
+realpath: realpath.c
+	$(CC) $(CCFLAGS) -ggdb3 $^ -o realpath
 
 clean:
 	/bin/rm -f $(targets)

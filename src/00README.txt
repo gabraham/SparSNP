@@ -28,7 +28,7 @@ Operating System:
    * Unix-like environment with Bash, tested on 64-bit Ubuntu 10.04 and OSX 10.6.8
 
 Requirements:
-   * bash, unix tools (wc)
+   * bash, unix tools (wc, awk)
 
 Requirements for code to analyse results:
    * R, with packages:
