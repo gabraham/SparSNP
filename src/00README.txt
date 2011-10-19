@@ -28,27 +28,12 @@ Operating System:
    * Unix-like environment with Bash, tested on 64-bit Ubuntu 10.04 and OSX 10.6.8
 
 Requirements:
-   * make
-   * gcc
    * bash, unix tools (wc)
-   * libgfortran (libgfortran on Debian, gfortran on OSX brew)
-
-   For Linux:
-      * lapack (liblapack-dev on Debian)
-      * blas (libblas-dev on Debian)
-
-   For Mac:
-      Uses OSX Accelerate framework
 
 Requirements for code to analyse results:
-   * R 
-   * R packages:
+   * R, with packages:
       - ggplot2
       - glmnet
-   
-Compiling:
-   make
-
 
 (4) Usage
 ===============
