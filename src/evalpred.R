@@ -1,7 +1,15 @@
 # Process prediction results
 
 library(ggplot2)
-library(glmnet)
+
+auc <- function(y, p)
+{
+   r <- rank(p)
+   n1 <- sum(y == 1)
+   n0 <- length(y) - n1
+   u <- sum(r[y == 1]) - n1 * (n1 + 1) / 2
+   u / (n0 * n1)
+}
 
 # R^2
 #
@@ -51,7 +59,6 @@ evalpred.crossval <- function(type=NULL, dir=NULL)
       nz[-1] <- nz[-1] - 1  
    
       if(type == "AUC") {
-	 # glmnet::auc expects y = 0/1
 	 y <- as.numeric(as.character(factor(y, labels=c(0, 1))))
 	 res <- apply(pr, 2, auc, y=y)
       } else {
@@ -95,7 +102,6 @@ evalpred.crossval <- function(type=NULL, dir=NULL)
          )
       
 	 if(type == "AUC") {
-	    # glmnet::auc expects y = 0/1
 	    y <- as.numeric(as.character(factor(y, labels=c(0, 1))))
 	    res <- apply(pr, 2, auc, y=y)
 	 } else {
@@ -160,7 +166,6 @@ evalpred.validation <- function(type=NULL, discovery.dir=NULL)
    })
    
    if(type == "AUC") {
-      # glmnet::auc expects y = 0/1
       y <- as.numeric(as.character(factor(y, labels=c(0, 1))))
       res <- apply(pr, 2, auc, y=y)
    } else {
