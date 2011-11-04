@@ -33,7 +33,6 @@ Requirements:
 Requirements for code to analyse results:
    * R, with packages:
       - ggplot2
-      - glmnet
 
 (4) Usage
 ===============

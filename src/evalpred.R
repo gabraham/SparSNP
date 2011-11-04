@@ -1,7 +1,5 @@
 # Process prediction results
 
-library(ggplot2)
-
 auc <- function(y, p)
 {
    r <- rank(p)

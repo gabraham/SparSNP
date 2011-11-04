@@ -1,6 +1,10 @@
 #!/usr/bin/env Rscript
 
-usage <- "usage: eval.R [title=<title>] [prev=<K>] [mode=discovery|validation]"
+options(error=NULL)
+
+usage <- paste("usage: eval.R [title=<title>]",
+      "[prev=<K>] [h2l=<V>] [mode=discovery|validation]",
+      "(prev must be specified if h2l is specified)")
 
 uni <- FALSE
 
@@ -22,10 +26,22 @@ if(!exists("title", mode="character"))
 
 if(exists("prev")) {
    prev <- as.numeric(prev)
-   if(is.na(prev) || prev < 0 || prev > 1.0)
+   if(is.na(prev) || prev < 0 || prev > 1.0) {
       stop(usage)
+   }
 } else {
    prev <- NULL
+}
+
+if(exists("h2l")) {
+   if(is.null(prev)) {
+      stop(usage)
+   }
+   h2l <- as.numeric(h2l)
+   if(is.na(h2l) || h2l < 0 || h2l > 1.0)
+      stop(usage)
+} else {
+   h2l <- NULL
 }
 
 library(ggplot2)
@@ -57,6 +73,7 @@ measure <- if(model == "sqrhinge") {
 if(measure != "AUC" && !is.null(prev))
 {
    prev <- NULL
+   h2l <- NULL
    cat("Model is", model, "; ignoring prev parameter\n")
 }
 
@@ -91,13 +108,21 @@ cv$Method <- "lasso"
 
 vars <- if(is.null(prev)) {
    c("NonZero", "Measure", "Method")
-} else {
+} else if(is.null(h2l)) {
    c("NonZero", "Measure", "Method", "VarExp")
+} else {
+   c("NonZero", "Measure", "Method", "VarExp", "GenVarExp")
 }
 
-if(!is.null(prev) && measure == "AUC")
+if(measure == "AUC")
 {
-   cv$VarExp <- varexp(K=prev, auc=cv$Measure)[, "varexp"]
+   if(!is.null(prev)) {
+      cv$VarExp <- varexp(K=prev, auc=cv$Measure)[, "varexp"]
+   }
+
+   if(!is.null(h2l)) {
+      cv$GenVarExp <- varexp(K=prev, auc=cv$Measure, h2l=h2l)[, "genvarexp"]
+   }
 }
 
 d <- cv[, vars]
@@ -159,6 +184,24 @@ if(!is.null(prev))
    g <- g + stat_smooth(method="loess")
    
    pdf(sprintf("%s_VarExp.pdf", title), width=14)
+   print(g)
+   dev.off()
+}
+
+if(!is.null(h2l))
+{
+   g <- if(uni) {
+      ggplot(d, aes(x=NonZero, y=GenVarExp, shape=Method, colour=Method))
+   } else {
+      ggplot(d, aes(x=NonZero, y=GenVarExp))
+   }
+   g <- g + geom_point(size=2.5) 
+   g <- g + scale_x_log2("Number of SNPs in model", breaks=br, labels=br)
+   g <- g + theme_bw() + mytheme()
+   g <- g + scale_colour_grey(start=0, end=0.5)
+   g <- g + stat_smooth(method="loess")
+   
+   pdf(sprintf("%s_GenVarExp.pdf", title), width=14)
    print(g)
    dev.off()
 }
