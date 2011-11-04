@@ -121,6 +121,13 @@ phenotypic variance for case/control data
 
 which will also produce a plot "discovery_VarExp.pdf".
 
+Optionally, you can supply heritability (0 to 1), to plot the
+explained genetic variance:
+   
+   ./eval prev=0.01 h2l=0.5
+
+which will produce a plot "discovery_GenVarExp.pdf"
+
 (5.2) Validation dataset
 -----------------------
 
@@ -128,10 +135,13 @@ To plot AUC/R^2 and/or phenotypic variance for the validation dataset, use
 
    ./eval.R mode=validation
 
-and
+or
 
    ./eval.R mode=validation prev=0.01
 
+or
+   
+   ./eval.R mode=validation prev=0.01 h2l=0.5
 
-
+which will produce the respective plots in the "validation" directory.
 
