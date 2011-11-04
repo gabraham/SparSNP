@@ -102,7 +102,6 @@ if(uni)
    cv.uni <- do.call(rbind, res.uni)
 }
 
-save(res, cv, file=sprintf("%s.RData", title))
 
 cv$Method <- "lasso"
 
@@ -205,4 +204,6 @@ if(!is.null(h2l))
    print(g)
    dev.off()
 }
+
+save(cv, file=sprintf("%s.RData", title))
 
