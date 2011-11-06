@@ -205,7 +205,7 @@ if(!is.null(h2l))
    dev.off()
 }
 
-colnames(cv)[colnames(cv) == "Measure"] <- "AUC"
+colnames(cv)[colnames(cv) == "Measure"] <- measure
 
 save(cv, file=sprintf("%s.RData", title))
 
