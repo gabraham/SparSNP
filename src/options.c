@@ -73,7 +73,6 @@ int opt_defaults(Opt *opt, short caller)
    opt->binformat = BINFORMAT_PLINK;
    opt->beta_files_fold = NULL;
    opt->numnz_file = "nonzero.csv";
-   opt->unscale = TRUE;
    opt->outdir = "";
 
    MALLOCTEST(opt->beta_files, sizeof(char*));

@@ -85,7 +85,6 @@ typedef struct Opt {
    int do_multivar;
    int existing_univar;
    int do_thinning;
-   int unscale;
    int do_lasso_filter;
    int multivar;
    char *subset_file;

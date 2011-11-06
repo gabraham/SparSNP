@@ -35,7 +35,7 @@ double get_lambda1max_gmatrix(gmatrix *g,
    if(!sample_init(&sm))
       return FAILURE;
 
-   g->nextcol(g, &sm, 0, NA_ACTION_ZERO);
+   g->nextcol(g, &sm, 0, NA_ACTION_RANDOM);
 
    /* First compute the intercept. When all other variables
     * are zero, the intercept is just inv(mean(y)) for a suitable inv()
@@ -55,7 +55,7 @@ double get_lambda1max_gmatrix(gmatrix *g,
    {
       if(g->ignore[j])
 	 continue;
-      g->nextcol(g, &sm, j, NA_ACTION_ZERO);
+      g->nextcol(g, &sm, j, NA_ACTION_RANDOM);
 
       s = fabs(step_func(&sm, g));
       zmax = (zmax < s) ? s : zmax;
@@ -84,14 +84,13 @@ int cd_gmatrix(gmatrix *g,
       const double trunc)
 {
    const int p = g->p, p1 = g->p + 1;
-   int j, iter, allconverged = 0, numactive = 0,
+   int j, allconverged = 0, numactive = 0,
        epoch = 1,
        good = FALSE;
    double s = 0, beta_new, delta;
    const double truncl = log((1 - trunc) / trunc);
    const double l2recip = 1 / (1 + lambda2);
    sample sm;
-   double old_loss = 0;
    double *beta_old = NULL;
    int *active_old = NULL;
 
@@ -110,14 +109,12 @@ int cd_gmatrix(gmatrix *g,
 
       for(j = 0 ; j < p1; j++)
       {
-	 iter = 0;
 	 beta_new = beta_old[j] = g->beta[j];
 	 
 	 if(g->active[j])
 	 {
-	    g->nextcol(g, &sm, j, NA_ACTION_ZERO);
+	    g->nextcol(g, &sm, j, NA_ACTION_RANDOM);
 
-	    old_loss = g->loss;
 	    s = step_func(&sm, g);
 	    beta_new = g->beta[j] - s;
 	    

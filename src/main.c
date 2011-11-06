@@ -49,15 +49,8 @@ int make_lambda1path(Opt *opt, gmatrix *g)
    snprintf(tmp, MAX_STR_LEN, "%s.%02d.%02d",
 	 opt->beta_files[0], 0, g->fold);
 
-   if(opt->unscale)
-   {
-      unscale_beta(g->beta_orig, g->beta, g->mean, g->sd, g->p + 1);
-      /*if(!writevectorf(tmp, g->beta_orig, g->p + 1))*/
-      if(!write_beta_sparse(tmp, g->beta_orig, g->p + 1))
-	 return FAILURE;
-   }
-   /*else if(!writevectorf(tmp, g->beta, g->p + 1))*/
-   else if(!write_beta_sparse(tmp, g->beta, g->p + 1))
+   unscale_beta(g->beta_orig, g->beta, g->mean, g->sd, g->p + 1);
+   if(!write_beta_sparse(tmp, g->beta_orig, g->p + 1))
       return FAILURE;
 
    snprintf(tmp, MAX_STR_LEN, "%s.%02d", opt->lambda1pathfile, g->fold);
@@ -104,16 +97,9 @@ int run_train(Opt *opt, gmatrix *g)
 
       snprintf(tmp, MAX_STR_LEN, "%s.%02d.%02d",
 	    opt->beta_files[0], i, g->fold);
-      if(opt->unscale)
-      {
-	 printf("unscaling beta\n");
-	 unscale_beta(g->beta_orig, g->beta, g->mean, g->sd, g->p + 1);
-	 /*if(!writevectorf(tmp, g->beta_orig, g->p + 1))*/
-	 if(!write_beta_sparse(tmp, g->beta_orig, g->p + 1))
-	    return FAILURE;
-      }
-      /*else if(!writevectorf(tmp, g->beta, g->p + 1))*/
-      else if(!write_beta_sparse(tmp, g->beta, g->p + 1))
+      printf("unscaling beta\n");
+      unscale_beta(g->beta_orig, g->beta, g->mean, g->sd, g->p + 1);
+      if(!write_beta_sparse(tmp, g->beta_orig, g->p + 1))
 	 return FAILURE;
 
       if(opt->nzmax != 0 && opt->nzmax <= ret - 1)
@@ -138,8 +124,6 @@ reached or exceeded: %d\n", opt->nzmax);
 
 /*
  * For each beta file, predict outcome using the chosen model
- *
- * TODO: only use the active variables for prediction
  */
 int run_predict_beta(gmatrix *g, predict predict_func,
       char* predict_file)
@@ -159,7 +143,7 @@ int run_predict_beta(gmatrix *g, predict predict_func,
    {
       if(beta[j] != 0)
       {
-	 g->nextcol(g, &sm, j, NA_ACTION_ZERO);
+	 g->nextcol(g, &sm, j, NA_ACTION_RANDOM);
 
 	 /* We count up to n, which should be the same as sm.n,
 	  * since we're not deleting missing obs */
@@ -169,22 +153,17 @@ int run_predict_beta(gmatrix *g, predict predict_func,
    }
    
    for(i = 0 ; i < n ; i++)
-   {
       yhat[i] = predict_func(lp[i]);
-      /*g->loss[ += g->loss_pt(yhat[i], g->y[i]);*/
-   }
 
-   /*printf("writing %s (%d) ... ", predict_file, n);*/
    if(!writevectorf(predict_file, yhat, n))
       return FAILURE;
-   /*printf("done\n");*/
 
    FREENULL(yhat);
    
    return SUCCESS;
 }
 
-int run_predict(gmatrix *g, predict predict_func, int unscale,
+int run_predict(gmatrix *g, predict predict_func,
       char **beta_files, int n_beta_files)
 {
    int i;
@@ -193,23 +172,13 @@ int run_predict(gmatrix *g, predict predict_func, int unscale,
    for(i = 0 ; i < n_beta_files ; i++)
    {
       gmatrix_zero_model(g);
-      /*printf("reading %s\n", beta_files[i]);*/
-      /*if(!load_beta(g->beta_orig, beta_files[i], g->p + 1))*/
       if(!load_beta_sparse(g->beta_orig, beta_files[i], g->p + 1))
       {
 	 printf("skipping %s\n", beta_files[i]);
 	 continue;
       }
 
-      /* scale beta using the scales for this data (beta
-       * should already be on original data scale, not scaled to zero-mean and
-       * unit-variance) */
-      /*for(int j = 0 ; j < g->p + 1 ; j++)
-	 g->beta[j] = g->beta_orig[j];*/
-      /*if(unscale)
-	 scale_beta(g->beta, g->beta_orig, g->mean, g->sd, g->p + 1);
-      else*/
-	 memcpy(g->beta, g->beta_orig, sizeof(double) * (g->p+1));
+      memcpy(g->beta, g->beta_orig, sizeof(double) * (g->p+1));
 
       snprintf(tmp, MAX_STR_LEN, "%s.pred", basename(beta_files[i]));
       if(!run_predict_beta(g, predict_func, tmp))
@@ -239,9 +208,10 @@ int do_train(gmatrix *g, Opt *opt, char tmp[])
       for(k = 0 ; k < g->nfolds ; k++)
       {
 	 printf("CV fold: %d\n", k);
+
+	 MALLOCTEST(g->scalefile, sizeof(char) * MAX_STR_LEN);
 	 len = strlen(opt->scalefile) + 1 + 3;
-	 snprintf(tmp, len, "%s.%02d", opt->scalefile, k);
-	 g->scalefile = tmp;
+	 snprintf(g->scalefile, len, "%s.%02d", opt->scalefile, k);
 	 if(!(ret &= gmatrix_set_fold(g, k)))
 	    break;
 
@@ -251,11 +221,14 @@ int do_train(gmatrix *g, Opt *opt, char tmp[])
 
 	 if(!(ret &= run_train(opt, g)))
 	    break;
+
+	 FREENULL(g->scalefile);
       }
    }
    else
    {
-      g->scalefile = opt->scalefile;
+      strncpy(g->scalefile, opt->scalefile, 
+	    FMIN(strlen(opt->scalefile), MAX_STR_LEN));
       if(g->scalefile && !gmatrix_read_scaling(g, g->scalefile))
 	 return FAILURE;
       gmatrix_zero_model(g);
@@ -267,6 +240,8 @@ int do_train(gmatrix *g, Opt *opt, char tmp[])
    return ret;
 }
 
+/* We don't use the scaled inputs during prediction, as the model weights from
+ * the training stage have been "unscaled" to original scale */
 int do_predict(gmatrix *g, Opt *opt, char tmp[])
 {
    int ret = SUCCESS, b, k, len;
@@ -290,9 +265,6 @@ int do_predict(gmatrix *g, Opt *opt, char tmp[])
       for(k = 0 ; k < g->nfolds ; k++)
       {
 	 len = strlen(opt->scalefile) + 1 + 3;
-	 snprintf(tmp, len, "%s.%02d", opt->scalefile, k);
-	 g->scalefile = tmp;
-	 printf("reading scale file: %s\n", tmp);
 	 if(!(ret &= gmatrix_set_fold(g, k)))
 	    break;
 
@@ -302,7 +274,6 @@ int do_predict(gmatrix *g, Opt *opt, char tmp[])
 	 if(!(ret &= writevectorf(tmp, g->y, g->ncurr)))
 	    break;
 
-	 /*gmatrix_zero_model(&g);*/
 	 gmatrix_reset(g);
 
 	 /* set up correct file names */
@@ -315,18 +286,15 @@ int do_predict(gmatrix *g, Opt *opt, char tmp[])
 		  opt->beta_files[b], k);
 	 }
 
-	 if(!(ret &= run_predict(g, opt->predict_func, opt->unscale,
+	 if(!(ret &= run_predict(g, opt->predict_func,
 		     opt->beta_files_fold, opt->n_beta_files)))
 	    break;
       }
    }
    else
    {
-      g->scalefile = opt->scalefile;
-      if(g->scalefile && !gmatrix_read_scaling(g, g->scalefile))
-	 return FAILURE;
       gmatrix_zero_model(g);
-      ret = run_predict(g, opt->predict_func, opt->unscale,
+      ret = run_predict(g, opt->predict_func,
 	    opt->beta_files, opt->n_beta_files);
    }
 

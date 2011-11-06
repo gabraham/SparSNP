@@ -20,7 +20,7 @@ int newton(double *x, double *y, double *beta, double *invhessian,
 {
    int i, j, 
        iter = 1, maxiter = 100,
-       converged = FALSE, diverged = FALSE,
+       diverged = FALSE,
        ret = NEWTON_SUCCESS;
 
    double *grad = NULL,
@@ -67,7 +67,6 @@ int newton(double *x, double *y, double *beta, double *invhessian,
       /* same convergence test as in R's glm.fit */
       if(fabs(loss - loss_old) / (fabs(loss) + 0.1) <= NEWTON_THRESH)
       {
-	 converged = TRUE;
 	 break;
       }
 
@@ -116,9 +115,6 @@ int newton(double *x, double *y, double *beta, double *invhessian,
 
       if(diverged)
 	 break;
-
-      /*if(converged)
-	 break;*/
 
       iter++;
    }

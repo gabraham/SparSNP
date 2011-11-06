@@ -49,7 +49,7 @@ static: CFLAGS += -static
 
 static: $(targets)       
 
-LIBRARIES = -llapack -lblas -lgfortran -lm
+LIBRARIES = -lpthread -llapack -lblas -lgfortran -lm
 
 cd: common.c coder.c ind.c gmatrix.c loss.c util.c options.c main.c cd.c
 	$(CC) $(CFLAGS) $^ $(LIBRARIES) -o cd

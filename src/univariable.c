@@ -338,7 +338,7 @@ int run_predict_beta(gmatrix *g, predict predict_func,
    {
       if(beta[j] != 0)
       {
-	 gmatrix_disk_nextcol(g, &sm, j, NA_ACTION_ZERO);
+	 gmatrix_disk_nextcol(g, &sm, j, NA_ACTION_RANDOM);
 	 for(i = 0 ; i < n ; i++)
 	    lp[i] += sm.x[i] * beta[j];
       }

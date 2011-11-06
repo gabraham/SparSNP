@@ -48,7 +48,6 @@ int gmatrix_init(gmatrix *g, char *filename, int n, int p,
    g->lp_invlogit = NULL;
    g->loss_func = NULL;
    g->loss_pt_func = loss_pt_func;
-   g->scalefile = scalefile;
    g->lookup = NULL;
    g->intercept = NULL;
    g->mean = NULL;
@@ -160,10 +159,14 @@ int gmatrix_init(gmatrix *g, char *filename, int n, int p,
    CALLOCTEST(g->ignore, p1, sizeof(int));
 
    /* don't scale in prediction mode */
-   if(g->mode == MODE_TRAIN 
-	 && g->scalefile 
-	 && !gmatrix_read_scaling(g, scalefile))
-      return FAILURE;
+   if(g->mode == MODE_TRAIN)
+   {
+      g->scalefile = scalefile;
+      if(g->scalefile && !gmatrix_read_scaling(g, g->scalefile))
+	 return FAILURE;
+   }
+   else
+      g->scalefile = NULL;
 
    for(j = g->p ; j >= 0 ; --j)
       g->active[j] = !g->ignore[j];
@@ -568,10 +571,6 @@ inputs in gmatrix_disk_nextcol\n");
 /* 
  * Reads a plink FAM file and gets the phenotype from the 6th column, using
  * any sort of whitespace separator.
- *
- * Should be able to handle both and 0/1, 1/2 labels
- *
- * TODO: missing phenotype -9
  */
 int gmatrix_fam_read_y(gmatrix *g)
 {
@@ -580,27 +579,40 @@ int gmatrix_fam_read_y(gmatrix *g)
    char *famid = NULL,
         *individ = NULL,
 	*patid = NULL,
-	*matid = NULL;
-   int sex = 0;
-   double pheno = 0.0;
+	*matid = NULL,
+	*sex = NULL,
+	*pheno = NULL;
+   int ret;
+   int const NUMFIELDS = 6;
 
    /* spaces match tabs as well */
-   char f[19] = "%s %s %s %s %d %lf";
+   char f[19] = "%s %s %s %s %s %s";
 
    CALLOCTEST(g->y_orig, g->n, sizeof(double));
 
-   MALLOCTEST(famid, sizeof(char) * 50);
-   MALLOCTEST(individ, sizeof(char) * 50);
-   MALLOCTEST(patid, sizeof(char) * 50);
-   MALLOCTEST(matid, sizeof(char) * 50);
+   MALLOCTEST(famid, sizeof(char) * FAM_MAX_CHARS);
+   MALLOCTEST(individ, sizeof(char) * FAM_MAX_CHARS);
+   MALLOCTEST(patid, sizeof(char) * FAM_MAX_CHARS);
+   MALLOCTEST(matid, sizeof(char) * FAM_MAX_CHARS);
+   MALLOCTEST(sex, sizeof(char) * FAM_MAX_CHARS);
+   MALLOCTEST(pheno, sizeof(char) * FAM_MAX_CHARS);
 
    FOPENTEST(famfile, g->famfilename, "r");
 
    while(i < g->n &&
-	 EOF != fscanf(famfile, f,
-	    famid, individ, patid, matid, &sex, &pheno) && i < g->n)
+	 EOF != (ret = fscanf(famfile, f,
+	    famid, individ, patid, matid, sex, pheno)))
    {
-      g->y_orig[i] = pheno;
+      if(atoi(pheno) == MISSING_PHENO || strcmp2(pheno, "NA") 
+	 || ret < NUMFIELDS)
+      {
+	 fprintf(stderr,
+	    "Missing phenotypes (%d, NA) currently not supported, remove \
+these samples with PLINK; aborting\n",
+	    MISSING_PHENO);
+	 return FAILURE;
+      }
+      g->y_orig[i] = atof(pheno);
       i++;
    }
 
@@ -609,6 +621,8 @@ int gmatrix_fam_read_y(gmatrix *g)
    FREENULL(individ);
    FREENULL(patid);
    FREENULL(matid);
+   FREENULL(sex);
+   FREENULL(pheno);
 
    return SUCCESS;
 }
@@ -665,12 +679,19 @@ int gmatrix_reset(gmatrix *g)
    return SUCCESS;
 }
 
-/* Populate lookup tables for SNP levels 0, 1, 2, 3
+/* 
+ * Populate lookup tables for SNP levels 0, 1, 2 for each SNP.
+ *
+ * By this point, if we chose to impute data, then all data has been imputed
+ * already.
  */
 int gmatrix_read_scaling(gmatrix *g, char *file_scale)
 {
    int j, k, l1, l2, p1 = g->p + 1;
    FILE *in;
+
+   if(!file_scale)
+      return FAILURE;
 
    printf("reading scale file %s\n", file_scale);
 
@@ -699,19 +720,10 @@ int gmatrix_read_scaling(gmatrix *g, char *file_scale)
 	 for(k = 0 ; k < NUM_X_LEVELS ; k++)
 	 {
 	    l2 = l1 + k;
-	    /* Scale unless missing obs. If missing, make the observed a zero
-	     * so that it contributes nothing to the gradient later.
-	     * TODO: impute with a random value in {0,1,2} instead of just 0
-	     * 
-	     * Note that the zero returned here is actually zero, NOT the same
-	     * as if the genotype were zero, because in the latter case the
-	     * value is scaled (becomes some value, typically not zero),
-	     * whereas in the former case there is no scaling. It's the same
-	     * as first scaling, ignoring the missing values, then putting
-	     * zeros in place of the missing scaled values.
-	     */
-	    g->lookup[l2] = (k != X_LEVEL_NA) ?
-	       (k - g->mean[j]) / g->sd[j] : 0;
+	    /* scale the levels using the mean/sd for each SNP, but
+	     * don't scale the NA level */
+	    g->lookup[l2] = (k != X_LEVEL_NA) ? 
+		  (k - g->mean[j]) / g->sd[j] : 0;
 	 }
       }
    }

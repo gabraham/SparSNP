@@ -33,12 +33,12 @@ int scale(gmatrix *g)
    MALLOCTEST(tmp, sizeof(double) * n);
    
    /* read intercept and ignore it*/
-   g->nextcol(g, &sm, 0, NA_ACTION_RANDOM);
+   g->nextcol(g, &sm, 0, NA_ACTION_ZERO);
 
    for(j = 1 ; j < p1 ; j++)
    {
       /*printf("%d of %d", j, p1);*/
-      g->nextcol(g, &sm, j, NA_ACTION_RANDOM);
+      g->nextcol(g, &sm, j, NA_ACTION_ZERO);
       ngood = g->mean[j] = g->sd[j] = 0;
       for(i = 0 ; i < n ; i++)
       {
@@ -87,7 +87,6 @@ int main(int argc, char* argv[])
    int i, n = 0, p = 0, len, k;
    char *filename_bin = NULL,
         *filename_scale = "scale.bin",
-	*filename_beta = NULL,
 	*filename_beta_out = NULL,
 	*filename_folds_ind = NULL;
    short encoded = TRUE,
@@ -106,11 +105,6 @@ int main(int argc, char* argv[])
       {
 	 i++;
 	 filename_scale = argv[i];
-      }
-      else if(strcmp2(argv[i], "-betafile"))
-      {
-	 i++;
-	 filename_beta = argv[i];
       }
       else if(strcmp2(argv[i], "-n"))
       {
