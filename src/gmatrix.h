@@ -32,8 +32,9 @@
  * Remember: there are g->folds caches, not just one, so total memory required
  * is CACHE_MAX_MEM * g->nfolds.
  * */
-/*#define CACHE_MAX_MEM 134217728 */ /* 2^27=128MB */
-#define CACHE_MAX_MEM 268435456 /* 2^27=128MB */
+#define CACHE_MAX_MEM 134217728  /* 2^27=128MB */
+/*#define CACHE_MAX_MEM   268435456*/ /* 2^27=128MB */
+/*#define CACHE_MAX_MEM   357913941*/ /* 2^27=128MB */
 
 #define CACHE_NOT_EXISTS -1
 

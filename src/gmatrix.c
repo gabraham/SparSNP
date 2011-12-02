@@ -568,6 +568,21 @@ inputs in gmatrix_disk_nextcol\n");
    return SUCCESS;
 }
 
+/* Reads a matrix of phenotypes in plain format (no FAM columns)
+ *
+ * We read the entire dataset into memory
+ * */
+/*int gmatrix_read_pheno_matrix(gmatrix *g)
+{
+   
+}*/
+
+/* Reads a matrix of phenotypes in plink FAM format */
+/*int gmatrix_fam_read_pheno_matrix(gmatrix *g)
+{
+      
+}*/
+
 /* 
  * Reads a plink FAM file and gets the phenotype from the 6th column, using
  * any sort of whitespace separator.

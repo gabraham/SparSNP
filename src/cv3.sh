@@ -21,16 +21,20 @@ set -u
 # User modifiable parameters
 
 # number of cross-validation folds
-NFOLDS=3
+NFOLDS=10
 
 # number of cross-validation replications
-NREPS=3
+NREPS=10
 
 # maximum number of non-zero SNPs to consider in model
 NZMAX=1024
+#NZMAX=50
 
 # number of penalties to look at
 NLAMBDA1=20
+#NLAMBDA1=30
+
+L1MIN=0.01
 
 MODEL=$2
 
@@ -79,7 +83,7 @@ do
    
       # Run the model
       ../../cd -train -model $MODEL -n $N -p $P \
-	 -scale $SCALE -bin $BIN -nzmax $NZMAX -nl1 $NLAMBDA1 -l1min 0.01 -v \
+	 -scale $SCALE -bin $BIN -nzmax $NZMAX -nl1 $NLAMBDA1 -l1min $L1MIN -v \
 	 $FOLDIND -fam $FAM
  
       # Predict for test folds

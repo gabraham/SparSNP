@@ -227,6 +227,7 @@ int do_train(gmatrix *g, Opt *opt, char tmp[])
    }
    else
    {
+      MALLOCTEST(g->scalefile, sizeof(char) * MAX_STR_LEN);
       strncpy(g->scalefile, opt->scalefile, 
 	    FMIN(strlen(opt->scalefile), MAX_STR_LEN));
       if(g->scalefile && !gmatrix_read_scaling(g, g->scalefile))
@@ -235,6 +236,7 @@ int do_train(gmatrix *g, Opt *opt, char tmp[])
       make_lambda1path(opt, g);
       gmatrix_reset(g);
       ret = run_train(opt, g);
+      FREENULL(g->scalefile);
    }
    
    return ret;
@@ -253,8 +255,8 @@ int do_predict(gmatrix *g, Opt *opt, char tmp[])
 	    opt->famfilename))
       return FAILURE;
 
-   if(g->nfolds > 1)
-   {
+   /*if(g->nfolds > 1)
+   {*/
       if(!opt->beta_files_fold)
 	 MALLOCTEST2(opt->beta_files_fold,
 	       sizeof(char*) * opt->n_beta_files);
@@ -290,13 +292,13 @@ int do_predict(gmatrix *g, Opt *opt, char tmp[])
 		     opt->beta_files_fold, opt->n_beta_files)))
 	    break;
       }
-   }
+   /*}
    else
    {
       gmatrix_zero_model(g);
       ret = run_predict(g, opt->predict_func,
 	    opt->beta_files, opt->n_beta_files);
-   }
+   }*/
 
    return ret;
 }
