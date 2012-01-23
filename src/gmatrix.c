@@ -103,7 +103,8 @@ int gmatrix_init(gmatrix *g, char *filename, int n, int p,
    if(filename)
       FOPENTEST(g->file, filename, "rb");
 
-   if(!gmatrix_setup_folds(g))
+   /* gmatrix_setup_folds changes g->nfolds */
+   if(g->folds_ind_file && !gmatrix_setup_folds(g))
       return FAILURE;
 
    MALLOCTEST(g->intercept, sizeof(double) * g->n);
@@ -776,9 +777,15 @@ void count_fold_samples(int *ntrain, int *ntest,
 /* Sets the number of samples for actual use in CD */
 void gmatrix_set_ncurr(gmatrix *g)
 {
-   g->ncurr = (g->mode == MODE_TRAIN) ? 
-      g->ntrain[g->fold] : g->ntest[g->fold];
-
+   if(g->nfolds > 1)
+   {
+      g->ncurr = (g->mode == MODE_TRAIN) ? 
+	 g->ntrain[g->fold] : g->ntest[g->fold];
+   }
+   else
+   {
+      g->ncurr = g->n; 
+   }
    /*g->ncurr_recip = 1.0 / g->ncurr;*/
    g->ncurr_recip = 1.0 / (g->ncurr - 1);
 }
