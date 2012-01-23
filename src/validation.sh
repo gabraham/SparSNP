@@ -19,8 +19,8 @@ set -u
 
 N=$(cat $ROOT.fam | wc -l)
 P=$(cat $ROOT.bim | wc -l)
-BIN=$(./realpath "$ROOT".bed)
-FAM=$(./realpath "$ROOT".fam)
+BIN="$ROOT".bed
+FAM="-fam $ROOT".fam
 
 ORIGWD=$(pwd)
 echo "PWD: $PWD"
@@ -48,9 +48,9 @@ do
       B=$( ls $dir/beta.csv.+([[:digit:]]).+([[:digit:]]) )
 
       ../../cd -predict -model $MODEL -n $N -p $P -v \
-	 -bin $BIN -betafiles $B -fam $FAM -outdir .
+	 -bin $BIN -betafiles $B $FAM -outdir .
 
-      awk '{print $6}' $FAM > y.txt
+      awk '{print $6}' $ROOT.fam > y.txt
 
       popd
    else
