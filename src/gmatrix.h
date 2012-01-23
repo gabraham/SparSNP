@@ -16,7 +16,7 @@
 #define X_LEVEL_NA 3
 #define PLINK_X_LEVEL_NA 2
 
-#define MISSING_PHENO -9
+#define MISSING_PHENO "-9"
 #define FAM_MAX_CHARS 100
 
 #define YFORMAT01 1

@@ -619,11 +619,11 @@ int gmatrix_fam_read_y(gmatrix *g)
 	 EOF != (ret = fscanf(famfile, f,
 	    famid, individ, patid, matid, sex, pheno)))
    {
-      if(atoi(pheno) == MISSING_PHENO || strcmp2(pheno, "NA") 
+      if(strcmp2(pheno, MISSING_PHENO) || strcmp2(pheno, "NA") 
 	 || ret < NUMFIELDS)
       {
 	 fprintf(stderr,
-	    "Missing phenotypes (%d, NA) currently not supported, remove \
+	    "Missing phenotypes (%s, NA) currently not supported, remove \
 these samples with PLINK; aborting\n",
 	    MISSING_PHENO);
 	 return FAILURE;
