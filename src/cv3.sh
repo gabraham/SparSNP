@@ -42,8 +42,8 @@ MODEL=$2
 
 ######################################################################
 # Don't change these unless you know what you're doing
-N=$(cat $ROOT.fam | wc -l)
-P=$(cat $ROOT.bim | wc -l)
+N=$(cat "$ROOT".fam | wc -l)
+P=$(cat "$ROOT".bim | wc -l)
 BIN=$(./realpath "$ROOT".bed)
 FAM=$(./realpath "$ROOT".fam)
 SCALE=scale.bin
@@ -62,6 +62,8 @@ NZMAX=$NZMAX
 NLAMBDA1=$NLAMBDA1
 MODEL=$MODEL
 EOF
+
+awk '{print $2}' "$ROOT".bim > snps.txt
 
 echo "BIN: $BIN"
 

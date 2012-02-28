@@ -62,7 +62,15 @@ if(mode == "discovery") {
 }
 
 params <- scan(sprintf("%s/discovery/params.txt", rootdir), what="character")
-model <- strsplit(params[grep("MODEL", params)], "=")[[1]][2]
+
+extract.params <- function(nm)
+{  
+   strsplit(params[grep(nm, params)], "=")[[1]][2]
+}
+
+model <- extract.params("MODEL")
+nfolds <- as.integer(extract.params("NFOLDS"))
+nreps <- as.integer(extract.params("NREPS"))
 
 measure <- if(model == "sqrhinge") {
    "AUC"
@@ -205,7 +213,45 @@ if(!is.null(h2l))
    dev.off()
 }
 
+
+# Find SNPs for best model in cross-validation
+tabulate.snps <- function()
+{
+   l <- loess(Measure ~ log(NonZero), data=cv)
+   s <- predict(l, newdata=data.frame(NonZero=1:max(cv$NonZero)))
+   m <- which(s == max(s, na.rm=TRUE))
+   
+   l <- lapply(1:nreps, function(rep) {
+      l <- lapply(1:nfolds, function(fold) {
+         s <- scan(sprintf("crossval%s/nonzero.csv.%02d", rep, fold - 1))
+         w <- which.min((s - m)^2)
+         cat("best:", s[w], "\n")
+         b <- read.table(
+	    sprintf("crossval%s/beta.csv.%02d.%02d",
+	       rep, w - 1, fold - 1), sep=":")
+	 # exclude intercept
+         b[-1, 1]
+      })
+   })
+   
+   sort(table(unlist(l)), decreasing=TRUE)
+}
+
+snps <- tabulate.snps()
+rs <- scan("snps.txt", what=character())
+names(snps) <- rs[as.integer(names(snps))]
+
+topsnps <- data.frame(
+   RS=rownames(snps),
+   Counts=snps,
+   Proportion=snps / nreps / nfolds,
+   Replications=nreps * nfolds
+)
+
+write.table(topsnps, file="topsnps.txt", quote=FALSE, row.names=FALSE)
+
+# Change from generic name to actual name (AUC/R2)
 colnames(cv)[colnames(cv) == "Measure"] <- measure
 
-save(cv, file=sprintf("%s.RData", title))
+save(cv, topsnps, file=sprintf("%s.RData", title))
 
