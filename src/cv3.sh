@@ -21,7 +21,7 @@ set -u
 # User modifiable parameters
 
 # number of cross-validation folds
-NFOLDS=10
+NFOLDS=3
 
 # number of cross-validation replications
 NREPS=10
@@ -44,15 +44,23 @@ MODEL=$2
 # Don't change these unless you know what you're doing
 N=$(cat "$ROOT".fam | wc -l)
 P=$(cat "$ROOT".bim | wc -l)
-BIN=$(./realpath "$ROOT".bed)
+BED=$(./realpath "$ROOT".bed)
 FAM=$(./realpath "$ROOT".fam)
+BIM=$(./realpath "$ROOT".bim)
 SCALE=scale.bin
 FOLDIND="-foldind folds.ind"
 ######################################################################
 
+echo "BED: $BED"
+echo "BIM: $BIM"
+echo "FAM: $FAM"
+
 DIR=discovery
 
-mkdir $DIR
+if ! [ -d "$DIR" ];
+then
+   mkdir $DIR
+fi
 pushd $DIR
 
 cat >params.txt<<EOF
@@ -63,9 +71,8 @@ NLAMBDA1=$NLAMBDA1
 MODEL=$MODEL
 EOF
 
-awk '{print $2}' "$ROOT".bim > snps.txt
+awk '{print $2}' "$BIM" > snps.txt
 
-echo "BIN: $BIN"
 
 for((i=1;i<=$NREPS;i++))
 do
@@ -81,17 +88,17 @@ do
       ../../split -folds folds.txt -ind folds.ind -nfolds $NFOLDS -n $N
 
       # Get scale of each crossval fold
-      ../../scale -bin $BIN -n $N -p $P $FOLDIND 
+      ../../scale -bin $BED -n $N -p $P $FOLDIND 
    
       # Run the model
       ../../cd -train -model $MODEL -n $N -p $P \
-	 -scale $SCALE -bin $BIN -nzmax $NZMAX -nl1 $NLAMBDA1 -l1min $L1MIN -v \
+	 -scale $SCALE -bin $BED -nzmax $NZMAX -nl1 $NLAMBDA1 -l1min $L1MIN -v \
 	 $FOLDIND -fam $FAM
  
       # Predict for test folds
       B=$(for((i=0;i<NLAMBDA1;i++)); do printf 'beta.csv.%02d ' $i; done)
       ../../cd -predict -model $MODEL -n $N -p $P -v \
-	 -bin $BIN -betafiles $B \
+	 -bin $BED -betafiles $B \
 	 -scale $SCALE \
 	 $FOLDIND -fam $FAM
 

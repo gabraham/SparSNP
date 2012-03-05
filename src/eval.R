@@ -220,6 +220,8 @@ tabulate.snps <- function()
    l <- loess(Measure ~ log(NonZero), data=cv)
    s <- predict(l, newdata=data.frame(NonZero=1:max(cv$NonZero)))
    m <- which(s == max(s, na.rm=TRUE))
+
+   cat("Best model at", m, "SNPs with predictive measure", s[m], "\n") 
    
    l <- lapply(1:nreps, function(rep) {
       l <- lapply(1:nfolds, function(fold) {
@@ -234,10 +236,12 @@ tabulate.snps <- function()
       })
    })
    
-   sort(table(unlist(l)), decreasing=TRUE)
+   list(best=s[m], snps=sort(table(unlist(l)), decreasing=TRUE))
 }
 
-snps <- tabulate.snps()
+res <- tabulate.snps()
+snps <- res$snps
+best <- res$best
 rs <- scan("snps.txt", what=character())
 names(snps) <- rs[as.integer(names(snps))]
 
@@ -253,5 +257,5 @@ write.table(topsnps, file="topsnps.txt", quote=FALSE, row.names=FALSE)
 # Change from generic name to actual name (AUC/R2)
 colnames(cv)[colnames(cv) == "Measure"] <- measure
 
-save(cv, topsnps, file=sprintf("%s.RData", title))
+save(cv, topsnps, best, file=sprintf("%s.RData", title))
 
