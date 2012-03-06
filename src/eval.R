@@ -242,25 +242,28 @@ tabulate.snps <- function()
    list(best=s[m], snps=sort(table(unlist(l)), decreasing=TRUE))
 }
 
-res <- tabulate.snps()
-snps <- res$snps
-best <- res$best
-
-topsnps <- cbind("NA"=numeric(0))
-
-if(length(snps) > 0)
+if(mode == "discovery")
 {
-   rs <- scan("snps.txt", what=character())
-   names(snps) <- rs[as.integer(names(snps))]
+   res <- tabulate.snps()
+   snps <- res$snps
+   best <- res$best
    
-   topsnps <- data.frame(
-      RS=rownames(snps),
-      Counts=snps,
-      Proportion=snps / nreps / nfolds,
-      Replications=nreps * nfolds
-   )
+   topsnps <- cbind("NA"=numeric(0))
+   
+   if(length(snps) > 0)
+   {
+      rs <- scan("snps.txt", what=character())
+      names(snps) <- rs[as.integer(names(snps))]
+      
+      topsnps <- data.frame(
+         RS=rownames(snps),
+         Counts=snps,
+         Proportion=snps / nreps / nfolds,
+         Replications=nreps * nfolds
+      )
+   }
+   write.table(topsnps, file="topsnps.txt", quote=FALSE, row.names=FALSE)
 }
-write.table(topsnps, file="topsnps.txt", quote=FALSE, row.names=FALSE)
 
 # Change from generic name to actual name (AUC/R2)
 colnames(cv)[colnames(cv) == "Measure"] <- measure
