@@ -217,8 +217,8 @@ if(!is.null(h2l))
 # Find SNPs for best model in cross-validation
 tabulate.snps <- function()
 {
-   l <- loess(Measure ~ log(NonZero), data=cv)
-   s <- predict(l, newdata=data.frame(NonZero=1:max(cv$NonZero)))
+   lo <- loess(Measure ~ log(NonZero), data=cv)
+   s <- predict(lo, newdata=data.frame(NonZero=1:max(cv$NonZero)))
    m <- which(s == max(s, na.rm=TRUE))
 
    cat("Best model at", m, "SNPs with predictive measure", s[m], "\n") 
@@ -226,6 +226,9 @@ tabulate.snps <- function()
    l <- lapply(1:nreps, function(rep) {
       l <- lapply(1:nfolds, function(fold) {
          s <- scan(sprintf("crossval%s/nonzero.csv.%02d", rep, fold - 1))
+	 
+	 # Never select zero as a legitimate model
+	 s[s == 0] <- -Inf
          w <- which.min((s - m)^2)
          cat("best:", s[w], "\n")
          b <- read.table(
@@ -242,16 +245,21 @@ tabulate.snps <- function()
 res <- tabulate.snps()
 snps <- res$snps
 best <- res$best
-rs <- scan("snps.txt", what=character())
-names(snps) <- rs[as.integer(names(snps))]
 
-topsnps <- data.frame(
-   RS=rownames(snps),
-   Counts=snps,
-   Proportion=snps / nreps / nfolds,
-   Replications=nreps * nfolds
-)
+topsnps <- cbind("NA"=numeric(0))
 
+if(length(snps) > 0)
+{
+   rs <- scan("snps.txt", what=character())
+   names(snps) <- rs[as.integer(names(snps))]
+   
+   topsnps <- data.frame(
+      RS=rownames(snps),
+      Counts=snps,
+      Proportion=snps / nreps / nfolds,
+      Replications=nreps * nfolds
+   )
+}
 write.table(topsnps, file="topsnps.txt", quote=FALSE, row.names=FALSE)
 
 # Change from generic name to actual name (AUC/R2)

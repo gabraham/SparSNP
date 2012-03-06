@@ -92,7 +92,8 @@ int run_train(Opt *opt, gmatrix *g)
 	 break;
       } 
 
-      g->numnz[i] = ret;
+      /* we don't want to count intercept in numnz */
+      g->numnz[i] = ret - 1;
       gmatrix_reset(g);
 
       snprintf(tmp, MAX_STR_LEN, "%s.%02d.%02d",
