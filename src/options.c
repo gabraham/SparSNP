@@ -65,7 +65,7 @@ int opt_defaults(Opt *opt, short caller)
    opt->subset_file = NULL;
    opt->lambda1pathfile = "lambda1path.csv";
    opt->step_func = NULL;
-   opt->scalefile = NULL;
+   opt->scalefile = "scale.bin";
    opt->yformat = YFORMAT01;
    opt->predict_func = NULL;
    opt->predict_file = "predicted.csv";

@@ -210,9 +210,10 @@ int do_train(gmatrix *g, Opt *opt, char tmp[])
       {
 	 printf("CV fold: %d\n", k);
 
-	 MALLOCTEST(g->scalefile, sizeof(char) * MAX_STR_LEN);
+	 CALLOCTEST(g->scalefile, MAX_STR_LEN, sizeof(char));
 	 len = strlen(opt->scalefile) + 1 + 3;
 	 snprintf(g->scalefile, len, "%s.%02d", opt->scalefile, k);
+	 g->scalefile[MAX_STR_LEN - 1] = '\0';
 	 if(!(ret &= gmatrix_set_fold(g, k)))
 	    break;
 
@@ -228,9 +229,10 @@ int do_train(gmatrix *g, Opt *opt, char tmp[])
    }
    else
    {
-      MALLOCTEST(g->scalefile, sizeof(char) * MAX_STR_LEN);
+      CALLOCTEST(g->scalefile, MAX_STR_LEN, sizeof(char));
       strncpy(g->scalefile, opt->scalefile, 
 	    FMIN(strlen(opt->scalefile), MAX_STR_LEN));
+      g->scalefile[MAX_STR_LEN - 1] = '\0';
       if(g->scalefile && !gmatrix_read_scaling(g, g->scalefile))
 	 return FAILURE;
       gmatrix_zero_model(g);

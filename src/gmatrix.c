@@ -104,7 +104,7 @@ int gmatrix_init(gmatrix *g, char *filename, int n, int p,
       FOPENTEST(g->file, filename, "rb");
 
    /* gmatrix_setup_folds changes g->nfolds */
-   if(g->folds_ind_file && !gmatrix_setup_folds(g))
+   if(!gmatrix_setup_folds(g))
       return FAILURE;
 
    MALLOCTEST(g->intercept, sizeof(double) * g->n);

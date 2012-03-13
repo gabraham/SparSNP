@@ -7,6 +7,7 @@ usage <- paste("usage: eval.R [title=<title>]",
       "(prev must be specified if h2l is specified)")
 
 uni <- FALSE
+best <- NULL
 
 args <- commandArgs(TRUE)
 s <- strsplit(args, "=")
@@ -43,6 +44,9 @@ if(exists("h2l")) {
 } else {
    h2l <- NULL
 }
+
+if(!is.null(best))
+   best <- as.integer(best)
 
 library(ggplot2)
 source("evalpred.R")
@@ -215,14 +219,21 @@ if(!is.null(h2l))
 
 
 # Find SNPs for best model in cross-validation
-tabulate.snps <- function()
+tabulate.snps <- function(best=NULL)
 {
-   lo <- loess(Measure ~ log(NonZero), data=cv)
-   s <- predict(lo, newdata=data.frame(NonZero=1:max(cv$NonZero)))
-   m <- which(s == max(s, na.rm=TRUE))
+   if(is.null(best))
+   {
+      lo <- loess(Measure ~ log(NonZero), data=cv)
+      s <- predict(lo, newdata=data.frame(NonZero=1:max(cv$NonZero)))
+      m <- which(s == max(s, na.rm=TRUE))
+      cat("Best model at", m, "SNPs with predictive measure", s[m], "\n") 
+   }
+   else
+   {
+      m <- best
+      cat("tabulate.snps: best=", best, "\n")
+   }
 
-   cat("Best model at", m, "SNPs with predictive measure", s[m], "\n") 
-   
    l <- lapply(1:nreps, function(rep) {
       l <- lapply(1:nfolds, function(fold) {
          s <- scan(sprintf("crossval%s/nonzero.csv.%02d", rep, fold - 1))
@@ -238,13 +249,15 @@ tabulate.snps <- function()
          b[-1, 1]
       })
    })
+
+   b <- ifelse(is.null(best), s[m], best)
    
-   list(best=s[m], snps=sort(table(unlist(l)), decreasing=TRUE))
+   list(best=b, snps=sort(table(unlist(l)), decreasing=TRUE))
 }
 
 if(mode == "discovery")
 {
-   res <- tabulate.snps()
+   res <- tabulate.snps(best)
    snps <- res$snps
    best <- res$best
    

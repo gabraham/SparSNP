@@ -150,6 +150,7 @@ int main(int argc, char* argv[])
 
 	 len = strlen(filename_scale) + 1 + 3;
 	 snprintf(tmp, len, "%s.%02d", filename_scale, k);
+	 printf("scale: writing file %s\n", tmp);
 	 if(!writescale(tmp, g.mean, g.sd, p + 1))
 	    return EXIT_FAILURE;
       }
@@ -158,6 +159,7 @@ int main(int argc, char* argv[])
    {
       if(!scale(&g))
 	 return EXIT_FAILURE;
+      printf("scale: writing file %s\n", filename_scale);
       if(!writescale(filename_scale, g.mean, g.sd, p + 1))
 	 return EXIT_FAILURE;
    }
