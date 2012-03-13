@@ -42,6 +42,7 @@ int opt_defaults(Opt *opt, short caller)
    opt->model = 0;
    opt->nlambda1 = 100;
    opt->l1minratio = 1e-2;
+   opt->l1max = -1;
    opt->maxepochs = 10000;
    opt->maxiters = 100;
    opt->lambda1 = -1;
@@ -231,6 +232,11 @@ int opt_parse(int argc, char* argv[], Opt* opt)
       {
 	 i++;
 	 opt->l1minratio = atof(argv[i]);
+      }
+      else if(strcmp2(argv[i], "-l1max"))
+      {
+	 i++;
+	 opt->l1max = atof(argv[i]);
       }
       else if(strcmp2(argv[i], "-thresh"))
       {

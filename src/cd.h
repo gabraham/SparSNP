@@ -44,6 +44,7 @@ typedef struct Opt {
    double lambda2;
    double threshold;
    double l1minratio;
+   double l1max;
    int nlambda1;
    double trunc;
    loss loss_func;

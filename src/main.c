@@ -19,13 +19,13 @@ int make_lambda1path(Opt *opt, gmatrix *g)
    double s;
    char tmp[MAX_STR_LEN];
 
-   if(opt->lambda1 >= 0)
+   /*if(opt->l1max >= 0)
    {
-      opt->lambda1max = opt->lambda1;
-      opt->l1minratio = 1;
-      opt->nlambda1 = 1;
+      opt->lambda1max = opt->l1max;
+      if(opt->verbose)
+         printf("lambda1max specified: %.20f\n", opt->lambda1max);
    }
-   else
+   else*/
    {
       /* create lambda1 path */
       /* get lambda1 max */
@@ -33,9 +33,10 @@ int make_lambda1path(Opt *opt, gmatrix *g)
 	    opt->phi2_func, opt->inv_func, opt->step_func);
       if(opt->verbose)
 	 printf("lambda1max: %.20f\n", opt->lambda1max);
-      opt->lambda1path[0] = opt->lambda1max;
+      /*opt->lambda1path[0] = opt->lambda1max;*/
    }
-   
+   opt->lambda1path[0] = opt->lambda1max;
+
    opt->lambda1min = opt->lambda1max * opt->l1minratio;
    opt->lambda1path[opt->nlambda1 - 1] = opt->lambda1min;
    s = (log10(opt->lambda1max) - log10(opt->lambda1min)) / (opt->nlambda1 - 1);

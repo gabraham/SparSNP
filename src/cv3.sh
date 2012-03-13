@@ -28,11 +28,9 @@ NREPS=10
 
 # maximum number of non-zero SNPs to consider in model
 NZMAX=1024
-#NZMAX=50
 
 # number of penalties to look at
 NLAMBDA1=20
-#NLAMBDA1=30
 
 L1MIN=0.01
 
@@ -73,6 +71,10 @@ EOF
 
 awk '{print $2}' "$BIM" > snps.txt
 
+if [[ $NFOLDS -le 1 ]];
+then
+   FOLDIND=""
+fi
 
 for((i=1;i<=$NREPS;i++))
 do
