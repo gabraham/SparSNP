@@ -54,7 +54,7 @@ int gmatrix_init(gmatrix *g, char *filename, int n, int p,
    g->sd = NULL;
    g->tmp = NULL;
    g->xtmp = NULL;
-   g->ytmp = NULL;
+   /*g->ytmp = NULL;*/
    g->x = NULL;
    g->xthinned = NULL;
    g->ignore = NULL;
@@ -121,7 +121,7 @@ int gmatrix_init(gmatrix *g, char *filename, int n, int p,
    {
       /* TODO: uses up g->n cells even though we don't really not all since in
        * crossval there will be fewer training/test samples, but easier than
-       * figuring out exactly how many */
+       * figuring out exactly how many to use */
       cache_init(g->xcaches + i, g->n, g->p + 1);
    }
 
@@ -181,7 +181,7 @@ int gmatrix_init(gmatrix *g, char *filename, int n, int p,
       return FAILURE;
 
    /*MALLOCTEST(g->xtmp, sizeof(double) * g->n);*/
-   MALLOCTEST(g->ytmp, sizeof(double) * g->n);
+   /*MALLOCTEST(g->ytmp, sizeof(double) * g->n);*/
 
    return SUCCESS;
 }
@@ -237,7 +237,7 @@ void gmatrix_free(gmatrix *g)
    FREENULL(g->y);
    FREENULL(g->y_orig);
    FREENULL(g->xtmp);
-   FREENULL(g->ytmp);
+   /*FREENULL(g->ytmp);*/
    FREENULL(g->x);
    FREENULL(g->xthinned);
    FREENULL(g->ignore);
@@ -358,7 +358,11 @@ int gmatrix_read_matrix(gmatrix *g, int *ind, int m)
 	    return FAILURE;
    
          for(i = 0 ; i < sm.n ; i++)
+	 {
 	    g->x[i * m + k] = sm.x[i];
+	    if(g->x[i * m + k] < 0)
+	       asm("int3");
+	 }
 	 k++;
       }
    }
@@ -426,7 +430,7 @@ int gmatrix_disk_nextcol(gmatrix *g, sample *s, int j, int na_action)
    if(ret == SUCCESS)
    {
       s->x = xtmp;
-      s->y = g->ytmp;
+      /*s->y = g->ytmp;*/
       return SUCCESS;
    }
 
@@ -485,7 +489,7 @@ inputs in gmatrix_disk_nextcol\n");
 	       if(d != X_LEVEL_NA)
 	       {
 		  xtmp[ngood] = (double)d;
-		  g->ytmp[ngood++] = g->y_orig[i];
+		  /*g->ytmp[ngood++] = g->y_orig[i];*/
 	       }
 	    }
 	    s->n = ngood;
@@ -554,7 +558,7 @@ inputs in gmatrix_disk_nextcol\n");
 		  if(d != X_LEVEL_NA)
 		  {
 		     xtmp[ngood] = (double)d;
-		     g->ytmp[ngood++] = g->y_orig[i];
+		     /*g->ytmp[ngood++] = g->y_orig[i];*/
 		  }
 	       }
 	    }
@@ -564,7 +568,7 @@ inputs in gmatrix_disk_nextcol\n");
    }
 
    s->x = xtmp;
-   s->y = g->ytmp;
+   /*s->y = g->ytmp;*/
 
    return SUCCESS;
 }
@@ -1051,6 +1055,9 @@ int cache_init(cache *ca, int n, int p)
    CALLOCTEST(ca->counter, p, sizeof(int));
    MALLOCTEST(ca->x, ca->nbins * n * sizeof(double));
    MALLOCTEST(ca->tmp, n * sizeof(double));
+
+   for(i = ca->nbins * n - 1 ; i >= 0 ; --i)
+      ca->x[i] = -0.123456789;
 
    for(i = 0 ; i < p ; i++)
       ca->mapping[i] = CACHE_NOT_EXISTS;

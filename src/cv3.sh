@@ -24,7 +24,7 @@ set -u
 NFOLDS=3
 
 # number of cross-validation replications
-NREPS=10
+NREPS=20
 
 # maximum number of non-zero SNPs to consider in model
 NZMAX=1024

@@ -60,7 +60,8 @@ int univar_gmatrix(Opt *opt, gmatrix *g, double *beta, double *zscore)
 	 continue;
       }
       
-      gmatrix_disk_nextcol(g, &sm, j, NA_ACTION_DELETE);
+      //gmatrix_disk_nextcol(g, &sm, j, NA_ACTION_DELETE);
+      gmatrix_disk_nextcol(g, &sm, j, NA_ACTION_RANDOM);
       CALLOCTEST(x, 2 * sm.n, sizeof(double));
       for(i = sm.n - 1 ; i >= 0 ; --i)
       {
@@ -79,7 +80,9 @@ int univar_gmatrix(Opt *opt, gmatrix *g, double *beta, double *zscore)
       }
 
       beta2[0] = beta2[1] = 0.0;
-      ret = newton(x, sm.y, beta2, invhessian, sm.n, 2,
+      /*ret = newton(x, sm.y, beta2, invhessian, sm.n, 2,
+	    opt->lambda2_univar, TRUE);*/
+      ret = newton(x, g->y, beta2, invhessian, sm.n, 2,
 	    opt->lambda2_univar, FALSE);
       FREENULL(x);
 

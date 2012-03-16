@@ -222,7 +222,7 @@ void wcrossprod(double *x, double *y, double *w, double *z,
 }
 
 /*
- * Product of Square-Matrix with Vector
+ * Product of a Square Matrix with a Vector
  *
  * z = X y
  *
@@ -231,7 +231,7 @@ void wcrossprod(double *x, double *y, double *w, double *z,
  * y: m by 1
  *
  */
-void sqmvprod(double *x, double *y, double *z, int m)
+void sqmvprod(const double *x, const double *y, double *z, int m)
 {
    int i, k;
       

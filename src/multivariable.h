@@ -5,7 +5,7 @@
 
 #define NEWTON_THRESH 1e-3
 #define NEWTON_THRESH_MAX 30
-#define NEWTON_DEVIANCE_MIN 1e-2
+#define NEWTON_DEVIANCE_MIN 1e-6
 
 #define NEWTON_SUCCESS 1
 

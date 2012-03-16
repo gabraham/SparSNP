@@ -255,6 +255,8 @@ tabulate.snps <- function(best=NULL)
    list(best=b, snps=sort(table(unlist(l)), decreasing=TRUE))
 }
 
+topsnps <- NULL
+
 if(mode == "discovery")
 {
    res <- tabulate.snps(best)

@@ -81,30 +81,31 @@ int opt_defaults(Opt *opt, short caller)
    strcpy(opt->beta_files[0], beta_default);
    opt->n_beta_files = 1;
 
-   opt->nzthresh = 21;
+   opt->nzthresh = 2;
    MALLOCTEST(opt->zthresh, sizeof(double) * opt->nzthresh);
 
    opt->zthresh[0] = 30.20559;  /* 1e-200 */
-   opt->zthresh[1] = 27.82780;  /* 1e-170 */
-   opt->zthresh[2] = 26.12296;  /* 1e-150 */
-   opt->zthresh[3] = 23.33408;  /* 1e-120 */
-   opt->zthresh[4] = 22.32745;  /* 1e-110 */
-   opt->zthresh[5] = 20.16469;  /* 1e-90 */
-   opt->zthresh[6] = 18.99164;  /* 1e-80 */
-   opt->zthresh[7] = 17.74164;  /* 1e-70 */
-   opt->zthresh[8] = 16.39728;  /* 1e-60 */
-   opt->zthresh[9] = 14.93334;  /* 1e-50 */
-   opt->zthresh[10] = 13.31092; /* 1e-40 */
-   opt->zthresh[11] = 11.46403; /* 1e-30 */
-   opt->zthresh[12] = 9.262340; /* 1e-20 */
-   opt->zthresh[13] = 6.361341; /* 1e-10 */
-   opt->zthresh[14] = 5.326724; /* 5e-8  */
-   opt->zthresh[15] = 5.199338; /* 1e-7  */
-   opt->zthresh[16] = 4.264891; /* 1e-5  */
-   opt->zthresh[17] = 3.719016; /* 1e-4  */
-   opt->zthresh[18] = 3.570974; /* 1e-4  */
-   opt->zthresh[19] = 3.417300; /* 1e-4  */
-   opt->zthresh[20] = 3.257323; /* 1e-4  */
+   //opt->zthresh[1] = 27.82780;  /* 1e-170 */
+   //opt->zthresh[2] = 26.12296;  /* 1e-150 */
+   //opt->zthresh[3] = 23.33408;  /* 1e-120 */
+   //opt->zthresh[4] = 22.32745;  /* 1e-110 */
+   //opt->zthresh[5] = 20.16469;  /* 1e-90 */
+   //opt->zthresh[6] = 18.99164;  /* 1e-80 */
+   //opt->zthresh[7] = 17.74164;  /* 1e-70 */
+   //opt->zthresh[8] = 16.39728;  /* 1e-60 */
+   //opt->zthresh[9] = 14.93334;  /* 1e-50 */
+   //opt->zthresh[10] = 13.31092; /* 1e-40 */
+   //opt->zthresh[11] = 11.46403; /* 1e-30 */
+   //opt->zthresh[12] = 9.262340; /* 1e-20 */
+   //opt->zthresh[13] = 6.361341; /* 1e-10 */
+   //opt->zthresh[14] = 5.326724; /* 5e-8  */
+   //opt->zthresh[15] = 5.199338; /* 1e-7  */
+   //opt->zthresh[16] = 4.264891; /* 1e-5  */
+   opt->zthresh[1] = 4.264891; /* 1e-5  */
+   //opt->zthresh[17] = 3.719016; /* 1e-4  */
+   //opt->zthresh[18] = 3.570974; /* 1e-4  */
+   //opt->zthresh[19] = 3.417300; /* 1e-4  */
+   //opt->zthresh[20] = 3.257323; /* 1e-4  */
    /*opt->zthresh[21] = 3.090232;*/ /* 1e-3  */
    /*opt->zthresh[22] = 2.326348;*/ /* 1e-2  */
    /*opt->zthresh[23] = 1.281552;*/ /* 1e-1  */

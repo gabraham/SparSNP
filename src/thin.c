@@ -47,6 +47,7 @@ int thin(double *x, int n, int p, int *active,
    j = 0;
    while(j < p && ws > 1)
    {
+      printf("window %d\n", j);
       /* Consider SNPs in the window only */
       MALLOCTEST(xwin, sizeof(double) * ws * n);
       copyshrinkrange(x, xwin, n, p, j, j + ws);
