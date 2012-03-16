@@ -204,19 +204,24 @@ void invert2x2(double *y, double *x)
  *
  * Note that w is NOT actually a matrix, it's an array of length m
  */
-void wcrossprod(double *x, double *y, double *w, double *z,
-      int m, int n, int p)
+void wcrossprod(const double *x, const double *y, const double *w,
+      double *z, const int m, const int n, const int p)
 {
    int i, j, k;
+   const double *restrict xr = x,
+	  *restrict yr = y,
+	  *restrict wr = w;
+   double *restrict zr = z;
 
    for(i = 0 ; i < n ; i++)
    {
       for(j = 0 ; j < p ; j++)
       {
 	 k = 0;
-	 z[i * p + j] = x[k * n + i] * y[k * p + j] * w[k];
+	 /*z[i * p + j] = x[k * n + i] * y[k * p + j] * w[k];*/
+	 zr[i * p + j] = xr[i] * yr[j] * wr[k];
 	 for(k = 1 ; k < m ; k++)
-	    z[i * p + j] += x[k * n + i] * y[k * p + j] * w[k];
+	    zr[i * p + j] += xr[k * n + i] * yr[k * p + j] * wr[k];
       }
    }
 }
@@ -238,7 +243,7 @@ void sqmvprod(const double *x, const double *y, double *z, int m)
    for(i = 0 ; i < m ; i++)
    {
       k = 0;
-      z[i] = x[k * m + i] * y[k];
+      z[i] = x[i] * y[k];
       for(k = 1 ; k < m ; k++)
 	 z[i] += x[k * m + i] * y[k];
    }
