@@ -63,8 +63,6 @@ evalpred.crossval <- function(type=NULL, dir=NULL)
 	 res <- apply(pr, 2, r2, y=y)
       }
 
-      #browser()
-
       pred <- list(
          p=lapply(1:ncol(pr), function(j) pr[,j]),
          y=lapply(1:ncol(pr), function(j) y)
@@ -99,6 +97,8 @@ evalpred.crossval <- function(type=NULL, dir=NULL)
    	       "^multivar_beta.csv.[[:digit:]]+.%02d.pred[\\.bz2]*$", fold))
          )
       
+	 pr <- sapply(files, scan, quiet=TRUE)
+      
 	 if(type == "AUC") {
 	    y <- as.numeric(as.character(factor(y, labels=c(0, 1))))
 	    res <- apply(pr, 2, auc, y=y)
@@ -117,15 +117,21 @@ evalpred.crossval <- function(type=NULL, dir=NULL)
 	    quiet=TRUE)
          status <- scan(
 	       list.files(pattern=sprintf("multivar_[irls|status]+.%02d",
-		     fold), quiet=TRUE)
+		     fold)), quiet=TRUE
          )
+
+	 w <- which(status == 3)
+	 if(length(w) == 0) {
+	    w <- length(status)
+	 }
+
+	 ok <- which(status[1:w] == 1)
    
          list(
             r=cbind(
-	       Measure=res,
-	       NonZeroPreThin=nz,
-	       NonZero=nz.thin,
-	       Status=status
+	       Measure=res[ok],
+	       NonZeroPreThin=nz[ok],
+	       NonZero=nz.thin[ok]
             ),
             prediction=pred
          )
@@ -149,15 +155,14 @@ evalpred.validation <- function(type=NULL, discovery.dir=NULL)
 
    y <- scan("y.txt", quiet=TRUE)
 
+   ###########################################################################    
+   # lasso
    files <- sort(
       list.files(
          pattern="^beta\\.csv\\.[[:digit:]]+\\.[[:digit:]]+\\.pred[\\.bz2]*$")
    )
    
    pr <- sapply(files, scan, quiet=TRUE)
-
-   cat("pwd:", getwd(), "\n")
-
    beta <- gsub("\\.pred", "", files)
    nz <- sapply(beta, function(x) {
       nrow(read.table(sprintf("%s/%s", discovery.dir, x))) - 1
@@ -173,7 +178,50 @@ evalpred.validation <- function(type=NULL, discovery.dir=NULL)
    d <- data.frame(NonZero=nz, Measure=res)
    cv.d <- d[d$NonZero > 0, ]
 
-   save(cv.d, file="crossval.RData")
+   ###########################################################################    
+   # univariable/multivariable
+   files <- sort(
+      list.files(
+         pattern="^multivar_beta\\.csv\\.[[:digit:]]+\\.[[:digit:]]+\\.pred[\\.bz2]*$")
+   )
+    
+   # remove predictions from bed models that didn't converge etc
+   lf <- list.files(pattern="multivar_[irls|status]+\\.[[:digit:]]+$",
+	 path=discovery.dir, full.names=TRUE)
+   status <- lapply(lf, scan, quiet=TRUE)
+   names(status) <- lf
+   f <- sapply(strsplit(lf, "\\."), tail, n=1)
+   l <- lapply(f, function(g) {
+      grep(sprintf("^multivar_beta\\.csv\\.[[:digit:]]+\\.%s\\.pred$", g),
+	 files, value=TRUE)
+   })
+
+   l2 <- lapply(seq(along=l), function(i) {
+      l[[i]][status[[i]] == 1]
+   })
+
+   l3 <- unlist(l2)
+
+   # not a sparse model
+   pr <- sapply(l3, scan, quiet=TRUE)
+   beta <- gsub("\\.pred", "", l3)
+   nz <- sapply(beta, function(x) {
+      b <- scan(sprintf("%s/%s", discovery.dir, x), quiet=TRUE)
+      sum(b[-1] != 0)
+   })
+
+   if(type == "AUC") {
+      y <- as.numeric(as.character(factor(y, labels=c(0, 1))))
+      res <- apply(pr, 2, auc, y=y)
+   } else {
+      res <- apply(pr, 2, r2, y=y)
+   }
+
+   d <- data.frame(NonZero=nz, Measure=res)
+   cv.uni.d <- d[d$NonZero > 0, ]
+
+   save(cv.d, cv.uni.d, file="crossval.RData")
+   list(cv.d, cv.uni.d)
 }
 
 

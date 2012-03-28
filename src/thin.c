@@ -5,28 +5,7 @@
 #include "thin.h"
 #include "matrix.h"
 
-/*int cov(double *x, double *S, int n, int p)
-{
-   int i, j, p2 = p * p;
-   double d = 1.0 / (n - 1.0);
-   double *mean = NULL;
-
-   CALLOCTEST(mean, p, sizeof(double));
-   for(j = 0 ; j < p ; j++)
-   {
-      for(i = 0 ; i < n ; i++)
-	 mean[j] +=  x[i * p + j];
-      mean[j] /= n;
-   }
-
-   crossprod(x, x, S, n, p, p);
-   for(i = 0 ; i < p2 ; i++)
-      S[i] *= d;
-
-   FREENULL(mean);
-}*/
-
-/* Remove SNPs based on correlation in a sliding window of size THIN_WINDOW_SIZE
+/* Remove SNPs based on correlation in a sliding window.
  *
  * x is the original n by p data
  *

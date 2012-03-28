@@ -207,16 +207,21 @@ void invert2x2(double *y, double *x)
 void wcrossprod(double *x, double *y, double *w, double *z,
       int m, int n, int p)
 {
-   int i, j, k;
+   int i, j, k, ip;
+   const double *restrict xr = x,
+	  *restrict yr = y,
+	  *restrict wr = w;
+   double *restrict zr = z;
 
    for(i = 0 ; i < n ; i++)
    {
       for(j = 0 ; j < p ; j++)
       {
 	 k = 0;
-	 z[i * p + j] = x[k * n + i] * y[k * p + j] * w[k];
+	 ip = i * p;
+	 zr[ip + j] = xr[i] * yr[j] * wr[k];
 	 for(k = 1 ; k < m ; k++)
-	    z[i * p + j] += x[k * n + i] * y[k * p + j] * w[k];
+	    zr[ip + j] += xr[k * n + i] * yr[k * p + j] * wr[k];
       }
    }
 }
@@ -257,8 +262,6 @@ void copyshrink(double *x, double *y, int n, int p, int *active, int m)
       k = 0;
       for(j = 0 ; j < p ; j++)
       {
-	 /*printf("i:%d j:%d k:%d m:%d active[%d]:%d\n", i, j, k, m, j, active[j]);
-	 fflush(stdout);*/
 	 if(active[j])
 	 {
 	    y[i * m + k] = x[i * p + j];

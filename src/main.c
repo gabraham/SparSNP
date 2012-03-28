@@ -157,6 +157,8 @@ int run_predict_beta(gmatrix *g, predict predict_func,
    for(i = 0 ; i < n ; i++)
       yhat[i] = predict_func(lp[i]);
 
+   printf("writing %s (%d) ... \n", predict_file, n);
+   
    if(!writevectorf(predict_file, yhat, n))
       return FAILURE;
 
@@ -174,6 +176,7 @@ int run_predict(gmatrix *g, predict predict_func,
    for(i = 0 ; i < n_beta_files ; i++)
    {
       gmatrix_zero_model(g);
+      printf("run_predict: reading %s\n", beta_files[i]);
       if(!load_beta_sparse(g->beta_orig, beta_files[i], g->p + 1))
       {
 	 printf("skipping %s\n", beta_files[i]);

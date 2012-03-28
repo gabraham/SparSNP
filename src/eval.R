@@ -140,7 +140,21 @@ d <- cv[, vars]
 if(uni)
 {
    cv.uni$Method <- "logistic"
-   d <- rbind(d, cv.uni[cv.uni$Status == 1, vars])
+   if(measure == "AUC")
+   {
+      if(!is.null(prev)) {
+	 cv.uni$VarExp <- varexp(K=prev,
+	    auc=cv.uni$Measure)[, "varexp"]
+      }
+
+      if(!is.null(h2l)) {
+	 cv.uni$GenVarExp <- varexp(K=prev,
+	    auc=cv.uni$Measure, h2l=h2l)[, "genvarexp"]
+      }
+   }
+
+   #d <- rbind(d, cv.uni[cv.uni$Status == 1, vars])
+   d <- rbind(d, cv.uni[, vars])
 }
 
 mytheme <- function(base_size=10)

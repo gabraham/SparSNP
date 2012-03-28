@@ -19,7 +19,7 @@ endif
 LONG_BIT = $(shell getconf LONG_BIT)
 
 CFLAGS = -std=gnu99 -Wall -ggdb3 -g3 \
-	  -O2 \
+	  -O3 \
 	  -msse \
 	  -ftree-vectorize \
 	  -fno-omit-frame-pointer \
