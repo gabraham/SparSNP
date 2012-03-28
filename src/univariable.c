@@ -151,8 +151,10 @@ int run_train(Opt *opt, gmatrix *g)
    {
       /* Get coefs and z-scores for each SNP using the
        * univariable method */
+      printf("before univar_gmatrix\n"); fflush(stdout);
       if(!univar_gmatrix(opt, g, beta, zscore))
          return FAILURE;
+      printf("after univar_gmatrix\n"); fflush(stdout);
 
       /* univariable coefs */
       snprintf(tmp, MAX_STR_LEN, "univar_beta.00.%02d", g->fold);

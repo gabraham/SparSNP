@@ -241,7 +241,7 @@ void gmatrix_free(gmatrix *g)
    FREENULL(g->ignore);
    FREENULL(g->tmp);
    FREENULL(g->x);
-   FREENULL(g->xthinned);
+   //FREENULL(g->xthinned);
    FREENULL(g->intercept);
    FREENULL(g->lookup);
    FREENULL(g->lp);

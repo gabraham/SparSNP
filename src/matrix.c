@@ -243,7 +243,7 @@ void sqmvprod(double *x, double *y, double *z, int m)
    for(i = 0 ; i < m ; i++)
    {
       k = 0;
-      z[i] = x[k * m + i] * y[k];
+      z[i] = x[i] * y[0];
       for(k = 1 ; k < m ; k++)
 	 z[i] += x[k * m + i] * y[k];
    }
