@@ -1,3 +1,4 @@
+#include <libgen.h>
 #include "common.h"
 #include "cd.h"
 #include "util.h"
@@ -75,15 +76,13 @@ int univar_gmatrix(Opt *opt, gmatrix *g, double *beta, double *zscore)
       if(g->ignore[j])
       {
 	 beta[j] = zscore[j] = 0.0;
-	 /*printf("skipped variable %d\n: low variance", j);*/
+	 FREENULL(x);
 	 continue;
       }
 
       beta2[0] = beta2[1] = 0.0;
-      /*ret = newton(x, sm.y, beta2, invhessian, sm.n, 2,
-	    opt->lambda2_univar, TRUE);*/
-      ret = newton(x, g->y, beta2, invhessian, sm.n, 2,
-	    opt->lambda2_univar, FALSE);
+      ret = newton(x, sm.y, beta2, invhessian, sm.n, 2,
+      	    opt->lambda2_univar, FALSE);
       FREENULL(x);
 
       if(ret == FAILURE)
@@ -153,8 +152,10 @@ int run_train(Opt *opt, gmatrix *g)
    {
       /* Get coefs and z-scores for each SNP using the
        * univariable method */
+      printf("before univar_gmatrix\n"); fflush(stdout);
       if(!univar_gmatrix(opt, g, beta, zscore))
          return FAILURE;
+      printf("after univar_gmatrix\n"); fflush(stdout);
 
       /* univariable coefs */
       snprintf(tmp, MAX_STR_LEN, "univar_beta.00.%02d", g->fold);
@@ -372,7 +373,7 @@ int run_predict(gmatrix *g, predict predict_func, char **beta_files,
    for(i = 0 ; i < n_beta_files ; i++)
    {
       gmatrix_zero_model(g);
-      printf("reading %s\n", beta_files[i]);
+      printf("run_predict: reading %s\n", beta_files[i]);
       if(!load_beta(g->beta_orig, beta_files[i], g->p + 1))
       {
 	 printf("skipping %s\n", beta_files[i]);
@@ -383,7 +384,7 @@ int run_predict(gmatrix *g, predict predict_func, char **beta_files,
       for(int j = 0 ; j < g->p + 1 ; j++)
 	 g->beta[j] = g->beta_orig[j];
 
-      snprintf(tmp, MAX_STR_LEN, "%s.pred", beta_files[i]);
+      snprintf(tmp, MAX_STR_LEN, "%s.pred", basename(beta_files[i]));
       if(!run_predict_beta(g, predict_func, tmp))
 	 return FAILURE;
    }
@@ -393,7 +394,7 @@ int run_predict(gmatrix *g, predict predict_func, char **beta_files,
 
 int do_predict(gmatrix *g, Opt *opt, char *tmp)
 {
-     int ret = SUCCESS, b, k, len;
+   int ret = SUCCESS, b, k, len;
 
    if(!gmatrix_init(g, opt->filename, opt->n, opt->p,
 	    NULL, opt->yformat, opt->model, opt->modeltype,

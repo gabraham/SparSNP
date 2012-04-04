@@ -207,7 +207,7 @@ void invert2x2(double *y, double *x)
 void wcrossprod(const double *x, const double *y, const double *w,
       double *z, const int m, const int n, const int p)
 {
-   int i, j, k;
+   int i, j, k, ip;
    const double *restrict xr = x,
 	  *restrict yr = y,
 	  *restrict wr = w;
@@ -218,10 +218,10 @@ void wcrossprod(const double *x, const double *y, const double *w,
       for(j = 0 ; j < p ; j++)
       {
 	 k = 0;
-	 /*z[i * p + j] = x[k * n + i] * y[k * p + j] * w[k];*/
-	 zr[i * p + j] = xr[i] * yr[j] * wr[k];
+	 ip = i * p;
+	 zr[ip + j] = xr[i] * yr[j] * wr[k];
 	 for(k = 1 ; k < m ; k++)
-	    zr[i * p + j] += xr[k * n + i] * yr[k * p + j] * wr[k];
+	    zr[ip + j] += xr[k * n + i] * yr[k * p + j] * wr[k];
       }
    }
 }
@@ -243,7 +243,7 @@ void sqmvprod(const double *x, const double *y, double *z, int m)
    for(i = 0 ; i < m ; i++)
    {
       k = 0;
-      z[i] = x[i] * y[k];
+      z[i] = x[i] * y[0];
       for(k = 1 ; k < m ; k++)
 	 z[i] += x[k * m + i] * y[k];
    }
@@ -262,8 +262,6 @@ void copyshrink(double *x, double *y, int n, int p, int *active, int m)
       k = 0;
       for(j = 0 ; j < p ; j++)
       {
-	 /*printf("i:%d j:%d k:%d m:%d active[%d]:%d\n", i, j, k, m, j, active[j]);
-	 fflush(stdout);*/
 	 if(active[j])
 	 {
 	    y[i * m + k] = x[i * p + j];

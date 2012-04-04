@@ -19,7 +19,7 @@ set -u
 
 N=$(cat $ROOT.fam | wc -l)
 P=$(cat $ROOT.bim | wc -l)
-BIN=$(./realpath "$ROOT".bed)
+BED=$(./realpath "$ROOT".bed)
 FAM=$(./realpath "$ROOT".fam)
 
 ORIGWD=$(pwd)
@@ -48,10 +48,32 @@ do
 
       B=$( ls $dir/beta.csv.+([[:digit:]]).+([[:digit:]]) )
 
+      echo "Found files $B"
+
       ../../cd -predict -model $MODEL -n $N -p $P -v \
-	 -bin $BIN -betafiles $B -fam $FAM -outdir .
+         -bin $BED -betafiles $B -fam $FAM -outdir .
 
       awk '{print $6}' $FAM > y.txt
+
+      if [ -a "$dir/multivar_nonzero.csv.00" ];
+      then
+         nthresh=$(cat $dir/multivar_nonzero.csv.00 | wc -l)
+   
+         if [ $nthresh -gt 0 ];
+         then
+   	 #tfiles=$(for((i=0;i<$nthresh;i++)); \
+            #   do printf "$dir/multivar_beta.csv.%02d " $i; \
+            #   done)
+   	 B=$( ls $dir/multivar_beta.csv.+([[:digit:]]).+([[:digit:]]) )
+   
+   	 # Predict on entire validation dataset using each model
+   	 ../../univariable -predict -model logistic \
+   	    -bin $BED -fam $FAM -n $N -p $P \
+   	    -betafiles $B \
+   	    -outdir .
+   
+         fi
+      fi
 
       popd
    else

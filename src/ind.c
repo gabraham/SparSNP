@@ -26,6 +26,7 @@ int ind_getfolds(char *file)
 {
    int nfolds;
    FILE *in = NULL;
+   printf("ind_getfolds, reading folds file '%s'\n", file);
    FOPENTEST(in, file, "rb")
    FREADTEST(&nfolds, sizeof(int), 1, in);
    fclose(in);
@@ -36,6 +37,7 @@ int ind_read(char *file, int *folds, const int n, const int nfolds)
 {
    int tmp;
    FILE *in = NULL;
+   printf("ind_read, reading folds file '%s'\n", file);
    FOPENTEST(in, file, "rb")
    FREADTEST(&tmp, sizeof(int), 1, in); /* ignore it */
    FREADTEST(folds, sizeof(int), n * nfolds, in);

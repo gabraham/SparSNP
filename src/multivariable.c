@@ -18,26 +18,26 @@
 int newton(double *x, double *y, double *beta, double *invhessian,
       int n, int p, double lambda2, int verbose)
 {
-   int i, j, 
+   int i, j, ip, 
        iter = 1, maxiter = 100,
        diverged = FALSE,
        ret = NEWTON_SUCCESS;
 
-   double *grad = NULL,
+   double *w = NULL,
+	  *grad = NULL,
 	  *hessian = NULL,
 	  *lp = NULL,
 	  *lp_invlogit = NULL,
-	  *w = NULL,
 	  *s = NULL;
 
    double loss_old = 1e6, loss = 0;
 
-   MALLOCTEST(lp, sizeof(double) * n);
-   MALLOCTEST(lp_invlogit, sizeof(double) * n);
+   CALLOCTEST(w, n, sizeof(double));
    MALLOCTEST(grad, sizeof(double) * p);
    CALLOCTEST(hessian, p * p, sizeof(double));
-   CALLOCTEST(w, n, sizeof(double));
    CALLOCTEST(s, p, sizeof(double));
+   MALLOCTEST(lp, sizeof(double) * n);
+   MALLOCTEST(lp_invlogit, sizeof(double) * n);
 
    while(iter <= maxiter) 
    {
@@ -48,14 +48,15 @@ int newton(double *x, double *y, double *beta, double *invhessian,
 	 loss_old = loss;
       loss = 0;
 
-      /* setup the linea predictors, and compute the loss */
+      /* setup the linear predictors, and compute the loss */
       for(i = n - 1; i >= 0 ; --i)
       {
-	 lp[i] = x[i * p] * beta[0];
+	 ip = i * p;
+	 lp[i] = x[ip] * beta[0];
 
 	 for(j = 1 ; j < p ; j++)
 	 {
-	    lp[i] += x[i * p + j] * beta[j];
+	    lp[i] += x[ip + j] * beta[j];
 	    lp_invlogit[i] = 1 / (1 + exp(-lp[i]));
 	 }
 
@@ -105,7 +106,6 @@ int newton(double *x, double *y, double *beta, double *invhessian,
       {
 	 /* Newton step */
 	 beta[j] -= s[j];
-	 /*printf("beta[%d]: %.5f\n", j, beta[j]);*/
 	 if(fabs(beta[j]) >= NEWTON_THRESH_MAX)
 	 {
 	    diverged = TRUE;
@@ -212,7 +212,7 @@ int multivariable_newton(Opt *opt, gmatrix *g, int nums1,
        * intercept */
       activeselected[0] = FALSE;
       if(!thin(g->x, n, nums1, activeselected, THIN_COR_MAX, nums1, nums1))
-	 return FAILURE;
+         return FAILURE;
 
       /* Count the remaining SNPs post thinning, add one for
        * intercept (pselected doesn't include intercept)  */
@@ -220,10 +220,10 @@ int multivariable_newton(Opt *opt, gmatrix *g, int nums1,
       activeselected[0] = TRUE;
       *pselected = 0;
       for(j = 1 ; j < nums1 ; j++)
-	 *pselected += activeselected[j];
+         *pselected += activeselected[j];
 
       printf("After thinning, %d of %d SNPs left (excluding intercept)\n",
-	    *pselected, *numselected);
+            *pselected, *numselected);
 
       MALLOCTEST(g->xthinned, sizeof(double) * n * (*pselected + 1));
       copyshrink(g->x, g->xthinned, n, nums1, activeselected, (*pselected) + 1);

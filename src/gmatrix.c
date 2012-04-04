@@ -237,11 +237,9 @@ void gmatrix_free(gmatrix *g)
    FREENULL(g->y);
    FREENULL(g->y_orig);
    FREENULL(g->xtmp);
-   /*FREENULL(g->ytmp);*/
-   FREENULL(g->x);
-   FREENULL(g->xthinned);
    FREENULL(g->ignore);
    FREENULL(g->tmp);
+   FREENULL(g->x);
    FREENULL(g->intercept);
    FREENULL(g->lookup);
    FREENULL(g->lp);
@@ -348,6 +346,9 @@ int gmatrix_read_matrix(gmatrix *g, int *ind, int m)
    int i, j, k = 0,
        p1 = g->p + 1;
    sample sm;
+
+   if(!sample_init(&sm))
+      return FAILURE;
 
    for(j = 0 ; j < p1 ; j++)
    {
