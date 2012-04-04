@@ -81,7 +81,7 @@ int univar_gmatrix(Opt *opt, gmatrix *g, double *beta, double *zscore)
       }
 
       beta2[0] = beta2[1] = 0.0;
-      ret = newton(x, sm.y, beta2, invhessian, sm.n, 2,
+      ret = newton(x, g->y, beta2, invhessian, sm.n, 2,
       	    opt->lambda2_univar, FALSE);
       FREENULL(x);
 
