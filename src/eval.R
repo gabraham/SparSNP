@@ -6,8 +6,10 @@ usage <- paste("usage: eval.R [title=<title>]",
       "[prev=<K>] [h2l=<V>] [mode=discovery|validation]",
       "(prev must be specified if h2l is specified)")
 
-uni <- FALSE
-best <- NULL
+if(!exists("uni")){
+   uni <- FALSE
+}
+best.uni <- best <- NULL
 
 args <- commandArgs(TRUE)
 s <- strsplit(args, "=")
@@ -47,8 +49,18 @@ if(exists("h2l")) {
 
 if(!is.null(best))
    best <- as.integer(best)
+if(!is.null(best.uni))
+   best.uni <- as.integer(best.uni)
 
 library(ggplot2)
+library(scales)
+library(grid)
+
+scale_x_log2 <- function(...)
+{
+   scale_x_continuous(..., trans=scales::log2_trans())
+}
+
 source("evalpred.R")
 source("varexp.R")
 
@@ -233,12 +245,12 @@ if(!is.null(h2l))
 
 
 # Find SNPs for best model in cross-validation
-tabulate.snps <- function(best=NULL)
+tabulate.snps <- function(best=NULL, d)
 {
    if(is.null(best))
    {
-      lo <- loess(Measure ~ log(NonZero), data=cv)
-      s <- predict(lo, newdata=data.frame(NonZero=1:max(cv$NonZero)))
+      lo <- loess(Measure ~ log(NonZero), data=d)
+      s <- predict(lo, newdata=data.frame(NonZero=1:max(d$NonZero)))
       m <- which(s == max(s, na.rm=TRUE))
       cat("Best model at", m, "SNPs with predictive measure", s[m], "\n") 
    }
@@ -269,9 +281,11 @@ tabulate.snps <- function(best=NULL)
    list(best=b, snps=sort(table(unlist(l)), decreasing=TRUE))
 }
 
+topsnps <- NULL
+
 if(mode == "discovery")
 {
-   res <- tabulate.snps(best)
+   res <- tabulate.snps(best, cv)
    snps <- res$snps
    best <- res$best
    
@@ -290,10 +304,36 @@ if(mode == "discovery")
       )
    }
    write.table(topsnps, file="topsnps.txt", quote=FALSE, row.names=FALSE)
+
+   if(uni)
+   {
+      res.uni <- tabulate.snps(best.uni, cv.uni)
+      snps.uni <- res.uni$snps
+      best.uni <- res.uni$best
+      
+      topsnps.uni <- cbind("NA"=numeric(0))
+      
+      if(length(snps.uni) > 0)
+      {
+         rs.uni <- scan("snps.txt", what=character())
+         names(snps.uni) <- rs[as.integer(names(snps.uni))]
+         
+         topsnps.uni <- data.frame(
+            RS=rownames(snps.uni),
+            Counts=snps.uni,
+            Proportion=snps.uni / nreps / nfolds,
+            Replications=nreps * nfolds
+         )
+      }
+      write.table(topsnps.uni, file="topsnps_uni.txt",
+	 quote=FALSE, row.names=FALSE)
+   }
 }
 
 # Change from generic name to actual name (AUC/R2)
 colnames(cv)[colnames(cv) == "Measure"] <- measure
 
-save(cv, topsnps, best, file=sprintf("%s.RData", title))
+cv <- d
+
+save(cv, topsnps, best, best.uni, file=sprintf("%s.RData", title))
 
