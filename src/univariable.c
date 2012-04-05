@@ -120,7 +120,7 @@ int run_train(Opt *opt, gmatrix *g)
    double *x = NULL,
 	  *zscore = NULL,
 	  *beta = NULL,
-	  *se = NULL,
+	  /**se = NULL,*/
 	  *invhessian = NULL;
    char tmp[MAX_STR_LEN];
    int *rets = NULL;
@@ -189,9 +189,9 @@ int run_train(Opt *opt, gmatrix *g)
 	 printf("total %d SNPs exceeded z-score=%.3f (inc. intercept)\n",
 	    numselected[i], opt->zthresh[i]);
 
-	 FREENULL(se);
+	 /*FREENULL(se);*/
 	 /* standard error for ALL SNPs 0 to p1 */
-	 CALLOCTEST(se, p1, sizeof(double));
+	 /*CALLOCTEST(se, p1, sizeof(double));*/
 
 	 FREENULL(x);
 	 FREENULL(beta);
@@ -211,15 +211,16 @@ int run_train(Opt *opt, gmatrix *g)
 	 snprintf(tmp, MAX_STR_LEN, "multivar_%s.%02d.%02d",
 	       opt->beta_files[0], i, g->fold);
 	 printf("writing %s\n", tmp);
-	 if(!writevectorf(tmp, g->beta, g->p + 1))
+	 //if(!writevectorf(tmp, g->beta, g->p + 1))
+	 if(!write_beta_sparse(tmp, g->beta, g->p + 1))
 	    return FAILURE;
 
 	 /* standard errors */
-	 snprintf(tmp, MAX_STR_LEN, "multivar_%s_se.%02d.%02d",
+	 /*snprintf(tmp, MAX_STR_LEN, "multivar_%s_se.%02d.%02d",
 	       opt->beta_files[0], i, g->fold);
 	 printf("writing %s\n", tmp);
-	 if(!writevectorf(tmp, se, g->p + 1))
-	    return FAILURE;
+	 if(!write_beta_sparse(tmp, se, g->p + 1))
+	    return FAILURE;*/
 
 	 /* no point in testing looser z-scores since they won't converge as
 	  * well */
@@ -252,7 +253,7 @@ int run_train(Opt *opt, gmatrix *g)
 
    FREENULL(beta);
    FREENULL(invhessian);
-   FREENULL(se);
+   /*FREENULL(se);*/
    FREENULL(zscore);
    FREENULL(numselected);
    FREENULL(pselected);
@@ -374,7 +375,8 @@ int run_predict(gmatrix *g, predict predict_func, char **beta_files,
    {
       gmatrix_zero_model(g);
       printf("run_predict: reading %s\n", beta_files[i]);
-      if(!load_beta(g->beta_orig, beta_files[i], g->p + 1))
+      //if(!load_beta(g->beta_orig, beta_files[i], g->p + 1))
+      if(!load_beta_sparse(g->beta_orig, beta_files[i], g->p + 1))
       {
 	 printf("skipping %s\n", beta_files[i]);
 	 continue;
