@@ -202,12 +202,15 @@ evalpred.validation <- function(type=NULL, discovery.dir=NULL)
 
    l3 <- unlist(l2)
 
-   # not a sparse model
+   ## not a sparse model
    pr <- sapply(l3, scan, quiet=TRUE)
    beta <- gsub("\\.pred", "", l3)
+   #nz <- sapply(beta, function(x) {
+   #   b <- scan(sprintf("%s/%s", discovery.dir, x), quiet=TRUE)
+   #   sum(b[-1] != 0)
+   #})
    nz <- sapply(beta, function(x) {
-      b <- scan(sprintf("%s/%s", discovery.dir, x), quiet=TRUE)
-      sum(b[-1] != 0)
+      nrow(read.table(sprintf("%s/%s", discovery.dir, x))) - 1
    })
 
    if(type == "AUC") {
