@@ -293,7 +293,10 @@ if(mode == "discovery")
    
    if(length(snps) > 0)
    {
-      rs <- scan("snps.txt", what=character())
+      #rs <- scan("snps.txt", what=character())
+      ref <- read.table("snps.txt", header=FALSE, sep="",
+	    stringsAsFactors=FALSE)
+      rs <- ref[,1]
       names(snps) <- rs[as.integer(names(snps))]
       
       topsnps <- data.frame(
@@ -315,7 +318,10 @@ if(mode == "discovery")
       
       if(length(snps.uni) > 0)
       {
-         rs.uni <- scan("snps.txt", what=character())
+         #rs.uni <- scan("snps.txt", what=character())
+	 ref <- read.table("snps.txt", header=FALSE, sep="",
+	       stringsAsFactors=FALSE)
+	 rs.uni <- ref[,1]
          names(snps.uni) <- rs[as.integer(names(snps.uni))]
          
          topsnps.uni <- data.frame(

@@ -14,7 +14,6 @@ F=$(basename $1)
 ROOT=$D/$F
 
 
-set -u
 
 MODEL="logistic"
 
@@ -40,7 +39,10 @@ pushd $DIR
 
 eval $(grep NREPS params.txt)
 
-for((i=1;i<=$NREPS;i++))
+[[ -z "$REP_START" ]] && REP_START=1
+[[ -z "$REP_END" ]] && REP_END=$NREPS
+
+for((i=$REP_START;i<=$REP_END;i++))
 do
    dir="crossval$i"
 

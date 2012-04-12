@@ -69,7 +69,7 @@ NLAMBDA1=$NLAMBDA1
 MODEL=$MODEL
 EOF
 
-awk '{print $2}' "$BIM" > snps.txt
+awk '{print $2,$5}' "$BIM" > snps.txt
 
 if [[ $NFOLDS -le 1 ]];
 then
