@@ -112,8 +112,8 @@ npv <- sapply(1:length(cutoffs), function(j) {
       (1 - sens[[j]]) * prev + spec[[j]] * (1 - prev))
 })
 
-save(pheno, prof, pred, perf, ppv, npv,
-   file=sprintf("%s.RData", target.base))
+save(pheno, score, intercept, prev, prof, pred, perf, sens, spec,
+   ppv, npv, file=sprintf("%s.RData", target.base))
 
 
 EOF
