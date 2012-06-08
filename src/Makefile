@@ -1,8 +1,6 @@
 
 .PHONY: all
 
-CC=gcc
-
 # Mac 10.6 differences:
 #
 # * linker won't accept -allow-multiple-definition, required on Linux 
