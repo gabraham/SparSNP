@@ -15,6 +15,7 @@ ROOT=$D/$F
 
 
 
+
 MODEL="logistic"
 
 # Don't change these unless you know what you're doing
@@ -39,6 +40,9 @@ pushd $DIR
 
 eval $(grep NREPS params.txt)
 
+[[ -z "$NZMAX" ]] && NZMAX=20000
+
+
 [[ -z "$REP_START" ]] && REP_START=1
 [[ -z "$REP_END" ]] && REP_END=$NREPS
 
@@ -54,7 +58,7 @@ do
       pushd $dir
 
       ../../univariable -train -model logistic \
-	 -bin $BED -fam $FAM -n $N -p $P \
+	 -bin $BED -fam $FAM -n $N -p $P -nzmax $NZMAX \
          -foldind folds.ind -v
 
       nthresh=$(cat multivar_nonzero.csv.00 | wc -l)

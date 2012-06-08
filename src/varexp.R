@@ -15,7 +15,7 @@
 #   aucmax: maximum AUC given K and h2l (explains all genetic variance)
 #   auc:    AUC as supplied
 #
-varexp <- function(K=NULL, h2l=NULL, auc=NULL)
+varexp <- function(K=NULL, h2l=NULL, auc=NULL, auc.se=NULL)
 {
    if(is.null(K) || all(is.null(c(h2l, auc)))) {
       stop("Must specify K and at least one of h2l, auc")
@@ -42,7 +42,7 @@ varexp <- function(K=NULL, h2l=NULL, auc=NULL)
       aucmax <- pnorm(d)
    }
    
-   h2lx <- rho2gg <- as.numeric(NA)
+   h2lx <- rho2gg <- h2lx.se <- as.numeric(NA)
    if(!is.null(auc)) {
       # variance of genetic profile
       Q <- qnorm(auc, lower.tail=TRUE)
@@ -52,9 +52,20 @@ varexp <- function(K=NULL, h2l=NULL, auc=NULL)
 	 rho2gg <- h2lx / h2l
 	 rho2gg <- pmin(rho2gg, 1)
       }
+
+      # Based on delta rule SE(varexp(AUC)) = SE(AUC) * varexp(AUC)'
+      if(!is.null(auc.se)) {
+	 dQ <- 1 / dnorm(Q)
+      	 h2lxd <- -8 * Q^2 * dQ^2 * i * (i - T) / (
+      	    ((v - i)^2 + Q^2 * i * (i - T) + v * (v - T))^2
+      	 )
+	 h2lx.se <- auc.se * h2lxd
+      }
    }
 
-   cbind(K=K, h2l=h2l, aucmax=aucmax, varexp=h2lx, genvarexp=rho2gg)
+
+   cbind(K=K, h2l=h2l, aucmax=aucmax, varexp=h2lx, genvarexp=rho2gg,
+      varexp.se=h2lx.se)
 }
 
 varexp.test <- function()

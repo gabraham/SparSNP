@@ -61,8 +61,8 @@ scale_x_log2 <- function(...)
    scale_x_continuous(..., trans=scales::log2_trans())
 }
 
-source("evalpred.R")
-source("varexp.R")
+source("~/Code/cd/src/sparsnp/evalpred.R")
+source("~/Code/cd/src/sparsnp/varexp.R")
 
 
 cat("mode:", mode, "\n")
@@ -88,7 +88,7 @@ model <- extract.params("MODEL")
 nfolds <- as.integer(extract.params("NFOLDS"))
 nreps <- as.integer(extract.params("NREPS"))
 
-measure <- if(model == "sqrhinge") {
+measure <- if(model == "sqrhinge" || model == "logistic") {
    "AUC"
 } else if(model == "linear") {
    "R2"
@@ -195,8 +195,10 @@ g <- if(uni) {
 
 m <- round(max(log2(d$NonZero)))
 br <- 2^(0:m)
+br <- br[br <= max(d$NonZero)]
 g <- g + geom_point(size=2.5)
-g <- g + scale_x_log2("Number of SNPs in model", breaks=br, labels=br) 
+#g <- g + scale_x_log2("Number of SNPs in model", breaks=br, labels=br) 
+g <- g + scale_x_log2("Number of SNPs in model") 
 g <- g + scale_y_continuous(measure)
 g <- g + theme_bw() + mytheme()
 g <- g + scale_colour_grey(start=0, end=0.5)
@@ -215,7 +217,8 @@ if(!is.null(prev))
       ggplot(d, aes(x=NonZero, y=VarExp))
    }
    g <- g + geom_point(size=2.5) 
-   g <- g + scale_x_log2("Number of SNPs in model", breaks=br, labels=br)
+   #g <- g + scale_x_log2("Number of SNPs in model", breaks=br, labels=br)
+   g <- g + scale_x_log2("Number of SNPs in model")
    g <- g + theme_bw() + mytheme()
    g <- g + scale_colour_grey(start=0, end=0.5)
    g <- g + stat_smooth(method="loess")
@@ -233,7 +236,8 @@ if(!is.null(h2l))
       ggplot(d, aes(x=NonZero, y=GenVarExp))
    }
    g <- g + geom_point(size=2.5) 
-   g <- g + scale_x_log2("Number of SNPs in model", breaks=br, labels=br)
+   #g <- g + scale_x_log2("Number of SNPs in model", breaks=br, labels=br)
+   g <- g + scale_x_log2("Number of SNPs in model")
    g <- g + theme_bw() + mytheme()
    g <- g + scale_colour_grey(start=0, end=0.5)
    g <- g + stat_smooth(method="loess")

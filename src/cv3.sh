@@ -14,9 +14,6 @@ D=$(dirname $1)
 F=$(basename $1)
 ROOT=$D/$F
 
-
-set -u
-
 ######################################################################
 # User modifiable parameters
 
@@ -62,6 +59,7 @@ fi
 pushd $DIR
 
 cat >params.txt<<EOF
+ROOT=$ROOT
 NFOLDS=$NFOLDS
 NREPS=$NREPS
 NZMAX=$NZMAX
@@ -76,7 +74,13 @@ then
    FOLDIND=""
 fi
 
-for((i=1;i<=$NREPS;i++))
+[[ -z "$REP_START" ]] && REP_START=1
+[[ -z "$REP_END" ]] && REP_END=$NREPS
+
+echo "REP_START: $REP_START"
+echo "REP_END: $REP_END"
+
+for((i=$REP_START;i<=$REP_END;i++))
 do
    dir="crossval$i"
 

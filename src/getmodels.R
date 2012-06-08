@@ -5,7 +5,7 @@
 # cross-validation replications, and outputs these models
 # plus the best model, in the form of a PLINK score file
 # 
-
+#
 # Note: we assume that the solution path produces roughly the same number
 # of SNPs in the model across all cross-validation replications. When sample
 # sizes are small, or the signal is very weak, this may not hold.
@@ -14,6 +14,8 @@
 # been run, then you won't get back a prediction based on that model size,
 # instead you'll get a prediction from a the closest model that could be
 # found.
+
+options(warn=-1)
 
 DIR="discovery"
 AVGFILE="avg_weights_opt"
@@ -35,15 +37,18 @@ if(is.na(nzreq) || as.integer(nzreq) != nzreq || nzreq <= 0) {
    stop(usage)
 }
 
+library(methods)
+
 # Parse the parameters
-param <- scan("discovery/params.txt", what=character())
+param <- scan("discovery/params.txt", what=character(), quiet=TRUE)
 s <- sapply(param, strsplit, "=")
 for(i in seq(along=s)) {
    s1 <- s[[i]][1]
    s2 <- s[[i]][2]
-   if(is.na(as.numeric(s2))) {
-      s2 <- paste("\"", s2, "\"", sep="")
-   }
+   m <- as.numeric(s2)
+   s2 <- if(is.na(m)) {
+      paste("\"", s2, "\"", sep="")
+   } else m
    x <- paste(s1, "=", s2)
    eval(parse(text=x))
 }
@@ -98,6 +103,7 @@ bpath <- lapply(1:nreps, function(rep) {
       })
    })
 })
+
 bpath2 <- unlist(bpath, recursive=FALSE)
 m <- min(sapply(bpath2, length))
 bpath3 <- lapply(bpath2, head, n=m)
