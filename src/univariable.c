@@ -189,43 +189,38 @@ int run_train(Opt *opt, gmatrix *g)
 	 printf("total %d SNPs exceeded z-score=%.3f (inc. intercept)\n",
 	    numselected[i], opt->zthresh[i]);
 
-	 /*FREENULL(se);*/
-	 /* standard error for ALL SNPs 0 to p1 */
-	 /*CALLOCTEST(se, p1, sizeof(double));*/
-
 	 FREENULL(x);
 	 FREENULL(beta);
 	 FREENULL(invhessian);
 
 	 if(numselected[i] > 0)
 	 {
+	    if(numselected[i] >= opt->nzmax)
+	    {
+	       printf("number of SNPs %d exceeded nzmax of %d, terminating\n",
+		     numselected[i], opt->nzmax);
+	       break;
+	    }
+
 	    if(opt->multivar == OPTIONS_MULTIVAR_NEWTON)
+	    {
 	       multivariable_newton(opt, g, nums1,
 		     pselected + i, numselected + i, rets + i);
-	    /*else
-	       multivariable_lasso(opt, g, nums1,
-		     pselected + i, numselected + i, rets + i);*/
+
+	       /* write out estimated coefficients */
+	       snprintf(tmp, MAX_STR_LEN, "multivar_%s.%02d.%02d",
+	             opt->beta_files[0], i, g->fold);
+	       printf("writing %s\n", tmp);
+	       if(!write_beta_sparse(tmp, g->beta, g->p + 1))
+	          return FAILURE;
+
+	       /* If Newton didn't converge at a given model size, there's
+		* no point in testing looser z-scores since they won't
+		* converge as well */
+	       if(rets[i] != NEWTON_SUCCESS)
+		  break;
+	    }
 	 }
-
-	 /* estimated coefficients */
-	 snprintf(tmp, MAX_STR_LEN, "multivar_%s.%02d.%02d",
-	       opt->beta_files[0], i, g->fold);
-	 printf("writing %s\n", tmp);
-	 //if(!writevectorf(tmp, g->beta, g->p + 1))
-	 if(!write_beta_sparse(tmp, g->beta, g->p + 1))
-	    return FAILURE;
-
-	 /* standard errors */
-	 /*snprintf(tmp, MAX_STR_LEN, "multivar_%s_se.%02d.%02d",
-	       opt->beta_files[0], i, g->fold);
-	 printf("writing %s\n", tmp);
-	 if(!write_beta_sparse(tmp, se, g->p + 1))
-	    return FAILURE;*/
-
-	 /* no point in testing looser z-scores since they won't converge as
-	  * well */
-	 if(numselected[i] > 0 && rets[i] != NEWTON_SUCCESS)
-	    break;
 
 	 printf("\n");
       }

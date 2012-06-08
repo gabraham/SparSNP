@@ -941,7 +941,7 @@ void updatelp(gmatrix *g, const double update,
 	  *restrict lp = g->lp,
 	  *restrict y = g->y,
 	  *restrict ylp_neg_y_ylp = g->ylp_neg_y_ylp;
-   double loss = 0, ylp = 0;
+   double loss = 0, ylp = 0, explp = 0;
 
    if(g->model == MODEL_LINEAR)
    {
@@ -957,8 +957,9 @@ void updatelp(gmatrix *g, const double update,
       for(i = n - 1 ; i >= 0 ; --i)
       {
 	 lp[i] += x[i] * update;
-	 lp_invlogit[i] = 1 / (1 + exp(-lp[i]));
-	 loss += log(1 + exp(lp[i])) - y[i] * lp[i];
+	 explp = exp(lp[i]);
+	 lp_invlogit[i] = explp / (1 + explp);
+	 loss += log(1 + explp) - y[i] * lp[i];
       }
    }
    else if(g->model == MODEL_SQRHINGE)

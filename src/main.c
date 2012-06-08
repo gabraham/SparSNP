@@ -77,7 +77,10 @@ int run_train(Opt *opt, gmatrix *g)
    for(i = 1 ; i < opt->nlambda1 ; i++)
    {
       if(opt->verbose)
-	 printf("\n[%d] Fitting with lambda1=%.20f\n", i, opt->lambda1path[i]);
+      {
+	 printf("\n[%d] Fitting with lambda1=%.20f lambda2=%.20f\n",
+	    i, opt->lambda1path[i], opt->lambda2);
+      }
 
       /* return value is number of nonzero variables,
        * including the intercept */

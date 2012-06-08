@@ -122,9 +122,9 @@ int cd_gmatrix(gmatrix *g,
       	       beta_new = soft_threshold(beta_new, lambda1) * l2recip;
       	    beta_new = clip(beta_new, -truncl, truncl);
 
-	    beta_new = g->beta[j] - s;
-      	    if(j > 0) 
-      	       beta_new = soft_threshold(beta_new, lambda1);
+	    //beta_new = g->beta[j] - s;
+      	    //if(j > 0) 
+      	    //   beta_new = soft_threshold(beta_new, lambda1);
 
 	    delta = beta_new - g->beta[j];
 	    
