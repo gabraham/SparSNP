@@ -20,7 +20,7 @@ options(warn=-1)
 DIR="discovery"
 AVGFILE="avg_weights_opt"
 
-usage <- "usage: getmodels.R [nzreq=<num SNPS required>]"
+usage <- "usage: getmodels.R nzreq=<num SNPS required>"
 
 args <- commandArgs(TRUE)
 s <- strsplit(args, "=")

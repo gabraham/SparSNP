@@ -16,6 +16,7 @@ F=$(basename $1)
 ROOT=$D/$F
 
 EXEDIR=~/Code/cd/src/sparsnp
+MODEL=$2
 
 ######################################################################
 # User modifiable parameters
@@ -33,14 +34,10 @@ EXEDIR=~/Code/cd/src/sparsnp
 
 [[ -z "$LAMBDA2" ]] && LAMBDA2=0
 
-MODEL=$2
-
-######################################################################
-
 ######################################################################
 # Don't change these unless you know what you're doing
-N=$(cat "$ROOT".fam | wc -l)
-P=$(cat "$ROOT".bim | wc -l)
+N=$(cat "$ROOT".fam | wc -l | awk '{print $1, $2}')
+P=$(cat "$ROOT".bim | wc -l | awk '{print $1, $2}')
 BED=$($EXEDIR/realpath "$ROOT".bed)
 FAM=$($EXEDIR/realpath "$ROOT".fam)
 BIM=$($EXEDIR/realpath "$ROOT".bim)
@@ -59,6 +56,9 @@ then
    fi
 fi
 
+echo "N: $N"
+echo "P: $N"
+echo "NZMAX: $NZMAX"
 echo "BED: $BED"
 echo "BIM: $BIM"
 echo "FAM: $FAM"
