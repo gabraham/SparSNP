@@ -281,8 +281,8 @@ tabulate.snps <- function(best=NULL, d)
    })
 
    b <- ifelse(is.null(best), s[m], best)
-   
-   list(best=b, snps=sort(table(unlist(l)), decreasing=TRUE))
+
+   list(best=b, snps=sort(table(unlist(l)), decreasing=TRUE), k=s[m])
 }
 
 topsnps <- NULL
@@ -292,6 +292,7 @@ if(mode == "discovery")
    res <- tabulate.snps(best, cv)
    snps <- res$snps
    best <- res$best
+   best.k <- res$k
    
    topsnps <- cbind("NA"=numeric(0))
    
@@ -345,5 +346,5 @@ colnames(cv)[colnames(cv) == "Measure"] <- measure
 
 cv <- d
 
-save(cv, topsnps, best, best.uni, file=sprintf("%s.RData", title))
+save(cv, topsnps, best, best.uni, best.k, file=sprintf("%s.RData", title))
 

@@ -133,7 +133,7 @@ write.table(d, file=sprintf("%s/%s.score", dir, avgfile),
 # model
 for(i in seq(along=bpathm)) {
    x <- bpathm[[i]]
-   x <- x[order(abs(x), decreasing=TRUE)]
+   x <- x[order(abs(x), decreasing=TRUE)][1:nzreq]
    w <- as.integer(names(x))
    d <- data.frame(snps[w[w != 0], ], x[w != 0])
    write.table(d, file=sprintf("%s/%s_path_%s.score", dir, avgfile, i),
