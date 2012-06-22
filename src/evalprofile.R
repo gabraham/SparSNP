@@ -40,12 +40,6 @@ library(ROCR)
 cat("indir:", indir, "\n")
 cat("outdir:", outdir, "\n")
 
-#target <- r[1]
-#target.base <- r[2]
-#famf <- r[3]
-#prev <- as.numeric(r[4])
-#dir <- r[5]
-
 # Prevent ties in data that results in fewer cutoffs than data points
 dither <- function(x, mind=1e-20, maxd=1e-8)
 {
@@ -94,8 +88,6 @@ res <- lapply(seq(along=lf), function(i) {
    )
 })
 
-#save(pheno, score, intercept, prev, prof, pred, perf, sens, spec,
-#   ppv, npv, file=sprintf("%s.RData", target.base))
 f <- sprintf("%s/%s.RData", outdir, name) 
 cat("saving results to file", f, "\n")
 save(res, file=f)
