@@ -27,12 +27,12 @@ cd \$PBS_O_WORKDIR
 
 if [ "$DOSPARSNP" ];
 then
-   ~/Code/cd/src/sparsnp/cv10.sh \$ROOT sqrhinge 2>&1 | tee sparsnp.log
+   ~/Code/cd/src/sparsnp/crossval.sh \$ROOT sqrhinge 2>&1 | tee sparsnp.log
 fi
 
 if [ "$DOUNIVAR" ];
 then
-   ~/Code/cd/src/sparsnp/cv3univar.sh \$ROOT 2>&1 | tee univar.log
+   ~/Code/cd/src/sparsnp/crossvaluni.sh \$ROOT 2>&1 | tee univar.log
 fi
 
 EOF
