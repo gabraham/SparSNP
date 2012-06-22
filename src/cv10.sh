@@ -9,8 +9,7 @@ then
    exit 1
 fi
 
-# For GNU parallel
-[[ -z "$NUMPROCS" ]] && NUMPROCS=2
+[[ -z "$NUMPROCS" ]] && NUMPROCS=1
 
 D=$(dirname $1)
 F=$(basename $1)
@@ -137,12 +136,7 @@ function run {
 export -f run
 export EXEDIR NFOLDS N P BED FAM FOLDIND MODEL SCALE NZMAX NLAMBDA1 L1MIN LAMBDA2
 
-if [ $DOPARALLEL ]
-then
-   seq $REP_START $REP_END | parallel -j$NUMPROCS -I{} run {}
-else
-   for((i=$REP_START;i<=$REP_END;i++)); do run $i; done
-fi
+seq $REP_START $REP_END | xargs -P$NUMPROCS -I{} bash -c "run {}"
 
 popd
 
