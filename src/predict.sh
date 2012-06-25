@@ -7,7 +7,6 @@
 
 if [ $# -lt 2 ];
 then
-   #echo "usage: predict.sh <TARGET ROOT> <non-zero req.> <prevalence>"
    echo "usage: predict.sh <TARGET ROOT> <prevalence>"
    exit 1
 fi
