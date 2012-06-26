@@ -67,6 +67,8 @@ avgfile <- AVGFILE
 r <- read.table(sprintf("%s/snps.txt", dir), header=FALSE,
    stringsAsFactors=FALSE)
 
+prefix <- ifelse(uni, "multivar_", "")
+
 nz <- lapply(1:nreps, function(i) {
    lapply(1:nfolds, function(j) {
       scan(sprintf("%s/crossval%s/%snonzero.csv.%02d", dir, prefix, i, j - 1),
@@ -76,8 +78,6 @@ nz <- lapply(1:nreps, function(i) {
 
 # Get best model with the closest model size to requested
 nzopt <- lapply(nz, sapply, function(n) which.min((n - nzreq)^2))
-
-prefix <- ifelse(uni, "multivar_", "")
 
 b <- lapply(1:nreps, function(rep) {
    lapply(1:nfolds, function(fold) {
