@@ -84,7 +84,13 @@ b <- lapply(1:nreps, function(rep) {
       w <- nzopt[[rep]][fold]
       f <- sprintf("%s/crossval%s/%sbeta.csv.%02d.%02d",
 	 dir, rep, prefix, w - 1, fold - 1)
-      read.table(f, sep=":", header=FALSE)
+      cat(">>>", f, "\n")
+      r <- try(read.table(f, sep=":", header=FALSE), silent=FALSE)
+      if(is(r, "try-error")) {
+	 NULL
+      } else {
+	 r
+      }
    })
 })
 
@@ -105,6 +111,7 @@ bpath <- lapply(1:nreps, function(rep) {
 	 full.names=TRUE
       )
       lapply(l, function(x) {
+	 cat(x, "\n")
 	 r <- read.table(x, sep=":", header=FALSE)
 	 r$NonZero <- nrow(r)
 	 r
