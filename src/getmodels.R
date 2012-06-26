@@ -71,7 +71,7 @@ prefix <- ifelse(uni, "multivar_", "")
 
 nz <- lapply(1:nreps, function(i) {
    lapply(1:nfolds, function(j) {
-      scan(sprintf("%s/crossval%s/%snonzero.csv.%02d", dir, prefix, i, j - 1),
+      scan(sprintf("%s/crossval%s/%snonzero.csv.%02d", dir, i, prefix, j - 1),
 	 quiet=TRUE)
    })
 })
