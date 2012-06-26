@@ -77,7 +77,8 @@ if(mode == "discovery") {
    setwd("validation")
 }
 
-params <- scan(sprintf("%s/discovery/params.txt", rootdir), what="character")
+params <- scan(sprintf("%s/discovery/params.txt", rootdir), what="character",
+   quiet=TRUE)
 
 extract.params <- function(nm)
 {  
@@ -266,12 +267,13 @@ tabulate.snps <- function(best=NULL, d)
 
    l <- lapply(1:nreps, function(rep) {
       l <- lapply(1:nfolds, function(fold) {
-         s <- scan(sprintf("crossval%s/nonzero.csv.%02d", rep, fold - 1))
+         s <- scan(sprintf("crossval%s/nonzero.csv.%02d", rep, fold - 1),
+	    quiet=TRUE)
 	 
 	 # Never select zero as a legitimate model
 	 s[s == 0] <- -Inf
          w <- which.min((s - m)^2)
-         cat("best:", s[w], "\n")
+         #cat("best:", s[w], " ")
          b <- read.table(
 	    sprintf("crossval%s/beta.csv.%02d.%02d",
 	       rep, w - 1, fold - 1), sep=":")
@@ -318,6 +320,7 @@ if(mode == "discovery")
       res.uni <- tabulate.snps(best.uni, cv.uni)
       snps.uni <- res.uni$snps
       best.uni <- res.uni$best
+      best.uni.k <- res.uni$k
       
       topsnps.uni <- cbind("NA"=numeric(0))
       
@@ -346,5 +349,6 @@ colnames(cv)[colnames(cv) == "Measure"] <- measure
 
 cv <- d
 
-save(cv, topsnps, best, best.uni, best.k, file=sprintf("%s.RData", title))
+save(cv, topsnps, best, best.uni, best.k, best.uni.k,
+   file=sprintf("%s.RData", title))
 
