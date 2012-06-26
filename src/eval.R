@@ -9,7 +9,7 @@ usage <- paste("usage: eval.R [title=<title>]",
 if(!exists("uni")){
    uni <- FALSE
 }
-best.uni <- best <- NULL
+best.uni.k <- best.uni <- best <- NULL
 
 args <- commandArgs(TRUE)
 s <- strsplit(args, "=")
