@@ -20,8 +20,9 @@ options(warn=-1)
 DIR="discovery"
 AVGFILE="avg_weights_opt"
 
-usage <- "usage: getmodels.R nzreq=<num SNPS required>"
+usage <- "usage: getmodels.R nzreq=<num SNPS required> <uni=FALSE>"
 
+uni <- FALSE
 args <- commandArgs(TRUE)
 s <- strsplit(args, "=")
 for(m in s) {
@@ -34,6 +35,11 @@ if(!exists("nzreq", mode="character")) {
 
 nzreq <- as.numeric(nzreq)
 if(is.na(nzreq) || as.integer(nzreq) != nzreq || nzreq <= 0) {
+   stop(usage)
+}
+
+uni <- as.logical(uni)
+if(is.na(uni)) {
    stop(usage)
 }
 
@@ -71,11 +77,13 @@ nz <- lapply(1:nreps, function(i) {
 # Get best model with the closest model size to requested
 nzopt <- lapply(nz, sapply, function(n) which.min((n - nzreq)^2))
 
+prefix <- ifelse(uni, "multivar_", "")
+
 b <- lapply(1:nreps, function(rep) {
    lapply(1:nfolds, function(fold) {
       w <- nzopt[[rep]][fold]
-      f <- sprintf("%s/crossval%s/beta.csv.%02d.%02d",
-	 dir, rep, w - 1, fold - 1)
+      f <- sprintf("%s/crossval%s/%sbeta.csv.%02d.%02d",
+	 dir, rep, prefix, w - 1, fold - 1)
       read.table(f, sep=":", header=FALSE)
    })
 })
@@ -93,7 +101,7 @@ bpath <- lapply(1:nreps, function(rep) {
    lapply(1:nfolds, function(fold) {
       l <- list.files(
 	 path=sprintf("%s/crossval%s", dir, rep),
-	 pattern=sprintf("^beta.csv.[[:digit:]]+.%02d$", fold - 1),
+	 pattern=sprintf("^%sbeta.csv.[[:digit:]]+.%02d$", prefix, fold - 1),
 	 full.names=TRUE
       )
       lapply(l, function(x) {
@@ -115,7 +123,7 @@ bpathm <- lapply(1:m, function(i) {
 
 # Average weights at chosen model, over cross-validation reps, 
 # including intercept
-write.table(b2m["0"], file=sprintf("%s/intercept.txt", dir),
+write.table(b2m["0"], file=sprintf("%s/%sintercept.txt", dir, prefix),
    col.names=FALSE, sep=",", quote=FALSE, row.names=FALSE)
 
 # PLINK score file, excluding intercept
@@ -126,7 +134,7 @@ w <- as.integer(names(b2mp))
 
 d <- data.frame(snps[w,], b2mp)
 
-write.table(d, file=sprintf("%s/%s.score", dir, avgfile),
+write.table(d, file=sprintf("%s/%s%s.score", dir, prefix, avgfile),
    quote=FALSE, row.names=FALSE, col.names=FALSE)
 
 # Write averaged models over the regularisation path, plus intercept for each
@@ -136,9 +144,9 @@ for(i in seq(along=bpathm)) {
    x <- x[order(abs(x), decreasing=TRUE)]#[1:nzreq]
    w <- as.integer(names(x))
    d <- data.frame(snps[w[w != 0], ], x[w != 0])
-   write.table(d, file=sprintf("%s/%s_path_%s.score", dir, avgfile, i),
+   write.table(d, file=sprintf("%s/%s%s_path_%s.score", dir, prefix, avgfile, i),
       quote=FALSE, row.names=FALSE, col.names=FALSE)
-   write.table(x["0"], file=sprintf("%s/intercept_path_%s.txt", dir, i),
+   write.table(x["0"], file=sprintf("%s/%sintercept_path_%s.txt", dir, prefix, i),
       col.names=FALSE, sep=",", quote=FALSE, row.names=FALSE)
 }
 
