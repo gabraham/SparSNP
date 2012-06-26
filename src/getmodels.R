@@ -69,7 +69,7 @@ r <- read.table(sprintf("%s/snps.txt", dir), header=FALSE,
 
 nz <- lapply(1:nreps, function(i) {
    lapply(1:nfolds, function(j) {
-      scan(sprintf("%s/crossval%s/nonzero.csv.%02d", dir, i, j - 1),
+      scan(sprintf("%s/crossval%s/%snonzero.csv.%02d", dir, prefix, i, j - 1),
 	 quiet=TRUE)
    })
 })
