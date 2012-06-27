@@ -5,7 +5,7 @@
 
 #include <stdlib.h>
 #include <libgen.h>
-#include "cd.h"
+#include "sparsnp.h"
 #include "util.h"
 
 #define OPTIONS_CALLER cd

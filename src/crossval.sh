@@ -15,7 +15,6 @@ D=$(dirname $1)
 F=$(basename $1)
 ROOT=$D/$F
 
-EXEDIR=~/Code/cd/src/sparsnp
 MODEL=$2
 
 ######################################################################
@@ -38,9 +37,9 @@ MODEL=$2
 # Don't change these unless you know what you're doing
 N=$(cat "$ROOT".fam | wc -l | awk '{print $1, $2}')
 P=$(cat "$ROOT".bim | wc -l | awk '{print $1, $2}')
-BED=$($EXEDIR/realpath "$ROOT".bed)
-FAM=$($EXEDIR/realpath "$ROOT".fam)
-BIM=$($EXEDIR/realpath "$ROOT".bim)
+BED=$(realpath "$ROOT".bed)
+FAM=$(realpath "$ROOT".fam)
+BIM=$(realpath "$ROOT".bim)
 SCALE=scale.bin
 FOLDIND="-foldind folds.ind"
 ######################################################################
@@ -109,19 +108,19 @@ function run {
       pushd $dir
 
       # Create cross-validation folds
-      $EXEDIR/split -folds folds.txt -ind folds.ind -nfolds $NFOLDS -n $N
+      makefolds -folds folds.txt -ind folds.ind -nfolds $NFOLDS -n $N
 
       # Get scale of each crossval fold
-      $EXEDIR/scale -bin $BED -n $N -p $P $FOLDIND 
+      scale -bin $BED -n $N -p $P $FOLDIND 
    
       # Run the model
-      $EXEDIR/cd -train -model $MODEL -n $N -p $P \
+      sparsnp -train -model $MODEL -n $N -p $P \
 	 -scale $SCALE -bin $BED -nzmax $NZMAX -nl1 $NLAMBDA1 -l1min $L1MIN -v \
 	 $FOLDIND -fam $FAM -l2 $LAMBDA2
  
       # Predict for test folds
       B=$(for((i=0;i<NLAMBDA1;i++)); do printf 'beta.csv.%02d ' $i; done)
-      $EXEDIR/cd -predict -model $MODEL -n $N -p $P -v \
+      sparsnp -predict -model $MODEL -n $N -p $P -v \
 	 -bin $BED -betafiles $B \
 	 -scale $SCALE \
 	 $FOLDIND -fam $FAM
@@ -134,7 +133,7 @@ function run {
 }
 
 export -f run
-export EXEDIR NFOLDS N P BED FAM FOLDIND MODEL SCALE NZMAX NLAMBDA1 L1MIN LAMBDA2
+export NFOLDS N P BED FAM FOLDIND MODEL SCALE NZMAX NLAMBDA1 L1MIN LAMBDA2
 
 seq $REP_START $REP_END | xargs -P$NUMPROCS -I{} bash -c "run {}"
 

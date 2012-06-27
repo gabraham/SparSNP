@@ -3,7 +3,7 @@
  * All rights reserved.
  */
 
-#include "cd.h"
+#include "sparsnp.h"
 
 void opt_free(Opt *opt)
 {
@@ -362,7 +362,7 @@ int opt_parse(int argc, char* argv[], Opt* opt)
             || opt->n == 0 || opt->p == 0 
 	    || (opt->mode == MODE_TRAIN && !opt->scalefile))
       {
-         printf("usage: cd [-train|-predict] -model <model> \
+         printf("usage: sparsnp [-train|-predict] -model <model> \
 -bin <filename> -n <#samples> -p <#variables> -scale <scalefile> \
 [-betafiles <beta filename/s>] \
 [-maxepochs <maxepochs>] [-maxiters <maxiters>] [-l1 <lambda1>] \

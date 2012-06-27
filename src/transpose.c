@@ -1,6 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include "cd.h"
+#include "sparsnp.h"
 
 int transpose(char *filename_in, char *filename_out, const int n,
    const int p, const unsigned int bufsize)

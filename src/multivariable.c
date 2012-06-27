@@ -1,5 +1,5 @@
 #include "common.h"
-#include "cd.h"
+#include "sparsnp.h"
 #include "util.h"
 #include "svd.h"
 #include "multivariable.h"

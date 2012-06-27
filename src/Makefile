@@ -1,7 +1,10 @@
 
 .PHONY: all
 
-# Mac 10.6 differences:
+# clang won't work on OSX 10.7.4 due to libgfortran not being found
+CC=gcc
+
+# Mac OSX differences:
 #
 # * linker won't accept -allow-multiple-definition, required on Linux 
 #   as a hack for xerbla clash between lapack and blas
@@ -27,8 +30,8 @@ CFLAGS = -std=gnu99 -Wall -ggdb3 -g3 \
 	  -D_FILE_OFFSET_BITS=$(LONG_BIT) \
 	  $(OS)
 
-targets = cd scale transpose hapgen2bin hapgen2ped \
-	  cbind split unpack univariable subsample \
+targets = sparsnp scale transpose hapgen2bin hapgen2ped \
+	  cbind makefolds unpack univariable subsample \
 	  realpath
 
 all: $(targets)
@@ -49,10 +52,11 @@ static: $(targets)
 
 LIBRARIES = -lpthread -llapack -lblas -lgfortran -lm
 
-cd: common.c coder.c ind.c gmatrix.c loss.c util.c options.c main.c cd.c
-	$(CC) $(CFLAGS) $^ $(LIBRARIES) -o cd
+sparsnp: common.c coder.c ind.c gmatrix.c loss.c util.c options.c \
+	 main.c sparsnp.c
+	$(CC) $(CFLAGS) $^ $(LIBRARIES) -o sparsnp
 
-scale: common.c coder.c ind.c gmatrix.c cd.c scale.c util.c
+scale: common.c coder.c ind.c gmatrix.c sparsnp.c scale.c util.c
 	$(CC) $(CFLAGS) $^ $(LIBRARIES) -o scale
 
 transpose: common.c coder.c transpose.c
@@ -67,14 +71,14 @@ hapgen2ped: common.c hapgen2ped.c
 cbind: common.c cbind.c
 	$(CC) $(CFLAGS) $^ $(LIBRARIES) -o cbind
 
-split: common.c util.c ind.c split.c
-	$(CC) $(CFLAGS) $^ $(LIBRARIES) -o split
+makefolds: common.c util.c ind.c makefolds.c
+	$(CC) $(CFLAGS) $^ $(LIBRARIES) -o makefolds
 
 unpack: common.c coder.c ind.c gmatrix.c unpack.c util.c
 	$(CC) $(CFLAGS) $^ $(LIBRARIES) -o unpack
 
 univariable: common.c coder.c ind.c gmatrix.c loss.c util.c \
-	     options.c cd.c svd.c matrix.c thin.c \
+	     options.c sparsnp.c svd.c matrix.c thin.c \
 	     multivariable.c univariable.c
 	$(CC) $(CFLAGS) -llapack -lblas -lm $^ $(LIBRARIES) -o univariable \
 	$(MULDEF)

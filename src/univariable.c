@@ -1,6 +1,6 @@
 #include <libgen.h>
 #include "common.h"
-#include "cd.h"
+#include "sparsnp.h"
 #include "util.h"
 #include "univariable.h"
 #include "multivariable.h"

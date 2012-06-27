@@ -4,7 +4,7 @@
  */
 
 #include "common.h"
-#include "cd.h"
+#include "sparsnp.h"
 
 #define printfverb(...) if(verbose) printf(__VA_ARGS__)
 

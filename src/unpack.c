@@ -4,7 +4,7 @@
  */
 
 #include "common.h"
-#include "cd.h"
+#include "sparsnp.h"
 
 int unpack(gmatrix *g, char *filename_out)
 {

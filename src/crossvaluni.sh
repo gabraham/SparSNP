@@ -17,15 +17,14 @@ D=$(dirname $1)
 F=$(basename $1)
 ROOT=$D/$F
 
-EXEDIR=~/Code/cd/src/sparsnp
 MODEL="logistic"
 
 # Don't change these unless you know what you're doing
 N=$(cat "$ROOT".fam | wc -l)
 P=$(cat "$ROOT".bim | wc -l)
-BED=$($EXEDIR/realpath "$ROOT".bed)
-FAM=$($EXEDIR/realpath "$ROOT".fam)
-BIM=$($EXEDIR/realpath "$ROOT".bim)
+BED=$(realpath "$ROOT".bed)
+FAM=$(realpath "$ROOT".fam)
+BIM=$(realpath "$ROOT".bim)
 
 echo "BED: $BED"
 echo "BIM: $BIM"
@@ -60,7 +59,7 @@ function run {
    else
       pushd $dir
 
-      $EXEDIR/univariable -train -model $MODEL \
+      univariable -train -model $MODEL \
 	 -bin $BED -fam $FAM -n $N -p $P -nzmax $NZMAX \
          -foldind folds.ind -v
 
@@ -69,7 +68,7 @@ function run {
             do printf "multivar_beta.csv.%02d " $i; \
             done)
 
-      $EXEDIR/univariable -predict -model logistic \
+      univariable -predict -model logistic \
 	 -bin $BED -fam $FAM -n $N -p $P \
          -foldind folds.ind -v -predict -betafiles $tfiles
 
@@ -78,7 +77,7 @@ function run {
 }
 
 export -f run
-export EXEDIR NFOLDS N P BED FAM MODEL NZMAX 
+export NFOLDS N P BED FAM MODEL NZMAX 
 
 seq $REP_START $REP_END | xargs -P$NUMPROCS -I{} bash -c "run {}"
 
