@@ -30,7 +30,7 @@ CFLAGS = -std=gnu99 -Wall -ggdb3 -g3 \
 	  -D_FILE_OFFSET_BITS=$(LONG_BIT) \
 	  $(OS)
 
-targets = sparsnp scale transpose hapgen2bin hapgen2ped \
+targets = sparsnp scale transpose \
 	  cbind makefolds unpack univariable subsample \
 	  realpath
 
@@ -61,12 +61,6 @@ scale: common.c coder.c ind.c gmatrix.c sparsnp.c scale.c util.c
 
 transpose: common.c coder.c transpose.c
 	$(CC) $(CFLAGS) $^ $(LIBRARIES) -o transpose
-
-hapgen2bin: common.c util.c coder.c hapgen2bin.c
-	$(CC) $(CFLAGS) $^ $(LIBRARIES) -o hapgen2bin
-
-hapgen2ped: common.c hapgen2ped.c
-	$(CC) $(CFLAGS) $^ $(LIBRARIES) -o hapgen2ped
 
 cbind: common.c cbind.c
 	$(CC) $(CFLAGS) $^ $(LIBRARIES) -o cbind
