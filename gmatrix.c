@@ -23,7 +23,7 @@ int sample_init(sample *s)
 
 int gmatrix_init(gmatrix *g, char *filename, int n, int p,
       char *scalefile, short yformat, int model, int modeltype,
-      short encoded, short binformat, char *folds_ind_file,
+      short encoded, char *folds_ind_file,
       short mode, loss_pt loss_pt_func, char *subset_file, 
       char *famfilename)
 {
@@ -54,7 +54,6 @@ int gmatrix_init(gmatrix *g, char *filename, int n, int p,
    g->sd = NULL;
    g->tmp = NULL;
    g->xtmp = NULL;
-   /*g->ytmp = NULL;*/
    g->x = NULL;
    g->xthinned = NULL;
    g->ignore = NULL;
@@ -64,8 +63,6 @@ int gmatrix_init(gmatrix *g, char *filename, int n, int p,
    g->encoded = encoded;
    g->nencb = (int)ceil((double)n / PACK_DENSITY);
    g->encbuf = NULL;
-   /*g->decode = &decode;*/
-   g->binformat = binformat;
    g->folds_ind_file = folds_ind_file;
    g->nfolds = 1;
    g->folds = NULL;

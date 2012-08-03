@@ -76,7 +76,6 @@ typedef struct Opt {
    int n_beta_files;
    char *predict_file;
    short encoded;
-   short binformat;
    char *folds_ind_file;
    char *numnz_file;
    double *zthresh;

@@ -71,7 +71,6 @@ int opt_defaults(Opt *opt, short caller)
    opt->predict_func = NULL;
    opt->predict_file = "predicted.csv";
    opt->encoded = TRUE;
-   opt->binformat = BINFORMAT_PLINK;
    opt->beta_files_fold = NULL;
    opt->numnz_file = "nonzero.csv";
    opt->outdir = "";
@@ -396,8 +395,7 @@ onl   y using the first one\n");
       }
    }
 
-   if(opt->mode == MODE_TRAIN 
-	 && opt->binformat == BINFORMAT_PLINK && !opt->famfilename)
+   if(opt->mode == MODE_TRAIN && !opt->famfilename)
    {
       printf("Error: you must provide a FAM filename (-fam) when using plink BED input\n");
       return FAILURE;

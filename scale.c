@@ -89,8 +89,7 @@ int main(int argc, char* argv[])
         *filename_scale = "scale.bin",
 	*filename_beta_out = NULL,
 	*filename_folds_ind = NULL;
-   short encoded = TRUE,
-	 binformat = BINFORMAT_PLINK;
+   short encoded = TRUE;
    gmatrix g;
    char tmp[100];
 
@@ -135,7 +134,7 @@ int main(int argc, char* argv[])
 
    if(!gmatrix_init(&g, filename_bin, n, p,
 	    NULL, YFORMAT01, MODEL_LINEAR, MODELTYPE_REGRESSION,
-	    encoded, binformat, filename_folds_ind,
+	    encoded, filename_folds_ind,
 	    MODE_TRAIN, NULL, NULL, NULL))
       return EXIT_FAILURE;
 

@@ -88,7 +88,6 @@ int main(int argc, char *argv[])
    int i, n = 0, p = 0;
    char *filename_bin = NULL,
 	*filename_out = NULL;
-   short binformat = BINFORMAT_BIN;
    gmatrix g;
    int *subvec = NULL;
    int ns = 0,
@@ -131,7 +130,7 @@ int main(int argc, char *argv[])
    }
 
    if(!gmatrix_init(&g, filename_bin, n, p, NULL,
-	 YFORMAT01, MODEL_LINEAR, MODELTYPE_REGRESSION, TRUE, binformat,
+	 YFORMAT01, MODEL_LINEAR, MODELTYPE_REGRESSION, TRUE,
 	 NULL, MODE_TRAIN, NULL, NULL, NULL))
       return EXIT_FAILURE;
 

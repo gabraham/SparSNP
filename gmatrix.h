@@ -105,7 +105,6 @@ typedef struct gmatrix {
    int modeltype;
    short encoded;
    int nencb;
-   short binformat;
    /*void (*decode)(unsigned char *out,
 	 const unsigned char *in,
 	 const int n);*/
@@ -136,7 +135,7 @@ typedef struct gmatrix {
 int sample_init(sample *);
 int gmatrix_init(gmatrix *g, char *filename, int n, int p,
       char *scalefile, short yformat, int model, int modeltype,
-      short encoded, short binformat, char *folds_ind_file,
+      short encoded, char *folds_ind_file,
       short mode, loss_pt, char *subsample_file,
       char *famfilename);
 int gmatrix_reset(gmatrix *);
