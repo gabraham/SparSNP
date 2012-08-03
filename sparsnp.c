@@ -29,44 +29,48 @@ double get_lambda1max_gmatrix(gmatrix *g,
       phi1 phi1_func, phi2 phi2_func, inv inv_func, step step_func)
 {
    int i, j, n = g->ncurr, n1 = g->ncurr - 1, p1 = g->p + 1;
+   int k, K = g->K;
    double s, zmax = 0, beta_new;
    sample sm;
 
    if(!sample_init(&sm))
       return FAILURE;
 
-   g->nextcol(g, &sm, 0, NA_ACTION_RANDOM);
-
-   /* First compute the intercept. When all other variables
-    * are zero, the intercept is just inv(mean(y)) for a suitable inv()
-    * function depending on the loss */
-   s = 0;
-   for(i = n1 ; i >= 0 ; --i)
-      s += g->y[i];
-
-   beta_new = inv_func(s / n);
-   updatelp(g, beta_new, sm.x, 0);
-   printf("intercept: %.15f (%d samples)\n", beta_new, n);
-
-   /* find smallest lambda1 that makes all coefficients zero, by
-    * finding the largest z, but let the intercept affect lp
-    * first because it's not penalised. */
-   for(j = 1 ; j < p1; j++)
+   for(k = 0 ; k < K ; k++)
    {
-      if(g->ignore[j])
-	 continue;
-      g->nextcol(g, &sm, j, NA_ACTION_RANDOM);
-
-      s = fabs(step_func(&sm, g));
-      zmax = (zmax < s) ? s : zmax;
-   } 
-
-   g->beta[0] = beta_new;
+      g->nextcol(g, &sm, 0, NA_ACTION_RANDOM);
+   
+      /* First compute the intercept. When all other variables
+       * are zero, the intercept is just inv(mean(y)) for a suitable inv()
+       * function depending on the loss */
+      s = 0;
+      for(i = n1 ; i >= 0 ; --i)
+         s += g->y[n * k + i];
+   
+      beta_new = inv_func(s / n);
+      updatelp(g, beta_new, sm.x, 0, k);
+      printf("[k=%d] intercept: %.15f (%d samples)\n", k, beta_new, n);
+   
+      /* find smallest lambda1 that makes all coefficients zero, by
+       * finding the largest z, but let the intercept affect lp
+       * first because it's not penalised. */
+      for(j = 1 ; j < p1; j++)
+      {
+         if(g->ignore[j])
+   	 continue;
+         g->nextcol(g, &sm, j, NA_ACTION_RANDOM);
+   
+         s = fabs(step_func(&sm, g, k));
+         zmax = (zmax < s) ? s : zmax;
+      } 
+   
+      g->beta[k * p1] = beta_new;
+   }
 
    return zmax;
 }
 
-/* Coordinate descent 
+/* Coordinate descent, multi-task
  *
  * This function will only work for quadratic functions like linear loss and
  * squared hinge loss, since it assumes that the Newton step for each variable
@@ -79,12 +83,13 @@ int cd_gmatrix(gmatrix *g,
       const int maxiters,
       const double lambda1,
       const double lambda2,
+      const double gamma,
       const double thresh,
       const int verbose,
       const double trunc)
 {
-   const int p = g->p, p1 = g->p + 1;
-   int j, allconverged = 0, numactive = 0,
+   const int p = g->p, p1 = g->p + 1, K = g->K;
+   int j, k, allconverged = 0, numactive = 0,
        epoch = 1,
        good = FALSE;
    double s = 0, beta_new, delta;
@@ -97,8 +102,8 @@ int cd_gmatrix(gmatrix *g,
    if(!sample_init(&sm))
       return FAILURE;
 
-   CALLOCTEST(beta_old, p1, sizeof(double));
-   CALLOCTEST(active_old, p1, sizeof(int));
+   CALLOCTEST(beta_old, p1 * K, sizeof(double));
+   CALLOCTEST(active_old, p1 * K, sizeof(int));
 
    for(j = p ; j >= 0 ; --j)
       active_old[j] = g->active[j];
@@ -107,37 +112,36 @@ int cd_gmatrix(gmatrix *g,
    {
       numactive = 0;
 
-      for(j = 0 ; j < p1; j++)
+      for(k = 0 ; k < K ; k++)
       {
-	 beta_new = beta_old[j] = g->beta[j];
-	 
-	 if(g->active[j])
-	 {
-	    g->nextcol(g, &sm, j, NA_ACTION_RANDOM);
+	 for(j = 0 ; j < p1; j++)
+      	 {
+      	    beta_new = beta_old[j] = g->beta[j];
+      	    
+      	    if(g->active[j])
+      	    {
+      	       g->nextcol(g, &sm, j, NA_ACTION_RANDOM);
 
-	    s = step_func(&sm, g);
-	    beta_new = g->beta[j] - s;
-	    
-      	    if(j > 0)
-      	       beta_new = soft_threshold(beta_new, lambda1) * l2recip;
-      	    beta_new = clip(beta_new, -truncl, truncl);
+      	       s = step_func(&sm, g, k);
+      	       beta_new = g->beta[j] - s;
+      	       
+	       if(j > 0)
+		  beta_new = soft_threshold(beta_new, lambda1) * l2recip;
+	       beta_new = clip(beta_new, -truncl, truncl);
 
-	    //beta_new = g->beta[j] - s;
-      	    //if(j > 0) 
-      	    //   beta_new = soft_threshold(beta_new, lambda1);
+      	       delta = beta_new - g->beta[j];
+      	       
+      	       if(fabs(delta) > ZERO_THRESH)
+      	       {
+      	          updatelp(g, delta, sm.x, j, k);
+      	          g->beta[j] = beta_new;
+      	       }
 
-	    delta = beta_new - g->beta[j];
-	    
-	    if(fabs(delta) > ZERO_THRESH)
-	    {
-	       updatelp(g, delta, sm.x, j);
-	       g->beta[j] = beta_new;
-	    }
+      	       g->active[j] = g->beta[j] != 0;
+      	    }
 
-	    g->active[j] = g->beta[j] != 0;
-	 }
-
-	 numactive += g->active[j];
+      	    numactive += g->active[j];
+      	 }
       }
 
       printfverb("fold: %d  epoch: %d  numactive: %d\n", 

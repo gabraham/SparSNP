@@ -87,7 +87,7 @@ int run_train(Opt *opt, gmatrix *g)
       ret = cd_gmatrix(
 	    g, opt->step_func,
 	    opt->maxepochs, opt->maxiters,
-	    opt->lambda1path[i], opt->lambda2,
+	    opt->lambda1path[i], opt->lambda2, opt->gamma,
 	    opt->threshold, opt->verbose, opt->trunc);
 
       if(ret == CDFAILURE)

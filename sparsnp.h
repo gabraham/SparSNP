@@ -28,7 +28,7 @@ typedef double (*predict_pt)(double);
 typedef double (*phi1)(double);
 typedef double (*phi2)(double);
 typedef double (*inv)(double);
-typedef double (*step)(sample *s, gmatrix *g);
+typedef double (*step)(sample *s, gmatrix *g, int k);
 
 typedef double (*predict)(double x);
 
@@ -42,6 +42,7 @@ typedef struct Opt {
    int maxiters;
    double lambda1;
    double lambda2;
+   double gamma;
    double threshold;
    double l1minratio;
    double l1max;
@@ -95,7 +96,7 @@ typedef struct Opt {
 int cd_gmatrix(gmatrix *g,
       step step_func,
       const int maxepochs, const int maxiters,
-      const double lambda1, const double lambda2,
+      const double lambda1, const double lambda2, const double gamma,
       const double threshold, const int verbose,
       const double trunc);
 
@@ -114,8 +115,8 @@ int make_lambda1path(Opt *opt, gmatrix *g);
 int run(Opt *opt, gmatrix *g);
 void zero_model(gmatrix *g);
 
-double step_regular_linear(sample *s, gmatrix *g);
-double step_regular_logistic(sample *s, gmatrix *g);
-double step_regular_sqrhinge(sample *s, gmatrix *g);
+//double step_regular_linear(sample *s, gmatrix *g);
+//double step_regular_logistic(sample *s, gmatrix *g);
+//double step_regular_sqrhinge(sample *s, gmatrix *g);
 
 

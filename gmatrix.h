@@ -80,6 +80,7 @@ typedef struct gmatrix {
    int *ncurr_j;
    double *ncurr_recip_j;
    int p;
+   int K;
    int i;
    int j;
    double *mean, *sd;
@@ -143,6 +144,7 @@ void gmatrix_free(gmatrix *);
 int gmatrix_disk_nextcol(gmatrix *g, sample *sm, int skip, int na_action);
 int gmatrix_mem_nextcol(gmatrix *g, sample *sm, int j, int na_action);
 int gmatrix_disk_read_y(gmatrix *g);
+int gmatrix_fam_read_y_matrix(gmatrix *g);
 int gmatrix_disk_skipcol(gmatrix *g);
 int gmatrix_disk_skipcol(gmatrix *g);
 int gmatrix_read_scaling(gmatrix *g, char *file_scale);
@@ -161,12 +163,12 @@ int gmatrix_read_matrix(gmatrix *g, int *ind, int m);
 int gmatrix_load_subsets(gmatrix *g);
 int gmatrix_plink_check_pheno(gmatrix *g);
 
-double step_regular_linear(sample *s, gmatrix *g);
-double step_regular_sqrhinge(sample *s, gmatrix *g);
-double step_regular_logistic(sample *s, gmatrix *g);
+double step_regular_linear(sample *s, gmatrix *g, int k);
+double step_regular_sqrhinge(sample *s, gmatrix *g, int k);
+double step_regular_logistic(sample *s, gmatrix *g, int k);
 int init_newton(gmatrix *g);
 void updatelp(gmatrix *g, const double update,
-      const double *restrict x, int j);
+      const double *restrict x, int j, int k);
 
 int cache_get(cache *ca, int j, double **x);
 int cache_init(cache *ca, int n, int p);

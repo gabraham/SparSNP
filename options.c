@@ -128,7 +128,7 @@ int opt_parse(int argc, char* argv[], Opt* opt)
 
    for(i = 1 ; i < argc ; i++)
    {
-      if(strcmp2(argv[i], "-bin"))
+      if(strcmp2(argv[i], "-bin") || strcmp2(argv[i], "-bed"))
       {
 	 i++;
 	 opt->filename = argv[i];
@@ -225,6 +225,11 @@ int opt_parse(int argc, char* argv[], Opt* opt)
       {
 	 i++;
 	 opt->lambda2 = atof(argv[i]);
+      }
+      else if(strcmp2(argv[i], "-gamma"))
+      {
+	 i++;
+	 opt->gamma = atof(argv[i]);
       }
       else if(strcmp2(argv[i], "-l1min"))
       {
@@ -362,7 +367,7 @@ int opt_parse(int argc, char* argv[], Opt* opt)
 	    || (opt->mode == MODE_TRAIN && !opt->scalefile))
       {
          printf("usage: sparsnp [-train|-predict] -model <model> \
--bin <filename> -n <#samples> -p <#variables> -scale <scalefile> \
+-bed <filename> -n <#samples> -p <#variables> -scale <scalefile> \
 [-betafiles <beta filename/s>] \
 [-maxepochs <maxepochs>] [-maxiters <maxiters>] [-l1 <lambda1>] \
 -l2 <lambda2>] [-thresh <threshold>] [-foldind <foldsfile>] \
@@ -382,7 +387,7 @@ onl   y using the first one\n");
             || opt->n == 0 || opt->p == 0)
       {
          printf("usage: univariable [-train|-predict] -model <model> \
--bin <filename> -n <#samples> -p <#variables>  \
+-bed <filename> -n <#samples> -p <#variables>  \
 [-betafiles <beta filename/s>] \
 [-foldind <foldsfile>] [-existingunivar] \
 [-pred <prediction file>] [-nomultivar] [-v] [-vv]\n");
