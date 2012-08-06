@@ -277,19 +277,26 @@ int gmatrix_split_y(gmatrix *g)
    {
       for(k = K1 ; k >= 0 ; --k)
       {
-	 m = 0;
-	 for(i = n1 ; i >= 0 ; --i)
+         m = g->ncurr - 1;
+         for(i = n1 ; i >= 0 ; --i)
       	 {
       	    if(g->folds_ind[g->fold * n + i])
-	    {
-      	       g->y[n * k + m] = g->y_orig[n * k + i];
-	       m-- ;
-	    }
+            {
+      	       g->y[g->ncurr * k + m] = g->y_orig[n * k + i];
+               m-- ;
+            }
       	 }
       }
    }
    else 
    {
+      if(g->n != g->ncurr)
+      {
+	 fprintf(stderr,
+	    "something is wrong in fold splitting, \
+g->n != g->ncurr (%d != %d)\n", g->n, g->ncurr);
+	 return FAILURE;
+      }
       /* simply copy the vector, don't care about folds */
       for(i = n * g->K - 1 ; i >= 0 ; --i)
 	 g->y[i] = g->y_orig[i];
@@ -678,6 +685,7 @@ int gmatrix_fam_read_y_matrix(gmatrix *g)
 
    /* now truncate K to what we have observed and copy over */
    g->K = k;
+   printf("truncating to %d tasks\n", k);
    CALLOCTEST(g->y_orig, g->n * g->K, sizeof(double));
    for(i = n * k - 1 ; i >= 0 ; --i)
       g->y_orig[i] = tmp[i];
