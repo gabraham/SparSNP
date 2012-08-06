@@ -72,12 +72,6 @@ int gmatrix_init(gmatrix *g, char *filename, int n, int p,
    g->ntrainrecip = NULL;
    g->ntestrecip = NULL;
    g->ncurr = 0;
-   g->ncurr_j = NULL; /* current number of samples, depending on
-			 whether we're in training or testing and
-			 which fold we're in, etc. */
-   g->ncurr_recip_j = NULL; /* reciprocal of ncurr to
-			       allow multiplication instead
-			       of division */
    g->mode = mode;
    g->nseek = sizeof(dtype) * (encoded ? g->nencb : g->n);
    g->beta_orig = NULL;
@@ -110,8 +104,6 @@ int gmatrix_init(gmatrix *g, char *filename, int n, int p,
    srand48(time(NULL));
 
    CALLOCTEST(g->beta_orig, p1 * g->K, sizeof(double));
-   CALLOCTEST(g->ncurr_j, p1, sizeof(int));
-   CALLOCTEST(g->ncurr_recip_j, p1, sizeof(double));
    
    if(filename)
       FOPENTEST(g->file, filename, "rb");
@@ -245,8 +237,6 @@ void gmatrix_free(gmatrix *g)
    FREENULL(g->ntestrecip);
    FREENULL(g->active);
    FREENULL(g->numnz);
-   FREENULL(g->ncurr_j);
-   FREENULL(g->ncurr_recip_j);
    
    if(g->xcaches)
    {
@@ -264,8 +254,8 @@ void gmatrix_free(gmatrix *g)
  */
 int gmatrix_split_y(gmatrix *g)
 {
-   int i, n = g->n, n1 = g->n - 1;
-   int k = g->ncurr - 1;
+   int i, n = g->n, n1 = g->n - 1, k, K1 = g->K - 1;
+   int m = g->ncurr - 1;
 
    if(g->ncurr <= 0) {
       fprintf(stderr, "gmatrix_split_y: ncurr can't be zero");
@@ -274,19 +264,29 @@ int gmatrix_split_y(gmatrix *g)
 
    FREENULL(g->y);
 
-   MALLOCTEST(g->y, sizeof(double) * g->ncurr);
+   MALLOCTEST(g->y, sizeof(double) * g->ncurr * g->K);
 
    /* represent y as 0/1 or -1/1, allowing for different
     * samples sizes if cross-validation is used */
    if(g->nfolds > 1) /* no cv */
    {
-      for(i = n1 ; i >= 0 ; --i)
-	 if(g->folds_ind[g->fold * n + i])
-	    g->y[k--] = g->y_orig[i];
+      for(k = K1 ; k >= 0 ; --k)
+      {
+	 m = 0;
+	 for(i = n1 ; i >= 0 ; --i)
+      	 {
+      	    if(g->folds_ind[g->fold * n + i])
+	    {
+      	       g->y[k * n + m] = g->y_orig[k * n + i];
+	       m-- ;
+	    }
+      	 }
+      }
    }
    else 
    {
-      for(i = n1 ; i >= 0 ; --i)
+      /* simply copy the vector, don't care about folds */
+      for(i = n * g->K - 1 ; i >= 0 ; --i)
 	 g->y[i] = g->y_orig[i];
    }
 
@@ -593,7 +593,7 @@ these samples with PLINK; aborting\n",
  */
 int gmatrix_fam_read_y_matrix(gmatrix *g)
 {
-   int i = 0, k = 0, n = g->n;
+   int i = 0, k = 0, n = g->n, m;
    FILE* famfile = NULL;
    char *famid = NULL,
         *individ = NULL,
@@ -603,16 +603,14 @@ int gmatrix_fam_read_y_matrix(gmatrix *g)
 	*pheno = NULL;
    int ret;
    int const NUMFIELDS = 6;
-   int const MAXPHENO = 1024;
-   int const MAX_LINE_CHARS = MAXPHENO * 10;
-   char *line = NULL;
    double *tmp;
+   char line[MAX_LINE_CHARS];
 
    /* spaces match tabs as well */
    char f[19] = "%s %s %s %s %s ";
 
    /* we don't know how what K is before reading the pheno file */
-   CALLOCTEST(tmp, g->n * MAXPHENO, sizeof(double));
+   CALLOCTEST(tmp, g->n * MAX_NUM_PHENO, sizeof(double));
 
    MALLOCTEST(famid, sizeof(char) * FAM_MAX_CHARS);
    MALLOCTEST(individ, sizeof(char) * FAM_MAX_CHARS);
@@ -620,7 +618,6 @@ int gmatrix_fam_read_y_matrix(gmatrix *g)
    MALLOCTEST(matid, sizeof(char) * FAM_MAX_CHARS);
    MALLOCTEST(sex, sizeof(char) * FAM_MAX_CHARS);
    CALLOCTEST(pheno, FAM_MAX_CHARS, sizeof(char));
-   CALLOCTEST(line, MAX_LINE_CHARS, sizeof(char));
 
    FOPENTEST(famfile, g->famfilename, "r");
 
@@ -638,9 +635,9 @@ int gmatrix_fam_read_y_matrix(gmatrix *g)
 	 return FAILURE;
       }
 
-      line = fgets(line, MAX_LINE_CHARS, famfile);
-      if(!line)
+      if(fgets(line, MAX_LINE_CHARS, famfile) == NULL)
       {
+	 printf(">>>>>>>>foo\n");
       	 if(!feof(famfile))
 	 {
 	    fprintf(stderr, "error in reading FAM file '%s'\n",
@@ -651,11 +648,12 @@ int gmatrix_fam_read_y_matrix(gmatrix *g)
       }
       else
       {
+	 m = 0;
 	 /* now read phenotypes */
-       	 while(k < MAXPHENO && sscanf(line, "%s ", pheno) != EOF)
+       	 while(k < MAX_NUM_PHENO && sscanf(&line[m], "%s ", pheno) != EOF)
        	 {
        	    tmp[i * n + k] = atof(pheno);
-	    line += strlen(pheno) + 1;
+	    m += strlen(pheno) + 1;
        	    k++;
        	 }
       }
@@ -880,6 +878,7 @@ void gmatrix_zero_model(gmatrix *g)
 /* Initialises the LP (linear predictor) */
 int gmatrix_init_lp(gmatrix *g)
 {
+   printf("gmatrix_init_lp: K=%d\n", g->K);
    FREENULL(g->lp);
    CALLOCTEST(g->lp, g->ncurr * g->K, sizeof(double));
 
@@ -985,33 +984,33 @@ void updatelp(gmatrix *g, const double update,
 	  *restrict ylp_neg_y_ylp = g->ylp_neg_y_ylp;
    double loss = 0, ylp = 0, explp = 0;
 
+   nki = n * k + n - 1;
    if(g->model == MODEL_LINEAR)
    {
       for(i = n - 1 ; i >= 0 ; --i)
       {
-	 nki = n * k + i;
-	 lp[nki] += x[nki] * update;
+	 lp[nki] += x[i] * update;
 	 err = lp[nki] - y[nki];
 	 loss += err * err;
+	 nki--;
       }
    }
    else if(g->model == MODEL_LOGISTIC)
    {
       for(i = n - 1 ; i >= 0 ; --i)
       {
-	 nki = n * k + i;
-	 lp[nki] += x[nki] * update;
+	 lp[nki] += x[i] * update;
 	 explp = exp(lp[nki]);
 	 lp_invlogit[nki] = explp / (1 + explp);
 	 loss += log(1 + explp) - y[nki] * lp[nki];
+	 nki--;
       }
    }
    else if(g->model == MODEL_SQRHINGE)
    {
       for(i = n - 1 ; i >= 0 ; --i)
       {
-	 nki = n * k + i;
-	 lp[nki] += x[nki] * update;
+	 lp[nki] += x[i] * update;
 	 ylp = y[nki] * lp[nki] - 1;
 
 	 if(ylp < 0)
@@ -1021,6 +1020,7 @@ void updatelp(gmatrix *g, const double update,
 	 }
 	 else
 	    ylp_neg_y_ylp[nki] = 0;
+	 nki--;
       }
    }
 

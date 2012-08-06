@@ -19,6 +19,9 @@
 #define MISSING_PHENO "-9"
 #define FAM_MAX_CHARS 100
 
+#define MAX_NUM_PHENO 1024
+#define MAX_LINE_CHARS MAX_NUM_PHENO * 10
+
 #define YFORMAT01 1
 #define YFORMAT11 2
 
@@ -78,7 +81,6 @@ typedef struct gmatrix {
    int ncurr;
    double ncurr_recip;
    int *ncurr_j;
-   double *ncurr_recip_j;
    int p;
    int K;
    int i;

@@ -95,7 +95,7 @@ int main(int argc, char* argv[])
 
    for(i = 1 ; i < argc ; i++)
    {
-      if(strcmp2(argv[i], "-bin"))
+      if(strcmp2(argv[i], "-bin") || strcmp2(argv[i], "-bed"))
       {
 	 i++;
 	 filename_bin = argv[i];
@@ -126,7 +126,7 @@ int main(int argc, char* argv[])
 
    if(!filename_bin || n == 0 || p == 0)
    {
-      printf("scale: -bin <filein> [-scale <fileout>] \
+      printf("scale: -bed <filein> [-scale <fileout>] \
 [-betafile <betafile>] -n #n -p #p \
 [-foldind <folds ind file>]\n");
       return EXIT_FAILURE;

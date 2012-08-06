@@ -228,6 +228,10 @@ int do_train(gmatrix *g, Opt *opt, char tmp[])
 	 make_lambda1path(opt, g);
 	 gmatrix_reset(g);
 
+	 ////////////// TEST /////////////
+	 return FAILURE;
+	 ////////////// TEST /////////////
+
 	 if(!(ret &= run_train(opt, g)))
 	    break;
 
