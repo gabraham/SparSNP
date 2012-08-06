@@ -140,7 +140,7 @@ void unscale_beta(double *beta2, double *beta1,
       {
          t = beta1[p * k + j] * mean[j];
          beta2[p * k + j] = beta1[j];
-         if(sd[j] != 0)
+         if(sd[j] != 0) /* TODO: better checking for zero */
          {
             t /= sd[j];
             beta2[p * k + j] /= sd[j];
