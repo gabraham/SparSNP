@@ -91,6 +91,7 @@ typedef struct Opt {
    char *subset_file;
    char *famfilename;
    char *outdir;
+   int scaley;
 } Opt;
 
 int cd_gmatrix(gmatrix *g,

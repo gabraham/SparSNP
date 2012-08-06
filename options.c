@@ -73,6 +73,7 @@ int opt_defaults(Opt *opt, short caller)
    opt->beta_files_fold = NULL;
    opt->numnz_file = "nonzero.csv";
    opt->outdir = "";
+   opt->scaley = FALSE;
 
    MALLOCTEST(opt->beta_files, sizeof(char*));
    MALLOCTEST(opt->beta_files[0], sizeof(char) * (strlen(beta_default) + 1));
@@ -356,6 +357,10 @@ int opt_parse(int argc, char* argv[], Opt* opt)
       {
 	 i++;
 	 opt->famfilename = argv[i];
+      }
+      else if(strcmp2(argv[i], "-scaley"))
+      {
+	 opt->scaley = TRUE;
       }
    }
 

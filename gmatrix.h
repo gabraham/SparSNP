@@ -19,9 +19,6 @@
 #define MISSING_PHENO "-9"
 #define FAM_MAX_CHARS 100
 
-#define MAX_NUM_PHENO 1024
-#define MAX_LINE_CHARS MAX_NUM_PHENO * 10
-
 #define YFORMAT01 1
 #define YFORMAT11 2
 
@@ -161,6 +158,8 @@ int gmatrix_split_y(gmatrix *g);
 int gmatrix_disk_read_y(gmatrix *g);
 int gmatrix_fam_read_y(gmatrix *g);
 int gmatrix_read_matrix(gmatrix *g, int *ind, int m);
+int gmatrix_scale_y(gmatrix *g);
+int gmatrix_trim_beta(gmatrix *g);
 
 int gmatrix_load_subsets(gmatrix *g);
 int gmatrix_plink_check_pheno(gmatrix *g);

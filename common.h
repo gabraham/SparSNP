@@ -16,6 +16,9 @@
 
 #define MAX_STR_LEN 10001
 
+#define MAX_NUM_PHENO 1024
+#define MAX_LINE_CHARS MAX_NUM_PHENO * 10
+
 /* Value below which std dev is considered zero */
 #define SDTHRESH 1e-10
 

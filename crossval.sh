@@ -93,8 +93,6 @@ fi
 echo "REP_START: $REP_START"
 echo "REP_END: $REP_END"
 
-#for((i=$REP_START;i<=$REP_END;i++))
-#do
 function run {
    i=$1
    dir="crossval$i"
@@ -111,25 +109,24 @@ function run {
       makefolds -folds folds.txt -ind folds.ind -nfolds $NFOLDS -n $N
 
       # Get scale of each crossval fold
-      scale -bin $BED -n $N -p $P $FOLDIND 
+      scale -bed $BED -n $N -p $P $FOLDIND 
    
       # Run the model
-      sparsnp -train -model $MODEL -n $N -p $P \
-	 -scale $SCALE -bin $BED -nzmax $NZMAX -nl1 $NLAMBDA1 -l1min $L1MIN -v \
+      echo sparsnp -train -model $MODEL -n $N -p $P \
+	 -scale $SCALE -bed $BED -nzmax $NZMAX -nl1 $NLAMBDA1 -l1min $L1MIN -v \
 	 $FOLDIND -fam $FAM -l2 $LAMBDA2
  
       # Predict for test folds
-      B=$(for((i=0;i<NLAMBDA1;i++)); do printf 'beta.csv.%02d ' $i; done)
-      sparsnp -predict -model $MODEL -n $N -p $P -v \
-	 -bin $BED -betafiles $B \
-	 -scale $SCALE \
-	 $FOLDIND -fam $FAM
+      #B=$(for((i=0;i<NLAMBDA1;i++)); do printf 'beta.csv.%02d ' $i; done)
+      #sparsnp -predict -model $MODEL -n $N -p $P -v \
+##	 -bed $BED -betafiles $B \
+#	 -scale $SCALE \
+#	 $FOLDIND -fam $FAM
 
       popd
    else
       echo "skipping $dir"
    fi
-#done
 }
 
 export -f run

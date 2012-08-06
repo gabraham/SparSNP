@@ -180,13 +180,17 @@ int run_predict(gmatrix *g, predict predict_func,
    {
       gmatrix_zero_model(g);
       printf("run_predict: reading %s\n", beta_files[i]);
-      if(!load_beta_sparse(g->beta_orig, beta_files[i], g->p + 1))
+      if(!(g->K = load_beta_sparse(g->beta_orig, beta_files[i], g->p + 1)))
       {
 	 printf("skipping %s\n", beta_files[i]);
 	 continue;
       }
 
-      memcpy(g->beta, g->beta_orig, sizeof(double) * (g->p+1));
+      printf("read %d tasks from file '%s'\n", g->K, beta_files[i]);
+
+      if(!gmatrix_trim_beta(g))
+	 return FAILURE;
+      memcpy(g->beta, g->beta_orig, sizeof(double) * (g->p+1) * g->K);
 
       snprintf(tmp, MAX_STR_LEN, "%s.pred", basename(beta_files[i]));
       if(!run_predict_beta(g, predict_func, tmp))

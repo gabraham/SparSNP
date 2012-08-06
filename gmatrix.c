@@ -29,6 +29,7 @@ int gmatrix_init(gmatrix *g, char *filename, int n, int p,
 {
    int i, j, p1;
 
+   g->K = 0;
    g->model = model;
    g->modeltype = modeltype;
    g->filename = filename;
@@ -91,6 +92,10 @@ int gmatrix_init(gmatrix *g, char *filename, int n, int p,
          return FAILURE;
       gmatrix_plink_check_pheno(g);
    }
+
+   /* sensible default */
+   if(g->K <= 0)
+      g->K = MAX_NUM_PHENO;
 
    if(g->mode == MODE_TRAIN && g->modeltype == MODELTYPE_CLASSIFICATION)
    {
@@ -277,7 +282,7 @@ int gmatrix_split_y(gmatrix *g)
       	 {
       	    if(g->folds_ind[g->fold * n + i])
 	    {
-      	       g->y[k * n + m] = g->y_orig[k * n + i];
+      	       g->y[n * k + m] = g->y_orig[n * k + i];
 	       m-- ;
 	    }
       	 }
@@ -587,6 +592,12 @@ these samples with PLINK; aborting\n",
    return SUCCESS;
 }
 
+/* standardise Y to zero mean and unit variance */
+int gmatrix_scale_y(gmatrix *g)
+{
+   return SUCCESS;
+}
+
 /* 
  * Reads a plink pheno file and gets the phenotype from column 6 and onwards,
  * using any sort of whitespace separator.
@@ -628,7 +639,6 @@ int gmatrix_fam_read_y_matrix(gmatrix *g)
 	 EOF != (ret = fscanf(famfile, f,
 	    famid, individ, patid, matid, sex)))
    {
-      k = 0;
       if(ret > NUMFIELDS)
       {
 	 fprintf(stderr,
@@ -649,6 +659,7 @@ int gmatrix_fam_read_y_matrix(gmatrix *g)
       }
       else
       {
+	 k = 0;
 	 m = 0;
 	 /* now read phenotypes, one at a time */
        	 while(k < MAX_NUM_PHENO && sscanf(&line[m], "%s ", pheno) != EOF)
@@ -664,7 +675,6 @@ int gmatrix_fam_read_y_matrix(gmatrix *g)
 
    printf("read %d rows and %d phenotype/s from FAM file '%s'\n", i, k,
 	 g->famfilename);
-
 
    /* now truncate K to what we have observed and copy over */
    g->K = k;
@@ -786,6 +796,22 @@ int gmatrix_read_scaling(gmatrix *g, char *file_scale)
    }
 
    fclose(in);
+
+   return SUCCESS;
+}
+
+/* We pre-allocate a large beta matrix, then we trim it down if we don't
+ * actually use all the K tasks */
+int gmatrix_trim_beta(gmatrix *g)
+{
+   int m = (g->p + 1) * g->K;
+   double *tmp = NULL;
+
+   MALLOCTEST(tmp, m * sizeof(double));
+   memcpy(tmp, g->beta, m * sizeof(double));
+
+   FREENULL(g->beta);
+   g->beta = tmp;
 
    return SUCCESS;
 }

@@ -1,4 +1,6 @@
 #include <stdio.h>
+#include <string.h>
+
 #include "util.h"
 #include "common.h"
 
@@ -184,7 +186,7 @@ int write_beta_sparse(char* file, double* beta, int p, int K)
 	    if(beta[p * k + j] != 0)
 	       fprintf(out, "%.20f", beta[p * k + j]);
 	    else
-	       fprintf(out, "0"); /* less space */
+	       fprintf(out, "0"); /* less space, TODO: use a sparser format */
 	    if(k == K - 1)
 	       fprintf(out, "\n");
 	    else
@@ -205,28 +207,55 @@ int write_beta_sparse(char* file, double* beta, int p, int K)
  *  
  * index 0 is intercept
  *
+ * Assumes that we don't know what the number of tasks K is beforehand, we
+ * just use an upper bound
+ *
+ * also assumes that each row of beta is stored as a *dense* vector when any
+ * of the tasks have non-zero weights
  */
 int load_beta_sparse(double *beta, char *filename, int p)
 {
-   int j = 0, k;
+   int j = 0, k, K = 0, m;
    FILE *in = NULL;
+   char line[MAX_LINE_CHARS];
+   char *tmp = NULL;
+
+   CALLOCTEST(tmp, 20, sizeof(char));
+
    FOPENTEST(in, filename, "rt");
 
    while(!feof(in))
    {
-      if(fscanf(in, "%d", &k) < 0)
+      /* read the variable id */
+      if(fscanf(in, "%d", &j) < 0)
 	 break;
 	 
-      /* read field separator */
-      if(fgetc(in) == EOF)
-	 return FAILURE;
-
-      if(fscanf(in, "%lf", beta + k) == EOF)
-	 return FAILURE;
-      j++;
+      if(fgets(line, MAX_LINE_CHARS, in) == NULL)
+      {
+      	 if(!feof(in))
+	 {
+	    fprintf(stderr, "error in reading FAM file '%s'\n", filename);
+	    return FAILURE;
+	 }
+	 break;
+      }
+      else
+      {
+         m = 0;
+	 k = 0;
+         while(k < MAX_NUM_PHENO && sscanf(&line[m], "%s ", tmp) != EOF)
+         {
+	    beta[k * p + j] = atof(tmp);
+	    m += strlen(tmp) + 1;
+	    k++;
+         }
+	 K = k;
+      }
    } 
 
    fclose(in);
-   return SUCCESS;
+
+   /* we don't check whether the phenotype file is well formed */
+   return K;
 }
 
