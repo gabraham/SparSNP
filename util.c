@@ -121,11 +121,11 @@ void scale_beta(double *beta2, double *beta1,
 
 /* assumes beta0 is intercept, i.e. beta runs from 0 to p (inclusive).
  * 
- * beta_j = beta_j^* / sd_j
+ * beta_j = beta_j^* / sd_j for j = 1,...,p
  *
  * beta_0 = beta_0^* - \sum_{j=1}^p beta_j^* mean_j / sd_j
  *
- * Note that zero beta^* remains zero in beta
+ * Note that zero in beta^* remains zero in beta
  * */
 void unscale_beta(double *beta2, double *beta1,
       double *mean, double *sd, int p, int K)
@@ -133,13 +133,13 @@ void unscale_beta(double *beta2, double *beta1,
    int j, k;
    double t, s;
 
-   for(k = K - 1 ; k >= 0 ; --k)
+   for(k = 0 ; k < K ; k++)
    {
       s = 0;
-      for(j = p - 1 ; j >= 0 ; --j)
+      for(j = 1 ; j < p ; j++)
       {
          t = beta1[p * k + j] * mean[j];
-         beta2[p * k + j] = beta1[j];
+         beta2[p * k + j] = beta1[p * k + j];
          if(sd[j] != 0) /* TODO: better checking for zero */
          {
             t /= sd[j];
@@ -147,7 +147,7 @@ void unscale_beta(double *beta2, double *beta1,
          }
          s += t;
       }
-      beta2[p * k + 0] -= s;
+      beta2[p * k] = beta1[p * k] - s;
    }
 }
 
@@ -158,14 +158,14 @@ int write_beta_sparse(char* file, double* beta, int p, int K)
    FOPENTEST(out, file, "w");
    
    /* always write the intercept */
-   fprintf(out, "%d:", j);
+   fprintf(out, "%d,", j);
    for(k = 0 ; k < K ; k++)
    {
       fprintf(out, "%.20f", beta[p * k + j]);
       if(k == K - 1)
 	 fprintf(out, "\n");
       else
-	 fprintf(out, " ");
+	 fprintf(out, ",");
    }
 
    /* now the other variables, don't print out a row with weights for 
@@ -178,14 +178,17 @@ int write_beta_sparse(char* file, double* beta, int p, int K)
 
       if(k < K - 1)
       {
-	 fprintf(out, "%d:", j);
+	 fprintf(out, "%d,", j);
 	 for(k = 0 ; k < K ; k++)
 	 {
-	    fprintf(out, "%.20f", beta[p * k + j]);
+	    if(beta[p * k + j] != 0)
+	       fprintf(out, "%.20f", beta[p * k + j]);
+	    else
+	       fprintf(out, "0"); /* less space */
 	    if(k == K - 1)
 	       fprintf(out, "\n");
 	    else
-	       fprintf(out, " ");
+	       fprintf(out, ",");
 	 }
       }
    }

@@ -911,7 +911,7 @@ int gmatrix_init_lp(gmatrix *g)
  */
 double step_regular_linear(sample *s, gmatrix *g, int k)
 {
-   int i, n = g->ncurr, nki;
+   int i, n = g->ncurr, nki = n * k + n - 1;
    double grad = 0;
    double *restrict x = s->x, 
           *restrict lp = g->lp,
@@ -920,8 +920,8 @@ double step_regular_linear(sample *s, gmatrix *g, int k)
    /* compute gradient wrt task k*/
    for(i = n - 1 ; i >= 0 ; --i)
    {
-      nki = n * k + i;
       grad += x[i] * (lp[nki] - y[nki]);
+      nki--;
    }
 
    return grad * g->ncurr_recip;
@@ -929,7 +929,7 @@ double step_regular_linear(sample *s, gmatrix *g, int k)
 
 double step_regular_logistic(sample *s, gmatrix *g, int k)
 {
-   int i, n = g->ncurr, nki;
+   int i, n = g->ncurr, nki = n * k + n - 1;
    double grad = 0, d2 = 0;
    double *restrict y = g->y,
 	  *restrict lp_invlogit = g->lp_invlogit,
@@ -938,9 +938,9 @@ double step_regular_logistic(sample *s, gmatrix *g, int k)
    /* compute 1st and 2nd derivatives wrt task k */
    for(i = n - 1 ; i >= 0 ; --i)
    {
-      nki = n * k + i;
       grad += x[i] * (lp_invlogit[nki] - y[nki]);
       d2 += x[i] * x[i] * lp_invlogit[nki] * (1 - lp_invlogit[nki]);
+      nki--;
    }
 
    grad *= g->ncurr_recip;
@@ -957,14 +957,17 @@ double step_regular_logistic(sample *s, gmatrix *g, int k)
  */
 double step_regular_sqrhinge(sample *s, gmatrix *g, int k)
 {
-   int i, n = g->ncurr;
+   int i, n = g->ncurr, nki = n * k + n - 1;
    double grad = 0;
    const double *restrict x = s->x,
 		*restrict ylp_neg_y_ylp = g->ylp_neg_y_ylp;
 
    /* compute gradient wrt task k */
    for(i = n - 1 ; i >= 0 ; --i)
-      grad += ylp_neg_y_ylp[n * k + i] * x[i];
+   {
+      grad += ylp_neg_y_ylp[nki] * x[i];
+      nki--;
+   }
 
    return grad * g->ncurr_recip;
 }

@@ -56,14 +56,15 @@ double get_lambda1max_gmatrix(gmatrix *g,
        * first because it's not penalised. */
       for(j = 1 ; j < p1; j++)
       {
-         if(g->ignore[j])
-   	 continue;
+         if(g->ignore[p1 * k + j])
+	    continue;
          g->nextcol(g, &sm, j, NA_ACTION_RANDOM);
    
          s = fabs(step_func(&sm, g, k));
          zmax = (zmax < s) ? s : zmax;
       } 
    
+      /* intercept */
       g->beta[k * p1] = beta_new;
    }
 
@@ -88,7 +89,7 @@ int cd_gmatrix(gmatrix *g,
       const int verbose,
       const double trunc)
 {
-   const int p = g->p, p1 = g->p + 1, K = g->K;
+   const int p1 = g->p + 1, K = g->K;
    int j, k, allconverged = 0, numactive = 0,
        epoch = 1,
        good = FALSE;
@@ -117,7 +118,7 @@ int cd_gmatrix(gmatrix *g,
       {
 	 for(j = 0 ; j < p1; j++)
       	 {
-	    pkj = p * k + j;
+	    pkj = p1 * k + j;
       	    beta_new = beta_old[pkj] = g->beta[pkj];
       	    
       	    if(g->active[pkj])
