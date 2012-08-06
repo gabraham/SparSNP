@@ -98,6 +98,7 @@ int cd_gmatrix(gmatrix *g,
    sample sm;
    double *beta_old = NULL;
    int *active_old = NULL;
+   int pkj, p1K1 = p1 * K - 1;
 
    if(!sample_init(&sm))
       return FAILURE;
@@ -105,7 +106,7 @@ int cd_gmatrix(gmatrix *g,
    CALLOCTEST(beta_old, p1 * K, sizeof(double));
    CALLOCTEST(active_old, p1 * K, sizeof(int));
 
-   for(j = p ; j >= 0 ; --j)
+   for(j = p1K1 ; j >= 0 ; --j)
       active_old[j] = g->active[j];
 
    while(epoch <= maxepochs)
@@ -116,31 +117,32 @@ int cd_gmatrix(gmatrix *g,
       {
 	 for(j = 0 ; j < p1; j++)
       	 {
-      	    beta_new = beta_old[j] = g->beta[j];
+	    pkj = p * k + j;
+      	    beta_new = beta_old[pkj] = g->beta[pkj];
       	    
-      	    if(g->active[j])
+      	    if(g->active[pkj])
       	    {
       	       g->nextcol(g, &sm, j, NA_ACTION_RANDOM);
 
       	       s = step_func(&sm, g, k);
-      	       beta_new = g->beta[j] - s;
+      	       beta_new = g->beta[pkj] - s;
       	       
 	       if(j > 0)
 		  beta_new = soft_threshold(beta_new, lambda1) * l2recip;
 	       beta_new = clip(beta_new, -truncl, truncl);
 
-      	       delta = beta_new - g->beta[j];
+      	       delta = beta_new - g->beta[pkj];
       	       
       	       if(fabs(delta) > ZERO_THRESH)
       	       {
       	          updatelp(g, delta, sm.x, j, k);
-      	          g->beta[j] = beta_new;
+      	          g->beta[pkj] = beta_new;
       	       }
 
-      	       g->active[j] = g->beta[j] != 0;
+      	       g->active[pkj] = g->beta[pkj] != 0;
       	    }
 
-      	    numactive += g->active[j];
+      	    numactive += g->active[pkj];
       	 }
       }
 
@@ -157,7 +159,7 @@ int cd_gmatrix(gmatrix *g,
       if(allconverged == 1)
       {
 	 printfverb("prepare for final epoch\n");
-	 for(j = p ; j >= 0 ; --j)
+	 for(j = p1K1 ; j >= 0 ; --j)
 	 {
 	    active_old[j] = g->active[j];
 	    g->active[j] = !g->ignore[j];
@@ -166,7 +168,7 @@ int cd_gmatrix(gmatrix *g,
       else /* 2nd iteration over all variables done, check
 	      whether active set has changed */
       {
-	 for(j = p ; j >= 0 ; --j)
+	 for(j = p1K1 ; j >= 0 ; --j)
 	    if(g->active[j] != active_old[j])
 	       break;
 
@@ -184,7 +186,7 @@ with %d active vars\n", time(NULL), epoch, numactive);
 
 	 /* active set has changed, iterate over
 	  * new active variables */
-	 for(j = p ; j >= 0 ; --j)
+	 for(j = p1K1 ; j >= 0 ; --j)
 	    active_old[j] = g->active[j];
 	 allconverged = 1;
       }

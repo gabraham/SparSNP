@@ -50,8 +50,8 @@ int make_lambda1path(Opt *opt, gmatrix *g)
    snprintf(tmp, MAX_STR_LEN, "%s.%02d.%02d",
 	 opt->beta_files[0], 0, g->fold);
 
-   unscale_beta(g->beta_orig, g->beta, g->mean, g->sd, g->p + 1);
-   if(!write_beta_sparse(tmp, g->beta_orig, g->p + 1))
+   unscale_beta(g->beta_orig, g->beta, g->mean, g->sd, g->p + 1, g->K);
+   if(!write_beta_sparse(tmp, g->beta_orig, g->p + 1, g->K))
       return FAILURE;
 
    snprintf(tmp, MAX_STR_LEN, "%s.%02d", opt->lambda1pathfile, g->fold);
@@ -103,8 +103,8 @@ int run_train(Opt *opt, gmatrix *g)
       snprintf(tmp, MAX_STR_LEN, "%s.%02d.%02d",
 	    opt->beta_files[0], i, g->fold);
       printf("unscaling beta\n");
-      unscale_beta(g->beta_orig, g->beta, g->mean, g->sd, g->p + 1);
-      if(!write_beta_sparse(tmp, g->beta_orig, g->p + 1))
+      unscale_beta(g->beta_orig, g->beta, g->mean, g->sd, g->p + 1, g->K);
+      if(!write_beta_sparse(tmp, g->beta_orig, g->p + 1, g->K))
 	 return FAILURE;
 
       if(opt->nzmax != 0 && opt->nzmax <= ret - 1)
@@ -228,10 +228,6 @@ int do_train(gmatrix *g, Opt *opt, char tmp[])
 	 make_lambda1path(opt, g);
 	 gmatrix_reset(g);
 
-	 ////////////// TEST /////////////
-	 return FAILURE;
-	 ////////////// TEST /////////////
-
 	 if(!(ret &= run_train(opt, g)))
 	    break;
 
@@ -250,6 +246,7 @@ int do_train(gmatrix *g, Opt *opt, char tmp[])
       make_lambda1path(opt, g);
       gmatrix_reset(g);
       ret = run_train(opt, g);
+      printf("train returned: %d\n", ret);
       FREENULL(g->scalefile);
    }
    

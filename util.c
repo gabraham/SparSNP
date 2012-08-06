@@ -128,35 +128,67 @@ void scale_beta(double *beta2, double *beta1,
  * Note that zero beta^* remains zero in beta
  * */
 void unscale_beta(double *beta2, double *beta1,
-      double *mean, double *sd, int p)
+      double *mean, double *sd, int p, int K)
 {
-   int j;
-   double t, s = 0;
-   for(j = p - 1 ; j >= 0 ; --j)
+   int j, k;
+   double t, s;
+
+   for(k = K - 1 ; k >= 0 ; --k)
    {
-      t = beta1[j] * mean[j];
-      beta2[j] = beta1[j];
-      if(sd[j] != 0)
+      s = 0;
+      for(j = p - 1 ; j >= 0 ; --j)
       {
-	 t /= sd[j];
-	 beta2[j] /= sd[j];
+         t = beta1[p * k + j] * mean[j];
+         beta2[p * k + j] = beta1[j];
+         if(sd[j] != 0)
+         {
+            t /= sd[j];
+            beta2[p * k + j] /= sd[j];
+         }
+         s += t;
       }
-      s += t;
+      beta2[p * k + 0] -= s;
    }
-   beta2[0] -= s;
 }
 
-int write_beta_sparse(char* file, double* beta, int p)
+int write_beta_sparse(char* file, double* beta, int p, int K)
 {
-   int j = 0;
+   int j = 0, k;
    FILE* out = NULL;
    FOPENTEST(out, file, "w");
    
    /* always write the intercept */
-   fprintf(out, "%d:%.20f\n", j, beta[j]);
+   fprintf(out, "%d:", j);
+   for(k = 0 ; k < K ; k++)
+   {
+      fprintf(out, "%.20f", beta[p * k + j]);
+      if(k == K - 1)
+	 fprintf(out, "\n");
+      else
+	 fprintf(out, " ");
+   }
+
+   /* now the other variables, don't print out a row with weights for 
+    * all K tasks that are zero */
    for(j = 1 ; j < p ; j++)
-      if(beta[j] != 0)
-	 fprintf(out, "%d:%.20f\n", j, beta[j]);
+   {
+      for(k = 0 ; k < K ; k++)
+	 if(beta[p * k + j] != 0)
+	    break;
+
+      if(k < K - 1)
+      {
+	 fprintf(out, "%d:", j);
+	 for(k = 0 ; k < K ; k++)
+	 {
+	    fprintf(out, "%.20f", beta[p * k + j]);
+	    if(k == K - 1)
+	       fprintf(out, "\n");
+	    else
+	       fprintf(out, " ");
+	 }
+      }
+   }
 
    fflush(out);
    fclose(out);

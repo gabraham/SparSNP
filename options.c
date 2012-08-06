@@ -49,7 +49,7 @@ int opt_defaults(Opt *opt, short caller)
    opt->lambda2 = 0;
    opt->threshold = 1e-5;
    opt->trunc = 1e-10;
-   opt->nzmax = 0;
+   opt->nzmax = 5000;
    opt->n = 0;
    opt->p = 0;
    opt->warmrestarts = TRUE;
@@ -61,7 +61,6 @@ int opt_defaults(Opt *opt, short caller)
    opt->nfolds = 1;
    opt->folds_ind_file = NULL;
    opt->seed = time(NULL);
-   opt->nzmax = 0;
    opt->ntrain = opt->n;
    opt->subset_file = NULL;
    opt->lambda1pathfile = "lambda1path.csv";

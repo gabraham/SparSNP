@@ -590,6 +590,8 @@ these samples with PLINK; aborting\n",
 /* 
  * Reads a plink pheno file and gets the phenotype from column 6 and onwards,
  * using any sort of whitespace separator.
+ *
+ * y stores the phenotypes in column-major ordering
  */
 int gmatrix_fam_read_y_matrix(gmatrix *g)
 {
@@ -637,7 +639,6 @@ int gmatrix_fam_read_y_matrix(gmatrix *g)
 
       if(fgets(line, MAX_LINE_CHARS, famfile) == NULL)
       {
-	 printf(">>>>>>>>foo\n");
       	 if(!feof(famfile))
 	 {
 	    fprintf(stderr, "error in reading FAM file '%s'\n",
@@ -649,10 +650,10 @@ int gmatrix_fam_read_y_matrix(gmatrix *g)
       else
       {
 	 m = 0;
-	 /* now read phenotypes */
+	 /* now read phenotypes, one at a time */
        	 while(k < MAX_NUM_PHENO && sscanf(&line[m], "%s ", pheno) != EOF)
        	 {
-       	    tmp[i * n + k] = atof(pheno);
+       	    tmp[i + n * k] = atof(pheno);
 	    m += strlen(pheno) + 1;
        	    k++;
        	 }
@@ -664,10 +665,10 @@ int gmatrix_fam_read_y_matrix(gmatrix *g)
    printf("read %d rows and %d phenotype/s from FAM file '%s'\n", i, k,
 	 g->famfilename);
 
+
+   /* now truncate K to what we have observed and copy over */
    g->K = k;
    CALLOCTEST(g->y_orig, g->n * g->K, sizeof(double));
-
-   /* now truncate K to what we have observed */
    for(i = n * k - 1 ; i >= 0 ; --i)
       g->y_orig[i] = tmp[i];
 

@@ -211,7 +211,7 @@ int run_train(Opt *opt, gmatrix *g)
 	       snprintf(tmp, MAX_STR_LEN, "multivar_%s.%02d.%02d",
 	             opt->beta_files[0], i, g->fold);
 	       printf("writing %s\n", tmp);
-	       if(!write_beta_sparse(tmp, g->beta, g->p + 1))
+	       if(!write_beta_sparse(tmp, g->beta, g->p + 1, g->K))
 	          return FAILURE;
 
 	       /* If Newton didn't converge at a given model size, there's
