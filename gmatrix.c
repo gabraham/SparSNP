@@ -25,7 +25,7 @@ int gmatrix_init(gmatrix *g, char *filename, int n, int p,
       char *scalefile, short yformat, int model, int modeltype,
       short encoded, char *folds_ind_file,
       short mode, loss_pt loss_pt_func, char *subset_file, 
-      char *famfilename)
+      char *famfilename, int scaley, int unscale_beta)
 {
    int i, j, p1;
 
@@ -80,6 +80,7 @@ int gmatrix_init(gmatrix *g, char *filename, int n, int p,
    g->xcaches = NULL;
    g->ncases = 0;
    g->folds_ind = NULL;
+   g->unscale_beta = unscale_beta;
 
    g->famfilename = famfilename;
 
@@ -91,6 +92,8 @@ int gmatrix_init(gmatrix *g, char *filename, int n, int p,
       if(!gmatrix_fam_read_y_matrix(g))
          return FAILURE;
       gmatrix_plink_check_pheno(g);
+      if(scaley && !gmatrix_scale_y(g))
+	 return FAILURE;
    }
 
    /* sensible default */
@@ -599,9 +602,48 @@ these samples with PLINK; aborting\n",
    return SUCCESS;
 }
 
-/* standardise Y to zero mean and unit variance */
+/* Standardise each column of Y to zero mean and unit variance.
+ */
 int gmatrix_scale_y(gmatrix *g)
 {
+   int i, k, n = g->n, K = g->K;
+   double *mean = NULL,
+	  *sd = NULL;
+   double delta;
+
+   printf("scaling y\n");
+
+#ifdef DEBUG
+   writematrixf(g->y_orig, n, K, "y_before.txt");
+#endif
+
+   CALLOCTEST(mean, g->K, sizeof(double));
+   CALLOCTEST(sd, g->K, sizeof(double));
+
+   /* first get mean and sd */
+   for(k = 0 ; k < K ; k++)
+   {
+      for(i = 0 ; i < n ; i++)
+      {
+	 delta = g->y_orig[k * n + i] - mean[k];
+	 mean[k] += delta / (i + 1);
+	 sd[k] += delta * (g->y_orig[k * n + i] - mean[k]);
+      }
+      sd[k] = sqrt(sd[k] / (n - 1));
+   }
+
+   /* now standardise Y */
+   for(k = 0 ; k < K ; k++)
+      for(i = 0 ; i < n ; i++)
+	 g->y_orig[k * n + i] = (g->y_orig[k * n + i] - mean[k]) / sd[k];
+
+#ifdef DEBUG
+   writematrixf(g->y_orig, n, K, "y_after.txt");
+#endif
+
+   FREENULL(mean);
+   FREENULL(sd);
+
    return SUCCESS;
 }
 
@@ -685,7 +727,6 @@ int gmatrix_fam_read_y_matrix(gmatrix *g)
 
    /* now truncate K to what we have observed and copy over */
    g->K = k;
-   printf("truncating to %d tasks\n", k);
    CALLOCTEST(g->y_orig, g->n * g->K, sizeof(double));
    for(i = n * k - 1 ; i >= 0 ; --i)
       g->y_orig[i] = tmp[i];

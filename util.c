@@ -46,21 +46,27 @@ int writevectorl(char* file, int* beta, int p)
    return SUCCESS;
 }
 
-int writematrixf(double **x, int n, int p, char* file)
+/* Writes an n by p matrix to file, in row-major ordering
+ * assumes that the matrix is in column-major ordering
+ */
+int writematrixf(double *x, int n, int p, char* file)
 {
    int i, j;
    FILE* out;
+
+   printf("writing %d by %d matrix\n", n, p);
    
    FOPENTEST(out, file, "wt")
    for(i = 0 ; i < n ; i++)
    {
       for(j = 0 ; j < p ; j++)
       {
-	 fprintf(out, "%.20f", x[i][j]);
+	 fprintf(out, "%.20f", x[j * n + i]);
 	 if(j < p - 1)
 	    fprintf(out, ",");
+	 else
+	    fprintf(out, "\n");
       }
-      fprintf(out, "\n");
    }
 
    fflush(out);

@@ -50,9 +50,14 @@ int make_lambda1path(Opt *opt, gmatrix *g)
    snprintf(tmp, MAX_STR_LEN, "%s.%02d.%02d",
 	 opt->beta_files[0], 0, g->fold);
 
-   unscale_beta(g->beta_orig, g->beta, g->mean, g->sd, g->p + 1, g->K);
-   if(!write_beta_sparse(tmp, g->beta_orig, g->p + 1, g->K))
-      return FAILURE;
+   if(g->unscale_beta)
+   {
+      unscale_beta(g->beta_orig, g->beta, g->mean, g->sd, g->p + 1, g->K);
+      if(!write_beta_sparse(tmp, g->beta_orig, g->p + 1, g->K))
+	 return FAILURE;
+   }
+   else if(!write_beta_sparse(tmp, g->beta, g->p + 1, g->K))
+	 return FAILURE;
 
    snprintf(tmp, MAX_STR_LEN, "%s.%02d", opt->lambda1pathfile, g->fold);
    return writevectorf(tmp, opt->lambda1path, opt->nlambda1);
@@ -102,9 +107,15 @@ int run_train(Opt *opt, gmatrix *g)
 
       snprintf(tmp, MAX_STR_LEN, "%s.%02d.%02d",
 	    opt->beta_files[0], i, g->fold);
-      printf("unscaling beta\n");
-      unscale_beta(g->beta_orig, g->beta, g->mean, g->sd, g->p + 1, g->K);
-      if(!write_beta_sparse(tmp, g->beta_orig, g->p + 1, g->K))
+
+      if(g->unscale_beta)
+      {
+	 printf("unscaling beta\n");
+	 unscale_beta(g->beta_orig, g->beta, g->mean, g->sd, g->p + 1, g->K);
+	 if(!write_beta_sparse(tmp, g->beta_orig, g->p + 1, g->K))
+	    return FAILURE;
+      }
+      else if(!write_beta_sparse(tmp, g->beta, g->p + 1, g->K))
 	 return FAILURE;
 
       if(opt->nzmax != 0 && opt->nzmax <= ret - 1)
@@ -208,7 +219,7 @@ int do_train(gmatrix *g, Opt *opt, char tmp[])
 	    NULL, opt->yformat, opt->model, opt->modeltype, opt->encoded,
 	    opt->folds_ind_file, opt->mode,
 	    opt->loss_pt_func, opt->subset_file,
-	    opt->famfilename))
+	    opt->famfilename, opt->scaley, opt->unscale_beta))
       return FAILURE;
 
    printf("%d CV folds\n", g->nfolds);
@@ -267,7 +278,7 @@ int do_predict(gmatrix *g, Opt *opt, char tmp[])
 	    NULL, opt->yformat, opt->model, opt->modeltype, opt->encoded,
 	    opt->folds_ind_file, opt->mode,
 	    opt->loss_pt_func, opt->subset_file,
-	    opt->famfilename))
+	    opt->famfilename, opt->scaley, opt->unscale_beta))
       return FAILURE;
 
    if(g->nfolds > 1)

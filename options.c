@@ -118,6 +118,8 @@ int opt_defaults(Opt *opt, short caller)
 
    opt->multivar = OPTIONS_MULTIVAR_NEWTON;
    opt->famfilename = NULL;
+   
+   opt->unscale_beta = FALSE;
 
    return SUCCESS;
 }
@@ -362,6 +364,10 @@ int opt_parse(int argc, char* argv[], Opt* opt)
       {
 	 opt->scaley = TRUE;
       }
+      else if(strcmp2(argv[i], "-unscale"))
+      {
+	 opt->unscale_beta = TRUE;
+      }
    }
 
    if(opt->caller == OPTIONS_CALLER_CD) /* coordinate descent */
@@ -375,7 +381,7 @@ int opt_parse(int argc, char* argv[], Opt* opt)
 [-betafiles <beta filename/s>] \
 [-maxepochs <maxepochs>] [-maxiters <maxiters>] [-l1 <lambda1>] \
 -l2 <lambda2>] [-thresh <threshold>] [-foldind <foldsfile>] \
-[-pred <prediction file>] [-filter] \
+[-pred <prediction file>] [-filter] [-unscale]\
 [-v] [-vv]\n");
          return FAILURE;
       }

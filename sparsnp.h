@@ -92,6 +92,7 @@ typedef struct Opt {
    char *famfilename;
    char *outdir;
    int scaley;
+   int unscale_beta;
 } Opt;
 
 int cd_gmatrix(gmatrix *g,

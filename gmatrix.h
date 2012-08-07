@@ -130,6 +130,7 @@ typedef struct gmatrix {
    int ncases;
    mapping *map;
    int *folds_ind; /* xor of folds with mode == MODE_PREDICT */
+   int unscale_beta;
 } gmatrix;
 
 int sample_init(sample *);
@@ -137,7 +138,7 @@ int gmatrix_init(gmatrix *g, char *filename, int n, int p,
       char *scalefile, short yformat, int model, int modeltype,
       short encoded, char *folds_ind_file,
       short mode, loss_pt, char *subsample_file,
-      char *famfilename);
+      char *famfilename, int scaley, int unscale_beta);
 int gmatrix_reset(gmatrix *);
 void gmatrix_free(gmatrix *);
 int gmatrix_disk_nextcol(gmatrix *g, sample *sm, int skip, int na_action);
