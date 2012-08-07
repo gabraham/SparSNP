@@ -572,7 +572,7 @@ tabulate.snps <- function(best=NULL, d)
          #cat("best:", s[w], " ")
          b <- read.table(
 	    sprintf("crossval%s/beta.csv.%02d.%02d",
-	       rep, w - 1, fold - 1), sep=":")
+	       rep, w - 1, fold - 1), sep=",")
 	 # exclude intercept
          b[-1, 1]
       })

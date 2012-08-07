@@ -228,14 +228,14 @@ int load_beta_sparse(double *beta, char *filename, int p)
    char line[MAX_LINE_CHARS];
    char *tmp = NULL;
 
-   CALLOCTEST(tmp, 20, sizeof(char));
+   CALLOCTEST(tmp, MAX_STR_LEN, sizeof(char));
 
    FOPENTEST(in, filename, "rt");
 
    while(!feof(in))
    {
       /* read the variable id */
-      if(fscanf(in, "%d", &j) < 0)
+      if(fscanf(in, "%d,", &j) < 0)
 	 break;
 	 
       if(fgets(line, MAX_LINE_CHARS, in) == NULL)
@@ -251,7 +251,7 @@ int load_beta_sparse(double *beta, char *filename, int p)
       {
          m = 0;
 	 k = 0;
-         while(k < MAX_NUM_PHENO && sscanf(&line[m], "%s ", tmp) != EOF)
+         while(k < MAX_NUM_PHENO && sscanf(&line[m], "%[^,\n]", tmp) != EOF)
          {
 	    beta[k * p + j] = atof(tmp);
 	    m += strlen(tmp) + 1;
@@ -262,6 +262,8 @@ int load_beta_sparse(double *beta, char *filename, int p)
    } 
 
    fclose(in);
+
+   FREENULL(tmp);
 
    /* we don't check whether the phenotype file is well formed */
    return K;

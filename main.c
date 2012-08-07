@@ -197,7 +197,7 @@ int run_predict(gmatrix *g, predict predict_func,
 	 continue;
       }
 
-      printf("read %d tasks from file '%s'\n", g->K, beta_files[i]);
+      printf("read %d task/s from file '%s'\n", g->K, beta_files[i]);
 
       if(!gmatrix_trim_beta(g))
 	 return FAILURE;
