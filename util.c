@@ -180,11 +180,13 @@ int write_beta_sparse(char* file, double* beta, int p, int K)
     * all K tasks that are zero */
    for(j = 1 ; j < p ; j++)
    {
+      /* check whether row is all zero */
       for(k = 0 ; k < K ; k++)
 	 if(beta[p * k + j] != 0)
 	    break;
 
-      if(k < K - 1)
+      /* at least one non-zero in row */
+      if(k < K)
       {
 	 fprintf(out, "%d,", j);
 	 for(k = 0 ; k < K ; k++)
