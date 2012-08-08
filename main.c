@@ -168,11 +168,7 @@ int run_predict_beta(gmatrix *g, predict predict_func,
             /* We count up to n, which should be the same as sm.n,
              * since we're not deleting missing obs */
             for(i = 0 ; i < n ; i++)
-	    {
-	       printf("%d %.3f\n", n * k + i, lp[n*k+i]);
                lp[n * k + i] += sm.x[i] * beta[p1 * k + j];
-	    }
-
          }
       }
    
@@ -274,6 +270,11 @@ int do_train(gmatrix *g, Opt *opt, char tmp[])
       if(g->scalefile && !gmatrix_read_scaling(g, g->scalefile))
 	 return FAILURE;
       gmatrix_zero_model(g);
+      
+      printf("writing y file: %s\n", "y.txt");
+      if(!writematrixf(g->y, g->ncurr, g->K, "y.txt"))
+	 return FAILURE;
+
       make_lambda1path(opt, g);
       gmatrix_reset(g);
       ret = run_train(opt, g);
@@ -339,6 +340,10 @@ int do_predict(gmatrix *g, Opt *opt, char tmp[])
    else
    {
       gmatrix_zero_model(g);
+      printf("writing y file: %s\n", "y.txt");
+      if(!(ret &= writematrixf(g->y, g->ncurr, g->K, "y.txt")))
+	 return FAILURE;
+
       ret = run_predict(g, opt->predict_func,
 	    opt->beta_files, opt->n_beta_files);
    }

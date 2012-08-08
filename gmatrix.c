@@ -962,8 +962,6 @@ int gmatrix_make_fusion(gmatrix *g)
 {
    int nE = g->K * (g->K - 1) / 2;
    
-   printf("gmatrix_make_fusion: K=%d nE=%d\n", g->K, nE);
-
    if(g->K == 1)
       return SUCCESS;
 

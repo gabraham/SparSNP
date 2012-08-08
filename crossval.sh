@@ -33,15 +33,24 @@ MODEL=$2
 
 [[ -z "$LAMBDA2" ]] && LAMBDA2=0
 
+[[ -z "$SCALEY" ]] && SCALEY=""
+
 ######################################################################
-# Don't change these unless you know what you're doing
+
 N=$(cat "$ROOT".fam | wc -l | awk '{print $1, $2}')
 P=$(cat "$ROOT".bim | wc -l | awk '{print $1, $2}')
 BED=$(realpath "$ROOT".bed)
-FAM=$(realpath "$ROOT".fam)
+if [ -z "$FAM" ];
+then
+   FAM=$(realpath "$ROOT".fam)
+else
+   FAM=$(realpath "$FAM")
+fi
 BIM=$(realpath "$ROOT".bim)
 SCALE=scale.bin
 FOLDIND="-foldind folds.ind"
+
+
 ######################################################################
 
 # maximum number of non-zero SNPs to consider in model
@@ -71,7 +80,7 @@ fi
 pushd $DIR
 
 cat >params.txt<<EOF
-ROOT=$ROOT
+ROOT=$(realpath "$ROOT")
 NFOLDS=$NFOLDS
 NREPS=$NREPS
 NZMAX=$NZMAX
@@ -114,7 +123,7 @@ function run {
       # Run the model
       sparsnp -train -model $MODEL -n $N -p $P \
 	 -scale $SCALE -bed $BED -nzmax $NZMAX -nl1 $NLAMBDA1 -l1min $L1MIN -v \
-	 $FOLDIND -fam $FAM -l2 $LAMBDA2 -unscale
+	 $FOLDIND -fam $FAM -l2 $LAMBDA2 -unscale $SCALEY
  
       # Predict for test folds
       B=$(for((i=0;i<NLAMBDA1;i++)); do printf 'beta.csv.%02d ' $i; done)

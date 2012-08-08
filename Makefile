@@ -37,10 +37,11 @@ targets = sparsnp scale transpose \
 all: $(targets)
 
 debug: CFLAGS = -Wall \
-   		 -ggdb3 \
-		 -std=gnu99 \
-		 -D_FILE_OFFSET_BITS=$(LONG_BIT) \
-		 $(OS)
+	        -DDEBUG \
+		-ggdb3 \
+		-std=gnu99 \
+		-D_FILE_OFFSET_BITS=$(LONG_BIT) \
+		$(OS)
 
 debug: $(targets)
 

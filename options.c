@@ -122,6 +122,7 @@ int opt_defaults(Opt *opt, short caller)
    opt->unscale_beta = FALSE;
    opt->cortype = 2;
    opt->corthresh = 0;
+   opt->gamma = 0;
 
    return SUCCESS;
 }

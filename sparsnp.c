@@ -132,24 +132,28 @@ int cd_gmatrix(gmatrix *g,
       	       g->nextcol(g, &sm, j, NA_ACTION_RANDOM);
 
       	       step_func(&sm, g, k, &d1, &d2);
-
-	       /* Apply inter-task penalty, summing over all the edges */
-	       pd1 = 0;
-	       pd2 = 0;
-	       for(e = 0 ; e < nE ; e++)
-	       {
-	          Ckne = C[k * nE + e];
-		  Ckne2 = Ckne * Ckne;
-		  pd1 += Ckne2 * beta_pkj;
-		  pd2 += Ckne2;
-	       }
-	       pd1 *= 2;
-	       pd2 *= 2;
-
-      	       beta_new = beta_pkj - (d1 + pd1) / (d2 + pd2);
-      	       
+      
+	       /* don't penalise intercept */
 	       if(j > 0)
-		  beta_new = soft_threshold(beta_new, lambda1) * l2recip;
+	       {
+		  /* Apply inter-task penalty, summing over all the edges */
+		  pd1 = 0;
+		  pd2 = 0;
+		  for(e = 0 ; e < nE ; e++)
+		  {
+		     Ckne = C[k * nE + e];
+		     Ckne2 = Ckne * Ckne;
+		     pd1 += Ckne2 * beta_pkj;
+		     pd2 += Ckne2;
+		  }
+		  pd1 *= 2;
+		  pd2 *= 2;
+
+		  beta_new = soft_threshold(beta_pkj - (d1 + pd1) / (d2 + pd2), lambda1) * l2recip;
+	       }
+	       else
+		  beta_new = beta_pkj - d1 / d2;
+
 	       beta_new = clip(beta_new, -truncl, truncl);
 
       	       delta = beta_new - beta_pkj;
