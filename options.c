@@ -155,8 +155,6 @@ int opt_parse(int argc, char* argv[], Opt* opt)
 	       opt->step_func = &step_regular_logistic;
 	       opt->model = MODEL_LOGISTIC;
 	       opt->predict_func = &logphi1;
-	       opt->loss_func = &log_loss;
-	       opt->loss_pt_func = &log_loss_pt;
 	       opt->modeltype = MODELTYPE_CLASSIFICATION;
 	    }
 	 }
@@ -167,8 +165,6 @@ int opt_parse(int argc, char* argv[], Opt* opt)
 	    opt->yformat = YFORMAT11;
 	    opt->model = MODEL_SQRHINGE;
 	    opt->predict_func = &linearphi1;
-	    opt->loss_func = &sqrhinge_loss;
-	    opt->loss_pt_func = &sqrhinge_loss_pt;
 	    opt->modeltype = MODELTYPE_CLASSIFICATION;
 	 }
 	 else if(strcmp2(argv[i], MODEL_NAME_LINEAR))
@@ -177,8 +173,6 @@ int opt_parse(int argc, char* argv[], Opt* opt)
 	    opt->step_func = &step_regular_linear;
 	    opt->model = MODEL_LINEAR;
 	    opt->predict_func = &linearphi1;
-	    opt->loss_func = &linear_loss;
-	    opt->loss_pt_func = &linear_loss_pt;
 	    opt->modeltype = MODELTYPE_REGRESSION;
 	 }
 	 else if(strcmp2(argv[i], MODEL_NAME_PCOR))

@@ -28,7 +28,8 @@ typedef double (*predict_pt)(double);
 typedef double (*phi1)(double);
 typedef double (*phi2)(double);
 typedef double (*inv)(double);
-typedef double (*step)(sample *s, gmatrix *g, int k);
+typedef void (*step)(sample *s, gmatrix *g, int k,
+   double *restrict d1_p, double *restrict d2_p);
 
 typedef double (*predict)(double x);
 
@@ -48,8 +49,6 @@ typedef struct Opt {
    double l1max;
    int nlambda1;
    double trunc;
-   loss loss_func;
-   loss_pt loss_pt_func;
    phi1 phi1_func;
    phi2 phi2_func;
    inv inv_func;
@@ -97,9 +96,9 @@ typedef struct Opt {
 
 int cd_gmatrix(gmatrix *g,
       step step_func,
-      const int maxepochs, const int maxiters,
+      const int maxepochs, const int maxiters, const double *C,
       const double lambda1, const double lambda2, const double gamma,
-      const double threshold, const int verbose,
+      const int verbose,
       const double trunc);
 
 double get_lambda1max_gmatrix(gmatrix *g,

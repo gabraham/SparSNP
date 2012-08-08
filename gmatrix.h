@@ -78,13 +78,13 @@ typedef struct gmatrix {
    int ncurr;
    double ncurr_recip;
    int *ncurr_j;
+   int loss;
    int p;
    int K;
    int i;
    int j;
    double *mean, *sd;
    double *lookup, *lookup2;
-   double loss;
    double *lp, *ylp, *ylp_neg, *ylp_neg_y, *ylp_neg_y_ylp, *lp_invlogit;
    double *newtonstep;
    double *beta;
@@ -116,8 +116,6 @@ typedef struct gmatrix {
    int nseek;
    double *beta_orig;
    int *numnz;
-   loss loss_func;
-   loss_pt loss_pt_func;
    int *ngood;
    double *x;
    double *xthinned;
@@ -137,7 +135,7 @@ int sample_init(sample *);
 int gmatrix_init(gmatrix *g, char *filename, int n, int p,
       char *scalefile, short yformat, int model, int modeltype,
       short encoded, char *folds_ind_file,
-      short mode, loss_pt, char *subsample_file,
+      short mode, char *subsample_file,
       char *famfilename, int scaley, int unscale_beta);
 int gmatrix_reset(gmatrix *);
 void gmatrix_free(gmatrix *);
@@ -165,9 +163,12 @@ int gmatrix_trim_beta(gmatrix *g);
 int gmatrix_load_subsets(gmatrix *g);
 int gmatrix_plink_check_pheno(gmatrix *g);
 
-double step_regular_linear(sample *s, gmatrix *g, int k);
-double step_regular_sqrhinge(sample *s, gmatrix *g, int k);
-double step_regular_logistic(sample *s, gmatrix *g, int k);
+void step_regular_linear(sample *s, gmatrix *g, int k,
+   double *restrict d1_p, double *restrict d2_p);
+void step_regular_sqrhinge(sample *s, gmatrix *g, int k,
+   double *restrict d1_p, double *restrict d2_p);
+void step_regular_logistic(sample *s, gmatrix *g, int k,
+   double *restrict d1_p, double *restrict d2_p);
 int init_newton(gmatrix *g);
 void updatelp(gmatrix *g, const double update,
       const double *restrict x, int j, int k);

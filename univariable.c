@@ -264,7 +264,7 @@ int do_train(gmatrix *g, Opt *opt, char tmp[])
    if(!gmatrix_init(g, opt->filename, opt->n, opt->p,
 	    NULL, opt->yformat, opt->model, opt->modeltype, opt->encoded,
 	    opt->folds_ind_file, opt->mode,
-	    opt->loss_pt_func, opt->subset_file,
+	    opt->subset_file,
 	    opt->famfilename, opt->scaley, opt->unscale_beta))
       return FAILURE;
 
@@ -347,7 +347,6 @@ int run_predict_beta(gmatrix *g, predict predict_func,
    for(i = 0 ; i < n ; i++)
    {
       yhat[i] = predict_func(lp[i]);
-      /*g->loss[ += g->loss_pt(yhat[i], g->y[i]);*/
    }
 
    printf("writing %s (%d) ... ", predict_file, n);
@@ -397,7 +396,7 @@ int do_predict(gmatrix *g, Opt *opt, char *tmp)
 	    NULL, opt->yformat, opt->model, opt->modeltype,
 	    opt->encoded,
 	    opt->folds_ind_file, opt->mode,
-	    opt->loss_pt_func, opt->subset_file,
+	    opt->subset_file,
 	    opt->famfilename, opt->scaley, opt->unscale_beta))
       return FAILURE;
 

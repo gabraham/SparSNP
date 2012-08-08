@@ -24,11 +24,13 @@ int sample_init(sample *s)
 int gmatrix_init(gmatrix *g, char *filename, int n, int p,
       char *scalefile, short yformat, int model, int modeltype,
       short encoded, char *folds_ind_file,
-      short mode, loss_pt loss_pt_func, char *subset_file, 
+      short mode, char *subset_file, 
       char *famfilename, int scaley, int unscale_beta)
 {
    int i, j, p1;
 
+   g->file = NULL;
+   g->map = NULL;
    g->K = 0;
    g->model = model;
    g->modeltype = modeltype;
@@ -47,8 +49,6 @@ int gmatrix_init(gmatrix *g, char *filename, int n, int p,
    g->ylp_neg_y = NULL;
    g->ylp_neg_y_ylp = NULL;
    g->lp_invlogit = NULL;
-   g->loss_func = NULL;
-   g->loss_pt_func = loss_pt_func;
    g->lookup = NULL;
    g->intercept = NULL;
    g->mean = NULL;
@@ -390,7 +390,7 @@ int gmatrix_disk_nextcol(gmatrix *g, sample *s, int j, int na_action)
       /* don't need to worry about cross-validation etc
        * because the intercept is all 1s */
       s->x = g->intercept;
-      s->x2 = g->intercept;
+      /*s->x2 = g->intercept;*/
 
       s->y = g->y;
       s->n = g->ncurr;
@@ -954,7 +954,7 @@ void gmatrix_zero_model(gmatrix *g)
 /* Initialises the LP (linear predictor) */
 int gmatrix_init_lp(gmatrix *g)
 {
-   printf("gmatrix_init_lp: K=%d\n", g->K);
+   printf("gmatrix_init_lp: ncurr=%d K=%d\n", g->ncurr, g->K);
    FREENULL(g->lp);
    CALLOCTEST(g->lp, g->ncurr * g->K, sizeof(double));
 
@@ -984,7 +984,8 @@ int gmatrix_init_lp(gmatrix *g)
  * always N since it is the sum of squares \sum_{i=1}^N x_{ij}^2 =
  * \sum_{i=1}^N 1 = N
  */
-double step_regular_linear(sample *s, gmatrix *g, int k)
+void step_regular_linear(sample *s, gmatrix *g, int k,
+   double *restrict d1_p, double *restrict d2_p)
 {
    int i, n = g->ncurr, nki = n * k + n - 1;
    double grad = 0;
@@ -999,10 +1000,12 @@ double step_regular_linear(sample *s, gmatrix *g, int k)
       nki--;
    }
 
-   return grad * g->ncurr_recip;
+   *d1_p = grad;
+   *d2_p = n;
 }
 
-double step_regular_logistic(sample *s, gmatrix *g, int k)
+void step_regular_logistic(sample *s, gmatrix *g, int k,
+   double *restrict d1_p, double *restrict d2_p)
 {
    int i, n = g->ncurr, nki = n * k + n - 1;
    double grad = 0, d2 = 0;
@@ -1022,15 +1025,23 @@ double step_regular_logistic(sample *s, gmatrix *g, int k)
    d2 *= g->ncurr_recip;
 
    if(d2 == 0)
-      return 0;
-   return grad / d2;
+   {
+      *d1_p = 0;
+      *d2_p = 1;
+   }
+   else
+   {
+      *d1_p = grad;
+      *d2_p = d2;
+   }
 }
 
 /*
  * Squared hinge loss, assumes y \in {-1,1},
  * and that X is scaled so that the 2nd derivative is always <=N
  */
-double step_regular_sqrhinge(sample *s, gmatrix *g, int k)
+void step_regular_sqrhinge(sample *s, gmatrix *g, int k,
+   double *restrict d1_p, double *restrict d2_p)
 {
    int i, n = g->ncurr, nki = n * k + n - 1;
    double grad = 0;
@@ -1044,7 +1055,8 @@ double step_regular_sqrhinge(sample *s, gmatrix *g, int k)
       nki--;
    }
 
-   return grad * g->ncurr_recip;
+   *d1_p = grad;
+   *d2_p = n;
 }
 
 /* Update linear predictor and related variables.

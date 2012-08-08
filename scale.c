@@ -135,7 +135,7 @@ int main(int argc, char* argv[])
    if(!gmatrix_init(&g, filename_bin, n, p,
 	    NULL, YFORMAT01, MODEL_LINEAR, MODELTYPE_REGRESSION,
 	    encoded, filename_folds_ind,
-	    MODE_TRAIN, NULL, NULL, NULL, FALSE, FALSE))
+	    MODE_TRAIN, NULL, NULL, FALSE, FALSE))
       return EXIT_FAILURE;
 
    if(filename_folds_ind)

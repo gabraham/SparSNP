@@ -30,7 +30,7 @@ double get_lambda1max_gmatrix(gmatrix *g,
 {
    int i, j, n = g->ncurr, n1 = g->ncurr - 1, p1 = g->p + 1;
    int k, K = g->K;
-   double s, zmax = 0, beta_new;
+   double d1, d2, s, zmax = 0, beta_new;
    sample sm;
 
    if(!sample_init(&sm))
@@ -60,7 +60,8 @@ double get_lambda1max_gmatrix(gmatrix *g,
 	    continue;
          g->nextcol(g, &sm, j, NA_ACTION_RANDOM);
    
-         s = fabs(step_func(&sm, g, k));
+         step_func(&sm, g, k, &d1, &d2);
+	 s = fabs(d1 / d2);
          zmax = (zmax < s) ? s : zmax;
       } 
    
@@ -82,10 +83,10 @@ int cd_gmatrix(gmatrix *g,
       step step_func,
       const int maxepochs,
       const int maxiters,
+      const double *C,
       const double lambda1,
       const double lambda2,
       const double gamma,
-      const double thresh,
       const int verbose,
       const double trunc)
 {
@@ -93,13 +94,17 @@ int cd_gmatrix(gmatrix *g,
    int j, k, allconverged = 0, numactive = 0,
        epoch = 1,
        good = FALSE;
-   double s = 0, beta_new, delta;
+   double beta_new, delta;
    const double truncl = log((1 - trunc) / trunc);
    const double l2recip = 1 / (1 + lambda2);
    sample sm;
    double *beta_old = NULL;
    int *active_old = NULL;
    int pkj, p1K1 = p1 * K - 1;
+   double d1, d2, pd1 = 0, pd2 = 0;
+   int nE = K * (K - 1) / 2, e;
+   double Ckne, Ckne2;
+   double beta_pkj;
 
    if(!sample_init(&sm))
       return FAILURE;
@@ -119,20 +124,35 @@ int cd_gmatrix(gmatrix *g,
 	 for(j = 0 ; j < p1; j++)
       	 {
 	    pkj = p1 * k + j;
-      	    beta_new = beta_old[pkj] = g->beta[pkj];
+	    beta_pkj = g->beta[pkj];
+      	    beta_new = beta_old[pkj] = beta_pkj;
       	    
       	    if(g->active[pkj])
       	    {
       	       g->nextcol(g, &sm, j, NA_ACTION_RANDOM);
 
-      	       s = step_func(&sm, g, k);
-      	       beta_new = g->beta[pkj] - s;
+      	       step_func(&sm, g, k, &d1, &d2);
+
+	       /* Apply inter-task penalty, summing over all the edges */
+	       pd1 = 0;
+	       pd2 = 0;
+	       for(e = 0 ; e < nE ; e++)
+	       {
+	          Ckne = C[k * nE + e];
+		  Ckne2 = Ckne * Ckne;
+		  pd1 += Ckne2 * beta_pkj;
+		  pd2 += Ckne2;
+	       }
+	       pd1 *= 2;
+	       pd2 *= 2;
+
+      	       beta_new = beta_pkj - (d1 + pd1) / (d2 + pd2);
       	       
 	       if(j > 0)
 		  beta_new = soft_threshold(beta_new, lambda1) * l2recip;
 	       beta_new = clip(beta_new, -truncl, truncl);
 
-      	       delta = beta_new - g->beta[pkj];
+      	       delta = beta_new - beta_pkj;
       	       
       	       if(fabs(delta) > ZERO_THRESH)
       	       {
@@ -140,7 +160,7 @@ int cd_gmatrix(gmatrix *g,
       	          g->beta[pkj] = beta_new;
       	       }
 
-      	       g->active[pkj] = g->beta[pkj] != 0;
+      	       g->active[pkj] = (g->beta[pkj] != 0);
       	    }
 
       	    numactive += g->active[pkj];

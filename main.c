@@ -91,9 +91,9 @@ int run_train(Opt *opt, gmatrix *g)
        * including the intercept */
       ret = cd_gmatrix(
 	    g, opt->step_func,
-	    opt->maxepochs, opt->maxiters,
+	    opt->maxepochs, opt->maxiters, NULL,
 	    opt->lambda1path[i], opt->lambda2, opt->gamma,
-	    opt->threshold, opt->verbose, opt->trunc);
+	    opt->verbose, opt->trunc);
 
       if(ret == CDFAILURE)
       {
@@ -144,7 +144,7 @@ reached or exceeded: %d\n", opt->nzmax);
 int run_predict_beta(gmatrix *g, predict predict_func,
       char* predict_file)
 {
-   int i, j, n = g->ncurr, p1 = g->p + 1;
+   int i, j, k, n = g->ncurr, p1 = g->p + 1, K = g->K;
    sample sm;
    double *yhat;
    double *restrict lp = g->lp;
@@ -153,27 +153,36 @@ int run_predict_beta(gmatrix *g, predict predict_func,
    if(!sample_init(&sm))
       return FAILURE;
 
-   CALLOCTEST(yhat, n, sizeof(double));
+   CALLOCTEST(yhat, n * g->K, sizeof(double));
 
-   for(j = 0 ; j < p1 ; j++)
+   for(k = 0 ; k < K ; k++)
    {
-      if(beta[j] != 0)
+      /* first pass: sum the inputs to get the linear predictor */
+      for(j = 0 ; j < p1 ; j++)
       {
-	 g->nextcol(g, &sm, j, NA_ACTION_RANDOM);
+         if(beta[p1 * k + j] != 0)
+         {
+            g->nextcol(g, &sm, j, NA_ACTION_RANDOM);
 
-	 /* We count up to n, which should be the same as sm.n,
-	  * since we're not deleting missing obs */
-	 for(i = 0 ; i < n ; i++)
-	    lp[i] += sm.x[i] * beta[j];
+            /* We count up to n, which should be the same as sm.n,
+             * since we're not deleting missing obs */
+            for(i = 0 ; i < n ; i++)
+	    {
+	       printf("%d %.3f\n", n * k + i, lp[n*k+i]);
+               lp[n * k + i] += sm.x[i] * beta[p1 * k + j];
+	    }
+
+         }
       }
-   }
    
-   for(i = 0 ; i < n ; i++)
-      yhat[i] = predict_func(lp[i]);
+      /* second pass: convert lp to correct scale */
+      for(i = 0 ; i < n ; i++)
+	 yhat[n * k + i] = predict_func(lp[n * k + i]);
+   }
 
    printf("writing %s (%d) ... \n", predict_file, n);
    
-   if(!writevectorf(predict_file, yhat, n))
+   if(!writematrixf(yhat, n, K, predict_file))
       return FAILURE;
 
    FREENULL(yhat);
@@ -184,18 +193,23 @@ int run_predict_beta(gmatrix *g, predict predict_func,
 int run_predict(gmatrix *g, predict predict_func,
       char **beta_files, int n_beta_files)
 {
-   int i;
+   int i, K;
    char tmp[MAX_STR_LEN];
 
    for(i = 0 ; i < n_beta_files ; i++)
    {
       gmatrix_zero_model(g);
       printf("run_predict: reading %s\n", beta_files[i]);
-      if(!(g->K = load_beta_sparse(g->beta_orig, beta_files[i], g->p + 1)))
+      if(!(K = load_beta_sparse(g->beta_orig, beta_files[i], g->p + 1)))
       {
 	 printf("skipping %s\n", beta_files[i]);
 	 continue;
       }
+
+      /* If we are in prediction mode and there is no FAM file, we take K from
+       * the beta files, otherwise we take it from the FAM file */
+      if(g->K == 0)
+	 g->K = K;
 
       printf("read %d task/s from file '%s'\n", g->K, beta_files[i]);
 
@@ -218,7 +232,7 @@ int do_train(gmatrix *g, Opt *opt, char tmp[])
    if(!gmatrix_init(g, opt->filename, opt->n, opt->p,
 	    NULL, opt->yformat, opt->model, opt->modeltype, opt->encoded,
 	    opt->folds_ind_file, opt->mode,
-	    opt->loss_pt_func, opt->subset_file,
+	    opt->subset_file,
 	    opt->famfilename, opt->scaley, opt->unscale_beta))
       return FAILURE;
 
@@ -277,7 +291,7 @@ int do_predict(gmatrix *g, Opt *opt, char tmp[])
    if(!gmatrix_init(g, opt->filename, opt->n, opt->p,
 	    NULL, opt->yformat, opt->model, opt->modeltype, opt->encoded,
 	    opt->folds_ind_file, opt->mode,
-	    opt->loss_pt_func, opt->subset_file,
+	    opt->subset_file,
 	    opt->famfilename, opt->scaley, opt->unscale_beta))
       return FAILURE;
 
@@ -299,7 +313,7 @@ int do_predict(gmatrix *g, Opt *opt, char tmp[])
 	 /* write y file */
 	 snprintf(tmp, 5, "y.%02d", k);
 	 printf("writing y file: %s\n", tmp);
-	 if(!(ret &= writevectorf(tmp, g->y, g->ncurr)))
+	 if(!(ret &= writematrixf(g->y, g->ncurr, g->K, tmp)))
 	    break;
 
 	 gmatrix_reset(g);

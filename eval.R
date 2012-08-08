@@ -98,7 +98,7 @@ evalpred.crossval <- function(type=NULL, dir=NULL)
    
    cv.d <- pred <- NULL
    cv <- lapply(folds, function(fold) {
-      y <- scan(sprintf("y.%02d", fold), quiet=TRUE)
+      y <- scan(sprintf("y.%02d", fold), quiet=TRUE, sep=",")
       
       if(length(unique(y)) == 1)
          return(NULL)
@@ -112,7 +112,7 @@ evalpred.crossval <- function(type=NULL, dir=NULL)
 	       "^beta\\.csv\\.[[:digit:]]+\\.%02d\\.pred[\\.bz2]*$", fold))
       )
    
-      pr <- sapply(files, scan, quiet=TRUE)
+      pr <- sapply(files, scan, quiet=TRUE, sep=",")
       lambda <- scan(sprintf("lambda1path.csv.%02d", fold), quiet=TRUE)
       nz <- scan(sprintf("nonzero.csv.%02d", fold), quiet=TRUE)
       

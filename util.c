@@ -28,7 +28,7 @@ int writevectorf(char* file, double* beta, int p)
    FILE* out = NULL;
    FOPENTEST(out, file, "w")
    for(i = 0 ; i < p ; i++)
-      fprintf(out, "%.20f\n", beta[i]);
+      fprintf(out, "%.10f\n", beta[i]);
    fflush(out);
    fclose(out);
    return SUCCESS;
@@ -61,7 +61,7 @@ int writematrixf(double *x, int n, int p, char* file)
    {
       for(j = 0 ; j < p ; j++)
       {
-	 fprintf(out, "%.20f", x[j * n + i]);
+	 fprintf(out, "%.10f", x[j * n + i]);
 	 if(j < p - 1)
 	    fprintf(out, ",");
 	 else
@@ -169,7 +169,7 @@ int write_beta_sparse(char* file, double* beta, int p, int K)
    fprintf(out, "%d,", j);
    for(k = 0 ; k < K ; k++)
    {
-      fprintf(out, "%.20f", beta[p * k + j]);
+      fprintf(out, "%.10f", beta[p * k + j]);
       if(k == K - 1)
 	 fprintf(out, "\n");
       else
@@ -192,7 +192,7 @@ int write_beta_sparse(char* file, double* beta, int p, int K)
 	 for(k = 0 ; k < K ; k++)
 	 {
 	    if(beta[p * k + j] != 0)
-	       fprintf(out, "%.20f", beta[p * k + j]);
+	       fprintf(out, "%.10f", beta[p * k + j]);
 	    else
 	       fprintf(out, "0"); /* less space, TODO: use a sparser format */
 	    if(k == K - 1)
