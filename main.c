@@ -33,7 +33,7 @@ int make_lambda1path(Opt *opt, gmatrix *g)
       opt->lambda1max = get_lambda1max_gmatrix(g, opt->phi1_func,
 	    opt->phi2_func, opt->inv_func, opt->step_func);
       if(opt->verbose)
-	 printf("lambda1max: %.20f\n", opt->lambda1max);
+	 printf("lambda1max: %.10f\n", opt->lambda1max);
       /*opt->lambda1path[0] = opt->lambda1max;*/
    }
    opt->lambda1path[0] = opt->lambda1max;
@@ -45,7 +45,7 @@ int make_lambda1path(Opt *opt, gmatrix *g)
       opt->lambda1path[i] = pow(10, log10(opt->lambda1max) - s * i);
 
    if(opt->verbose)
-      printf("lambda1min: %.20f\n", opt->lambda1path[i-1]);
+      printf("lambda1min: %.10f\n", opt->lambda1path[i-1]);
 
    /* Write the coefs for model with intercept only */
    snprintf(tmp, MAX_STR_LEN, "%s.%02d.%02d",
@@ -84,15 +84,15 @@ int run_train(Opt *opt, gmatrix *g)
    {
       if(opt->verbose)
       {
-	 printf("\n[%d] Fitting with lambda1=%.20f lambda2=%.20f\n",
-	    i, opt->lambda1path[i], opt->lambda2);
+	 printf("\n[%d] Fitting with lambda1=%.10f lambda2=%.10f gamma=%.10f\n",
+	    i, opt->lambda1path[i], opt->lambda2, opt->gamma);
       }
 
       /* return value is number of nonzero variables,
        * including the intercept */
       ret = cd_gmatrix(
 	    g, opt->step_func,
-	    opt->maxepochs, opt->maxiters, NULL,
+	    opt->maxepochs, opt->maxiters,
 	    opt->lambda1path[i], opt->lambda2, opt->gamma,
 	    opt->verbose, opt->trunc);
 

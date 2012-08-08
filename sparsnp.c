@@ -83,7 +83,6 @@ int cd_gmatrix(gmatrix *g,
       step step_func,
       const int maxepochs,
       const int maxiters,
-      const double *C,
       const double lambda1,
       const double lambda2,
       const double gamma,
@@ -105,6 +104,7 @@ int cd_gmatrix(gmatrix *g,
    int nE = K * (K - 1) / 2, e;
    double Ckne, Ckne2;
    double beta_pkj;
+   double *restrict C = g->C;
 
    if(!sample_init(&sm))
       return FAILURE;

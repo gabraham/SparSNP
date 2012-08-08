@@ -98,7 +98,7 @@ typedef struct Opt {
 
 int cd_gmatrix(gmatrix *g,
       step step_func,
-      const int maxepochs, const int maxiters, const double *C,
+      const int maxepochs, const int maxiters, 
       const double lambda1, const double lambda2, const double gamma,
       const int verbose,
       const double trunc);
