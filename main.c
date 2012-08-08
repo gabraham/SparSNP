@@ -7,6 +7,7 @@
 #include <libgen.h>
 #include "sparsnp.h"
 #include "util.h"
+#include "gennetwork.h"
 
 #define OPTIONS_CALLER cd
 
@@ -233,7 +234,8 @@ int do_train(gmatrix *g, Opt *opt, char tmp[])
 	    NULL, opt->yformat, opt->model, opt->modeltype, opt->encoded,
 	    opt->folds_ind_file, opt->mode,
 	    opt->subset_file,
-	    opt->famfilename, opt->scaley, opt->unscale_beta))
+	    opt->famfilename, opt->scaley, opt->unscale_beta,
+	    opt->cortype, opt->corthresh))
       return FAILURE;
 
    printf("%d CV folds\n", g->nfolds);
@@ -292,7 +294,8 @@ int do_predict(gmatrix *g, Opt *opt, char tmp[])
 	    NULL, opt->yformat, opt->model, opt->modeltype, opt->encoded,
 	    opt->folds_ind_file, opt->mode,
 	    opt->subset_file,
-	    opt->famfilename, opt->scaley, opt->unscale_beta))
+	    opt->famfilename, opt->scaley, opt->unscale_beta,
+	    opt->cortype, opt->corthresh))
       return FAILURE;
 
    if(g->nfolds > 1)

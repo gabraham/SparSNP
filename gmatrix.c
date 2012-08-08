@@ -11,6 +11,7 @@
 #include "gmatrix.h"
 #include "ind.h"
 #include "util.h"
+#include "gennetwork.h"
 
 int sample_init(sample *s)
 {
@@ -25,7 +26,8 @@ int gmatrix_init(gmatrix *g, char *filename, int n, int p,
       char *scalefile, short yformat, int model, int modeltype,
       short encoded, char *folds_ind_file,
       short mode, char *subset_file, 
-      char *famfilename, int scaley, int unscale_beta)
+      char *famfilename, int scaley, int unscale_beta,
+      int cortype, int corthresh)
 {
    int i, j, p1;
 
@@ -81,8 +83,10 @@ int gmatrix_init(gmatrix *g, char *filename, int n, int p,
    g->ncases = 0;
    g->folds_ind = NULL;
    g->unscale_beta = unscale_beta;
-
    g->famfilename = famfilename;
+   g->C = NULL;
+   g->cortype = cortype;
+   g->corthresh = corthresh;
 
    printf("Using PLINK binary format\n");
    printf("FAM file: %s\n", g->famfilename);
@@ -163,8 +167,9 @@ int gmatrix_init(gmatrix *g, char *filename, int n, int p,
 
    gmatrix_set_ncurr(g);
    
-   if(g->mode == MODE_TRAIN && g->y_orig && !gmatrix_split_y(g))
-      return FAILURE;
+   if(g->mode == MODE_TRAIN && g->y_orig 
+      && !(gmatrix_split_y(g) && gmatrix_make_fusion(g)))
+	 return FAILURE;
 
    if(!gmatrix_init_lp(g))
       return FAILURE;
@@ -255,6 +260,7 @@ void gmatrix_free(gmatrix *g)
 
    mapping_free(g->map);
    FREENULL(g->map);
+   FREENULL(g->C);
 }
 
 /* y is a copy of y_orig as needed for crossval - in training y are the
@@ -914,7 +920,7 @@ int gmatrix_set_fold(gmatrix *g, int fold)
       return FAILURE;
    if(g->scalefile && !gmatrix_read_scaling(g, g->scalefile))
       return FAILURE;
-   return (g->y_orig) && gmatrix_split_y(g);
+   return (g->y_orig) && gmatrix_split_y(g) && gmatrix_make_fusion(g);
 }
 
 /* zero the lp and adjust the lp-functions */
@@ -949,6 +955,22 @@ void gmatrix_zero_model(gmatrix *g)
    }
 
    g->loss = 0;
+}
+
+/* Create the fusion penalty matrix C from each Y matrix */
+int gmatrix_make_fusion(gmatrix *g)
+{
+   int nE = g->K * (g->K - 1) / 2;
+
+   if(g->K == 1)
+      return SUCCESS;
+
+   CALLOCTEST(g->C, nE * g->K, sizeof(double));
+
+   gennetwork(g->y, nE, g->K, g->corthresh, g->cortype, g->C);
+
+
+   return SUCCESS;
 }
 
 /* Initialises the LP (linear predictor) */

@@ -92,6 +92,8 @@ typedef struct Opt {
    char *outdir;
    int scaley;
    int unscale_beta;
+   int cortype;
+   int corthresh;
 } Opt;
 
 int cd_gmatrix(gmatrix *g,

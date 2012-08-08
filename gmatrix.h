@@ -129,6 +129,9 @@ typedef struct gmatrix {
    mapping *map;
    int *folds_ind; /* xor of folds with mode == MODE_PREDICT */
    int unscale_beta;
+   double *C;
+   int cortype;
+   int corthresh;
 } gmatrix;
 
 int sample_init(sample *);
@@ -136,7 +139,8 @@ int gmatrix_init(gmatrix *g, char *filename, int n, int p,
       char *scalefile, short yformat, int model, int modeltype,
       short encoded, char *folds_ind_file,
       short mode, char *subsample_file,
-      char *famfilename, int scaley, int unscale_beta);
+      char *famfilename, int scaley, int unscale_beta,
+      int cortype, int corthresh);
 int gmatrix_reset(gmatrix *);
 void gmatrix_free(gmatrix *);
 int gmatrix_disk_nextcol(gmatrix *g, sample *sm, int skip, int na_action);
@@ -159,7 +163,7 @@ int gmatrix_fam_read_y(gmatrix *g);
 int gmatrix_read_matrix(gmatrix *g, int *ind, int m);
 int gmatrix_scale_y(gmatrix *g);
 int gmatrix_trim_beta(gmatrix *g);
-
+int gmatrix_make_fusion(gmatrix *g);
 int gmatrix_load_subsets(gmatrix *g);
 int gmatrix_plink_check_pheno(gmatrix *g);
 

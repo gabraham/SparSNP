@@ -1,8 +1,10 @@
 #include <stdio.h>
 #include <string.h>
+#include <math.h>
 
 #include "util.h"
 #include "common.h"
+#include "matrix.h"
 
 int writebinvectorf(char* file, double* x, int n)
 {

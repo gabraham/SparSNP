@@ -120,6 +120,8 @@ int opt_defaults(Opt *opt, short caller)
    opt->famfilename = NULL;
    
    opt->unscale_beta = FALSE;
+   opt->cortype = 2;
+   opt->corthresh = 0;
 
    return SUCCESS;
 }
@@ -362,6 +364,17 @@ int opt_parse(int argc, char* argv[], Opt* opt)
       {
 	 opt->unscale_beta = TRUE;
       }
+      else if(strcmp2(argv[i], "-cortype"))
+      {
+	 i++;
+	 opt->cortype = atol(argv[i]);
+      }
+      else if(strcmp2(argv[i], "-corthresh"))
+      {
+	 i++;
+	 opt->corthresh = atof(argv[i]);
+      }
+
    }
 
    if(opt->caller == OPTIONS_CALLER_CD) /* coordinate descent */
@@ -375,8 +388,8 @@ int opt_parse(int argc, char* argv[], Opt* opt)
 [-betafiles <beta filename/s>] \
 [-maxepochs <maxepochs>] [-maxiters <maxiters>] [-l1 <lambda1>] \
 -l2 <lambda2>] [-thresh <threshold>] [-foldind <foldsfile>] \
-[-pred <prediction file>] [-filter] [-unscale]\
-[-v] [-vv]\n");
+[-pred <prediction file>] [-filter] [-unscale] [-cortype [0/1/2]]\
+[-corthresh <threshold>] [-v] [-vv]\n");
          return FAILURE;
       }
       else if(opt->n_beta_files > 1 && opt->mode == MODE_TRAIN)
