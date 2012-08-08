@@ -7,7 +7,7 @@
 #include <math.h>
 
 #include "common.h"
-#include "loss.h"
+#include "link.h"
 #include "coder.h"
 
 /* categorical x inputs: 0, 1, 2, 3 */

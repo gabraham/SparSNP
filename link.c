@@ -5,7 +5,7 @@
 
 #include <math.h>
 #include <stdio.h>
-#include "loss.h"
+#include "link.h"
 
 double linearphi1(double lp)
 {

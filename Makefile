@@ -52,7 +52,7 @@ static: $(targets)
 
 LIBRARIES = -lpthread -llapack -lblas -lgfortran -lm
 
-sparsnp: common.c coder.c ind.c gmatrix.c loss.c util.c options.c \
+sparsnp: common.c coder.c ind.c gmatrix.c link.c util.c options.c \
 	 main.c sparsnp.c
 	$(CC) $(CFLAGS) $^ $(LIBRARIES) -o sparsnp
 
@@ -71,7 +71,7 @@ makefolds: common.c util.c ind.c makefolds.c
 unpack: common.c coder.c ind.c gmatrix.c unpack.c util.c
 	$(CC) $(CFLAGS) $^ $(LIBRARIES) -o unpack
 
-univariable: common.c coder.c ind.c gmatrix.c loss.c util.c \
+univariable: common.c coder.c ind.c gmatrix.c link.c util.c \
 	     options.c sparsnp.c svd.c matrix.c thin.c \
 	     multivariable.c univariable.c
 	$(CC) $(CFLAGS) -llapack -lblas -lm $^ $(LIBRARIES) -o univariable \
