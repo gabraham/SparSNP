@@ -134,7 +134,9 @@ int cd_gmatrix(gmatrix *g,
       	    
       	    if(!g->active[pkj])
 	    {
+#ifdef DEBUG
 	       printf("skipping inactive k=%d j=%d\n", k, j);
+#endif
 	    }
 	    else
       	    {
@@ -166,6 +168,10 @@ int cd_gmatrix(gmatrix *g,
 	       {
 		  s = beta_new = beta_pkj - d1 / d2;
 	       }
+
+	       /* numerically close enough to zero */
+	       if(fabs(beta_new) < ZERO_THRESH)
+		  beta_new = 0;
 
 	       /*beta_new = clip(beta_new, -truncl, truncl);*/
 

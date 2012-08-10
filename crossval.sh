@@ -134,7 +134,7 @@ function run {
       scale -bed $BED -n $N -p $P $FOLDIND 
    
       # Run the model
-      sparsnp -train -model $MODEL -n $N -p $P \
+      $WRAPPER sparsnp -train -model $MODEL -n $N -p $P \
 	 -scale $SCALE -bed $BED -nzmax $NZMAX -nl1 $NLAMBDA1 -l1min $L1MIN -v \
 	 $FOLDIND -fam $FAM -l2 $LAMBDA2 $UNSCALE $SCALEY -gamma $GAMMA
  
