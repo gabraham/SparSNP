@@ -30,6 +30,13 @@ int gennetwork(double *y, int n, int K,
    cov2(y, S, n, K);
    cov2cor(S, R, K);
 
+#ifdef DEBUG
+   if(!writematrixf(S, K, K, "S.txt"))
+      return FAILURE;
+   if(!writematrixf(R, K, K, "R.txt"))
+      return FAILURE;
+#endif
+
    for(i = 0 ; i < K ; i++)
    {
       for(j = 0 ; j < K ; j++)

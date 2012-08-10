@@ -24,6 +24,8 @@ inline static double zero(const double x, const double thresh)
 /* 
  * Find smallest lambda1 that makes all coefficients
  * zero (except the intercept)
+ * 
+ * This function doesn't take into account the fusion penalty
  */
 double get_lambda1max_gmatrix(gmatrix *g,
       phi1 phi1_func, phi2 phi2_func, inv inv_func, step step_func)
@@ -93,8 +95,8 @@ int cd_gmatrix(gmatrix *g,
    int j, k, allconverged = 0, numactive = 0,
        epoch = 1,
        good = FALSE;
-   double beta_new, delta;
-   const double truncl = log((1 - trunc) / trunc);
+   double beta_new, delta, s;
+   /*const double truncl = log((1 - trunc) / trunc);*/
    const double l2recip = 1 / (1 + lambda2);
    sample sm;
    double *beta_old = NULL;
@@ -108,6 +110,9 @@ int cd_gmatrix(gmatrix *g,
 
    if(!sample_init(&sm))
       return FAILURE;
+
+   for(e = nE * K - 1 ; e >= 0 ; --e)
+      C[e] *= gamma;
 
    CALLOCTEST(beta_old, p1 * K, sizeof(double));
    CALLOCTEST(active_old, p1 * K, sizeof(int));
@@ -127,12 +132,16 @@ int cd_gmatrix(gmatrix *g,
 	    beta_pkj = g->beta[pkj];
       	    beta_new = beta_old[pkj] = beta_pkj;
       	    
-      	    if(g->active[pkj])
+      	    if(!g->active[pkj])
+	    {
+	       printf("skipping inactive k=%d j=%d\n", k, j);
+	    }
+	    else
       	    {
       	       g->nextcol(g, &sm, j, NA_ACTION_RANDOM);
 
       	       step_func(&sm, g, k, &d1, &d2);
-      
+
 	       /* don't penalise intercept */
 	       if(j > 0)
 	       {
@@ -149,16 +158,27 @@ int cd_gmatrix(gmatrix *g,
 		  pd1 *= 2;
 		  pd2 *= 2;
 
-		  beta_new = soft_threshold(beta_pkj - (d1 + pd1) / (d2 + pd2), lambda1) * l2recip;
+		  s = beta_pkj - (d1 + pd1) / (d2 + pd2);
+
+		  beta_new = soft_threshold(s, lambda1) * l2recip;
 	       }
 	       else
-		  beta_new = beta_pkj - d1 / d2;
+	       {
+		  s = beta_new = beta_pkj - d1 / d2;
+	       }
 
-	       beta_new = clip(beta_new, -truncl, truncl);
+	       /*beta_new = clip(beta_new, -truncl, truncl);*/
 
       	       delta = beta_new - beta_pkj;
       	       
-      	       if(fabs(delta) > ZERO_THRESH)
+#ifdef DEBUG
+   if(j > 0)
+   printf("[k=%d j=%d] d1=%.6f pd1=%.6f d2=%.6f pd2=%.6f s=%.6f delta=%.6f\
+ beta_old=%.6f beta_new=%.6f\n",
+		  k, j, d1, pd1, d2, pd2, s, delta, beta_pkj, beta_new);
+#endif
+
+      	  //     if(fabs(delta) > ZERO_THRESH)
       	       {
       	          updatelp(g, delta, sm.x, j, k);
       	          g->beta[pkj] = beta_new;
@@ -169,6 +189,12 @@ int cd_gmatrix(gmatrix *g,
 
       	    numactive += g->active[pkj];
       	 }
+#ifdef DEBUG
+   	 printf("[end of task k=%d] numactive=%d (excl. %d intercept/s)\n",
+	    k, numactive - (k + 1), k+1);
+
+	 printf("----------------\n");
+#endif
       }
 
       printfverb("fold: %d  epoch: %d  numactive: %d\n", 

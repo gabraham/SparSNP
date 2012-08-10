@@ -51,7 +51,7 @@ static: CFLAGS += -static
 
 static: $(targets)       
 
-LIBRARIES = -lpthread -llapack -lblas -lgfortran -lm
+LIBRARIES = -lpthread -llapack -lblas -lm #-lgfortran -lm
 
 sparsnp: common.c coder.c ind.c gmatrix.c link.c util.c options.c \
 	 main.c sparsnp.c matrix.c gennetwork.c

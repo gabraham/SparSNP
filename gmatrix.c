@@ -968,7 +968,15 @@ int gmatrix_make_fusion(gmatrix *g)
    FREENULL(g->C);
    CALLOCTEST(g->C, nE * g->K, sizeof(double));
 
-   return gennetwork(g->y, nE, g->K, g->corthresh, g->cortype, g->C);
+   if(!gennetwork(g->y, g->ncurr, g->K, g->corthresh, g->cortype, g->C))
+      return FAILURE;
+
+#ifdef DEBUG
+   if(!writematrixf(g->C, nE, g->K, "C.txt"))
+      return FAILURE;
+#endif
+
+   return SUCCESS;
 }
 
 /* Initialises the LP (linear predictor) */
@@ -1021,7 +1029,7 @@ void step_regular_linear(sample *s, gmatrix *g, int k,
    }
 
    *d1_p = grad;
-   *d2_p = n;
+   *d2_p = n - 1;
 }
 
 void step_regular_logistic(sample *s, gmatrix *g, int k,

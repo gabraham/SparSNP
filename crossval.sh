@@ -4,7 +4,7 @@ set -e
 
 if [ -z "$1" ] || [ -z "$2" ];
 then
-   echo "Usage: cv.sh <root name of PLINK file> <model>"
+   echo "Usage: [optional params] cv.sh <root name of PLINK file> <model>"
    echo "where model is one of: linear, sqrhinge"
    exit 1
 fi
@@ -20,20 +20,30 @@ MODEL=$2
 ######################################################################
 # User modifiable parameters
 
-# number of cross-validation folds
+# Number of cross-validation folds
 [[ -z "$NFOLDS" ]] && NFOLDS=10
 
-# number of cross-validation replications
+# Number of cross-validation replications
 [[ -z "$NREPS" ]] && NREPS=10
 
-# number of penalties to look at
+# Number of penalties to look at
 [[ -z "$NLAMBDA1" ]] && NLAMBDA1=30
 
+# The smallest L1 penalty, as a proportion of the maximal L1 penalty
+# (determined within SparSNP from the data)
 [[ -z "$L1MIN" ]] && L1MIN=0.001
 
+# L2 penalty (elastic-net)
 [[ -z "$LAMBDA2" ]] && LAMBDA2=0
 
+# Standardise the outputs, only really makes sense for linear regression
 [[ -z "$SCALEY" ]] && SCALEY=""
+
+# Fusion penalty
+[[ -z "$GAMMA" ]] && GAMMA=0
+
+# Return beta on the original scale of the data (before standardising)
+UNSCALE=${UNSCALE- "-unscale"}
 
 ######################################################################
 
@@ -86,7 +96,10 @@ NREPS=$NREPS
 NZMAX=$NZMAX
 NLAMBDA1=$NLAMBDA1
 LAMBDA2=$LAMBDA2
+GAMMA=$GAMMA
 MODEL=$MODEL
+BETA_SCALED=$UNSCALE
+Y_SCALED=$SCALEY
 EOF
 
 awk '{print $2, $5}' "$BIM" > snps.txt
@@ -123,14 +136,17 @@ function run {
       # Run the model
       sparsnp -train -model $MODEL -n $N -p $P \
 	 -scale $SCALE -bed $BED -nzmax $NZMAX -nl1 $NLAMBDA1 -l1min $L1MIN -v \
-	 $FOLDIND -fam $FAM -l2 $LAMBDA2 -unscale $SCALEY
+	 $FOLDIND -fam $FAM -l2 $LAMBDA2 $UNSCALE $SCALEY -gamma $GAMMA
  
-      # Predict for test folds
-      B=$(for((i=0;i<NLAMBDA1;i++)); do printf 'beta.csv.%02d ' $i; done)
-      sparsnp -predict -model $MODEL -n $N -p $P -v \
-	 -bed $BED -betafiles $B \
-	 -scale $SCALE \
-	 $FOLDIND -fam $FAM
+      if [ $NFOLDS -gt 1 ]
+      then
+	 # Predict for test folds
+	 B=$(for((i=0;i<NLAMBDA1;i++)); do printf 'beta.csv.%02d ' $i; done)
+	 sparsnp -predict -model $MODEL -n $N -p $P -v \
+	    -bed $BED -betafiles $B \
+	    -scale $SCALE \
+	    $FOLDIND -fam $FAM
+      fi
 
       popd
    else
