@@ -37,12 +37,12 @@ MODEL=$2
 [[ -z "$LAMBDA2" ]] && LAMBDA2=0
 
 # Standardise the outputs, only really makes sense for linear regression
-[[ -z "$SCALEY" ]] && SCALEY=""
+#[[ -z "$SCALEY" ]] && SCALEY=""
 
 # Fusion penalty
 [[ -z "$GAMMA" ]] && GAMMA=0
 
-# Return beta on the original scale of the data (before standardising)
+# By default, return beta on the original scale of the data (before standardising)
 UNSCALE=${UNSCALE- "-unscale"}
 
 ######################################################################
@@ -90,7 +90,7 @@ fi
 pushd $DIR
 
 cat >params.txt<<EOF
-ROOT=$(realpath "$ROOT")
+ROOT=$ROOT
 NFOLDS=$NFOLDS
 NREPS=$NREPS
 NZMAX=$NZMAX
@@ -155,7 +155,8 @@ function run {
 }
 
 export -f run
-export NFOLDS N P BED FAM FOLDIND MODEL SCALE NZMAX NLAMBDA1 L1MIN LAMBDA2
+export NFOLDS N P BED FAM FOLDIND MODEL
+export SCALEY SCALE NZMAX NLAMBDA1 L1MIN LAMBDA2
 
 seq $REP_START $REP_END | xargs -P$NUMPROCS -I{} bash -c "run {}"
 
