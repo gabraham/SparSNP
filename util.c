@@ -77,6 +77,35 @@ int writematrixf(double *x, int n, int p, char* file)
    return SUCCESS;
 }
 
+/* Writes an n by p matrix to file, in row-major ordering
+ * assumes that the matrix is in column-major ordering
+ */
+int writematrixl(int *x, int n, int p, char* file)
+{
+   int i, j;
+   FILE* out;
+
+   printf("writing %d by %d matrix\n", n, p);
+   
+   FOPENTEST(out, file, "wt")
+   for(i = 0 ; i < n ; i++)
+   {
+      for(j = 0 ; j < p ; j++)
+      {
+	 fprintf(out, "%d", x[j * n + i]);
+	 if(j < p - 1)
+	    fprintf(out, ",");
+	 else
+	    fprintf(out, "\n");
+      }
+   }
+
+   fflush(out);
+   fclose(out);
+
+   return SUCCESS;
+}
+
 /* Assumes ascii, one value per line */
 int load_beta(double *beta, char *filename, int p)
 {

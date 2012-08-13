@@ -37,6 +37,7 @@ MODEL=$2
 [[ -z "$LAMBDA2" ]] && LAMBDA2=0
 
 # Standardise the outputs, only really makes sense for linear regression
+# Note that we scale Y globally, not for each cross-validation fold
 #[[ -z "$SCALEY" ]] && SCALEY=""
 
 # Fusion penalty

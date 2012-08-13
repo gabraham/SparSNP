@@ -69,7 +69,8 @@ int make_lambda1path(Opt *opt, gmatrix *g)
  */
 int run_train(Opt *opt, gmatrix *g)
 {
-   int i, ret;
+   int i, ret, k;
+   int *numactiveK = NULL;
    char tmp[MAX_STR_LEN];
 
    if(opt->verbose)
@@ -77,16 +78,15 @@ int run_train(Opt *opt, gmatrix *g)
 	    g->ntrain[g->fold], g->ntest[g->fold]);
    
    /* first numnz is always zero by definition */
-   CALLOCTEST(g->numnz, opt->nlambda1, sizeof(int));
+   CALLOCTEST(g->numnz, opt->nlambda1 * g->K, sizeof(int));
+   CALLOCTEST(numactiveK, g->K, sizeof(int));
 
-   /* don't start from zero, getlambda1max already computed that */
+   /* don't start from zero, getlambda1max already computed that solution */
    for(i = 1 ; i < opt->nlambda1 ; i++)
    {
       if(opt->verbose)
-      {
 	 printf("\n[%d] Fitting with lambda1=%.10f lambda2=%.10f gamma=%.10f\n",
 	    i, opt->lambda1path[i], opt->lambda2, opt->gamma);
-      }
 
       /* return value is number of nonzero variables,
        * including the intercept */
@@ -94,7 +94,7 @@ int run_train(Opt *opt, gmatrix *g)
 	    g, opt->step_func,
 	    opt->maxepochs, opt->maxiters,
 	    opt->lambda1path[i], opt->lambda2, opt->gamma,
-	    opt->verbose, opt->trunc);
+	    opt->verbose, opt->trunc, numactiveK);
 
       if(ret == CDFAILURE)
       {
@@ -103,7 +103,9 @@ int run_train(Opt *opt, gmatrix *g)
       } 
 
       /* we don't want to count intercept in numnz */
-      g->numnz[i] = ret - 1;
+      for(k = 0 ; k < g->K ; k++)
+	 g->numnz[k * opt->nlambda1 + i] = numactiveK[k] - 1;
+
       gmatrix_reset(g);
 
       snprintf(tmp, MAX_STR_LEN, "%s.%02d.%02d",
@@ -131,10 +133,11 @@ reached or exceeded: %d\n", opt->nzmax);
    snprintf(tmp, MAX_STR_LEN, "%s.%02d", opt->numnz_file, g->fold);
    /* number of non-zero variables for each successful fit and the all-zero
     * fit, excluding intercept */
-   if(!writevectorl(tmp, g->numnz, i))
+   if(!writematrixl(g->numnz, opt->nlambda1, g->K, tmp))
       return FAILURE;
 
    FREENULL(g->numnz);
+   FREENULL(numactiveK);
 
    return SUCCESS;
 }

@@ -43,6 +43,8 @@ int main(int argc, char *argv[])
 
    seed = getpid();
 
+   printf("makefolds: seed=%ld\n", seed);
+
    for(i = 1 ; i < argc ; i++)
    {
       if(strcmp2(argv[i], "-n"))

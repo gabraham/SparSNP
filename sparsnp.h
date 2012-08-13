@@ -102,7 +102,8 @@ int cd_gmatrix(gmatrix *g,
       const double lambda1, const double lambda2,
       const double gamma,
       const int verbose,
-      const double trunc);
+      const double trunc,
+      int *numactiveK);
 
 double get_lambda1max_gmatrix(gmatrix *g,
       phi1 phi1_func,

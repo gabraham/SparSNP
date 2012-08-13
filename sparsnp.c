@@ -89,7 +89,8 @@ int cd_gmatrix(gmatrix *g,
       const double lambda2,
       const double gamma,
       const int verbose,
-      const double trunc)
+      const double trunc,
+      int *numactiveK)
 {
    const int p1 = g->p + 1, K = g->K;
    int j, k, allconverged = 0, numactive = 0,
@@ -126,6 +127,7 @@ int cd_gmatrix(gmatrix *g,
 
       for(k = 0 ; k < K ; k++)
       {
+	 numactiveK[k] = 0;
 	 for(j = 0 ; j < p1; j++)
       	 {
 	    pkj = p1 * k + j;
@@ -193,7 +195,8 @@ int cd_gmatrix(gmatrix *g,
       	       g->active[pkj] = (g->beta[pkj] != 0);
       	    }
 
-      	    numactive += g->active[pkj];
+	    numactiveK[k] += g->active[pkj];
+	    numactive += g->active[pkj];
       	 }
 #ifdef DEBUG
    	 printf("[end of task k=%d] numactive=%d (excl. %d intercept/s)\n",
