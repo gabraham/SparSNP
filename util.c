@@ -56,8 +56,6 @@ int writematrixf(double *x, int n, int p, char* file)
    int i, j;
    FILE* out;
 
-   printf("writing %d by %d matrix\n", n, p);
-   
    FOPENTEST(out, file, "wt")
    for(i = 0 ; i < n ; i++)
    {
@@ -85,8 +83,6 @@ int writematrixl(int *x, int n, int p, char* file)
    int i, j;
    FILE* out;
 
-   printf("writing %d by %d matrix\n", n, p);
-   
    FOPENTEST(out, file, "wt")
    for(i = 0 ; i < n ; i++)
    {
