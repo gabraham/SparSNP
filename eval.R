@@ -494,6 +494,20 @@ d <- cv
 #   d <- rbind(d, cv.uni[, vars])
 #}
 
+d2 <- lapply(1:35, function(k) {
+   v1 <- grep(sprintf("R2_%s$", k), colnames(d), value=TRUE)
+   v2 <- grep(sprintf("NonZero_%s$", k), colnames(d), value=TRUE)
+   data.frame(d$lambda, R2=d[, v1], NonZero=d[,v2], d$Method, Task=k)
+})
+
+d3 <- do.call(rbind, d2)
+d3 <- d3[d3$NonZero > 0 ,]
+d3$Task <- factor(d3$Task)
+
+g <- ggplot(d3, aes(x=NonZero, y=R2, colour=Task, line=Task))
+g <- g + geom_smooth(method="loess") + scale_x_log2()   
+stop()
+
 mytheme <- function(base_size=10)
 {
    structure(list(

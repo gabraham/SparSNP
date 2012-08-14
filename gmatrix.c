@@ -121,7 +121,7 @@ int gmatrix_init(gmatrix *g, char *filename, int n, int p,
 
    srand48(time(NULL));
 
-   CALLOCTEST(g->beta_orig, p1 * g->K, sizeof(double));
+   CALLOCTEST(g->beta_orig, (long)p1 * g->K, sizeof(double));
    
    if(filename)
       FOPENTEST(g->file, filename, "rb");
@@ -154,9 +154,9 @@ int gmatrix_init(gmatrix *g, char *filename, int n, int p,
    if(!gmatrix_reset(g))
       return FAILURE;
 
-   CALLOCTEST(g->beta, p1 * g->K, sizeof(double));
-   CALLOCTEST(g->active, p1 * g->K, sizeof(int));
-   CALLOCTEST(g->ignore, p1 * g->K, sizeof(int));
+   CALLOCTEST(g->beta, (long)p1 * g->K, sizeof(double));
+   CALLOCTEST(g->active, (long)p1 * g->K, sizeof(int));
+   CALLOCTEST(g->ignore, (long)p1 * g->K, sizeof(int));
 
    /* don't scale in prediction mode */
    if(g->mode == MODE_TRAIN)
@@ -168,7 +168,7 @@ int gmatrix_init(gmatrix *g, char *filename, int n, int p,
    else
       g->scalefile = NULL;
 
-   for(j = p1 * g->K - 1 ; j >= 0 ; --j)
+   for(j = (long)p1 * g->K - 1 ; j >= 0 ; --j)
       g->active[j] = !g->ignore[j];
 
    gmatrix_set_ncurr(g);
@@ -924,7 +924,7 @@ void gmatrix_zero_model(gmatrix *g)
 {
    int i, j, n = g->ncurr, p1 = g->p + 1, K = g->K;
 
-   for(j = p1 * K - 1 ; j >= 0 ; --j)
+   for(j = (long)p1 * K - 1 ; j >= 0 ; --j)
    {
       g->beta[j] = 0;
       g->beta_orig[j] = 0;

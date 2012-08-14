@@ -28,7 +28,8 @@ inline static double zero(const double x, const double thresh)
 double get_lambda1max_gmatrix(gmatrix *g,
       phi1 phi1_func, phi2 phi2_func, inv inv_func, step step_func)
 {
-   int i, j, n = g->ncurr, n1 = g->ncurr - 1, p1 = g->p + 1;
+   int i, j, n = g->ncurr, n1 = g->ncurr - 1;
+   long p1 = g->p + 1;
    int k, K = g->K;
    double d1, d2, s, zmax = 0, beta_new;
    sample sm;
@@ -101,7 +102,7 @@ int cd_gmatrix(gmatrix *g,
    sample sm;
    double *beta_old = NULL;
    int *active_old = NULL;
-   int pkj, p1K1 = p1 * K - 1;
+   long pkj, p1K1 = p1 * K - 1;
    double d1, d2, pd1 = 0, pd2 = 0;
    int nE = K * (K - 1) / 2, e;
    double Ckne, Ckne2;
@@ -114,8 +115,8 @@ int cd_gmatrix(gmatrix *g,
    for(e = nE * K - 1 ; e >= 0 ; --e)
       C[e] *= gamma;
 
-   CALLOCTEST(beta_old, p1 * K, sizeof(double));
-   CALLOCTEST(active_old, p1 * K, sizeof(int));
+   CALLOCTEST(beta_old, (long)p1 * K, sizeof(double));
+   CALLOCTEST(active_old, (long)p1 * K, sizeof(int));
 
    for(j = p1K1 ; j >= 0 ; --j)
       active_old[j] = g->active[j];
@@ -129,7 +130,7 @@ int cd_gmatrix(gmatrix *g,
 	 numactiveK[k] = 0;
 	 for(j = 0 ; j < p1; j++)
       	 {
-	    pkj = p1 * k + j;
+	    pkj = (long)p1 * k + j;
 	    beta_pkj = g->beta[pkj];
       	    beta_new = beta_old[pkj] = beta_pkj;
       	    
