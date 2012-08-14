@@ -166,7 +166,8 @@ int run_predict_beta(gmatrix *g, predict predict_func,
       {
          if(beta[p1 * k + j] != 0)
          {
-            g->nextcol(g, &sm, j, NA_ACTION_RANDOM);
+	    if(!g->nextcol(g, &sm, j, NA_ACTION_RANDOM))
+	       return FAILURE;
 
             /* We count up to n, which should be the same as sm.n,
              * since we're not deleting missing obs */

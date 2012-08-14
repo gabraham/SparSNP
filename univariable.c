@@ -62,7 +62,9 @@ int univar_gmatrix(Opt *opt, gmatrix *g, double *beta, double *zscore)
       }
       
       //gmatrix_disk_nextcol(g, &sm, j, NA_ACTION_DELETE);
-      gmatrix_disk_nextcol(g, &sm, j, NA_ACTION_RANDOM);
+      if(!gmatrix_disk_nextcol(g, &sm, j, NA_ACTION_RANDOM))
+	 return FAILURE;
+
       CALLOCTEST(x, 2 * sm.n, sizeof(double));
       for(i = sm.n - 1 ; i >= 0 ; --i)
       {
@@ -340,7 +342,9 @@ int run_predict_beta(gmatrix *g, predict predict_func,
    {
       if(beta[j] != 0)
       {
-	 gmatrix_disk_nextcol(g, &sm, j, NA_ACTION_RANDOM);
+	 if(!gmatrix_disk_nextcol(g, &sm, j, NA_ACTION_RANDOM))
+	    return FAILURE;
+
 	 for(i = 0 ; i < n ; i++)
 	    lp[i] += sm.x[i] * beta[j];
       }

@@ -28,7 +28,9 @@ int unpack(gmatrix *g, char *filename_out)
    /* ignore intercept */
    for(j = start ; j < p1 ; j++)
    {
-      g->nextcol(g, &sm, j, NA_ACTION_RANDOM);
+      if(!g->nextcol(g, &sm, j, NA_ACTION_RANDOM))
+	 return FAILURE;
+
       if(g->scalefile)
       {
 	 for(i = g->n - 1 ; i >= 0 ; --i)

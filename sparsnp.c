@@ -39,7 +39,8 @@ double get_lambda1max_gmatrix(gmatrix *g,
 
    for(k = 0 ; k < K ; k++)
    {
-      g->nextcol(g, &sm, 0, NA_ACTION_RANDOM);
+      if(!g->nextcol(g, &sm, 0, NA_ACTION_RANDOM))
+	 return FAILURE;
    
       /* First compute the intercept. When all other variables
        * are zero, the intercept is just inv(mean(y)) for a suitable inv()
@@ -61,7 +62,9 @@ double get_lambda1max_gmatrix(gmatrix *g,
       {
          if(g->ignore[p1 * k + j])
 	    continue;
-         g->nextcol(g, &sm, j, NA_ACTION_RANDOM);
+	    
+         if(!g->nextcol(g, &sm, j, NA_ACTION_RANDOM))
+	    return FAILURE;
    
          step_func(&sm, g, k, &d1, &d2);
 	 s = fabs(d1 / d2);
@@ -142,7 +145,8 @@ int cd_gmatrix(gmatrix *g,
 	    }
 	    else
       	    {
-      	       g->nextcol(g, &sm, j, NA_ACTION_RANDOM);
+	       if(!g->nextcol(g, &sm, j, NA_ACTION_RANDOM))
+		  return FAILURE;
 
       	       step_func(&sm, g, k, &d1, &d2);
 
