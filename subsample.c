@@ -4,7 +4,7 @@
 
 int subsample(gmatrix *g, char *filename_out, int *subvec, int nsub)
 {
-   int i, j, p1 = g->p + 1, k;
+   int i, k, j, p1 = g->p + 1;
    const int numencb = (int)ceil(nsub / (double)PACK_DENSITY);
    sample sm;
    FILE *out;

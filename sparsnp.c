@@ -6,8 +6,6 @@
 #include "common.h"
 #include "sparsnp.h"
 
-#define printfverb(...) if(verbose) printf(__VA_ARGS__)
-
 static double clip(const double x, const double min, const double max);
 static double zero(const double x, const double thresh);
 
@@ -88,7 +86,6 @@ int cd_gmatrix(gmatrix *g,
        epoch = 1,
        good = FALSE;
    double s = 0, beta_new, delta;
-   const double truncl = log((1 - trunc) / trunc);
    const double l2recip = 1 / (1 + lambda2);
    sample sm;
    double *beta_old = NULL;
@@ -120,11 +117,6 @@ int cd_gmatrix(gmatrix *g,
 	    
       	    if(j > 0)
       	       beta_new = soft_threshold(beta_new, lambda1) * l2recip;
-      	    beta_new = clip(beta_new, -truncl, truncl);
-
-	    //beta_new = g->beta[j] - s;
-      	    //if(j > 0) 
-      	    //   beta_new = soft_threshold(beta_new, lambda1);
 
 	    delta = beta_new - g->beta[j];
 	    
@@ -140,7 +132,7 @@ int cd_gmatrix(gmatrix *g,
 	 numactive += g->active[j];
       }
 
-      printfverb("fold: %d  epoch: %d  numactive: %d\n", 
+      printf("fold: %d  epoch: %d  numactive: %d\n", 
 	    g->fold, epoch, numactive);
       fflush(stdout);
 
@@ -152,7 +144,7 @@ int cd_gmatrix(gmatrix *g,
        * current active set for later */
       if(allconverged == 1)
       {
-	 printfverb("prepare for final epoch\n");
+	 printf("prepare for final epoch\n");
 	 for(j = p ; j >= 0 ; --j)
 	 {
 	    active_old[j] = g->active[j];
@@ -169,13 +161,13 @@ int cd_gmatrix(gmatrix *g,
 	 /* all equal, terminate */
 	 if(j < 0)
 	 {
-	    printfverb("\n[%ld] terminating at epoch %d \
+	    printf("\n[%ld] terminating at epoch %d \
 with %d active vars\n", time(NULL), epoch, numactive);
 	    good = TRUE;
 	    break;
 	 }
 
-	 printfverb("active set changed, %d active vars\n",
+	 printf("active set changed, %d active vars\n",
 	       numactive);
 
 	 /* active set has changed, iterate over
@@ -187,7 +179,7 @@ with %d active vars\n", time(NULL), epoch, numactive);
      
       epoch++;
    }
-   printfverb("\n");
+   printf("\n");
 
    FREENULL(beta_old);
    FREENULL(active_old);

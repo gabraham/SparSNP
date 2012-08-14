@@ -418,7 +418,6 @@ int gmatrix_disk_nextcol(gmatrix *g, sample *s, int j, int na_action)
       /* don't need to worry about cross-validation etc
        * because the intercept is all 1s */
       s->x = g->intercept;
-      s->x2 = g->intercept;
 
       s->y = g->y;
       s->n = g->ncurr;
@@ -436,7 +435,7 @@ int gmatrix_disk_nextcol(gmatrix *g, sample *s, int j, int na_action)
    }
 
    /* Get data from disk and unpack, skip y */
-   seek = j * g->nseek + g->offset;
+   seek = (off_t)j * g->nseek + g->offset;
    FSEEKOTEST(g->file, seek, SEEK_SET);
    FREADTEST(g->encbuf, sizeof(dtype), g->nencb, g->file);
    
