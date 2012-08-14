@@ -23,14 +23,16 @@ int sample_init(sample *s)
 }
 
 int gmatrix_init(gmatrix *g, char *filename, int n, int p,
-      char *scalefile, short yformat, int model, int modeltype,
+      char *scalefile, short yformat, int phenoformat,
+      int model, int modeltype,
       short encoded, char *folds_ind_file,
       short mode, char *subset_file, 
       char *famfilename, int scaley, int unscale_beta,
-      int cortype, int corthresh)
+      int cortype, int corthresh, int verbose)
 {
    int i, j, p1;
 
+   g->verbose = verbose;
    g->file = NULL;
    g->map = NULL;
    g->K = 0;
@@ -87,14 +89,18 @@ int gmatrix_init(gmatrix *g, char *filename, int n, int p,
    g->C = NULL;
    g->cortype = cortype;
    g->corthresh = corthresh;
+   g->phenoformat = phenoformat;
 
    printf("Using PLINK binary format\n");
    printf("FAM file: %s\n", g->famfilename);
    g->offset = 3 - g->nseek; /* TODO: magic number */
    if(g->famfilename)
    {
-      if(!gmatrix_fam_read_y_matrix(g))
-         return FAILURE;
+      if(g->phenoformat == PHENO_FORMAT_FAM && !gmatrix_fam_read_y(g))
+	 return FAILURE;
+      else if(!gmatrix_pheno_read_y(g))
+	 return FAILURE;
+
       gmatrix_plink_check_pheno(g);
       if(scaley && !gmatrix_scale_y(g))
 	 return FAILURE;
@@ -654,50 +660,43 @@ int gmatrix_scale_y(gmatrix *g)
 }
 
 /* 
- * Reads a plink pheno file and gets the phenotype from column 6 and onwards,
+ * Reads a plink pheno file and gets the phenotype from column 3 and onwards,
  * using any sort of whitespace separator.
  *
  * y stores the phenotypes in column-major ordering
  */
-int gmatrix_fam_read_y_matrix(gmatrix *g)
+int gmatrix_pheno_read_y(gmatrix *g)
 {
    int i = 0, k = 0, n = g->n, m;
    FILE* famfile = NULL;
    char *famid = NULL,
         *individ = NULL,
-	*patid = NULL,
-	*matid = NULL,
-	*sex = NULL,
 	*pheno = NULL;
    int ret;
-   int const NUMFIELDS = 6;
+   int const NUMFIELDS = 2;
    double *tmp;
    char line[MAX_LINE_CHARS];
 
    /* spaces match tabs as well */
-   char f[19] = "%s %s %s %s %s ";
+   char f[7] = "%s %s ";
 
    /* we don't know how what K is before reading the pheno file */
    CALLOCTEST(tmp, g->n * MAX_NUM_PHENO, sizeof(double));
 
    MALLOCTEST(famid, sizeof(char) * FAM_MAX_CHARS);
    MALLOCTEST(individ, sizeof(char) * FAM_MAX_CHARS);
-   MALLOCTEST(patid, sizeof(char) * FAM_MAX_CHARS);
-   MALLOCTEST(matid, sizeof(char) * FAM_MAX_CHARS);
-   MALLOCTEST(sex, sizeof(char) * FAM_MAX_CHARS);
    CALLOCTEST(pheno, FAM_MAX_CHARS, sizeof(char));
 
    FOPENTEST(famfile, g->famfilename, "r");
+   printf("g->famfilename %s\n", g->famfilename);
 
    /* read the family data for each line */
-   while(i < g->n &&
-	 EOF != (ret = fscanf(famfile, f,
-	    famid, individ, patid, matid, sex)))
+   while(i < g->n && EOF != (ret = fscanf(famfile, f, famid, individ)))
    {
-      if(ret > NUMFIELDS)
+      if(ret < NUMFIELDS)
       {
 	 fprintf(stderr,
-	    "Error in reading FAM file '%s', missing phenotypes?",
+	    "Error in reading PHENO file '%s', missing phenotypes?",
 	    g->famfilename);
 	 return FAILURE;
       }
@@ -706,7 +705,7 @@ int gmatrix_fam_read_y_matrix(gmatrix *g)
       {
       	 if(!feof(famfile))
 	 {
-	    fprintf(stderr, "error in reading FAM file '%s'\n",
+	    fprintf(stderr, "error in reading PHENO file '%s'\n",
 	       g->famfilename);
 	    return FAILURE;
 	 }
@@ -740,9 +739,6 @@ int gmatrix_fam_read_y_matrix(gmatrix *g)
    fclose(famfile);
    FREENULL(famid);
    FREENULL(individ);
-   FREENULL(patid);
-   FREENULL(matid);
-   FREENULL(sex);
    FREENULL(pheno);
    FREENULL(tmp);
 

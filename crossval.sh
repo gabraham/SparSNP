@@ -51,15 +51,22 @@ UNSCALE=${UNSCALE- "-unscale"}
 N=$(cat "$ROOT".fam | wc -l | awk '{print $1, $2}')
 P=$(cat "$ROOT".bim | wc -l | awk '{print $1, $2}')
 BED=$(realpath "$ROOT".bed)
-if [ -z "$FAM" ];
-then
-   FAM=$(realpath "$ROOT".fam)
-else
-   FAM=$(realpath "$FAM")
-fi
+FAM=$(realpath "$ROOT".fam)
+PHENO=$(realpath "$PHENO")
 BIM=$(realpath "$ROOT".bim)
 SCALE=scale.bin
-FOLDIND="-foldind folds.ind"
+FOLDIND_CMD="-foldind folds.ind"
+
+# PHENO takes priority over FAM
+if ! [ -z "$PHENO" ];
+then
+   FAM_CMD=""
+   PHENO_CMD="-pheno $PHENO"
+else
+   FAM_CMD="-fam $FAM"
+   PHENO_CMD=""
+fi
+
 
 
 ######################################################################
@@ -92,6 +99,8 @@ pushd $DIR
 
 cat >params.txt<<EOF
 ROOT=$ROOT
+FAM=$FAM
+PHENO=$PHENO
 NFOLDS=$NFOLDS
 NREPS=$NREPS
 NZMAX=$NZMAX
@@ -107,7 +116,7 @@ awk '{print $2, $5}' "$BIM" > snps.txt
 
 if [ $NFOLDS -le 1 ];
 then
-   FOLDIND=""
+   FOLDIND_CMD=""
 fi
 
 [[ -z "$REP_START" ]] && REP_START=1
@@ -132,21 +141,24 @@ function run {
       makefolds -folds folds.txt -ind folds.ind -nfolds $NFOLDS -n $N
 
       # Get scale of each crossval fold
-      scale -bed $BED -n $N -p $P $FOLDIND 
+      scale -bed $BED -n $N -p $P $FOLDIND_CMD
+	 
+      echo "############# Running training #############"
    
       # Run the model
       $WRAPPER sparsnp -train -model $MODEL -n $N -p $P \
 	 -scale $SCALE -bed $BED -nzmax $NZMAX -nl1 $NLAMBDA1 -l1min $L1MIN -v \
-	 $FOLDIND -fam $FAM -l2 $LAMBDA2 $UNSCALE $SCALEY -gamma $GAMMA
+	 $FOLDIND_CMD $FAM_CMD $PHENO_CMD -l2 $LAMBDA2 $UNSCALE $SCALEY -gamma $GAMMA
  
       if [ $NFOLDS -gt 1 ]
       then
+	 echo "############# Running prediction #############"
 	 # Predict for test folds
 	 B=$(for((i=0;i<NLAMBDA1;i++)); do printf 'beta.csv.%02d ' $i; done)
-	 sparsnp -predict -model $MODEL -n $N -p $P -v \
+	 $WRAPPER sparsnp -predict -model $MODEL -n $N -p $P -v \
 	    -bed $BED -betafiles $B \
 	    -scale $SCALE \
-	    $FOLDIND -fam $FAM
+	    $FOLDIND_CMD $PHENO_CMD
       fi
 
       popd
@@ -156,7 +168,7 @@ function run {
 }
 
 export -f run
-export NFOLDS N P BED FAM FOLDIND MODEL
+export NFOLDS N P BED FAM_CMD PHENO_CMD FOLDIND_CMD MODEL
 export SCALEY SCALE NZMAX NLAMBDA1 L1MIN LAMBDA2
 
 seq $REP_START $REP_END | xargs -P$NUMPROCS -I{} bash -c "run {}"

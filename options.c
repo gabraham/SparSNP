@@ -123,6 +123,7 @@ int opt_defaults(Opt *opt, short caller)
    opt->cortype = 2;
    opt->corthresh = 0;
    opt->gamma = 0;
+   opt->phenoformat = PHENO_FORMAT_FAM;
 
    return SUCCESS;
 }
@@ -357,6 +358,12 @@ int opt_parse(int argc, char* argv[], Opt* opt)
 	 i++;
 	 opt->famfilename = argv[i];
       }
+      else if(strcmp2(argv[i], "-pheno"))
+      {
+	 i++;
+	 opt->phenoformat = PHENO_FORMAT_PHENO;
+	 opt->famfilename = argv[i];
+      }
       else if(strcmp2(argv[i], "-scaley"))
       {
 	 opt->scaley = TRUE;
@@ -385,12 +392,12 @@ int opt_parse(int argc, char* argv[], Opt* opt)
 	    || (opt->mode == MODE_TRAIN && !opt->scalefile))
       {
          printf("usage: sparsnp [-train|-predict] -model <model> \
--bed <filename> -n <#samples> -p <#variables> -scale <scalefile> \
+-bed <filename> -fam <filename> -n <#samples> -p <#variables> -scale <scalefile> \
 [-betafiles <beta filename/s>] \
 [-maxepochs <maxepochs>] [-maxiters <maxiters>] [-l1 <lambda1>] \
 -l2 <lambda2>] [-thresh <threshold>] [-foldind <foldsfile>] \
-[-pred <prediction file>] [-filter] [-unscale] [-cortype [0/1/2]]\
-[-corthresh <threshold>] [-v] [-vv]\n");
+[-pred <prediction file>] [-filter] [-unscale] [-pheno <filename>] \
+[-cortype [0/1/2]] [-corthresh <threshold>] [-v] [-vv]\n");
          return FAILURE;
       }
       else if(opt->n_beta_files > 1 && opt->mode == MODE_TRAIN)
@@ -420,7 +427,8 @@ onl   y using the first one\n");
 
    if(opt->mode == MODE_TRAIN && !opt->famfilename)
    {
-      printf("Error: you must provide a FAM filename (-fam) when using plink BED input\n");
+      printf("Error: you must provide a FAM filename (-fam) or PHENO \
+ filename (-pheno) when using plink BED input\n");
       return FAILURE;
    }
 	 

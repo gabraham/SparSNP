@@ -38,6 +38,10 @@
 
 #define CACHE_NOT_EXISTS -1
 
+/* PLINK FAM (6 columns) or PHENO (2 FID/IID + the phenotype columns) */
+#define PHENO_FORMAT_FAM 1
+#define PHENO_FORMAT_PHENO 2
+
 typedef struct cache {
    int nbins;
    int n;
@@ -132,21 +136,24 @@ typedef struct gmatrix {
    double *C;
    int cortype;
    int corthresh;
+   int phenoformat;
+   int verbose;
 } gmatrix;
 
 int sample_init(sample *);
 int gmatrix_init(gmatrix *g, char *filename, int n, int p,
-      char *scalefile, short yformat, int model, int modeltype,
+      char *scalefile, short yformat, int phenoformat,
+      int model, int modeltype,
       short encoded, char *folds_ind_file,
       short mode, char *subsample_file,
       char *famfilename, int scaley, int unscale_beta,
-      int cortype, int corthresh);
+      int cortype, int corthresh, int verbose);
 int gmatrix_reset(gmatrix *);
 void gmatrix_free(gmatrix *);
 int gmatrix_disk_nextcol(gmatrix *g, sample *sm, int skip, int na_action);
 int gmatrix_mem_nextcol(gmatrix *g, sample *sm, int j, int na_action);
 int gmatrix_disk_read_y(gmatrix *g);
-int gmatrix_fam_read_y_matrix(gmatrix *g);
+int gmatrix_pheno_read_y(gmatrix *g);
 int gmatrix_disk_skipcol(gmatrix *g);
 int gmatrix_disk_skipcol(gmatrix *g);
 int gmatrix_read_scaling(gmatrix *g, char *file_scale);

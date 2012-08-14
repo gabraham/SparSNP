@@ -32,7 +32,7 @@ int make_lambda1path(Opt *opt, gmatrix *g)
       /* get lambda1 max */
       opt->lambda1max = get_lambda1max_gmatrix(g, opt->phi1_func,
 	    opt->phi2_func, opt->inv_func, opt->step_func);
-      if(opt->verbose)
+      if(g->verbose)
 	 printf("lambda1max: %.10f\n", opt->lambda1max);
       /*opt->lambda1path[0] = opt->lambda1max;*/
    }
@@ -44,7 +44,7 @@ int make_lambda1path(Opt *opt, gmatrix *g)
    for(i = 1 ; i < opt->nlambda1 ; i++)
       opt->lambda1path[i] = pow(10, log10(opt->lambda1max) - s * i);
 
-   if(opt->verbose)
+   if(g->verbose)
       printf("lambda1min: %.10f\n", opt->lambda1path[i-1]);
 
    /* Write the coefs for model with intercept only */
@@ -73,7 +73,7 @@ int run_train(Opt *opt, gmatrix *g)
    int *numactiveK = NULL;
    char tmp[MAX_STR_LEN];
 
-   if(opt->verbose)
+   if(g->verbose)
       printf("%d training samples, %d test samples\n",
 	    g->ntrain[g->fold], g->ntest[g->fold]);
    
@@ -84,7 +84,7 @@ int run_train(Opt *opt, gmatrix *g)
    /* don't start from zero, getlambda1max already computed that solution */
    for(i = 1 ; i < opt->nlambda1 ; i++)
    {
-      if(opt->verbose)
+      if(g->verbose)
 	 printf("\n[%d] Fitting with lambda1=%.10f lambda2=%.10f gamma=%.10f\n",
 	    i, opt->lambda1path[i], opt->lambda2, opt->gamma);
 
@@ -94,7 +94,7 @@ int run_train(Opt *opt, gmatrix *g)
 	    g, opt->step_func,
 	    opt->maxepochs, opt->maxiters,
 	    opt->lambda1path[i], opt->lambda2, opt->gamma,
-	    opt->verbose, opt->trunc, numactiveK);
+	    opt->trunc, numactiveK);
 
       if(ret == CDFAILURE)
       {
@@ -230,11 +230,12 @@ int do_train(gmatrix *g, Opt *opt, char tmp[])
    int ret = SUCCESS, k, len;
 
    if(!gmatrix_init(g, opt->filename, opt->n, opt->p,
-	    NULL, opt->yformat, opt->model, opt->modeltype, opt->encoded,
+	    NULL, opt->yformat, opt->phenoformat,
+	    opt->model, opt->modeltype, opt->encoded,
 	    opt->folds_ind_file, opt->mode,
 	    opt->subset_file,
 	    opt->famfilename, opt->scaley, opt->unscale_beta,
-	    opt->cortype, opt->corthresh))
+	    opt->cortype, opt->corthresh, opt->verbose))
       return FAILURE;
 
    printf("%d CV folds\n", g->nfolds);
@@ -295,11 +296,12 @@ int do_predict(gmatrix *g, Opt *opt, char tmp[])
    int ret = SUCCESS, b, k, len;
 
    if(!gmatrix_init(g, opt->filename, opt->n, opt->p,
-	    NULL, opt->yformat, opt->model, opt->modeltype, opt->encoded,
+	    NULL, opt->yformat, opt->phenoformat,
+	    opt->model, opt->modeltype, opt->encoded,
 	    opt->folds_ind_file, opt->mode,
 	    opt->subset_file,
 	    opt->famfilename, opt->scaley, opt->unscale_beta,
-	    opt->cortype, opt->corthresh))
+	    opt->cortype, opt->corthresh, opt->verbose))
       return FAILURE;
 
    if(g->nfolds > 1)

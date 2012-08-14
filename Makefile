@@ -1,8 +1,7 @@
 
 .PHONY: all
 
-# clang won't work on OSX 10.7.4 due to libgfortran not being found
-CC=gcc
+#CC=gcc
 
 # Mac OSX differences:
 #

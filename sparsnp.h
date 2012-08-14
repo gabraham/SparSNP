@@ -33,7 +33,6 @@ typedef void (*step)(sample *s, gmatrix *g, int k,
 
 typedef double (*predict)(double x);
 
-
 typedef struct Opt {
    short caller;
    short mode;
@@ -94,6 +93,7 @@ typedef struct Opt {
    int unscale_beta;
    int cortype;
    int corthresh;
+   int phenoformat;
 } Opt;
 
 int cd_gmatrix(gmatrix *g,
@@ -101,7 +101,6 @@ int cd_gmatrix(gmatrix *g,
       const int maxepochs, const int maxiters, 
       const double lambda1, const double lambda2,
       const double gamma,
-      const int verbose,
       const double trunc,
       int *numactiveK);
 

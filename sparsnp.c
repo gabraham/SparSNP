@@ -6,8 +6,6 @@
 #include "common.h"
 #include "sparsnp.h"
 
-#define printfverb(...) if(verbose) printf(__VA_ARGS__)
-
 static double clip(const double x, const double min, const double max);
 static double zero(const double x, const double thresh);
 
@@ -51,7 +49,9 @@ double get_lambda1max_gmatrix(gmatrix *g,
    
       beta_new = inv_func(s / n);
       updatelp(g, beta_new, sm.x, 0, k);
-      printf("[k=%d] intercept: %.15f (%d samples)\n", k, beta_new, n);
+
+      if(g->verbose)
+	 printf("[k=%d] intercept: %.15f (%d samples)\n", k, beta_new, n);
    
       /* find smallest lambda1 that makes all coefficients zero, by
        * finding the largest z, but let the intercept affect lp
@@ -88,7 +88,6 @@ int cd_gmatrix(gmatrix *g,
       const double lambda1,
       const double lambda2,
       const double gamma,
-      const int verbose,
       const double trunc,
       int *numactiveK)
 {
@@ -206,9 +205,12 @@ int cd_gmatrix(gmatrix *g,
 #endif
       }
 
-      printfverb("fold: %d  epoch: %d  numactive: %d\n", 
+      if(g->verbose)
+      {
+	 printf("fold: %d  epoch: %d  numactive: %d\n", 
 	    g->fold, epoch, numactive);
-      fflush(stdout);
+	 fflush(stdout);
+      }
 
       /* State machine for active set convergence */ 
       allconverged++;
@@ -218,7 +220,8 @@ int cd_gmatrix(gmatrix *g,
        * current active set for later */
       if(allconverged == 1)
       {
-	 printfverb("prepare for final epoch\n");
+	 if(g->verbose)
+	    printf("prepare for final epoch\n");
 	 for(j = p1K1 ; j >= 0 ; --j)
 	 {
 	    active_old[j] = g->active[j];
@@ -235,13 +238,15 @@ int cd_gmatrix(gmatrix *g,
 	 /* all equal, terminate */
 	 if(j < 0)
 	 {
-	    printfverb("\n[%ld] terminating at epoch %d \
+	    if(g->verbose)
+	       printf("\n[%ld] terminating at epoch %d \
 with %d active vars\n", time(NULL), epoch, numactive);
 	    good = TRUE;
 	    break;
 	 }
 
-	 printfverb("active set changed, %d active vars\n",
+	 if(g->verbose)
+	    printf("active set changed, %d active vars\n",
 	       numactive);
 
 	 /* active set has changed, iterate over
@@ -253,7 +258,9 @@ with %d active vars\n", time(NULL), epoch, numactive);
      
       epoch++;
    }
-   printfverb("\n");
+
+   if(g->verbose)
+      printf("\n");
 
    FREENULL(beta_old);
    FREENULL(active_old);

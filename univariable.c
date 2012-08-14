@@ -262,11 +262,12 @@ int do_train(gmatrix *g, Opt *opt, char tmp[])
    int ret = SUCCESS, k;
 
    if(!gmatrix_init(g, opt->filename, opt->n, opt->p,
-	    NULL, opt->yformat, opt->model, opt->modeltype, opt->encoded,
+	    NULL, opt->yformat, opt->phenoformat,
+	    opt->model, opt->modeltype, opt->encoded,
 	    opt->folds_ind_file, opt->mode,
 	    opt->subset_file,
 	    opt->famfilename, opt->scaley, opt->unscale_beta,
-	    opt->cortype, opt->corthresh))
+	    opt->cortype, opt->corthresh, opt->verbose))
       return FAILURE;
 
    g->nextcol = gmatrix_mem_nextcol;
@@ -394,12 +395,13 @@ int do_predict(gmatrix *g, Opt *opt, char *tmp)
    int ret = SUCCESS, b, k, len;
 
    if(!gmatrix_init(g, opt->filename, opt->n, opt->p,
-	    NULL, opt->yformat, opt->model, opt->modeltype,
+	    NULL, opt->yformat, opt->phenoformat,
+	    opt->model, opt->modeltype,
 	    opt->encoded,
 	    opt->folds_ind_file, opt->mode,
 	    opt->subset_file,
 	    opt->famfilename, opt->scaley, opt->unscale_beta,
-	    opt->cortype, opt->corthresh))
+	    opt->cortype, opt->corthresh, opt->verbose))
       return FAILURE;
 
    g->nextcol = gmatrix_mem_nextcol;
