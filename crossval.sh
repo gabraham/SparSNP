@@ -95,9 +95,8 @@ if ! [ -d "$DIR" ];
 then
    mkdir $DIR
 fi
-pushd $DIR
 
-cat >params.txt<<EOF
+cat > $DIR/params.txt<<EOF
 ROOT=$(realpath "$ROOT")
 FAM=$FAM
 PHENO=$PHENO
@@ -112,6 +111,7 @@ BETA_SCALED=$UNSCALE
 Y_SCALED=$SCALEY
 EOF
 
+pushd $DIR
 awk '{print $2, $5}' "$BIM" > snps.txt
 
 if [ $NFOLDS -le 1 ];
