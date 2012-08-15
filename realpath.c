@@ -21,7 +21,8 @@ int main(int argc, char *argv[])
 	 printf("%s\n", ptr);
 	 return EXIT_SUCCESS;
       }
-      fprintf(stderr, "realpath: %s\n", strerror(errno));
+      fprintf(stderr, "realpath: %s when reading '%s'\n",
+	 strerror(errno), symlinkpath);
    }
    else
       fprintf(stderr, "realpath: missing file name\n");

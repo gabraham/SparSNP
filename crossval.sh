@@ -98,7 +98,7 @@ fi
 pushd $DIR
 
 cat >params.txt<<EOF
-ROOT=$ROOT
+ROOT=$(realpath "$ROOT")
 FAM=$FAM
 PHENO=$PHENO
 NFOLDS=$NFOLDS
