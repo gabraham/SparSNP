@@ -228,7 +228,7 @@ evalpred.crossval <- function(type=NULL, dir=NULL)
    #      do.call(rbind, lapply(cv.uni, function(x) x$r))
    #   )
    #}
-   
+
    save(cv.d, cv.uni.d, 
       #pred, pred.uni,
       file="crossval.RData")
@@ -494,20 +494,6 @@ d <- cv
 #   d <- rbind(d, cv.uni[, vars])
 #}
 
-d2 <- lapply(1:35, function(k) {
-   v1 <- grep(sprintf("R2_%s$", k), colnames(d), value=TRUE)
-   v2 <- grep(sprintf("NonZero_%s$", k), colnames(d), value=TRUE)
-   data.frame(d$lambda, R2=d[, v1], NonZero=d[,v2], d$Method, Task=k)
-})
-
-d3 <- do.call(rbind, d2)
-d3 <- d3[d3$NonZero > 0 ,]
-d3$Task <- factor(d3$Task)
-
-g <- ggplot(d3, aes(x=NonZero, y=R2, colour=Task, line=Task))
-g <- g + geom_smooth(method="loess") + scale_x_log2()   
-stop()
-
 mytheme <- function(base_size=10)
 {
    structure(list(
@@ -525,6 +511,47 @@ mytheme <- function(base_size=10)
 	 legend.key=theme_blank()
    ), class="options")
 }
+
+numtasks <- length(grep("^NonZero_[[:digit:]]+", colnames(d)))
+
+d2 <- lapply(1:numtasks, function(k) {
+   v1 <- grep(sprintf("R2_%s$", k), colnames(d), value=TRUE)
+   v2 <- grep(sprintf("NonZero_%s$", k), colnames(d), value=TRUE)
+   data.frame(d$lambda, R2=d[, v1], NonZero=d[,v2], d$Method, Task=k)
+})
+
+d3 <- do.call(rbind, d2)
+d3 <- d3[d3$NonZero > 0 ,]
+d3$Task <- factor(d3$Task)
+
+g <- ggplot(d3, aes(x=NonZero, y=R2, colour=Task, line=Task))
+g <- g + geom_smooth(method="loess", size=1.5) + scale_x_log10()   
+g <- g + theme_bw() + mytheme() + scale_y_continuous(expression(R^2))
+g <- g + guides(colour=guide_legend(ncol=2))
+
+pdf("R2.pdf", width=14)
+print(g)
+dev.off()
+
+g <- ggplot(d3, aes(x=NonZero, y=R2))
+g <- g + geom_smooth(method="loess", se=FALSE, size=1.5) + scale_x_log10()   
+g <- g + theme_bw() + mytheme() + scale_y_continuous(expression(R^2))
+#g <- g + guides(colour=guide_legend(ncol=2))
+
+lo <- loess(R2 ~ log(NonZero), data=d3)
+s <- predict(lo, newdata=data.frame(NonZero=1:max(d3$NonZero)))
+m <- which(s == max(s, na.rm=TRUE))
+cat("Best model at", m, "SNPs with predictive measure", s[m], "\n") 
+
+g <- g + geom_vline(xintercept=m, lty=2)
+g <- g + annotate("text", x=m + 15, y=-0.05, label=m)
+
+pdf("R2_all.pdf", width=14)
+print(g)
+dev.off()
+
+
+stop()
 
 g <- if(uni) {
    ggplot(d, aes(x=NonZero, y=Measure, shape=Method, colour=Method))
