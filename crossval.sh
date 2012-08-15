@@ -67,8 +67,6 @@ else
    PHENO_CMD=""
 fi
 
-
-
 ######################################################################
 
 # maximum number of non-zero SNPs to consider in model
@@ -97,7 +95,7 @@ then
 fi
 
 cat > $DIR/params.txt<<EOF
-ROOT=$(realpath "$ROOT")
+ROOT=$(echo $BED | awk -F'.' '{print $(NF-1)}')
 FAM=$FAM
 PHENO=$PHENO
 NFOLDS=$NFOLDS
@@ -169,7 +167,7 @@ function run {
 
 export -f run
 export NFOLDS N P BED FAM_CMD PHENO_CMD FOLDIND_CMD MODEL
-export SCALEY SCALE NZMAX NLAMBDA1 L1MIN LAMBDA2
+export SCALEY SCALE NZMAX NLAMBDA1 L1MIN LAMBDA2 GAMMA
 
 seq $REP_START $REP_END | xargs -P$NUMPROCS -I{} bash -c "run {}"
 
