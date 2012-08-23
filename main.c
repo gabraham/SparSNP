@@ -197,6 +197,8 @@ int run_predict(gmatrix *g, predict predict_func,
    int i, K;
    char tmp[MAX_STR_LEN];
 
+   printf("run_predict\n");
+
    for(i = 0 ; i < n_beta_files ; i++)
    {
       gmatrix_zero_model(g);
@@ -209,8 +211,8 @@ int run_predict(gmatrix *g, predict predict_func,
 
       /* If we are in prediction mode and there is no FAM file, we take K from
        * the beta files, otherwise we take it from the FAM file */
-      if(g->K == 0)
-	 g->K = K;
+      //if(g->K == 0)
+	g->K = K;
 
       printf("read %d task/s from file '%s'\n", g->K, beta_files[i]);
 
@@ -296,6 +298,8 @@ int do_predict(gmatrix *g, Opt *opt, char tmp[])
 {
    int ret = SUCCESS, b, k, len;
 
+   printf("do_predict\n");
+
    if(!gmatrix_init(g, opt->filename, opt->n, opt->p,
 	    NULL, opt->yformat, opt->phenoformat,
 	    opt->model, opt->modeltype, opt->encoded,
@@ -313,12 +317,18 @@ int do_predict(gmatrix *g, Opt *opt, char tmp[])
       for(b = 0 ; b < opt->n_beta_files ; b++)
 	 opt->beta_files_fold[b] = NULL;
 
+      printf("foo\n");
+
       /* cross-validation: prediction stage */
       for(k = 0 ; k < g->nfolds ; k++)
       {
 	 len = strlen(opt->scalefile) + 1 + 3;
+
 	 if(!(ret &= gmatrix_set_fold(g, k)))
+	 {
+	    printf("gmatrix_set_fold returned %d\n", ret);
 	    break;
+	 }
 
 	 /* write y file */
 	 snprintf(tmp, 5, "y.%02d", k);
@@ -346,9 +356,9 @@ int do_predict(gmatrix *g, Opt *opt, char tmp[])
    else
    {
       gmatrix_zero_model(g);
-      printf("writing y file: %s\n", "y.txt");
+      /*printf("writing y file: %s\n", "y.txt");
       if(!(ret &= writematrixf(g->y, g->ncurr, g->K, "y.txt")))
-	 return FAILURE;
+	 return FAILURE;*/
 
       ret = run_predict(g, opt->predict_func,
 	    opt->beta_files, opt->n_beta_files);

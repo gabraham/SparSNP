@@ -48,6 +48,7 @@ int gmatrix_init(gmatrix *g, char *filename, int n, int p,
    g->y_orig = NULL;
    g->loss = 0;
    g->lp = NULL;
+   g->err = NULL;
    g->ylp = NULL;
    g->ylp_neg = NULL;
    g->ylp_neg_y = NULL;
@@ -96,8 +97,14 @@ int gmatrix_init(gmatrix *g, char *filename, int n, int p,
    g->offset = 3 - g->nseek; /* TODO: magic number */
    if(g->famfilename)
    {
-      if(g->phenoformat == PHENO_FORMAT_FAM && !gmatrix_fam_read_y(g))
-	 return FAILURE;
+      printf("pheno format: %s\n",
+	 g->phenoformat == PHENO_FORMAT_FAM ? "FAM" : "PHENO");
+      if(g->phenoformat == PHENO_FORMAT_FAM)
+      {
+	 if(!gmatrix_fam_read_y(g))
+	    return FAILURE;
+	 g->K = 1;
+      }
       else if(!gmatrix_pheno_read_y(g))
 	 return FAILURE;
 
@@ -107,8 +114,8 @@ int gmatrix_init(gmatrix *g, char *filename, int n, int p,
    }
 
    /* sensible default */
-   if(g->K <= 0)
-      g->K = MAX_NUM_PHENO;
+   //if(g->K <= 0)
+     // g->K = MAX_NUM_PHENO;
 
    if(g->mode == MODE_TRAIN && g->modeltype == MODELTYPE_CLASSIFICATION)
    {
@@ -241,6 +248,7 @@ void gmatrix_free(gmatrix *g)
    FREENULL(g->lookup);
    FREENULL(g->lp);
    FREENULL(g->ylp);
+   FREENULL(g->err);
    FREENULL(g->ylp_neg);
    FREENULL(g->ylp_neg_y);
    FREENULL(g->ylp_neg_y_ylp);
@@ -572,6 +580,8 @@ int gmatrix_fam_read_y(gmatrix *g)
    int ret;
    int const NUMFIELDS = 6;
 
+   printf("gmatrix_fam_read_y\n");
+
    /* spaces match tabs as well */
    char f[19] = "%s %s %s %s %s %s";
 
@@ -679,6 +689,8 @@ int gmatrix_pheno_read_y(gmatrix *g)
 
    /* spaces match tabs as well */
    char f[7] = "%s %s ";
+
+   printf("gmatrix_pheno_read_y\n");
 
    /* we don't know how what K is before reading the pheno file */
    CALLOCTEST(tmp, g->n * MAX_NUM_PHENO, sizeof(double));
@@ -912,6 +924,7 @@ int gmatrix_set_fold(gmatrix *g, int fold)
 {
    g->fold = fold;
    gmatrix_set_ncurr(g);
+
    if(!gmatrix_init_lp(g))
       return FAILURE;
    if(g->scalefile && !gmatrix_read_scaling(g, g->scalefile))
@@ -934,7 +947,12 @@ void gmatrix_zero_model(gmatrix *g)
    for(i = n * K - 1 ; i >= 0 ; --i)
       g->lp[i] = 0;
 
-   if(g->model == MODEL_LOGISTIC)
+   if(g->model == MODEL_LINEAR)
+   {
+      for(i = n * K - 1 ; i >= 0 ; --i)
+	 g->lp[i] = 0;
+   }
+   else if(g->model == MODEL_LOGISTIC)
    {
       for(i = n * K - 1 ; i >= 0 ; --i)
 	 g->lp_invlogit[i] = 0.5; /* 0.5 = 1 / (1 + exp(-0)) */
@@ -982,7 +1000,12 @@ int gmatrix_init_lp(gmatrix *g)
    FREENULL(g->lp);
    CALLOCTEST(g->lp, g->ncurr * g->K, sizeof(double));
 
-   if(g->model == MODEL_LOGISTIC) 
+   if(g->model == MODEL_LINEAR)
+   {
+      FREENULL(g->err);
+      CALLOCTEST(g->err, g->ncurr * g->K, sizeof(double));
+   }
+   else if(g->model == MODEL_LOGISTIC) 
    {
       FREENULL(g->lp_invlogit);
       CALLOCTEST(g->lp_invlogit, g->ncurr * g->K, sizeof(double));
@@ -1013,14 +1036,14 @@ void step_regular_linear(sample *s, gmatrix *g, int k,
 {
    int i, n = g->ncurr, nki = n * k + n - 1;
    double grad = 0;
-   double *restrict x = s->x, 
-          *restrict lp = g->lp,
-	  *restrict y = g->y;
+   double *err = g->err,
+	  *restrict x = s->x;
 
    /* compute gradient wrt task k*/
    for(i = n - 1 ; i >= 0 ; --i)
    {
-      grad += x[i] * (lp[nki] - y[nki]);
+      //grad += x[i] * (lp[nki] - y[nki]);
+      grad += x[i] * err[nki];
       nki--;
    }
 
@@ -1092,8 +1115,8 @@ void updatelp(gmatrix *g, const double update,
       const double *restrict x, int j, int k)
 {
    int i, n = g->ncurr, nki;
-   double err; 
-   double *restrict lp_invlogit = g->lp_invlogit,
+   double *restrict err = g->err,
+	  *restrict lp_invlogit = g->lp_invlogit,
 	  *restrict lp = g->lp,
 	  *restrict y = g->y,
 	  *restrict ylp_neg_y_ylp = g->ylp_neg_y_ylp;
@@ -1105,8 +1128,8 @@ void updatelp(gmatrix *g, const double update,
       for(i = n - 1 ; i >= 0 ; --i)
       {
 	 lp[nki] += x[i] * update;
-	 err = lp[nki] - y[nki];
-	 loss += err * err;
+	 err[nki] = lp[nki] - y[nki];
+	 loss += err[nki] * err[nki];
 	 nki--;
       }
    }

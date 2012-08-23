@@ -89,7 +89,8 @@ typedef struct gmatrix {
    int j;
    double *mean, *sd;
    double *lookup, *lookup2;
-   double *lp, *ylp, *ylp_neg, *ylp_neg_y, *ylp_neg_y_ylp, *lp_invlogit;
+   double *lp, *err, *ylp, *ylp_neg, *ylp_neg_y;
+   double *ylp_neg_y_ylp, *lp_invlogit;
    double *newtonstep;
    double *beta;
    int *active;

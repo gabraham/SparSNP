@@ -1,6 +1,6 @@
 #!/usr/bin/env Rscript
 
-options(error=NULL)
+#options(error=NULL)
 
 usage <- paste("usage: eval.R [title=<title>]",
       "[prev=<K>] [h2l=<V>] [mode=discovery|validation]",
