@@ -52,7 +52,7 @@ N=$(cat "$ROOT".fam | wc -l | awk '{print $1, $2}')
 P=$(cat "$ROOT".bim | wc -l | awk '{print $1, $2}')
 BED=$(realpath "$ROOT".bed)
 FAM=$(realpath "$ROOT".fam)
-PHENO=$(realpath "$PHENO")
+! [[ -z "$PHENO" ]] && PHENO=$(realpath "$PHENO")
 BIM=$(realpath "$ROOT".bim)
 SCALE=scale.bin
 FOLDIND_CMD="-foldind folds.ind"
@@ -155,8 +155,8 @@ function run {
 	 B=$(for((i=0;i<NLAMBDA1;i++)); do printf 'beta.csv.%02d ' $i; done)
 	 $WRAPPER sparsnp -predict -model $MODEL -n $N -p $P -v \
 	    -bed $BED -betafiles $B \
-	    -scale $SCALE \
-	    $FOLDIND_CMD $PHENO_CMD
+	    -scale $SCALE $SCALEY \
+	    $FOLDIND_CMD $FAM_CMD $PHENO_CMD
       fi
 
       popd
