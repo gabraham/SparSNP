@@ -466,37 +466,20 @@ if(uni)
    d <- rbind(d, cv.uni[, vars])
 }
 
-d2 <- lapply(1:35, function(k) {
-   v1 <- grep(sprintf("R2_%s$", k), colnames(d), value=TRUE)
-   v2 <- grep(sprintf("NonZero_%s$", k), colnames(d), value=TRUE)
-   data.frame(d$lambda, R2=d[, v1], NonZero=d[,v2], d$Method, Task=k)
-})
-
-d3 <- do.call(rbind, d2)
-d3 <- d3[d3$NonZero > 0 ,]
-d3$Task <- factor(d3$Task)
-
-g <- ggplot(d3, aes(x=NonZero, y=R2, colour=Task, line=Task))
-g <- g + geom_smooth(method="loess") + scale_x_log2()   
-stop()
-
-mytheme <- function(base_size=10)
-{
-   structure(list(
-	 axis.text.x=theme_text(size=15),
-	 axis.text.y=theme_text(size=20, hjust=1),
-	 axis.title.x=theme_text(size=20),
-	 axis.title.y=theme_text(size=20, angle=90),
-	 plot.title=theme_text(size=30),
-	 #axis.ticks=theme_blank(),
-	 plot.title=theme_text(size=30),
-	 legend.text=theme_text(size=20),
-	 legend.title=theme_text(size=20, hjust=0),
-	 legend.key.size=unit(2, "lines"),
-	 legend.background=theme_rect(col=0, fill=0),
-	 legend.key=theme_blank()
-   ), class="options")
-}
+mytheme <- theme(
+   axis.text.x=element_text(size=15),
+   axis.text.y=element_text(size=20, hjust=1),
+   axis.title.x=element_text(size=20),
+   axis.title.y=element_text(size=20, angle=90),
+   plot.title=element_text(size=30),
+   #axis.ticks=element_blank(),
+   plot.title=element_text(size=30),
+   legend.text=element_text(size=20),
+   legend.title=element_text(size=20, hjust=0),
+   legend.key.size=unit(2, "lines"),
+   legend.background=element_rect(colour=0, fill=0),
+   legend.key=element_blank()
+)
 
 g <- if(uni) {
    ggplot(d, aes(x=NonZero, y=Measure, shape=Method, colour=Method))
@@ -511,7 +494,7 @@ g <- g + geom_point(size=2.5)
 #g <- g + scale_x_log2("Number of SNPs in model", breaks=br, labels=br) 
 g <- g + scale_x_log2("Number of SNPs in model") 
 g <- g + scale_y_continuous(measure)
-g <- g + theme_bw() + mytheme()
+g <- g + theme_bw() + mytheme
 g <- g + scale_colour_grey(start=0, end=0.5)
 g <- g + stat_smooth(method="loess")
 
