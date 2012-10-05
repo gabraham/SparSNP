@@ -40,6 +40,7 @@ int gmatrix_init(gmatrix *g, char *filename, int n, int p,
    g->y = NULL;
    g->y_orig = NULL;
    g->loss = 0;
+   g->err = NULL;
    g->lp = NULL;
    g->ylp = NULL;
    g->ylp_neg = NULL;
@@ -244,6 +245,7 @@ void gmatrix_free(gmatrix *g)
    FREENULL(g->lookup);
    FREENULL(g->lp);
    FREENULL(g->ylp);
+   FREENULL(g->err);
    FREENULL(g->ylp_neg);
    FREENULL(g->ylp_neg_y);
    FREENULL(g->ylp_neg_y_ylp);
@@ -844,7 +846,12 @@ int gmatrix_init_lp(gmatrix *g)
    FREENULL(g->lp);
    CALLOCTEST(g->lp, g->ncurr, sizeof(double));
 
-   if(g->model == MODEL_LOGISTIC) 
+   if(g->model == MODEL_LINEAR)
+   {
+      FREENULL(g->err);
+      CALLOCTEST(g->err, g->ncurr, sizeof(double));
+   }
+   else if(g->model == MODEL_LOGISTIC) 
    {
       FREENULL(g->lp_invlogit);
       CALLOCTEST(g->lp_invlogit, g->ncurr, sizeof(double));
@@ -874,13 +881,12 @@ double step_regular_linear(sample *s, gmatrix *g)
 {
    int i;
    double grad = 0;
-   double *restrict x = s->x, 
-          *restrict lp = g->lp,
-	  *restrict y = g->y;
+   double *x = s->x, 
+	  *err = g->err;
 
    /* compute gradient */
    for(i = g->ncurr - 1 ; i >= 0 ; --i)
-      grad += x[i] * (lp[i] - y[i]);
+      grad += x[i] * err[i];
 
    return grad * g->ncurr_recip;
 }
@@ -889,9 +895,9 @@ double step_regular_logistic(sample *s, gmatrix *g)
 {
    int i, n = g->ncurr;
    double grad = 0, d2 = 0;
-   double *restrict y = g->y,
-	  *restrict lp_invlogit = g->lp_invlogit,
-	  *restrict x = s->x;
+   double *y = g->y,
+	  *lp_invlogit = g->lp_invlogit,
+	  *x = s->x;
 
    /* compute 1st and 2nd derivatives */
    for(i = n - 1 ; i >= 0 ; --i)
@@ -916,8 +922,8 @@ double step_regular_sqrhinge(sample *s, gmatrix *g)
 {
    int i, n = g->ncurr;
    double grad = 0;
-   const double *restrict x = s->x,
-		*restrict ylp_neg_y_ylp = g->ylp_neg_y_ylp;
+   const double *x = s->x,
+		*ylp_neg_y_ylp = g->ylp_neg_y_ylp;
 
    /* compute gradient */
    for(i = n - 1 ; i >= 0 ; --i)
@@ -935,8 +941,8 @@ void updatelp(gmatrix *g, const double update,
       const double *restrict x, int j)
 {
    int i, n = g->ncurr;
-   double err; 
-   double *restrict lp_invlogit = g->lp_invlogit,
+   double *restrict err = g->err,
+	  *restrict lp_invlogit = g->lp_invlogit,
 	  *restrict lp = g->lp,
 	  *restrict y = g->y,
 	  *restrict ylp_neg_y_ylp = g->ylp_neg_y_ylp;
@@ -947,8 +953,8 @@ void updatelp(gmatrix *g, const double update,
       for(i = n - 1 ; i >= 0 ; --i)
       {
 	 lp[i] += x[i] * update;
-	 err = lp[i] - y[i];
-	 loss += err * err;
+	 err[i] = lp[i] - y[i];
+	 loss += err[i] * err[i];
       }
    }
    else if(g->model == MODEL_LOGISTIC)

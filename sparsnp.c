@@ -6,19 +6,6 @@
 #include "common.h"
 #include "sparsnp.h"
 
-static double clip(const double x, const double min, const double max);
-static double zero(const double x, const double thresh);
-
-inline static double clip(const double x, const double min, const double max)
-{
-   return (x > max) ? max : ((x < min) ? min : x);
-}
-
-inline static double zero(const double x, const double thresh)
-{
-   return (fabs(x) < thresh) ? 0 : x;
-}
-
 /* 
  * Find smallest lambda1 that makes all coefficients
  * zero (except the intercept)
