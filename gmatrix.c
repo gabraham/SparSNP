@@ -1064,7 +1064,7 @@ int cache_init(cache *ca, int n, int p)
    MALLOCTEST(ca->tmp, n * sizeof(double));
 
    for(i = ca->nbins * n - 1 ; i >= 0 ; --i)
-      ca->x[i] = -0.123456789;
+      ca->x[i] = -0.123456789; /* magic number for debugging */
 
    for(i = 0 ; i < p ; i++)
       ca->mapping[i] = CACHE_NOT_EXISTS;
