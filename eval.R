@@ -513,7 +513,7 @@ if(!is.null(prev))
    g <- g + geom_point(size=2.5) 
    #g <- g + scale_x_log2("Number of SNPs in model", breaks=br, labels=br)
    g <- g + scale_x_log2("Number of SNPs in model")
-   g <- g + theme_bw() + mytheme()
+   g <- g + theme_bw() + mytheme
    g <- g + scale_colour_grey(start=0, end=0.5)
    g <- g + stat_smooth(method="loess")
    
@@ -532,7 +532,7 @@ if(!is.null(h2l))
    g <- g + geom_point(size=2.5) 
    #g <- g + scale_x_log2("Number of SNPs in model", breaks=br, labels=br)
    g <- g + scale_x_log2("Number of SNPs in model")
-   g <- g + theme_bw() + mytheme()
+   g <- g + theme_bw() + mytheme
    g <- g + scale_colour_grey(start=0, end=0.5)
    g <- g + stat_smooth(method="loess")
    
