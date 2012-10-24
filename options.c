@@ -122,7 +122,6 @@ int opt_defaults(Opt *opt, short caller)
    opt->unscale_beta = FALSE;
    opt->cortype = 2;
    opt->corthresh = 0;
-   opt->gamma = 0;
    opt->phenoformat = PHENO_FORMAT_FAM;
 
    return SUCCESS;
@@ -225,11 +224,6 @@ int opt_parse(int argc, char* argv[], Opt* opt)
       {
 	 i++;
 	 opt->lambda2 = atof(argv[i]);
-      }
-      else if(strcmp2(argv[i], "-gamma"))
-      {
-	 i++;
-	 opt->gamma = atof(argv[i]);
       }
       else if(strcmp2(argv[i], "-l1min"))
       {

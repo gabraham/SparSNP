@@ -23,7 +23,6 @@ inline static double zero(const double x, const double thresh)
  * Find smallest lambda1 that makes all coefficients
  * zero (except the intercept)
  * 
- * This function doesn't take into account the fusion penalty
  */
 double get_lambda1max_gmatrix(gmatrix *g,
       phi1 phi1_func, phi2 phi2_func, inv inv_func, step step_func)
@@ -91,7 +90,6 @@ int cd_gmatrix(gmatrix *g,
       const int maxiters,
       const double lambda1,
       const double lambda2,
-      const double gamma,
       const double trunc,
       int *numactiveK)
 {
@@ -106,17 +104,11 @@ int cd_gmatrix(gmatrix *g,
    double *beta_old = NULL;
    int *active_old = NULL;
    long pkj, p1K1 = p1 * K - 1;
-   double d1, d2, pd1 = 0, pd2 = 0;
-   int nE = K * (K - 1) / 2, e;
-   double Ckne, Ckne2;
+   double d1, d2;
    double beta_pkj;
-   double *restrict C = g->C;
 
    if(!sample_init(&sm))
       return FAILURE;
-
-   for(e = nE * K - 1 ; e >= 0 ; --e)
-      C[e] *= gamma;
 
    CALLOCTEST(beta_old, (long)p1 * K, sizeof(double));
    CALLOCTEST(active_old, (long)p1 * K, sizeof(int));
@@ -153,27 +145,11 @@ int cd_gmatrix(gmatrix *g,
 	       /* don't penalise intercept */
 	       if(j > 0)
 	       {
-		  /* Apply inter-task penalty, summing over all the edges */
-		  pd1 = 0;
-		  pd2 = 0;
-		  for(e = 0 ; e < nE ; e++)
-		  {
-		     Ckne = C[k * nE + e];
-		     Ckne2 = Ckne * Ckne;
-		     pd1 += Ckne2 * beta_pkj;
-		     pd2 += Ckne2;
-		  }
-		  pd1 *= 2;
-		  pd2 *= 2;
-
-		  s = beta_pkj - (d1 + pd1) / (d2 + pd2);
-
+		  s = beta_pkj - d1 / d2;
 		  beta_new = soft_threshold(s, lambda1) * l2recip;
 	       }
 	       else
-	       {
 		  s = beta_new = beta_pkj - d1 / d2;
-	       }
 
 	       /* numerically close enough to zero */
 	       if(fabs(beta_new) < ZERO_THRESH)
@@ -185,9 +161,9 @@ int cd_gmatrix(gmatrix *g,
       	       
 #ifdef DEBUG
    if(j > 0)
-   printf("[k=%d j=%d] d1=%.6f pd1=%.6f d2=%.6f pd2=%.6f s=%.6f delta=%.6f\
+   printf("[k=%d j=%d] d1=%.6f d2=%.6f s=%.6f delta=%.6f\
  beta_old=%.6f beta_new=%.6f\n",
-		  k, j, d1, pd1, d2, pd2, s, delta, beta_pkj, beta_new);
+		  k, j, d1, d2, s, delta, beta_pkj, beta_new);
 #endif
 
       	  //     if(fabs(delta) > ZERO_THRESH)

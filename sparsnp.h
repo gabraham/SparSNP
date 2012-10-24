@@ -42,7 +42,6 @@ typedef struct Opt {
    int maxiters;
    double lambda1;
    double lambda2;
-   double gamma;
    double threshold;
    double l1minratio;
    double l1max;
@@ -100,7 +99,6 @@ int cd_gmatrix(gmatrix *g,
       step step_func,
       const int maxepochs, const int maxiters, 
       const double lambda1, const double lambda2,
-      const double gamma,
       const double trunc,
       int *numactiveK);
 

@@ -85,15 +85,15 @@ int run_train(Opt *opt, gmatrix *g)
    for(i = 1 ; i < opt->nlambda1 ; i++)
    {
       if(g->verbose)
-	 printf("\n[%d] Fitting with lambda1=%.10f lambda2=%.10f gamma=%.10f\n",
-	    i, opt->lambda1path[i], opt->lambda2, opt->gamma);
+	 printf("\n[%d] Fitting with lambda1=%.10f lambda2=%.10f\n",
+	    i, opt->lambda1path[i], opt->lambda2);
 
       /* return value is number of nonzero variables,
        * including the intercept */
       ret = cd_gmatrix(
 	    g, opt->step_func,
 	    opt->maxepochs, opt->maxiters,
-	    opt->lambda1path[i], opt->lambda2, opt->gamma,
+	    opt->lambda1path[i], opt->lambda2,
 	    opt->trunc, numactiveK);
 
       if(ret == CDFAILURE)
