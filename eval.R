@@ -111,11 +111,10 @@ evalpred.crossval <- function(type=NULL, dir=NULL)
    cv <- lapply(folds, function(fold) {
       y <- as.matrix(read.table(sprintf("y.%02d", fold), sep=","))
       
-      if(length(unique(y)) == 1)
-         return(NULL)
-   
-      if(length(unique(y)) == 1)
-         return(NULL)
+      if(length(unique(y)) == 1) {
+	 stop("only one unique value of y found, cannot evaluate prediction",
+	    "(file=", sprintf("y.%02d", fold), ")")
+      }
    
       files <- sort(
          list.files(
@@ -144,15 +143,24 @@ evalpred.crossval <- function(type=NULL, dir=NULL)
 	    r2(p, y)
 	 })
       }
-      res <- t(res)
+      
+      # apply messes up orientation when res is a vector
+      res <- t(rbind(res)) 
 
       #pred <- list(
       #   p=lapply(1:ncol(pr), function(j) pr[,j]),
       #   y=lapply(1:ncol(pr), function(j) y)
       #)
 
-      colnames(res) <- paste(measure, 1:ncol(y), sep="_")
-      colnames(nz) <- paste("NonZero", 1:ncol(y), sep="_")
+      if(ncol(y) > 1) {
+	 colnames(res) <- paste("Measure", 1:ncol(y), sep="_")
+	 colnames(nz) <- paste("NonZero", 1:ncol(y), sep="_")
+      } else {
+	 colnames(res) <- "Measure"
+	 colnames(nz) <- "NonZero"
+      }
+
+      #browser()
 
       list(
          r=cbind(
@@ -169,7 +177,7 @@ evalpred.crossval <- function(type=NULL, dir=NULL)
    
    # remove zeros
    #cv.d <- cv.d[cv.d$NonZero > 0, ] 
-   
+
    cv.uni.d <- pred.uni <- NULL
    #if(uni)
    #{
@@ -265,7 +273,8 @@ evalpred.validation <- function(type=NULL, discovery.dir=NULL)
    }
 
    d <- data.frame(NonZero=nz, Measure=res)
-   cv.d <- d[d$NonZero > 0, ]
+   d <- d[d$NonZero > 0, ]
+   cv.d <- d
 
    ############################################################################    
    cv.uni.d <- NULL
@@ -439,6 +448,7 @@ res <- lapply(seq(along=dirs), function(i) {
    cv.d
 })
 cv <- do.call(rbind, res)
+#cv <- cv[cv$NonZero > 0, ]
 
 res.uni <- cv.uni <- NULL
 if(uni)
@@ -494,64 +504,66 @@ d <- cv
 #   d <- rbind(d, cv.uni[, vars])
 #}
 
-mytheme <- function(base_size=10)
-{
-   structure(list(
-	 axis.text.x=theme_text(size=15),
-	 axis.text.y=theme_text(size=20, hjust=1),
-	 axis.title.x=theme_text(size=20),
-	 axis.title.y=theme_text(size=20, angle=90),
-	 plot.title=theme_text(size=30),
-	 #axis.ticks=theme_blank(),
-	 plot.title=theme_text(size=30),
-	 legend.text=theme_text(size=20),
-	 legend.title=theme_text(size=20, hjust=0),
+mytheme <- theme(
+	 axis.text.x=element_text(size=15),
+	 axis.text.y=element_text(size=20, hjust=1),
+	 axis.title.x=element_text(size=20),
+	 axis.title.y=element_text(size=20, angle=90),
+	 plot.title=element_text(size=30),
+	 #axis.ticks=element_blank(),
+	 plot.title=element_text(size=30),
+	 legend.text=element_text(size=20),
+	 legend.title=element_text(size=20, hjust=0),
 	 legend.key.size=unit(2, "lines"),
-	 legend.background=theme_rect(col=0, fill=0),
-	 legend.key=theme_blank()
-   ), class="options")
-}
+	 legend.background=element_rect(colour=0, fill=0),
+	 legend.key=element_blank()
+)
 
 numtasks <- length(grep("^NonZero_[[:digit:]]+", colnames(d)))
 
-d2 <- lapply(1:numtasks, function(k) {
-   v1 <- grep(sprintf("R2_%s$", k), colnames(d), value=TRUE)
-   v2 <- grep(sprintf("NonZero_%s$", k), colnames(d), value=TRUE)
-   data.frame(d$lambda, R2=d[, v1], NonZero=d[,v2], d$Method, Task=k)
-})
-
-d3 <- do.call(rbind, d2)
-d3 <- d3[d3$NonZero > 0 ,]
-d3$Task <- factor(d3$Task)
-
-g <- ggplot(d3, aes(x=NonZero, y=R2, colour=Task, line=Task))
-g <- g + geom_smooth(method="loess", size=1.5) + scale_x_log10()   
-g <- g + theme_bw() + mytheme() + scale_y_continuous(expression(R^2))
-g <- g + guides(colour=guide_legend(ncol=2))
-
-pdf("R2.pdf", width=14)
-print(g)
-dev.off()
-
-g <- ggplot(d3, aes(x=NonZero, y=R2))
-g <- g + geom_smooth(method="loess", se=FALSE, size=1.5) + scale_x_log10()   
-g <- g + theme_bw() + mytheme() + scale_y_continuous(expression(R^2))
+#if(numtasks > 0) {
+#   d2 <- lapply(1:numtasks, function(k) {
+#      v1 <- grep(sprintf("%s_%s$", k), measure, colnames(d), value=TRUE)
+#      v2 <- grep(sprintf("NonZero_%s$", k), colnames(d), value=TRUE)
+#      data.frame(d$lambda, Measure=d[, v1], NonZero=d[,v2], d$Method, Task=k)
+#   })
+#   d3 <- do.call(rbind, d2)
+#} else {
+#   d3 <- data.frame(d, Task=1)
+#}
+#
+#d3 <- d3[d3$NonZero > 0 ,]
+#d3$Task <- factor(d3$Task)
+#
+#g <- ggplot(d3, aes(x=NonZero, y=Measure, colour=Task, line=Task))
+#g <- g + geom_smooth(method="loess", size=1.5) + scale_x_log10()   
+#g <- g + theme_bw() + mytheme + scale_y_continuous(expression(R^2))
 #g <- g + guides(colour=guide_legend(ncol=2))
+##g <- g + geom_point(alpha=0.1)
+#
+#pdf(sprintf("%s.pdf", measure), width=14)
+#print(g)
+#dev.off()
 
-lo <- loess(R2 ~ log(NonZero), data=d3)
-s <- predict(lo, newdata=data.frame(NonZero=1:max(d3$NonZero)))
-m <- which(s == max(s, na.rm=TRUE))
-cat("Best model at", m, "SNPs with predictive measure", s[m], "\n") 
-
-g <- g + geom_vline(xintercept=m, lty=2)
-g <- g + annotate("text", x=m + 15, y=-0.05, label=m)
-
-pdf("R2_all.pdf", width=14)
-print(g)
-dev.off()
-
-
-stop()
+## "Loss" pooled over all tasks
+#if(numtasks > 0) {
+#   g <- ggplot(d3, aes(x=NonZero, y=Measure))
+#   g <- g + geom_smooth(method="loess", se=FALSE, size=1.5) + scale_x_log10()   
+#   g <- g + theme_bw() + mytheme + scale_y_continuous(expression(R^2))
+#   #g <- g + guides(colour=guide_legend(ncol=2))
+#   
+#   lo <- loess(Measure ~ log(NonZero), data=d3)
+#   s <- predict(lo, newdata=data.frame(NonZero=1:max(d3$NonZero)))
+#   m <- which(s == max(s, na.rm=TRUE))
+#   cat("Best model at", m, "SNPs with predictive measure", s[m], "\n") 
+#   
+#   g <- g + geom_vline(xintercept=m, lty=2)
+#   g <- g + annotate("text", x=m + 15, y=-0.05, label=m)
+#   
+#   pdf(sprintf("%s_all.pdf", measure), width=14)
+#   print(g)
+#   dev.off()
+#}
 
 g <- if(uni) {
    ggplot(d, aes(x=NonZero, y=Measure, shape=Method, colour=Method))
@@ -559,14 +571,15 @@ g <- if(uni) {
    ggplot(d, aes(x=NonZero, y=Measure))
 }
 
-m <- round(max(log2(d$NonZero)))
+m <- round(max(log2(d[, grep("^NonZero", colnames(d))])))
 br <- 2^(0:m)
 br <- br[br <= max(d$NonZero)]
+expr <- ifelse(measure == "AUC", "AUC", expression(R^2))
 g <- g + geom_point(size=2.5)
 #g <- g + scale_x_log2("Number of SNPs in model", breaks=br, labels=br) 
 g <- g + scale_x_log2("Number of SNPs in model") 
-g <- g + scale_y_continuous(measure)
-g <- g + theme_bw() + mytheme()
+g <- g + scale_y_continuous(expr)
+g <- g + theme_bw() + mytheme
 g <- g + scale_colour_grey(start=0, end=0.5)
 g <- g + stat_smooth(method="loess")
 
@@ -585,7 +598,7 @@ if(!is.null(prev))
    g <- g + geom_point(size=2.5) 
    #g <- g + scale_x_log2("Number of SNPs in model", breaks=br, labels=br)
    g <- g + scale_x_log2("Number of SNPs in model")
-   g <- g + theme_bw() + mytheme()
+   g <- g + theme_bw() + mytheme
    g <- g + scale_colour_grey(start=0, end=0.5)
    g <- g + stat_smooth(method="loess")
    
@@ -604,7 +617,7 @@ if(!is.null(h2l))
    g <- g + geom_point(size=2.5) 
    #g <- g + scale_x_log2("Number of SNPs in model", breaks=br, labels=br)
    g <- g + scale_x_log2("Number of SNPs in model")
-   g <- g + theme_bw() + mytheme()
+   g <- g + theme_bw() + mytheme
    g <- g + scale_colour_grey(start=0, end=0.5)
    g <- g + stat_smooth(method="loess")
    
