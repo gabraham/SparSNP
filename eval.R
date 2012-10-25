@@ -6,15 +6,9 @@ usage <- paste("usage: eval.R [title=<title>]",
       "[prev=<K>] [h2l=<V>] [mode=discovery|validation]",
       "(prev must be specified if h2l is specified)")
 
-if(!exists("uni")){
-   uni <- FALSE
-}
-best.uni.k <- best.uni <- best <- NULL
-
 args <- commandArgs(TRUE)
 s <- strsplit(args, "=")
-for(m in s)
-{
+for(m in s) {
    eval(parse(text=sprintf("%s=\"%s\"", m[1], m[2])))
 }
 
@@ -47,10 +41,9 @@ if(exists("h2l")) {
    h2l <- NULL
 }
 
-if(!is.null(best))
-   best <- as.integer(best)
-if(!is.null(best.uni))
-   best.uni <- as.integer(best.uni)
+#if(!is.null(best))
+#   best <- as.integer(best)
+best <- NULL
 
 library(ggplot2)
 library(scales)
@@ -103,9 +96,6 @@ evalpred.crossval <- function(type=NULL, dir=NULL)
 
    folds <- scan("folds.txt", quiet=TRUE)
    folds <- unique(sort(folds))
-   
-   if(!exists("uni"))
-      uni <- FALSE
    
    cv.d <- pred <- NULL
    cv <- lapply(folds, function(fold) {
@@ -160,8 +150,6 @@ evalpred.crossval <- function(type=NULL, dir=NULL)
 	 colnames(nz) <- "NonZero"
       }
 
-      #browser()
-
       list(
          r=cbind(
 	    lambda=lambda[1:nrow(res)],
@@ -172,74 +160,9 @@ evalpred.crossval <- function(type=NULL, dir=NULL)
       )
    })
    
-   #pred <- lapply(cv, function(x) x$prediction)
    cv.d <- data.frame(do.call(rbind, lapply(cv, function(x) x$r)))
    
-   # remove zeros
-   #cv.d <- cv.d[cv.d$NonZero > 0, ] 
-
-   cv.uni.d <- pred.uni <- NULL
-   #if(uni)
-   #{
-   #   cv.uni <- lapply(folds, function(fold) {
-   #      # should be 0/1
-   #      y <- scan(sprintf("multivar_y.%02d", fold), quiet=TRUE)
-   #   
-   #      files <- sort(
-   #         list.files(
-   #	    pattern=sprintf(
-   #	       "^multivar_beta.csv.[[:digit:]]+.%02d.pred[\\.bz2]*$", fold))
-   #      )
-   #   
-   #      pr <- sapply(files, scan, quiet=TRUE)
-   #   
-   #      if(type == "AUC") {
-   #         y <- as.numeric(as.character(factor(y, labels=c(0, 1))))
-   #         res <- apply(pr, 2, auc, y=y)
-   #      } else {
-   #         res <- apply(pr, 2, r2, y=y)
-   #      }
-
-   #      #pred <- list(
-   #      #   p=lapply(1:ncol(pr), function(j) pr[,j]),
-   #      #   y=lapply(1:ncol(pr), function(j) y)
-   #      #)
-   #   
-   #      # Multivar nonzero doesn't have intercept
-   #      nz <- scan(sprintf("multivar_nonzero.csv.%02d", fold), quiet=TRUE)
-   #      nz.thin <- scan(sprintf("multivar_nonzero.csv_thinned.%02d", fold),
-   #         quiet=TRUE)
-   #      status <- scan(
-   #            list.files(pattern=sprintf("multivar_[irls|status]+.%02d",
-   #     	     fold)), quiet=TRUE
-   #      )
-
-   #      w <- which(status == 3)
-   #      if(length(w) == 0) {
-   #         w <- length(status)
-   #      }
-
-   #      ok <- which(status[1:w] == 1)
-   #
-   #      list(
-   #         r=cbind(
-   #            Measure=res[ok],
-   #            NonZeroPreThin=nz[ok],
-   #            NonZero=nz.thin[ok]
-   #         )#,
-   #         #prediction=pred
-   #      )
-   #   })
-   #   
-   #   pred.uni <- lapply(cv.uni, function(x) x$prediction)
-   #   cv.uni.d <- data.frame(
-   #      do.call(rbind, lapply(cv.uni, function(x) x$r))
-   #   )
-   #}
-
-   save(cv.d, cv.uni.d, 
-      #pred, pred.uni,
-      file="crossval.RData")
+   save(cv.d, file="crossval.RData")
 }
 
 # for testing on validation dataset
@@ -274,56 +197,9 @@ evalpred.validation <- function(type=NULL, discovery.dir=NULL)
 
    d <- data.frame(NonZero=nz, Measure=res)
    d <- d[d$NonZero > 0, ]
-   cv.d <- d
-
-   ############################################################################    
-   cv.uni.d <- NULL
-   ## univariable/multivariable
-   #files <- sort(
-   #   list.files(
-   #      pattern="^multivar_beta\\.csv\\.[[:digit:]]+\\.[[:digit:]]+\\.pred[\\.bz2]*$")
-   #)
-   # 
-   ## remove predictions from bed models that didn't converge etc
-   #lf <- list.files(pattern="multivar_[irls|status]+\\.[[:digit:]]+$",
-   #      path=discovery.dir, full.names=TRUE)
-   #status <- lapply(lf, scan, quiet=TRUE)
-   #names(status) <- lf
-   #f <- sapply(strsplit(lf, "\\."), tail, n=1)
-   #l <- lapply(f, function(g) {
-   #   grep(sprintf("^multivar_beta\\.csv\\.[[:digit:]]+\\.%s\\.pred$", g),
-   #      files, value=TRUE)
-   #})
-
-   #l2 <- lapply(seq(along=l), function(i) {
-   #   l[[i]][status[[i]] == 1]
-   #})
-
-   #l3 <- unlist(l2)
-
-   ### not a sparse model
-   #pr <- sapply(l3, scan, quiet=TRUE)
-   #beta <- gsub("\\.pred", "", l3)
-   ##nz <- sapply(beta, function(x) {
-   ##   b <- scan(sprintf("%s/%s", discovery.dir, x), quiet=TRUE)
-   ##   sum(b[-1] != 0)
-   ##})
-   #nz <- sapply(beta, function(x) {
-   #   nrow(read.table(sprintf("%s/%s", discovery.dir, x))) - 1
-   #})
-
-   #if(type == "AUC") {
-   #   y <- as.numeric(as.character(factor(y, labels=c(0, 1))))
-   #   res <- apply(pr, 2, auc, y=y)
-   #} else {
-   #   res <- apply(pr, 2, r2, y=y)
-   #}
-
-   #d <- data.frame(NonZero=nz, Measure=res)
-   #cv.uni.d <- d[d$NonZero > 0, ]
-
-   save(cv.d, cv.uni.d, file="crossval.RData")
-   list(cv.d, cv.uni.d)
+ 
+   save(cv.d, file="crossval.RData")
+   list(cv.d)
 }
 
 
@@ -392,7 +268,6 @@ varexp <- function(K=NULL, h2l=NULL, auc=NULL, auc.se=NULL)
       }
    }
 
-
    cbind(K=K, h2l=h2l, aucmax=aucmax, varexp=h2lx, genvarexp=rho2gg,
       varexp.se=h2lx.se)
 }
@@ -409,8 +284,8 @@ if(mode == "discovery") {
    setwd("validation")
 }
 
-params <- scan(sprintf("%s/discovery/params.txt", rootdir), what="character",
-   quiet=TRUE)
+params <- scan(sprintf("%s/discovery/params.txt", rootdir),
+   what="character", quiet=TRUE)
 
 extract.params <- function(nm)
 {  
@@ -448,18 +323,6 @@ res <- lapply(seq(along=dirs), function(i) {
    cv.d
 })
 cv <- do.call(rbind, res)
-#cv <- cv[cv$NonZero > 0, ]
-
-res.uni <- cv.uni <- NULL
-if(uni)
-{
-   res.uni <- lapply(seq(along=dirs), function(i) {
-      load(sprintf("crossval%s/crossval.RData", i))
-      cv.uni.d
-   })
-   cv.uni <- do.call(rbind, res.uni)
-}
-
 
 cv$Method <- "lasso"
 
@@ -482,27 +345,7 @@ if(measure == "AUC")
    }
 }
 
-#d <- cv[, vars]
 d <- cv
-#if(uni)
-#{
-#   cv.uni$Method <- "logistic"
-#   if(measure == "AUC")
-#   {
-#      if(!is.null(prev)) {
-#	 cv.uni$VarExp <- varexp(K=prev,
-#	    auc=cv.uni$Measure)[, "varexp"]
-#      }
-#
-#      if(!is.null(h2l)) {
-#	 cv.uni$GenVarExp <- varexp(K=prev,
-#	    auc=cv.uni$Measure, h2l=h2l)[, "genvarexp"]
-#      }
-#   }
-#
-#   #d <- rbind(d, cv.uni[cv.uni$Status == 1, vars])
-#   d <- rbind(d, cv.uni[, vars])
-#}
 
 mytheme <- theme(
 	 axis.text.x=element_text(size=15),
@@ -519,22 +362,22 @@ mytheme <- theme(
 	 legend.key=element_blank()
 )
 
-numtasks <- length(grep("^NonZero_[[:digit:]]+", colnames(d)))
+numtasks <- max(length(grep("^NonZero_[[:digit:]]+", colnames(d))), 1)
 
-#if(numtasks > 0) {
-#   d2 <- lapply(1:numtasks, function(k) {
-#      v1 <- grep(sprintf("%s_%s$", k), measure, colnames(d), value=TRUE)
-#      v2 <- grep(sprintf("NonZero_%s$", k), colnames(d), value=TRUE)
-#      data.frame(d$lambda, Measure=d[, v1], NonZero=d[,v2], d$Method, Task=k)
-#   })
-#   d3 <- do.call(rbind, d2)
-#} else {
-#   d3 <- data.frame(d, Task=1)
-#}
-#
-#d3 <- d3[d3$NonZero > 0 ,]
-#d3$Task <- factor(d3$Task)
-#
+if(numtasks > 1) {
+   d2 <- lapply(1:numtasks, function(k) {
+      v1 <- grep(sprintf("Measure_%s$", k), colnames(d), value=TRUE)
+      v2 <- grep(sprintf("NonZero_%s$", k), colnames(d), value=TRUE)
+      data.frame(lambda=d$lambda, Measure=d[, v1], NonZero=d[,v2], Method=d$Method, Task=k)
+   })
+   d3 <- do.call(rbind, d2)
+} else {
+   d3 <- data.frame(d, Task=1)
+}
+
+d3 <- d3[d3$NonZero > 0 ,]
+d3$Task <- factor(d3$Task)
+
 #g <- ggplot(d3, aes(x=NonZero, y=Measure, colour=Task, line=Task))
 #g <- g + geom_smooth(method="loess", size=1.5) + scale_x_log10()   
 #g <- g + theme_bw() + mytheme + scale_y_continuous(expression(R^2))
@@ -565,23 +408,19 @@ numtasks <- length(grep("^NonZero_[[:digit:]]+", colnames(d)))
 #   dev.off()
 #}
 
-g <- if(uni) {
-   ggplot(d, aes(x=NonZero, y=Measure, shape=Method, colour=Method))
-} else {
-   ggplot(d, aes(x=NonZero, y=Measure))
-}
+g <- ggplot(d3, aes(x=NonZero, y=Measure, colour=Task))
 
-m <- round(max(log2(d[, grep("^NonZero", colnames(d))])))
+m <- round(max(log2(d3$NonZero)))
 br <- 2^(0:m)
-br <- br[br <= max(d$NonZero)]
+br <- br[br <= max(d3$NonZero)]
 expr <- ifelse(measure == "AUC", "AUC", expression(R^2))
-g <- g + geom_point(size=2.5)
+g <- g + geom_point(size=2.5, alpha=0.2)
 #g <- g + scale_x_log2("Number of SNPs in model", breaks=br, labels=br) 
 g <- g + scale_x_log2("Number of SNPs in model") 
 g <- g + scale_y_continuous(expr)
 g <- g + theme_bw() + mytheme
-g <- g + scale_colour_grey(start=0, end=0.5)
-g <- g + stat_smooth(method="loess")
+#g <- g + scale_colour_grey(start=0, end=0.5)
+g <- g + stat_smooth(method="loess", size=2)
 
 pdf(sprintf("%s_%s.pdf", title, measure), width=14)
 print(g)
@@ -590,11 +429,7 @@ dev.off()
 
 if(!is.null(prev))
 {
-   g <- if(uni) {
-      ggplot(d, aes(x=NonZero, y=VarExp, shape=Method, colour=Method))
-   } else {
-      ggplot(d, aes(x=NonZero, y=VarExp))
-   }
+   g <- ggplot(d, aes(x=NonZero, y=VarExp))
    g <- g + geom_point(size=2.5) 
    #g <- g + scale_x_log2("Number of SNPs in model", breaks=br, labels=br)
    g <- g + scale_x_log2("Number of SNPs in model")
@@ -609,11 +444,7 @@ if(!is.null(prev))
 
 if(!is.null(h2l))
 {
-   g <- if(uni) {
-      ggplot(d, aes(x=NonZero, y=GenVarExp, shape=Method, colour=Method))
-   } else {
-      ggplot(d, aes(x=NonZero, y=GenVarExp))
-   }
+   g <- ggplot(d, aes(x=NonZero, y=GenVarExp))
    g <- g + geom_point(size=2.5) 
    #g <- g + scale_x_log2("Number of SNPs in model", breaks=br, labels=br)
    g <- g + scale_x_log2("Number of SNPs in model")
@@ -626,8 +457,12 @@ if(!is.null(h2l))
    dev.off()
 }
 
+stop("SNP tabulation broken for multitask")
 
 # Find SNPs for best model in cross-validation
+# best: if specified as an integer >0 , then return the SNPs at size model
+#       size. Otherwise, best model will be automatically determined using the
+#       highest "Measure" (AUC or R^2)
 tabulate.snps <- function(best=NULL, d)
 {
    if(is.null(best))
@@ -645,13 +480,14 @@ tabulate.snps <- function(best=NULL, d)
 
    l <- lapply(1:nreps, function(rep) {
       l <- lapply(1:nfolds, function(fold) {
-         s <- scan(sprintf("crossval%s/nonzero.csv.%02d", rep, fold - 1),
-	    quiet=TRUE)
+
+	 s <- as.matrix(read.table(
+	    sprintf("crossval%s/nonzero.csv.%02d", rep, fold - 1),
+	    sep=","))
 	 
 	 # Never select zero as a legitimate model
 	 s[s == 0] <- -Inf
          w <- which.min((s - m)^2)
-         #cat("best:", s[w], " ")
          b <- read.table(
 	    sprintf("crossval%s/beta.csv.%02d.%02d",
 	       rep, w - 1, fold - 1), sep=",")
@@ -665,11 +501,9 @@ tabulate.snps <- function(best=NULL, d)
    list(best=b, snps=sort(table(unlist(l)), decreasing=TRUE), k=s[m])
 }
 
-topsnps <- NULL
-
-if(mode == "discovery")
+get_topsnps <- function(...)
 {
-   res <- tabulate.snps(best, cv)
+   res <- tabulate.snps(...)
    snps <- res$snps
    best <- res$best
    best.k <- res$k
@@ -680,7 +514,7 @@ if(mode == "discovery")
    {
       #rs <- scan("snps.txt", what=character())
       ref <- read.table("snps.txt", header=FALSE, sep="",
-	    stringsAsFactors=FALSE)
+            stringsAsFactors=FALSE)
       rs <- ref[,1]
       names(snps) <- rs[as.integer(names(snps))]
       
@@ -691,34 +525,22 @@ if(mode == "discovery")
          Replications=nreps * nfolds
       )
    }
-   write.table(topsnps, file="topsnps.txt", quote=FALSE, row.names=FALSE)
+   topsnps
+}
 
-   if(uni)
-   {
-      res.uni <- tabulate.snps(best.uni, cv.uni)
-      snps.uni <- res.uni$snps
-      best.uni <- res.uni$best
-      best.uni.k <- res.uni$k
-      
-      topsnps.uni <- cbind("NA"=numeric(0))
-      
-      if(length(snps.uni) > 0)
-      {
-         #rs.uni <- scan("snps.txt", what=character())
-	 ref <- read.table("snps.txt", header=FALSE, sep="",
-	       stringsAsFactors=FALSE)
-	 rs.uni <- ref[,1]
-         names(snps.uni) <- rs[as.integer(names(snps.uni))]
-         
-         topsnps.uni <- data.frame(
-            RS=rownames(snps.uni),
-            Counts=snps.uni,
-            Proportion=snps.uni / nreps / nfolds,
-            Replications=nreps * nfolds
-         )
-      }
-      write.table(topsnps.uni, file="topsnps_uni.txt",
-	 quote=FALSE, row.names=FALSE)
+if(mode == "discovery")
+{
+   topsnps <- if(numtasks == 1) {
+      s <- get_topsnps(best, d3)
+      write.table(s, file="topsnps.txt", quote=FALSE, row.names=FALSE)
+      s
+   } else {
+     lapply(1:numtasks, function(k) {
+	 s <- get_topsnps(best, d3[d3$Task == k, ])
+         write.table(s, file=sprintf("topsnps_%d.txt", k),
+	    quote=FALSE, row.names=FALSE)
+	 s
+      })
    }
 }
 
@@ -727,6 +549,6 @@ colnames(cv)[colnames(cv) == "Measure"] <- measure
 
 cv <- d
 
-save(cv, topsnps, best, best.uni, best.k, best.uni.k,
+save(cv, topsnps, best, best.k, 
    file=sprintf("%s.RData", title))
 
