@@ -414,7 +414,7 @@ m <- round(max(log2(d3$NonZero)))
 br <- 2^(0:m)
 br <- br[br <= max(d3$NonZero)]
 expr <- ifelse(measure == "AUC", "AUC", expression(R^2))
-g <- g + geom_point(size=2.5, alpha=0.2)
+#g <- g + geom_point(size=2.5, alpha=0.2)
 #g <- g + scale_x_log2("Number of SNPs in model", breaks=br, labels=br) 
 g <- g + scale_x_log2("Number of SNPs in model") 
 g <- g + scale_y_continuous(expr)
@@ -457,7 +457,10 @@ if(!is.null(h2l))
    dev.off()
 }
 
-stop("SNP tabulation broken for multitask")
+save(d3, file="discovery.RData")
+
+if(numtasks > 1)
+   stop("SNP tabulation broken for multitask")
 
 # Find SNPs for best model in cross-validation
 # best: if specified as an integer >0 , then return the SNPs at size model
@@ -549,6 +552,6 @@ colnames(cv)[colnames(cv) == "Measure"] <- measure
 
 cv <- d
 
-save(cv, topsnps, best, best.k, 
+save(cv, d3, topsnps, #best, best.k, 
    file=sprintf("%s.RData", title))
 

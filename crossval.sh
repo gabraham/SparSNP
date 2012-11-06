@@ -126,7 +126,7 @@ function run {
    echo "dir=$dir"
 
    # don't clobber an existing directory
-   if ! [ -d $dir ];
+   if ! [ -d $dir ] || [ $CLOBBER ];
    then
       mkdir $dir
       pushd $dir
@@ -135,7 +135,12 @@ function run {
       makefolds -folds folds.txt -ind folds.ind -nfolds $NFOLDS -n $N
 
       # Get scale of each crossval fold
-      scale -bed $BED -n $N -p $P $FOLDIND_CMD
+      if ! [ -s scale.bin.00 ]
+      then
+	 scale -bed $BED -n $N -p $P $FOLDIND_CMD
+      else
+	 echo "Found scale files, skipping scaling."
+      fi
 	 
       echo "############# Running training #############"
    
