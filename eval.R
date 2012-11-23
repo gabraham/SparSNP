@@ -57,7 +57,7 @@ scale_x_log2 <- function(...)
 
 # Process prediction results
 
-auc <- function(y, p)
+auc <- function(p, y)
 {
    y <- cbind(y)
    p <- cbind(p)
@@ -122,9 +122,10 @@ evalpred.crossval <- function(type=NULL, dir=NULL)
       #nz[-1] <- nz[-1] - 1  
    
       res <- if(type == "AUC") {
-	 y <- sapply(y, function(r) {
-	    as.numeric(as.character(factor(y, labels=c(0, 1))))
-	 })
+	 # y <- sapply(length(, function(r) {
+	 #    as.numeric(as.character(factor(y, labels=c(0, 1))))
+	 # })
+	 y <- cbind(as.numeric(as.character(factor(y, labels=c(0, 1)))))
 	 apply(pr, 3, function(p) {
 	    auc(p, y)
 	 })
