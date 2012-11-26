@@ -183,7 +183,7 @@ evalpred.validation <- function(type=NULL, discovery.dir=NULL)
    )
    
    pr <- lapply(files, function(f) as.matrix(read.table(f, sep=",")))
-   pr <- abind(pr, along=3)
+   pr <- abind(pr, along=2)
    beta <- gsub("\\.pred", "", files)
    nz <- sapply(beta, function(x) {
       nrow(read.table(sprintf("%s/%s", discovery.dir, x))) - 1
@@ -196,8 +196,8 @@ evalpred.validation <- function(type=NULL, discovery.dir=NULL)
       res <- apply(pr, 2, r2, y=y)
    }
 
-   d <- data.frame(NonZero=nz, Measure=res)
-   d <- d[d$NonZero > 0, ]
+   cv.d <- data.frame(NonZero=nz, Measure=res)
+   cv.d <- cv.d[cv.d$NonZero > 0, ]
  
    save(cv.d, file="crossval.RData")
    list(cv.d)
