@@ -46,7 +46,7 @@ if(is.na(uni)) {
 library(methods)
 
 # Parse the parameters
-param <- read.table("discovery/params.txt", sep=",", stringsAsFactors=FALSE)[,1]
+param <- scan("discovery/params.txt", what=character(), quiet=TRUE)
 s <- sapply(param, strsplit, "=")
 for(i in seq(along=s)) {
    s1 <- s[[i]][1]
@@ -56,7 +56,6 @@ for(i in seq(along=s)) {
       paste("\"", s2, "\"", sep="")
    } else m
    x <- paste(s1, "=", s2)
-   
    eval(parse(text=x))
 }
 
@@ -85,7 +84,8 @@ b <- lapply(1:nreps, function(rep) {
       w <- nzopt[[rep]][fold]
       f <- sprintf("%s/crossval%s/%sbeta.csv.%02d.%02d",
 	 dir, rep, prefix, w - 1, fold - 1)
-      r <- try(read.table(f, sep=",", header=FALSE), silent=FALSE)
+      cat(">>>", f, "\n")
+      r <- try(read.table(f, sep=":", header=FALSE), silent=FALSE)
       if(is(r, "try-error")) {
 	 NULL
       } else {
@@ -112,7 +112,7 @@ bpath <- lapply(1:nreps, function(rep) {
       )
       lapply(l, function(x) {
 	 cat(x, "\n")
-	 r <- read.table(x, sep=",", header=FALSE)
+	 r <- read.table(x, sep=":", header=FALSE)
 	 r$NonZero <- nrow(r)
 	 r
       })

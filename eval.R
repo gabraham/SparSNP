@@ -122,9 +122,9 @@ evalpred.crossval <- function(type=NULL, dir=NULL)
       #nz[-1] <- nz[-1] - 1  
    
       res <- if(type == "AUC") {
-	 # y <- sapply(length(, function(r) {
-	 #    as.numeric(as.character(factor(y, labels=c(0, 1))))
-	 # })
+	 #y <- sapply(y, function(r) {
+	 #   as.numeric(as.character(factor(y, labels=c(0, 1))))
+	 #})
 	 y <- cbind(as.numeric(as.character(factor(y, labels=c(0, 1)))))
 	 apply(pr, 3, function(p) {
 	    auc(p, y)
@@ -183,7 +183,7 @@ evalpred.validation <- function(type=NULL, discovery.dir=NULL)
    )
    
    pr <- lapply(files, function(f) as.matrix(read.table(f, sep=",")))
-   pr <- abind(pr, along=2)
+   pr <- abind(pr, along=3)
    beta <- gsub("\\.pred", "", files)
    nz <- sapply(beta, function(x) {
       nrow(read.table(sprintf("%s/%s", discovery.dir, x))) - 1
@@ -196,8 +196,8 @@ evalpred.validation <- function(type=NULL, discovery.dir=NULL)
       res <- apply(pr, 2, r2, y=y)
    }
 
-   cv.d <- data.frame(NonZero=nz, Measure=res)
-   cv.d <- cv.d[cv.d$NonZero > 0, ]
+   d <- data.frame(NonZero=nz, Measure=res)
+   d <- d[d$NonZero > 0, ]
  
    save(cv.d, file="crossval.RData")
    list(cv.d)
@@ -445,7 +445,7 @@ if(!is.null(prev))
 
 if(!is.null(h2l))
 {
-   g <- ggplot(d[d$NonZero > 0 ,], aes(x=NonZero, y=GenVarExp))
+   g <- ggplot(d[d$NonZero > 0, ], aes(x=NonZero, y=GenVarExp))
    g <- g + geom_point(size=2.5) 
    #g <- g + scale_x_log2("Number of SNPs in model", breaks=br, labels=br)
    g <- g + scale_x_log2("Number of SNPs in model")
@@ -532,7 +532,8 @@ get_topsnps <- function(...)
    topsnps
 }
 
-if(mode == "discovery") {
+if(mode == "discovery")
+{
    topsnps <- if(numtasks == 1) {
       s <- get_topsnps(best, d3)
       write.table(s, file="topsnps.txt", quote=FALSE, row.names=FALSE)
@@ -545,17 +546,13 @@ if(mode == "discovery") {
 	 s
       })
    }
-
-   # Change from generic name to actual name (AUC/R2)
-   colnames(cv)[colnames(cv) == "Measure"] <- measure
-   
-   cv <- d
-   
-   save(cv, d3, topsnps, #best, best.k, 
-      file=sprintf("%s.RData", title))
-} else {
-   save(cv, d3,
-      file=sprintf("%s.RData", title))
 }
 
+# Change from generic name to actual name (AUC/R2)
+colnames(cv)[colnames(cv) == "Measure"] <- measure
+
+cv <- d
+
+save(cv, d3, topsnps, #best, best.k, 
+   file=sprintf("%s.RData", title))
 

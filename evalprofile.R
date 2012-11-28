@@ -26,10 +26,9 @@ if(!exists("name")) {
 }
 
 if(!exists("prev")) {
-   prev <- NA
+   prev <- NULL
    cat("warning: prevalence not supplied, PPV/NPV will not be calculated\n")
 } else {
-   cat("prev", prev, "\n")
    prev <- as.numeric(prev)
    if(is.na(prev) || prev < 0 || prev > 1) {
       stop("invalid prevalence: ", prev)
