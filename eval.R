@@ -430,7 +430,7 @@ dev.off()
 
 if(!is.null(prev))
 {
-   g <- ggplot(d, aes(x=NonZero, y=VarExp))
+   g <- ggplot(d[d$NonZero > 0, ], aes(x=NonZero, y=VarExp))
    g <- g + geom_point(size=2.5) 
    #g <- g + scale_x_log2("Number of SNPs in model", breaks=br, labels=br)
    g <- g + scale_x_log2("Number of SNPs in model")
@@ -445,7 +445,7 @@ if(!is.null(prev))
 
 if(!is.null(h2l))
 {
-   g <- ggplot(d, aes(x=NonZero, y=GenVarExp))
+   g <- ggplot(d[d$NonZero > 0 ,], aes(x=NonZero, y=GenVarExp))
    g <- g + geom_point(size=2.5) 
    #g <- g + scale_x_log2("Number of SNPs in model", breaks=br, labels=br)
    g <- g + scale_x_log2("Number of SNPs in model")
@@ -532,8 +532,7 @@ get_topsnps <- function(...)
    topsnps
 }
 
-if(mode == "discovery")
-{
+if(mode == "discovery") {
    topsnps <- if(numtasks == 1) {
       s <- get_topsnps(best, d3)
       write.table(s, file="topsnps.txt", quote=FALSE, row.names=FALSE)
@@ -546,13 +545,17 @@ if(mode == "discovery")
 	 s
       })
    }
+
+   # Change from generic name to actual name (AUC/R2)
+   colnames(cv)[colnames(cv) == "Measure"] <- measure
+   
+   cv <- d
+   
+   save(cv, d3, topsnps, #best, best.k, 
+      file=sprintf("%s.RData", title))
+} else {
+   save(cv, d3,
+      file=sprintf("%s.RData", title))
 }
 
-# Change from generic name to actual name (AUC/R2)
-colnames(cv)[colnames(cv) == "Measure"] <- measure
-
-cv <- d
-
-save(cv, d3, topsnps, #best, best.k, 
-   file=sprintf("%s.RData", title))
 
