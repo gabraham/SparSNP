@@ -4,7 +4,7 @@ set -e
 
 if [ -z "$1" ] || [ -z "$2" ];
 then
-   echo "Usage: [optional params] cv.sh <root name of PLINK file> <model>"
+   echo "Usage: [optional params] crossval.sh <root name of PLINK file> <model>"
    echo "where model is one of: linear, sqrhinge"
    exit 1
 fi

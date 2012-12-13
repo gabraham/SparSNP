@@ -35,7 +35,6 @@ then
 fi
 
 # Get a risk score for the top SNP using logistic regression
-
 plink --noweb --bfile $ROOT \
    --snp $(head -1 $DIR/$AVGFILE.score | cut -f1 -d' ') \
    --logistic --out $DIR/topsnp
