@@ -49,7 +49,7 @@ int opt_defaults(Opt *opt, short caller)
    opt->lambda2 = 0;
    opt->threshold = 1e-5;
    opt->trunc = 1e-10;
-   opt->nzmax = 0;
+   opt->nzmax = 5000;
    opt->n = 0;
    opt->p = 0;
    opt->warmrestarts = TRUE;
@@ -61,7 +61,6 @@ int opt_defaults(Opt *opt, short caller)
    opt->nfolds = 1;
    opt->folds_ind_file = NULL;
    opt->seed = time(NULL);
-   opt->nzmax = 0;
    opt->ntrain = opt->n;
    opt->subset_file = NULL;
    opt->lambda1pathfile = "lambda1path.csv";
@@ -71,10 +70,10 @@ int opt_defaults(Opt *opt, short caller)
    opt->predict_func = NULL;
    opt->predict_file = "predicted.csv";
    opt->encoded = TRUE;
-   opt->binformat = BINFORMAT_PLINK;
    opt->beta_files_fold = NULL;
    opt->numnz_file = "nonzero.csv";
    opt->outdir = "";
+   opt->scaley = FALSE;
 
    MALLOCTEST(opt->beta_files, sizeof(char*));
    MALLOCTEST(opt->beta_files[0], sizeof(char) * (strlen(beta_default) + 1));
@@ -119,6 +118,11 @@ int opt_defaults(Opt *opt, short caller)
 
    opt->multivar = OPTIONS_MULTIVAR_NEWTON;
    opt->famfilename = NULL;
+   
+   opt->unscale_beta = FALSE;
+   opt->cortype = 2;
+   opt->corthresh = 0;
+   opt->phenoformat = PHENO_FORMAT_FAM;
 
    return SUCCESS;
 }
@@ -129,7 +133,7 @@ int opt_parse(int argc, char* argv[], Opt* opt)
 
    for(i = 1 ; i < argc ; i++)
    {
-      if(strcmp2(argv[i], "-bin"))
+      if(strcmp2(argv[i], "-bin") || strcmp2(argv[i], "-bed"))
       {
 	 i++;
 	 opt->filename = argv[i];
@@ -348,6 +352,31 @@ int opt_parse(int argc, char* argv[], Opt* opt)
 	 i++;
 	 opt->famfilename = argv[i];
       }
+      else if(strcmp2(argv[i], "-pheno"))
+      {
+	 i++;
+	 opt->phenoformat = PHENO_FORMAT_PHENO;
+	 opt->famfilename = argv[i];
+      }
+      else if(strcmp2(argv[i], "-scaley"))
+      {
+	 opt->scaley = TRUE;
+      }
+      else if(strcmp2(argv[i], "-unscale"))
+      {
+	 opt->unscale_beta = TRUE;
+      }
+      else if(strcmp2(argv[i], "-cortype"))
+      {
+	 i++;
+	 opt->cortype = atol(argv[i]);
+      }
+      else if(strcmp2(argv[i], "-corthresh"))
+      {
+	 i++;
+	 opt->corthresh = atof(argv[i]);
+      }
+
    }
 
    if(opt->caller == OPTIONS_CALLER_CD) /* coordinate descent */
@@ -357,12 +386,12 @@ int opt_parse(int argc, char* argv[], Opt* opt)
 	    || (opt->mode == MODE_TRAIN && !opt->scalefile))
       {
          printf("usage: sparsnp [-train|-predict] -model <model> \
--bin <filename> -n <#samples> -p <#variables> -scale <scalefile> \
+-bed <filename> -fam <filename> -n <#samples> -p <#variables> -scale <scalefile> \
 [-betafiles <beta filename/s>] \
 [-maxepochs <maxepochs>] [-maxiters <maxiters>] [-l1 <lambda1>] \
 -l2 <lambda2>] [-thresh <threshold>] [-foldind <foldsfile>] \
-[-pred <prediction file>] [-filter] \
-[-v] [-vv]\n");
+[-pred <prediction file>] [-filter] [-unscale] [-pheno <filename>] \
+[-cortype [0/1/2]] [-corthresh <threshold>] [-v] [-vv]\n");
          return FAILURE;
       }
       else if(opt->n_beta_files > 1 && opt->mode == MODE_TRAIN)
@@ -377,7 +406,7 @@ onl   y using the first one\n");
             || opt->n == 0 || opt->p == 0)
       {
          printf("usage: univariable [-train|-predict] -model <model> \
--bin <filename> -n <#samples> -p <#variables>  \
+-bed <filename> -n <#samples> -p <#variables>  \
 [-betafiles <beta filename/s>] \
 [-foldind <foldsfile>] [-existingunivar] \
 [-pred <prediction file>] [-nomultivar] [-v] [-vv]\n");
@@ -390,10 +419,10 @@ onl   y using the first one\n");
       }
    }
 
-   if(opt->mode == MODE_TRAIN 
-	 && opt->binformat == BINFORMAT_PLINK && !opt->famfilename)
+   if(opt->mode == MODE_TRAIN && !opt->famfilename)
    {
-      printf("Error: you must provide a FAM filename (-fam) when using plink BED input\n");
+      printf("Error: you must provide a FAM filename (-fam) or PHENO \
+ filename (-pheno) when using plink BED input\n");
       return FAILURE;
    }
 	 

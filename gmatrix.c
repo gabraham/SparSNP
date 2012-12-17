@@ -11,6 +11,7 @@
 #include "gmatrix.h"
 #include "ind.h"
 #include "util.h"
+#include "gennetwork.h"
 
 int sample_init(sample *s)
 {
@@ -22,13 +23,19 @@ int sample_init(sample *s)
 }
 
 int gmatrix_init(gmatrix *g, char *filename, int n, int p,
-      char *scalefile, short yformat, int model, int modeltype,
-      short encoded, short binformat, char *folds_ind_file,
-      short mode, loss_pt loss_pt_func, char *subset_file, 
-      char *famfilename)
+      char *scalefile, short yformat, int phenoformat,
+      int model, int modeltype,
+      short encoded, char *folds_ind_file,
+      short mode, char *subset_file, 
+      char *famfilename, int scaley, int unscale_beta,
+      int cortype, int corthresh, int verbose)
 {
    int i, j, p1;
 
+   g->verbose = verbose;
+   g->file = NULL;
+   g->map = NULL;
+   g->K = 0;
    g->model = model;
    g->modeltype = modeltype;
    g->filename = filename;
@@ -42,20 +49,18 @@ int gmatrix_init(gmatrix *g, char *filename, int n, int p,
    g->loss = 0;
    g->err = NULL;
    g->lp = NULL;
+   g->err = NULL;
    g->ylp = NULL;
    g->ylp_neg = NULL;
    g->ylp_neg_y = NULL;
    g->ylp_neg_y_ylp = NULL;
    g->lp_invlogit = NULL;
-   g->loss_func = NULL;
-   g->loss_pt_func = loss_pt_func;
    g->lookup = NULL;
    g->intercept = NULL;
    g->mean = NULL;
    g->sd = NULL;
    g->tmp = NULL;
    g->xtmp = NULL;
-   /*g->ytmp = NULL;*/
    g->x = NULL;
    g->xthinned = NULL;
    g->ignore = NULL;
@@ -65,8 +70,6 @@ int gmatrix_init(gmatrix *g, char *filename, int n, int p,
    g->encoded = encoded;
    g->nencb = (int)ceil((double)n / PACK_DENSITY);
    g->encbuf = NULL;
-   /*g->decode = &decode;*/
-   g->binformat = binformat;
    g->folds_ind_file = folds_ind_file;
    g->nfolds = 1;
    g->folds = NULL;
@@ -76,12 +79,6 @@ int gmatrix_init(gmatrix *g, char *filename, int n, int p,
    g->ntrainrecip = NULL;
    g->ntestrecip = NULL;
    g->ncurr = 0;
-   g->ncurr_j = NULL; /* current number of samples, depending on
-			 whether we're in training or testing and
-			 which fold we're in, etc. */
-   g->ncurr_recip_j = NULL; /* reciprocal of ncurr to
-			       allow multiplication instead
-			       of division */
    g->mode = mode;
    g->nseek = sizeof(dtype) * (encoded ? g->nencb : g->n);
    g->beta_orig = NULL;
@@ -89,17 +86,50 @@ int gmatrix_init(gmatrix *g, char *filename, int n, int p,
    g->xcaches = NULL;
    g->ncases = 0;
    g->folds_ind = NULL;
-
+   g->unscale_beta = unscale_beta;
    g->famfilename = famfilename;
+   g->C = NULL;
+   g->cortype = cortype;
+   g->corthresh = corthresh;
+   g->phenoformat = phenoformat;
+
+   printf("Using PLINK binary format\n");
+   printf("FAM file: %s\n", g->famfilename);
+   g->offset = 3 - g->nseek; /* TODO: magic number */
+   if(g->famfilename)
+   {
+      printf("pheno format: %s\n",
+	 g->phenoformat == PHENO_FORMAT_FAM ? "FAM" : "PHENO");
+      if(g->phenoformat == PHENO_FORMAT_FAM)
+      {
+	 if(!gmatrix_fam_read_y(g))
+	    return FAILURE;
+	 g->K = 1;
+      }
+      else if(!gmatrix_pheno_read_y(g))
+	 return FAILURE;
+
+      gmatrix_plink_check_pheno(g);
+      if(scaley && !gmatrix_scale_y(g))
+	 return FAILURE;
+   }
+
+   /* sensible default */
+   //if(g->K <= 0)
+     // g->K = MAX_NUM_PHENO;
+
+   if(g->mode == MODE_TRAIN && g->modeltype == MODELTYPE_CLASSIFICATION)
+   {
+      count_cases(g);
+      printf("Found %d cases, %d controls\n", g->ncases, g->n - g->ncases);
+   }
 
    MALLOCTEST(g->map, sizeof(mapping));
    mapping_init(g->map);
 
    srand48(time(NULL));
 
-   CALLOCTEST(g->beta_orig, p1, sizeof(double));
-   CALLOCTEST(g->ncurr_j, p1, sizeof(int));
-   CALLOCTEST(g->ncurr_recip_j, p1, sizeof(double));
+   CALLOCTEST(g->beta_orig, (long)p1 * g->K, sizeof(double));
    
    if(filename)
       FOPENTEST(g->file, filename, "rb");
@@ -108,6 +138,8 @@ int gmatrix_init(gmatrix *g, char *filename, int n, int p,
    if(!gmatrix_setup_folds(g))
       return FAILURE;
 
+   /* We set up an explicit intercept vector so that we don't need to generate
+    * it on the fly later  */
    MALLOCTEST(g->intercept, sizeof(double) * g->n);
    for(i = n - 1 ; i >= 0 ; --i)
       g->intercept[i] = 1.0;
@@ -130,35 +162,9 @@ int gmatrix_init(gmatrix *g, char *filename, int n, int p,
    if(!gmatrix_reset(g))
       return FAILURE;
 
-   if(g->binformat == BINFORMAT_PLINK)
-   {
-      printf("Using PLINK binary format\n");
-      printf("FAM file: %s\n", g->famfilename);
-      g->offset = 3 - g->nseek;
-      if(g->famfilename)
-      {
-	 if(!gmatrix_fam_read_y(g))
-	    return FAILURE;
-	 gmatrix_plink_check_pheno(g);
-      }
-   }
-   else
-   {
-      g->offset = 0;
-      /*g->decode = &decode;*/
-      if(!gmatrix_disk_read_y(g))
-	 return FAILURE;
-   }
-
-   if(g->mode == MODE_TRAIN && g->modeltype == MODELTYPE_CLASSIFICATION)
-   {
-      count_cases(g);
-      printf("Found %d cases, %d controls\n", g->ncases, g->n - g->ncases);
-   }
-
-   CALLOCTEST(g->beta, p1, sizeof(double));
-   CALLOCTEST(g->active, p1, sizeof(int));
-   CALLOCTEST(g->ignore, p1, sizeof(int));
+   CALLOCTEST(g->beta, (long)p1 * g->K, sizeof(double));
+   CALLOCTEST(g->active, (long)p1 * g->K, sizeof(int));
+   CALLOCTEST(g->ignore, (long)p1 * g->K, sizeof(int));
 
    /* don't scale in prediction mode */
    if(g->mode == MODE_TRAIN)
@@ -170,19 +176,17 @@ int gmatrix_init(gmatrix *g, char *filename, int n, int p,
    else
       g->scalefile = NULL;
 
-   for(j = g->p ; j >= 0 ; --j)
+   for(j = (long)p1 * g->K - 1 ; j >= 0 ; --j)
       g->active[j] = !g->ignore[j];
 
    gmatrix_set_ncurr(g);
    
-   if(g->mode == MODE_TRAIN && g->y_orig && !gmatrix_split_y(g))
-      return FAILURE;
+   if(g->mode == MODE_TRAIN && g->y_orig 
+      && !(gmatrix_split_y(g) && gmatrix_make_fusion(g)))
+	 return FAILURE;
 
    if(!gmatrix_init_lp(g))
       return FAILURE;
-
-   /*MALLOCTEST(g->xtmp, sizeof(double) * g->n);*/
-   /*MALLOCTEST(g->ytmp, sizeof(double) * g->n);*/
 
    return SUCCESS;
 }
@@ -261,8 +265,6 @@ void gmatrix_free(gmatrix *g)
    FREENULL(g->ntestrecip);
    FREENULL(g->active);
    FREENULL(g->numnz);
-   FREENULL(g->ncurr_j);
-   FREENULL(g->ncurr_recip_j);
    
    if(g->xcaches)
    {
@@ -273,34 +275,7 @@ void gmatrix_free(gmatrix *g)
 
    mapping_free(g->map);
    FREENULL(g->map);
-}
-
-/* y_orig is the original vector of labels/responses, it 
- * stays in memory and NEVER changes after reading it from disk */
-int gmatrix_disk_read_y(gmatrix *g)
-{
-   int i, n = g->n, n1 = g->n - 1;
-
-   /* read all of y the first time we see it, then skip it */
-   CALLOCTEST(g->y_orig, n, sizeof(double));
-
-   /* The y vector may be byte packed */
-   FREADTEST(g->encbuf, sizeof(dtype), g->nencb, g->file);
-   /*decode_plink(g->tmp, g->encbuf, g->nencb);*/
-   decode_plink_mapping(g->map, g->tmp, g->encbuf, g->nencb);
- 
-   if(g->yformat == YFORMAT01 || g->modeltype == MODELTYPE_REGRESSION) 
-   {
-      for(i = n1 ; i >= 0 ; --i)
-	 g->y_orig[i] = (double)g->tmp[i];
-   } 
-   else if(g->yformat == YFORMAT11)
-   {  /*  -1/1  */
-      for(i = n1 ; i >= 0 ; --i)
-	 g->y_orig[i] = 2.0 * g->tmp[i] - 1.0;
-   }
-
-   return SUCCESS;
+   FREENULL(g->C);
 }
 
 /* y is a copy of y_orig as needed for crossval - in training y are the
@@ -308,8 +283,8 @@ int gmatrix_disk_read_y(gmatrix *g)
  */
 int gmatrix_split_y(gmatrix *g)
 {
-   int i, n = g->n, n1 = g->n - 1;
-   int k = g->ncurr - 1;
+   int i, n = g->n, n1 = g->n - 1, k, K1 = g->K - 1;
+   int m = g->ncurr - 1;
 
    if(g->ncurr <= 0) {
       fprintf(stderr, "gmatrix_split_y: ncurr can't be zero");
@@ -318,19 +293,36 @@ int gmatrix_split_y(gmatrix *g)
 
    FREENULL(g->y);
 
-   MALLOCTEST(g->y, sizeof(double) * g->ncurr);
+   MALLOCTEST(g->y, sizeof(double) * g->ncurr * g->K);
 
    /* represent y as 0/1 or -1/1, allowing for different
     * samples sizes if cross-validation is used */
    if(g->nfolds > 1) /* no cv */
    {
-      for(i = n1 ; i >= 0 ; --i)
-	 if(g->folds_ind[g->fold * n + i])
-	    g->y[k--] = g->y_orig[i];
+      for(k = K1 ; k >= 0 ; --k)
+      {
+         m = g->ncurr - 1;
+         for(i = n1 ; i >= 0 ; --i)
+      	 {
+      	    if(g->folds_ind[g->fold * n + i])
+            {
+      	       g->y[g->ncurr * k + m] = g->y_orig[n * k + i];
+               m-- ;
+            }
+      	 }
+      }
    }
    else 
    {
-      for(i = n1 ; i >= 0 ; --i)
+      if(g->n != g->ncurr)
+      {
+	 fprintf(stderr,
+	    "something is wrong in fold splitting, \
+g->n != g->ncurr (%d != %d)\n", g->n, g->ncurr);
+	 return FAILURE;
+      }
+      /* simply copy the vector, don't care about folds */
+      for(i = n * g->K - 1 ; i >= 0 ; --i)
 	 g->y[i] = g->y_orig[i];
    }
 
@@ -341,7 +333,6 @@ int gmatrix_split_y(gmatrix *g)
  * Read all the data into a preallocated row-major n by m matrix, for n
  * samples and m variables.
  * The variables to be read are determined by the p+1 array ``ind''.
- *
  */
 int gmatrix_read_matrix(gmatrix *g, int *ind, int m)
 {
@@ -432,7 +423,6 @@ int gmatrix_disk_nextcol(gmatrix *g, sample *s, int j, int na_action)
    if(ret == SUCCESS)
    {
       s->x = xtmp;
-      /*s->y = g->ytmp;*/
       return SUCCESS;
    }
 
@@ -491,7 +481,6 @@ inputs in gmatrix_disk_nextcol\n");
 	       if(d != X_LEVEL_NA)
 	       {
 		  xtmp[ngood] = (double)d;
-		  /*g->ytmp[ngood++] = g->y_orig[i];*/
 	       }
 	    }
 	    s->n = ngood;
@@ -560,7 +549,6 @@ inputs in gmatrix_disk_nextcol\n");
 		  if(d != X_LEVEL_NA)
 		  {
 		     xtmp[ngood] = (double)d;
-		     /*g->ytmp[ngood++] = g->y_orig[i];*/
 		  }
 	       }
 	    }
@@ -574,21 +562,6 @@ inputs in gmatrix_disk_nextcol\n");
 
    return SUCCESS;
 }
-
-/* Reads a matrix of phenotypes in plain format (no FAM columns)
- *
- * We read the entire dataset into memory
- * */
-/*int gmatrix_read_pheno_matrix(gmatrix *g)
-{
-   
-}*/
-
-/* Reads a matrix of phenotypes in plink FAM format */
-/*int gmatrix_fam_read_pheno_matrix(gmatrix *g)
-{
-      
-}*/
 
 /* 
  * Reads a plink FAM file and gets the phenotype from the 6th column, using
@@ -606,6 +579,8 @@ int gmatrix_fam_read_y(gmatrix *g)
 	*pheno = NULL;
    int ret;
    int const NUMFIELDS = 6;
+
+   printf("gmatrix_fam_read_y\n");
 
    /* spaces match tabs as well */
    char f[19] = "%s %s %s %s %s %s";
@@ -649,26 +624,159 @@ these samples with PLINK; aborting\n",
    return SUCCESS;
 }
 
+/* Standardise each column of Y to zero mean and unit variance.
+ */
+int gmatrix_scale_y(gmatrix *g)
+{
+   int i, k, n = g->n, K = g->K;
+   double *mean = NULL,
+	  *sd = NULL;
+   double delta;
+
+   printf("scaling y\n");
+
+#ifdef DEBUG
+   writematrixf(g->y_orig, n, K, "y_before.txt");
+#endif
+
+   CALLOCTEST(mean, g->K, sizeof(double));
+   CALLOCTEST(sd, g->K, sizeof(double));
+
+   /* first get mean and sd */
+   for(k = 0 ; k < K ; k++)
+   {
+      for(i = 0 ; i < n ; i++)
+      {
+	 delta = g->y_orig[k * n + i] - mean[k];
+	 mean[k] += delta / (i + 1);
+	 sd[k] += delta * (g->y_orig[k * n + i] - mean[k]);
+      }
+      sd[k] = sqrt(sd[k] / (n - 1));
+   }
+
+   /* now standardise Y */
+   for(k = 0 ; k < K ; k++)
+      for(i = 0 ; i < n ; i++)
+	 g->y_orig[k * n + i] = (g->y_orig[k * n + i] - mean[k]) / sd[k];
+
+#ifdef DEBUG
+   writematrixf(g->y_orig, n, K, "y_after.txt");
+#endif
+
+   FREENULL(mean);
+   FREENULL(sd);
+
+   return SUCCESS;
+}
+
+/* 
+ * Reads a plink pheno file and gets the phenotype from column 3 and onwards,
+ * using any sort of whitespace separator.
+ *
+ * y stores the phenotypes in column-major ordering
+ */
+int gmatrix_pheno_read_y(gmatrix *g)
+{
+   int i = 0, k = 0, n = g->n, m;
+   FILE* famfile = NULL;
+   char *famid = NULL,
+        *individ = NULL,
+	*pheno = NULL;
+   int ret;
+   int const NUMFIELDS = 2;
+   double *tmp;
+   char line[MAX_LINE_CHARS];
+
+   /* spaces match tabs as well */
+   char f[7] = "%s %s ";
+
+   printf("gmatrix_pheno_read_y\n");
+
+   /* we don't know how what K is before reading the pheno file */
+   CALLOCTEST(tmp, g->n * MAX_NUM_PHENO, sizeof(double));
+
+   MALLOCTEST(famid, sizeof(char) * FAM_MAX_CHARS);
+   MALLOCTEST(individ, sizeof(char) * FAM_MAX_CHARS);
+   CALLOCTEST(pheno, FAM_MAX_CHARS, sizeof(char));
+
+   FOPENTEST(famfile, g->famfilename, "r");
+   printf("g->famfilename %s\n", g->famfilename);
+
+   /* read the family data for each line */
+   while(i < g->n && EOF != (ret = fscanf(famfile, f, famid, individ)))
+   {
+      if(ret < NUMFIELDS)
+      {
+	 fprintf(stderr,
+	    "Error in reading PHENO file '%s', missing phenotypes?",
+	    g->famfilename);
+	 return FAILURE;
+      }
+
+      if(fgets(line, MAX_LINE_CHARS, famfile) == NULL)
+      {
+      	 if(!feof(famfile))
+	 {
+	    fprintf(stderr, "error in reading PHENO file '%s'\n",
+	       g->famfilename);
+	    return FAILURE;
+	 }
+	 break;
+      }
+      else
+      {
+	 k = 0;
+	 m = 0;
+	 /* now read phenotypes, one at a time */
+       	 while(k < MAX_NUM_PHENO && sscanf(&line[m], "%s ", pheno) != EOF)
+       	 {
+       	    tmp[i + n * k] = atof(pheno);
+	    m += strlen(pheno) + 1;
+       	    k++;
+       	 }
+      }
+
+      i++;
+   }
+
+   printf("read %d rows and %d phenotype/s from FAM file '%s'\n", i, k,
+	 g->famfilename);
+
+   /* now truncate K to what we have observed and copy over */
+   g->K = k;
+   CALLOCTEST(g->y_orig, g->n * g->K, sizeof(double));
+   for(i = n * k - 1 ; i >= 0 ; --i)
+      g->y_orig[i] = tmp[i];
+
+   fclose(famfile);
+   FREENULL(famid);
+   FREENULL(individ);
+   FREENULL(pheno);
+   FREENULL(tmp);
+
+   return SUCCESS;
+}
+
 /*
  * plink phenotypes can be 0/1 and 1/2, so check for 1/2 and convert as
  * necessary
  */
 int gmatrix_plink_check_pheno(gmatrix *g)
 {
-   int i = 0;
+   int i = 0, n = g->n, K = g->K;
    int twofound = FALSE;
 
    /* don't change inputs for regression */
    if(g->modeltype == MODELTYPE_REGRESSION)
       return SUCCESS;
 
-   for(i = 0 ; i < g->n ; i++)
+   for(i = n * K - 1 ; i >= 0 ; --i)
       if((twofound = (g->y_orig[i] == 2)))
 	 break;
 
    if(twofound)
    {
-      for(i = 0 ; i < g->n ; i++)
+      for(i = n * K - 1 ; i >= 0 ; --i)
       {
 	 if(g->yformat == YFORMAT01) 
 	    g->y_orig[i] -= 1;
@@ -679,7 +787,7 @@ int gmatrix_plink_check_pheno(gmatrix *g)
    /* input is 0/1 but we want it to be -1/1 */ 
    else if(g->yformat == YFORMAT11)
    {
-      for(i = 0 ; i < g->n ; i++)
+      for(i = n * K - 1 ; i >= 0 ; --i)
 	 g->y_orig[i] = 2.0 * g->y_orig[i] - 1.0;
    }
 
@@ -755,6 +863,22 @@ int gmatrix_read_scaling(gmatrix *g, char *file_scale)
    return SUCCESS;
 }
 
+/* We pre-allocate a large beta matrix, then we trim it down if we don't
+ * actually use all the K tasks */
+int gmatrix_trim_beta(gmatrix *g)
+{
+   int m = (g->p + 1) * g->K;
+   double *tmp = NULL;
+
+   MALLOCTEST(tmp, m * sizeof(double));
+   memcpy(tmp, g->beta, m * sizeof(double));
+
+   FREENULL(g->beta);
+   g->beta = tmp;
+
+   return SUCCESS;
+}
+
 /* number of training and test samples per fold.
  * folds is a vector of binary indicators, for each sample
  * whether it's in or out of the training set in that cv fold.
@@ -800,36 +924,42 @@ int gmatrix_set_fold(gmatrix *g, int fold)
 {
    g->fold = fold;
    gmatrix_set_ncurr(g);
+
    if(!gmatrix_init_lp(g))
       return FAILURE;
    if(g->scalefile && !gmatrix_read_scaling(g, g->scalefile))
       return FAILURE;
-   return (g->y_orig) && gmatrix_split_y(g);
+   return (g->y_orig) && gmatrix_split_y(g) && gmatrix_make_fusion(g);
 }
 
 /* zero the lp and adjust the lp-functions */
 void gmatrix_zero_model(gmatrix *g)
 {
-   int i, j, n = g->ncurr, p1 = g->p + 1;
+   int i, j, n = g->ncurr, p1 = g->p + 1, K = g->K;
 
-   for(j = p1 - 1 ; j >= 0 ; --j)
+   for(j = (long)p1 * K - 1 ; j >= 0 ; --j)
    {
       g->beta[j] = 0;
       g->beta_orig[j] = 0;
       g->active[j] = !g->ignore[j];
    }
 
-   for(i = n - 1 ; i >= 0 ; --i)
+   for(i = n * K - 1 ; i >= 0 ; --i)
       g->lp[i] = 0;
 
-   if(g->model == MODEL_LOGISTIC)
+   if(g->model == MODEL_LINEAR)
    {
-      for(i = n - 1 ; i >= 0 ; --i)
+      for(i = n * K - 1 ; i >= 0 ; --i)
+	 g->lp[i] = 0;
+   }
+   else if(g->model == MODEL_LOGISTIC)
+   {
+      for(i = n * K - 1 ; i >= 0 ; --i)
 	 g->lp_invlogit[i] = 0.5; /* 0.5 = 1 / (1 + exp(-0)) */
    }
    else if(g->model == MODEL_SQRHINGE)
    {
-      for(i = n - 1 ; j >= 0 ; --i)
+      for(i = n * K - 1 ; j >= 0 ; --i)
       {
 	 g->ylp[i] = -1;    /* y * 0 - 1 = -1  */
 	 g->ylp_neg[i] = 1; /* ylp < 0 => true */
@@ -841,34 +971,58 @@ void gmatrix_zero_model(gmatrix *g)
    g->loss = 0;
 }
 
+/* Create the fusion penalty matrix C from each Y matrix */
+int gmatrix_make_fusion(gmatrix *g)
+{
+   int nE = g->K * (g->K - 1) / 2;
+   
+   if(g->K == 1)
+      return SUCCESS;
+
+   FREENULL(g->C);
+   CALLOCTEST(g->C, nE * g->K, sizeof(double));
+
+   if(!gennetwork(g->y, g->ncurr, g->K, g->corthresh, g->cortype, g->C))
+      return FAILURE;
+
+#ifdef DEBUG
+   if(!writematrixf(g->C, nE, g->K, "C.txt"))
+      return FAILURE;
+#endif
+
+   return SUCCESS;
+}
+
+/* Initialises the LP (linear predictor) */
 int gmatrix_init_lp(gmatrix *g)
 {
+   printf("gmatrix_init_lp: ncurr=%d K=%d\n", g->ncurr, g->K);
    FREENULL(g->lp);
-   CALLOCTEST(g->lp, g->ncurr, sizeof(double));
+   CALLOCTEST(g->lp, g->ncurr * g->K, sizeof(double));
 
    if(g->model == MODEL_LINEAR)
    {
       FREENULL(g->err);
-      CALLOCTEST(g->err, g->ncurr, sizeof(double));
+      CALLOCTEST(g->err, g->ncurr * g->K, sizeof(double));
    }
    else if(g->model == MODEL_LOGISTIC) 
    {
       FREENULL(g->lp_invlogit);
-      CALLOCTEST(g->lp_invlogit, g->ncurr, sizeof(double));
+      CALLOCTEST(g->lp_invlogit, g->ncurr * g->K, sizeof(double));
    } 
    else if(g->model == MODEL_SQRHINGE) 
    {
       FREENULL(g->ylp);
-      CALLOCTEST(g->ylp, g->ncurr, sizeof(double));
+      CALLOCTEST(g->ylp, g->ncurr * g->K, sizeof(double));
 
       FREENULL(g->ylp_neg);
-      CALLOCTEST(g->ylp_neg, g->ncurr, sizeof(double));
+      CALLOCTEST(g->ylp_neg, g->ncurr * g->K, sizeof(double));
 
       FREENULL(g->ylp_neg_y);
-      CALLOCTEST(g->ylp_neg_y, g->ncurr, sizeof(double));
+      CALLOCTEST(g->ylp_neg_y, g->ncurr * g->K, sizeof(double));
 
       FREENULL(g->ylp_neg_y_ylp);
-      CALLOCTEST(g->ylp_neg_y_ylp, g->ncurr, sizeof(double));
+      CALLOCTEST(g->ylp_neg_y_ylp, g->ncurr * g->K, sizeof(double));
    }
    return SUCCESS;
 }
@@ -877,59 +1031,79 @@ int gmatrix_init_lp(gmatrix *g)
  * always N since it is the sum of squares \sum_{i=1}^N x_{ij}^2 =
  * \sum_{i=1}^N 1 = N
  */
-double step_regular_linear(sample *s, gmatrix *g)
+void step_regular_linear(sample *s, gmatrix *g, int k,
+   double *restrict d1_p, double *restrict d2_p)
 {
-   int i;
+   int i, n = g->ncurr, nki = n * k + n - 1;
    double grad = 0;
-   double *x = s->x, 
-	  *err = g->err;
+   double *err = g->err,
+	  *restrict x = s->x;
 
-   /* compute gradient */
-   for(i = g->ncurr - 1 ; i >= 0 ; --i)
-      grad += x[i] * err[i];
+   /* compute gradient wrt task k*/
+   for(i = n - 1 ; i >= 0 ; --i)
+   {
+      //grad += x[i] * (lp[nki] - y[nki]);
+      grad += x[i] * err[nki];
+      nki--;
+   }
 
-   return grad * g->ncurr_recip;
+   *d1_p = grad;
+   *d2_p = n - 1;
 }
 
-double step_regular_logistic(sample *s, gmatrix *g)
+void step_regular_logistic(sample *s, gmatrix *g, int k,
+   double *restrict d1_p, double *restrict d2_p)
 {
-   int i, n = g->ncurr;
+   int i, n = g->ncurr, nki = n * k + n - 1;
    double grad = 0, d2 = 0;
    double *y = g->y,
 	  *lp_invlogit = g->lp_invlogit,
 	  *x = s->x;
 
-   /* compute 1st and 2nd derivatives */
+   /* compute 1st and 2nd derivatives wrt task k */
    for(i = n - 1 ; i >= 0 ; --i)
    {
-      grad += x[i] * (lp_invlogit[i] - y[i]);
-      d2 += x[i] * x[i] * lp_invlogit[i] * (1 - lp_invlogit[i]);
+      grad += x[i] * (lp_invlogit[nki] - y[nki]);
+      d2 += x[i] * x[i] * lp_invlogit[nki] * (1 - lp_invlogit[nki]);
+      nki--;
    }
 
    grad *= g->ncurr_recip;
    d2 *= g->ncurr_recip;
 
    if(d2 == 0)
-      return 0;
-   return grad / d2;
+   {
+      *d1_p = 0;
+      *d2_p = 1;
+   }
+   else
+   {
+      *d1_p = grad;
+      *d2_p = d2;
+   }
 }
 
 /*
  * Squared hinge loss, assumes y \in {-1,1},
  * and that X is scaled so that the 2nd derivative is always <=N
  */
-double step_regular_sqrhinge(sample *s, gmatrix *g)
+void step_regular_sqrhinge(sample *s, gmatrix *g, int k,
+   double *restrict d1_p, double *restrict d2_p)
 {
-   int i, n = g->ncurr;
+   int i, n = g->ncurr, nki = n * k + n - 1;
    double grad = 0;
    const double *x = s->x,
 		*ylp_neg_y_ylp = g->ylp_neg_y_ylp;
 
-   /* compute gradient */
+   /* compute gradient wrt task k */
    for(i = n - 1 ; i >= 0 ; --i)
-      grad += ylp_neg_y_ylp[i] * x[i];
+   {
+      grad += ylp_neg_y_ylp[nki] * x[i];
+      nki--;
+   }
 
-   return grad * g->ncurr_recip; /* avoid division */
+   *d1_p = grad;
+   *d2_p = n;
 }
 
 /* Update linear predictor and related variables.
@@ -938,9 +1112,9 @@ double step_regular_sqrhinge(sample *s, gmatrix *g)
  * i.e. x_i=1 for all i
  */
 void updatelp(gmatrix *g, const double update,
-      const double *restrict x, int j)
+      const double *restrict x, int j, int k)
 {
-   int i, n = g->ncurr;
+   int i, n = g->ncurr, nki;
    double *restrict err = g->err,
 	  *restrict lp_invlogit = g->lp_invlogit,
 	  *restrict lp = g->lp,
@@ -948,39 +1122,43 @@ void updatelp(gmatrix *g, const double update,
 	  *restrict ylp_neg_y_ylp = g->ylp_neg_y_ylp;
    double loss = 0, ylp = 0, explp = 0;
 
+   nki = n * k + n - 1;
    if(g->model == MODEL_LINEAR)
    {
       for(i = n - 1 ; i >= 0 ; --i)
       {
-	 lp[i] += x[i] * update;
-	 err[i] = lp[i] - y[i];
-	 loss += err[i] * err[i];
+	 lp[nki] += x[i] * update;
+	 err[nki] = lp[nki] - y[nki];
+	 loss += err[nki] * err[nki];
+	 nki--;
       }
    }
    else if(g->model == MODEL_LOGISTIC)
    {
       for(i = n - 1 ; i >= 0 ; --i)
       {
-	 lp[i] += x[i] * update;
-	 explp = exp(lp[i]);
-	 lp_invlogit[i] = explp / (1 + explp);
-	 loss += log(1 + explp) - y[i] * lp[i];
+	 lp[nki] += x[i] * update;
+	 explp = exp(lp[nki]);
+	 lp_invlogit[nki] = explp / (1 + explp);
+	 loss += log(1 + explp) - y[nki] * lp[nki];
+	 nki--;
       }
    }
    else if(g->model == MODEL_SQRHINGE)
    {
       for(i = n - 1 ; i >= 0 ; --i)
       {
-	 lp[i] += x[i] * update;
-	 ylp = y[i] * lp[i] - 1;
+	 lp[nki] += x[i] * update;
+	 ylp = y[nki] * lp[nki] - 1;
 
 	 if(ylp < 0)
 	 {
-	    ylp_neg_y_ylp[i] = y[i] * ylp;
+	    ylp_neg_y_ylp[nki] = y[nki] * ylp;
 	    loss += ylp * ylp;
 	 }
 	 else
-	    ylp_neg_y_ylp[i] = 0;
+	    ylp_neg_y_ylp[nki] = 0;
+	 nki--;
       }
    }
 
@@ -1087,7 +1265,7 @@ void cache_free(cache *ca)
 void count_cases(gmatrix *g)
 {
    int i = 0;
-   for(i = 0 ; i < g->n ; i++)
+   for(i = g->n * g->K - 1 ; i >= 0 ; --i)
       g->ncases += g->y_orig[i] == 1;
 }
 

@@ -28,10 +28,10 @@ typedef double (*predict_pt)(double);
 typedef double (*phi1)(double);
 typedef double (*phi2)(double);
 typedef double (*inv)(double);
-typedef double (*step)(sample *s, gmatrix *g);
+typedef void (*step)(sample *s, gmatrix *g, int k,
+   double *restrict d1_p, double *restrict d2_p);
 
 typedef double (*predict)(double x);
-
 
 typedef struct Opt {
    short caller;
@@ -47,8 +47,6 @@ typedef struct Opt {
    double l1max;
    int nlambda1;
    double trunc;
-   loss loss_func;
-   loss_pt loss_pt_func;
    phi1 phi1_func;
    phi2 phi2_func;
    inv inv_func;
@@ -76,7 +74,6 @@ typedef struct Opt {
    int n_beta_files;
    char *predict_file;
    short encoded;
-   short binformat;
    char *folds_ind_file;
    char *numnz_file;
    double *zthresh;
@@ -91,14 +88,19 @@ typedef struct Opt {
    char *subset_file;
    char *famfilename;
    char *outdir;
+   int scaley;
+   int unscale_beta;
+   int cortype;
+   int corthresh;
+   int phenoformat;
 } Opt;
 
 int cd_gmatrix(gmatrix *g,
       step step_func,
-      const int maxepochs, const int maxiters,
+      const int maxepochs, const int maxiters, 
       const double lambda1, const double lambda2,
-      const double threshold, const int verbose,
-      const double trunc);
+      const double trunc,
+      int *numactiveK);
 
 double get_lambda1max_gmatrix(gmatrix *g,
       phi1 phi1_func,
@@ -115,8 +117,8 @@ int make_lambda1path(Opt *opt, gmatrix *g);
 int run(Opt *opt, gmatrix *g);
 void zero_model(gmatrix *g);
 
-double step_regular_linear(sample *s, gmatrix *g);
-double step_regular_logistic(sample *s, gmatrix *g);
-double step_regular_sqrhinge(sample *s, gmatrix *g);
+//double step_regular_linear(sample *s, gmatrix *g);
+//double step_regular_logistic(sample *s, gmatrix *g);
+//double step_regular_sqrhinge(sample *s, gmatrix *g);
 
 

@@ -16,12 +16,15 @@
 
 #define MAX_STR_LEN 10001
 
+#define MAX_NUM_PHENO 1024
+#define MAX_LINE_CHARS MAX_NUM_PHENO * 10
+
 /* Value below which std dev is considered zero */
 #define SDTHRESH 1e-10
 
 /* Value below which is considered zero, for use in
  * absolute convergence test */
-#define ZERO_THRESH 1e-10
+#define ZERO_THRESH 1e-15
 
 #define ONE 1.0
 
@@ -69,37 +72,37 @@ size_t retval;
 
 #define MALLOCTEST(x, size) \
 if(!(x = malloc(size))) { \
-fprintf(stderr, "can't malloc\n"); \
+fprintf(stderr, "can't malloc %ld bytes\n", (long)size); \
 return FAILURE; \
 }
 
 #define MALLOCTEST2(x, size) \
 if(!(x = malloc(size))) { \
-fprintf(stderr, "can't malloc\n"); \
+fprintf(stderr, "can't malloc %ld bytes\n", (long)size); \
 return EXIT_FAILURE; \
 }
 
 #define CALLOCTEST(x, count, size) \
 if(!(x = calloc(count, size))) { \
-fprintf(stderr, "can't calloc\n"); \
+fprintf(stderr, "can't calloc %ld bytes\n", (long)count * size); \
 return FAILURE; \
 }
 
 #define CALLOCTEST2(x, count, size) \
 if(!(x = calloc(count, size))) { \
-fprintf(stderr, "can't calloc\n"); \
+fprintf(stderr, "can't calloc %ld bytes\n", (long)count * size); \
 return EXIT_FAILURE; \
 }
 
 #define REALLOCTEST(x, y, size) \
 if(!(x = realloc(y, size))) { \
-fprintf(stderr, "can't realloc\n"); \
+fprintf(stderr, "can't realloc %ld bytes\n", (long)size); \
 return FAILURE; \
 }
 
 #define REALLOCTEST2(x, y, size) \
 if(!(x = realloc(y, size))) { \
-fprintf(stderr, "can't realloc\n"); \
+fprintf(stderr, "can't realloc %ld bytes\n", (long)size); \
 return EXIT_FAILURE; \
 }
 

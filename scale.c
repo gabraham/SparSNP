@@ -33,12 +33,15 @@ int scale(gmatrix *g)
    MALLOCTEST(tmp, sizeof(double) * n);
    
    /* read intercept and ignore it*/
-   g->nextcol(g, &sm, 0, NA_ACTION_ZERO);
+   if(!g->nextcol(g, &sm, 0, NA_ACTION_ZERO))
+      return FAILURE;
 
    for(j = 1 ; j < p1 ; j++)
    {
       /*printf("%d of %d", j, p1);*/
-      g->nextcol(g, &sm, j, NA_ACTION_ZERO);
+      if(!g->nextcol(g, &sm, j, NA_ACTION_ZERO))
+	 return FAILURE;
+
       ngood = g->mean[j] = g->sd[j] = 0;
       for(i = 0 ; i < n ; i++)
       {
@@ -89,14 +92,13 @@ int main(int argc, char* argv[])
         *filename_scale = "scale.bin",
 	*filename_beta_out = NULL,
 	*filename_folds_ind = NULL;
-   short encoded = TRUE,
-	 binformat = BINFORMAT_PLINK;
+   short encoded = TRUE;
    gmatrix g;
    char tmp[100];
 
    for(i = 1 ; i < argc ; i++)
    {
-      if(strcmp2(argv[i], "-bin"))
+      if(strcmp2(argv[i], "-bin") || strcmp2(argv[i], "-bed"))
       {
 	 i++;
 	 filename_bin = argv[i];
@@ -127,16 +129,16 @@ int main(int argc, char* argv[])
 
    if(!filename_bin || n == 0 || p == 0)
    {
-      printf("scale: -bin <filein> [-scale <fileout>] \
+      printf("scale: -bed <filein> [-scale <fileout>] \
 [-betafile <betafile>] -n #n -p #p \
 [-foldind <folds ind file>]\n");
       return EXIT_FAILURE;
    }
 
    if(!gmatrix_init(&g, filename_bin, n, p,
-	    NULL, YFORMAT01, MODEL_LINEAR, MODELTYPE_REGRESSION,
-	    encoded, binformat, filename_folds_ind,
-	    MODE_TRAIN, NULL, NULL, NULL))
+	    NULL, YFORMAT01, 0, MODEL_LINEAR, MODELTYPE_REGRESSION,
+	    encoded, filename_folds_ind,
+	    MODE_TRAIN, NULL, NULL, FALSE, FALSE, 0, 0, FALSE))
       return EXIT_FAILURE;
 
    if(filename_folds_ind)

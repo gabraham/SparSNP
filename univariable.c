@@ -62,7 +62,9 @@ int univar_gmatrix(Opt *opt, gmatrix *g, double *beta, double *zscore)
       }
       
       //gmatrix_disk_nextcol(g, &sm, j, NA_ACTION_DELETE);
-      gmatrix_disk_nextcol(g, &sm, j, NA_ACTION_RANDOM);
+      if(!gmatrix_disk_nextcol(g, &sm, j, NA_ACTION_RANDOM))
+	 return FAILURE;
+
       CALLOCTEST(x, 2 * sm.n, sizeof(double));
       for(i = sm.n - 1 ; i >= 0 ; --i)
       {
@@ -211,7 +213,7 @@ int run_train(Opt *opt, gmatrix *g)
 	       snprintf(tmp, MAX_STR_LEN, "multivar_%s.%02d.%02d",
 	             opt->beta_files[0], i, g->fold);
 	       printf("writing %s\n", tmp);
-	       if(!write_beta_sparse(tmp, g->beta, g->p + 1))
+	       if(!write_beta_sparse(tmp, g->beta, g->p + 1, g->K))
 	          return FAILURE;
 
 	       /* If Newton didn't converge at a given model size, there's
@@ -262,10 +264,12 @@ int do_train(gmatrix *g, Opt *opt, char tmp[])
    int ret = SUCCESS, k;
 
    if(!gmatrix_init(g, opt->filename, opt->n, opt->p,
-	    NULL, opt->yformat, opt->model, opt->modeltype, opt->encoded,
-	    opt->binformat, opt->folds_ind_file, opt->mode,
-	    opt->loss_pt_func, opt->subset_file,
-	    opt->famfilename))
+	    NULL, opt->yformat, opt->phenoformat,
+	    opt->model, opt->modeltype, opt->encoded,
+	    opt->folds_ind_file, opt->mode,
+	    opt->subset_file,
+	    opt->famfilename, opt->scaley, opt->unscale_beta,
+	    opt->cortype, opt->corthresh, opt->verbose))
       return FAILURE;
 
    g->nextcol = gmatrix_mem_nextcol;
@@ -338,7 +342,9 @@ int run_predict_beta(gmatrix *g, predict predict_func,
    {
       if(beta[j] != 0)
       {
-	 gmatrix_disk_nextcol(g, &sm, j, NA_ACTION_RANDOM);
+	 if(!gmatrix_disk_nextcol(g, &sm, j, NA_ACTION_RANDOM))
+	    return FAILURE;
+
 	 for(i = 0 ; i < n ; i++)
 	    lp[i] += sm.x[i] * beta[j];
       }
@@ -347,7 +353,6 @@ int run_predict_beta(gmatrix *g, predict predict_func,
    for(i = 0 ; i < n ; i++)
    {
       yhat[i] = predict_func(lp[i]);
-      /*g->loss[ += g->loss_pt(yhat[i], g->y[i]);*/
    }
 
    printf("writing %s (%d) ... ", predict_file, n);
@@ -394,11 +399,13 @@ int do_predict(gmatrix *g, Opt *opt, char *tmp)
    int ret = SUCCESS, b, k, len;
 
    if(!gmatrix_init(g, opt->filename, opt->n, opt->p,
-	    NULL, opt->yformat, opt->model, opt->modeltype,
+	    NULL, opt->yformat, opt->phenoformat,
+	    opt->model, opt->modeltype,
 	    opt->encoded,
-	    opt->binformat, opt->folds_ind_file, opt->mode,
-	    opt->loss_pt_func, opt->subset_file,
-	    opt->famfilename))
+	    opt->folds_ind_file, opt->mode,
+	    opt->subset_file,
+	    opt->famfilename, opt->scaley, opt->unscale_beta,
+	    opt->cortype, opt->corthresh, opt->verbose))
       return FAILURE;
 
    g->nextcol = gmatrix_mem_nextcol;

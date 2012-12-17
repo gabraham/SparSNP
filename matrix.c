@@ -76,6 +76,50 @@ int cov(double *x, double *S, int n, int p)
    return SUCCESS;
 }
 
+/* x is n by p col-major matrix
+ * S is p by p col-major matrix
+ */
+int cov2(double *x, double *S, int n, int p)
+{
+   int i, j, k, p2 = p * p, jpk;
+   double *mean = NULL;
+   double n1 = 1.0 / n, n2 = 1.0 / (n - 1.0);
+
+   /* compute the mean */
+   CALLOCTEST(mean, p, sizeof(double));
+   for(j = 0 ; j < p ; j++)
+   {
+      for(i = 0 ; i < n ; i++)
+	 mean[j] += x[i + n * j];
+      mean[j] *= n1;
+   }
+
+   /* rows of S */
+   for(j = 0 ; j < p ; j++)
+   {
+      /* columns of S */
+      for(k = 0 ; k <= j ; k++)
+      {
+	 i = 0;
+	 jpk = j + p * k;
+	 S[jpk] = (x[i + n * k] - mean[k]) * (x[i + n * j] - mean[j]);
+
+	 for(i = 1 ; i < n ; i++)
+	    S[jpk] += (x[i + n * k] - mean[k]) * (x[i + n * j] - mean[j]);
+
+	 S[k + p * j] = S[jpk];
+      }
+   }
+
+   /* divide S by n-1 */
+   for(i = 0 ; i < p2 ; i++)
+      S[i] *= n2;
+
+   FREENULL(mean);
+   return SUCCESS;
+}
+
+
 /* Compute covariance matrix with missing values in x
  *
  * x is n by p row major matrix

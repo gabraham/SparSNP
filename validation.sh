@@ -10,6 +10,7 @@ then
    exit 1
 fi
 
+[[ -z "$NUMPROCS" ]] && NUMPROCS=1
 
 D=$(dirname $1)
 F=$(basename $1)
@@ -19,8 +20,8 @@ set -u
 
 N=$(cat $ROOT.fam | wc -l)
 P=$(cat $ROOT.bim | wc -l)
-BED=$(./realpath "$ROOT".bed)
-FAM=$(./realpath "$ROOT".fam)
+BED=$(realpath "$ROOT".bed)
+FAM=$(realpath "$ROOT".fam)
 
 ORIGWD=$(pwd)
 echo "PWD: $PWD"
@@ -37,8 +38,8 @@ mkdir $VDIR
 pushd $VDIR
 
 
-for dir in $DIRS
-do
+function run {
+   dir=$1
    pdir=$(basename $dir)
    # don't clobber an existing directory
    if ! [ -d $pdir ];
@@ -46,12 +47,14 @@ do
       mkdir $pdir
       pushd $pdir
 
-      B=$( ls $dir/beta.csv.+([[:digit:]]).+([[:digit:]]) )
+      shopt -s extglob
+
+      B=` ls $dir/beta.csv.+([[:digit:]]).+([[:digit:]]) `
 
       echo "Found files $B"
 
-      ../../cd -predict -model $MODEL -n $N -p $P -v \
-         -bin $BED -betafiles $B -fam $FAM -outdir .
+      sparsnp -predict -model $MODEL -n $N -p $P -v \
+         -bed $BED -betafiles $B -fam $FAM -outdir .
 
       awk '{print $6}' $FAM > y.txt
 
@@ -67,7 +70,7 @@ do
    	 B=$( ls $dir/multivar_beta.csv.+([[:digit:]]).+([[:digit:]]) )
    
    	 # Predict on entire validation dataset using each model
-   	 ../../univariable -predict -model logistic \
+   	 univariable -predict -model logistic \
    	    -bin $BED -fam $FAM -n $N -p $P \
    	    -betafiles $B \
    	    -outdir .
@@ -79,7 +82,12 @@ do
    else
       echo "skipping $pdir"
    fi
-done
+}
+
+export -f run
+export MODEL N P BED B FAM
+
+echo $DIRS | tr ' ' '\n' | xargs -P$NUMPROCS -I{} bash -c "run {}"
 
 popd
 

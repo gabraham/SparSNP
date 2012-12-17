@@ -57,13 +57,15 @@ res <- lapply(seq(along=lf), function(i) {
    cat("reading intercept file", intf, "\n")
    intercept <- scan(intf, quiet=TRUE)
    
-   score <- dither(prof$SCORE + intercept)
+   # PLINK divides the predicted score by the number of SNPs, we don't want
+   # that to we multiply to get original score
+   score <- dither(prof$SCORE * prof$CNT + intercept)
    pred <- prediction(labels=prof$PHENO, predictions=score)
    perf <- performance(pred, "sens", "spec")
    sens <- perf@y.values
    spec <- perf@x.values
    cutoffs <- pred@cutoffs
-
+   
    ppv <- npv <- NULL
 
    if(!is.na(prev)) {

@@ -30,7 +30,8 @@ int subsample(gmatrix *g, char *filename_out, int *subvec, int nsub)
    /* read a variable and write it, ignore intercept */
    for(j = 1 ; j < p1 ; j++)
    {
-      g->nextcol(g, &sm, j, NA_ACTION_RANDOM);
+      if(!g->nextcol(g, &sm, j, NA_ACTION_RANDOM))
+	 return FAILURE;
 
       k = 0;
       for(i = 0 ; i < g->n ; i++)
@@ -88,7 +89,6 @@ int main(int argc, char *argv[])
    int i, n = 0, p = 0;
    char *filename_bin = NULL,
 	*filename_out = NULL;
-   short binformat = BINFORMAT_BIN;
    gmatrix g;
    int *subvec = NULL;
    int ns = 0,
@@ -131,8 +131,8 @@ int main(int argc, char *argv[])
    }
 
    if(!gmatrix_init(&g, filename_bin, n, p, NULL,
-	 YFORMAT01, MODEL_LINEAR, MODELTYPE_REGRESSION, TRUE, binformat,
-	 NULL, MODE_TRAIN, NULL, NULL, NULL))
+	 YFORMAT01, 0, MODEL_LINEAR, MODELTYPE_REGRESSION, TRUE,
+	 NULL, MODE_TRAIN, NULL, NULL, FALSE, FALSE, 0, 0, FALSE))
       return EXIT_FAILURE;
 
    MALLOCTEST2(subvec, sizeof(int) * n);

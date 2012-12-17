@@ -68,10 +68,12 @@ int mapping_init(mapping *m)
 void mapping_free(mapping *m)
 {
    int i;
-   for(i = 0 ; i < m->size ; i++)
-      FREENULL(m->map[i]);
-
-   FREENULL(m->map);
+   if(m)
+   {
+      for(i = 0 ; i < m->size ; i++)
+	 FREENULL(m->map[i]);
+      FREENULL(m->map);
+   }
 }
 
 /*

@@ -13,6 +13,7 @@ void copyshrinkrange(double *x, double *y, int n, int p, int from, int to);
 void printmatrix(double *x, int n, int p);
 void printmatrix0(double *x, int n, int p);
 int cov(double *x, double *S, int n, int p);
+int cov2(double *x, double *S, int n, int p);
 void cov2cor(double *S, double *P, int p);
 int covmiss(double *x, double *S, int n, int p, int *good);
 

@@ -22,33 +22,15 @@ int unpack(gmatrix *g, char *filename_out)
    FOPENTEST(out, filename_out, "wb");
 
    printf("unpack: size=%d scalefile=%s\n", size, g->scalefile);
-
-   if(g->binformat == BINFORMAT_BIN)
-   {
-      if(g->scalefile)
-      {
-	 for(i = g->n - 1; i >= 0 ; --i)
-	    *((double*)tmp + i) = (double)g->y[i];
-      }
-      else
-      {
-	 for(i = g->n - 1; i >= 0 ; --i)
-	    *((char*)tmp + i) = (char)g->y[i];
-      }
-      FWRITETEST(tmp, size, g->n, out);
-      start = 1;
-      p1 = g->p + 1;
-   }
-   else
-   {
-      start = 1;
-      p1 = g->p + 1;
-   }
+   start = 1;
+   p1 = g->p + 1;
 
    /* ignore intercept */
    for(j = start ; j < p1 ; j++)
    {
-      g->nextcol(g, &sm, j, NA_ACTION_RANDOM);
+      if(!g->nextcol(g, &sm, j, NA_ACTION_RANDOM))
+	 return FAILURE;
+
       if(g->scalefile)
       {
 	 for(i = g->n - 1 ; i >= 0 ; --i)
@@ -76,7 +58,6 @@ int main(int argc, char *argv[])
    char *filename_bin = NULL;
    char *filename_out = NULL;
    char *file_scale = NULL;
-   short binformat = BINFORMAT_PLINK;
    gmatrix g;
 
    for(i = 1 ; i < argc ; i++)
@@ -118,8 +99,8 @@ int main(int argc, char *argv[])
    printf("unpacking %s to file %s\n", filename_bin, filename_out);
 
    if(!gmatrix_init(&g, filename_bin, n, p, file_scale,
-	 YFORMAT01, MODEL_LINEAR, MODELTYPE_REGRESSION, TRUE, binformat,
-	 NULL, MODE_TRAIN, NULL, NULL, NULL))
+	 YFORMAT01, 0, MODEL_LINEAR, MODELTYPE_REGRESSION, TRUE,
+	 NULL, MODE_TRAIN, NULL, NULL, FALSE, FALSE, 0, 0, FALSE))
       return EXIT_FAILURE;
 
    if(!unpack(&g, filename_out))

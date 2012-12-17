@@ -1,7 +1,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
-#include <sys/time.h>
+#include <unistd.h>
+#include <sys/types.h>
+
 #include "common.h"
 #include "util.h"
 #include "ind.h"
@@ -32,12 +34,16 @@ void make_ind(int *ind, int *folds, int n, int nfolds)
 
 int main(int argc, char *argv[])
 {
-   long seed = time(NULL);
+   long seed = 0;
    int ret, i, nfolds = 10, n = 0;
    char *file_folds = NULL,
         *file_ind = NULL;
    int *folds = NULL,
        *ind = NULL;
+
+   seed = getpid();
+
+   printf("makefolds: seed=%ld\n", seed);
 
    for(i = 1 ; i < argc ; i++)
    {

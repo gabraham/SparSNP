@@ -7,7 +7,7 @@
 #include <math.h>
 
 #include "common.h"
-#include "loss.h"
+#include "link.h"
 #include "coder.h"
 
 /* categorical x inputs: 0, 1, 2, 3 */
@@ -37,6 +37,10 @@
 /*#define CACHE_MAX_MEM   357913941*/ /* 2^27=128MB */
 
 #define CACHE_NOT_EXISTS -1
+
+/* PLINK FAM (6 columns) or PHENO (2 FID/IID + the phenotype columns) */
+#define PHENO_FORMAT_FAM 1
+#define PHENO_FORMAT_PHENO 2
 
 typedef struct cache {
    int nbins;
@@ -78,14 +82,15 @@ typedef struct gmatrix {
    int ncurr;
    double ncurr_recip;
    int *ncurr_j;
-   double *ncurr_recip_j;
+   int loss;
    int p;
+   int K;
    int i;
    int j;
    double *mean, *sd;
    double *lookup, *lookup2;
-   double loss;
-   double *err, *lp, *ylp, *ylp_neg, *ylp_neg_y, *ylp_neg_y_ylp, *lp_invlogit;
+   double *lp, *err, *ylp, *ylp_neg, *ylp_neg_y;
+   double *ylp_neg_y_ylp, *lp_invlogit;
    double *newtonstep;
    double *beta;
    int *active;
@@ -105,7 +110,6 @@ typedef struct gmatrix {
    int modeltype;
    short encoded;
    int nencb;
-   short binformat;
    /*void (*decode)(unsigned char *out,
 	 const unsigned char *in,
 	 const int n);*/
@@ -117,8 +121,6 @@ typedef struct gmatrix {
    int nseek;
    double *beta_orig;
    int *numnz;
-   loss loss_func;
-   loss_pt loss_pt_func;
    int *ngood;
    double *x;
    double *xthinned;
@@ -131,19 +133,28 @@ typedef struct gmatrix {
    int ncases;
    mapping *map;
    int *folds_ind; /* xor of folds with mode == MODE_PREDICT */
+   int unscale_beta;
+   double *C;
+   int cortype;
+   int corthresh;
+   int phenoformat;
+   int verbose;
 } gmatrix;
 
 int sample_init(sample *);
 int gmatrix_init(gmatrix *g, char *filename, int n, int p,
-      char *scalefile, short yformat, int model, int modeltype,
-      short encoded, short binformat, char *folds_ind_file,
-      short mode, loss_pt, char *subsample_file,
-      char *famfilename);
+      char *scalefile, short yformat, int phenoformat,
+      int model, int modeltype,
+      short encoded, char *folds_ind_file,
+      short mode, char *subsample_file,
+      char *famfilename, int scaley, int unscale_beta,
+      int cortype, int corthresh, int verbose);
 int gmatrix_reset(gmatrix *);
 void gmatrix_free(gmatrix *);
 int gmatrix_disk_nextcol(gmatrix *g, sample *sm, int skip, int na_action);
 int gmatrix_mem_nextcol(gmatrix *g, sample *sm, int j, int na_action);
 int gmatrix_disk_read_y(gmatrix *g);
+int gmatrix_pheno_read_y(gmatrix *g);
 int gmatrix_disk_skipcol(gmatrix *g);
 int gmatrix_disk_skipcol(gmatrix *g);
 int gmatrix_read_scaling(gmatrix *g, char *file_scale);
@@ -158,16 +169,21 @@ int gmatrix_split_y(gmatrix *g);
 int gmatrix_disk_read_y(gmatrix *g);
 int gmatrix_fam_read_y(gmatrix *g);
 int gmatrix_read_matrix(gmatrix *g, int *ind, int m);
-
+int gmatrix_scale_y(gmatrix *g);
+int gmatrix_trim_beta(gmatrix *g);
+int gmatrix_make_fusion(gmatrix *g);
 int gmatrix_load_subsets(gmatrix *g);
 int gmatrix_plink_check_pheno(gmatrix *g);
 
-double step_regular_linear(sample *s, gmatrix *g);
-double step_regular_sqrhinge(sample *s, gmatrix *g);
-double step_regular_logistic(sample *s, gmatrix *g);
+void step_regular_linear(sample *s, gmatrix *g, int k,
+   double *restrict d1_p, double *restrict d2_p);
+void step_regular_sqrhinge(sample *s, gmatrix *g, int k,
+   double *restrict d1_p, double *restrict d2_p);
+void step_regular_logistic(sample *s, gmatrix *g, int k,
+   double *restrict d1_p, double *restrict d2_p);
 int init_newton(gmatrix *g);
 void updatelp(gmatrix *g, const double update,
-      const double *restrict x, int j);
+      const double *restrict x, int j, int k);
 
 int cache_get(cache *ca, int j, double **x);
 int cache_init(cache *ca, int n, int p);

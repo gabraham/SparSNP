@@ -1,6 +1,8 @@
 
 .PHONY: all
 
+#CC=gcc
+
 # Mac OSX differences:
 #
 # * linker won't accept -allow-multiple-definition, required on Linux 
@@ -29,7 +31,7 @@ CFLAGS = -std=gnu99 -Wall -ggdb3 -g3 \
 
 targets = sparsnp scale transpose \
 	  cbind makefolds unpack univariable subsample \
-	  realpath
+	  realpath gennetwork_test
 
 all: $(targets)
 
@@ -51,11 +53,11 @@ static: $(targets)
 LIBRARIES = -lpthread -llapack -lblas -lm #-lgfortran -lm
 
 sparsnp: common.c coder.c ind.c gmatrix.c link.c util.c options.c \
-	 main.c sparsnp.c matrix.c
+	 main.c sparsnp.c matrix.c gennetwork.c
 	$(CC) $(CFLAGS) $^ $(LIBRARIES) -o sparsnp
 
 scale: common.c coder.c ind.c gmatrix.c sparsnp.c scale.c util.c \
-	 matrix.c
+	 matrix.c gennetwork.c
 	$(CC) $(CFLAGS) $^ $(LIBRARIES) -o scale
 
 transpose: common.c coder.c transpose.c
@@ -68,24 +70,24 @@ makefolds: common.c util.c ind.c makefolds.c matrix.c
 	$(CC) $(CFLAGS) $^ $(LIBRARIES) -o makefolds
 
 unpack: common.c coder.c ind.c gmatrix.c unpack.c util.c \
-	 matrix.c
+	 matrix.c gennetwork.c
 	$(CC) $(CFLAGS) $^ $(LIBRARIES) -o unpack
 
 univariable: common.c coder.c ind.c gmatrix.c link.c util.c \
 	     options.c sparsnp.c svd.c matrix.c thin.c \
-	     multivariable.c univariable.c
+	     multivariable.c univariable.c gennetwork.c
 	$(CC) $(CFLAGS) -llapack -lblas -lm $^ $(LIBRARIES) -o univariable \
 	$(MULDEF)
 
 subsample: common.c util.c coder.c ind.c gmatrix.c subsample.c \
-	 matrix.c
+	 matrix.c gennetwork.c
 	$(CC) $(CFLAGS) $^ $(LIBRARIES) -o subsample
 
 realpath: realpath.c
 	$(CC) $(CFLAGS) $^ -o realpath
 
-gennetwork_test:g.c gennetwork_test.c matrix.c util.c
-	$(CC) $(CFLAGS) -ggdb3 $^ $(LIBRARIES) -og_test
+gennetwork_test: gennetwork.c gennetwork_test.c matrix.c util.c
+	$(CC) $(CFLAGS) -ggdb3 $^ $(LIBRARIES) -o gennetwork_test
 
 clean:
 	/bin/rm -f $(targets)
