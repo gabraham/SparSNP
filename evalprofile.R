@@ -65,7 +65,7 @@ res <- lapply(seq(along=lf), function(i) {
    sens <- perf@y.values
    spec <- perf@x.values
    cutoffs <- pred@cutoffs
-
+   
    ppv <- npv <- NULL
 
    if(!is.na(prev)) {
