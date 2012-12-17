@@ -26,20 +26,31 @@ Bioinformatics,
 
 Copyright (C), Gad Abraham and National ICT Australia (2011-2012), All Rights Reserved. 
 
-Quick setup
+Quick Start
 -----------
 
 To get the latest version:
 
-    git clone git://github.com/gabraham/SparSNP
+   ```
+   git clone git://github.com/gabraham/SparSNP
+   ```
 
 To install:
 
-    cd SparSNP
-    make
+   ```
+   cd SparSNP
+   make
+   ```
+
+Run (assuming a PLINK BED/BIM/FAM dataset named MYDATA, i.e. MYDATA.bim)
+
+   ```export PATH=<PATH_TO_SPARSNP>:$PATH
+   crossval.sh MYDATA sqrhinge 2>&1 | tee log
+   eval.R
+   ```
 
 Requirements for the post-analysis scripts:
-   R packages ggplot2, scales, grid, abind, ROCR
+   R packages ggplot2 >=0.9.3, scales, grid, abind, ROCR
 
 Documentation: see the document workflow.pdf
 

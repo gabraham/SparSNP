@@ -1,7 +1,5 @@
 #!/usr/bin/env Rscript
 
-#options(error=NULL)
-
 usage <- paste("usage: eval.R [title=<title>]",
       "[prev=<K>] [h2l=<V>] [mode=discovery|validation]",
       "(prev must be specified if h2l is specified)")
@@ -41,8 +39,6 @@ if(exists("h2l")) {
    h2l <- NULL
 }
 
-#if(!is.null(best))
-#   best <- as.integer(best)
 best <- NULL
 
 library(ggplot2)
@@ -119,12 +115,8 @@ evalpred.crossval <- function(type=NULL, dir=NULL)
       pr <- abind(pr, along=3)
       
       # Don't count the intercept, except for first #nonzero
-      #nz[-1] <- nz[-1] - 1  
    
       res <- if(type == "AUC") {
-	 #y <- sapply(y, function(r) {
-	 #   as.numeric(as.character(factor(y, labels=c(0, 1))))
-	 #})
 	 y <- cbind(as.numeric(as.character(factor(y, labels=c(0, 1)))))
 	 apply(pr, 3, function(p) {
 	    auc(p, y)
@@ -137,11 +129,6 @@ evalpred.crossval <- function(type=NULL, dir=NULL)
       
       # apply messes up orientation when res is a vector
       res <- t(rbind(res)) 
-
-      #pred <- list(
-      #   p=lapply(1:ncol(pr), function(j) pr[,j]),
-      #   y=lapply(1:ncol(pr), function(j) y)
-      #)
 
       if(ncol(y) > 1) {
 	 colnames(res) <- paste("Measure", 1:ncol(y), sep="_")
@@ -156,8 +143,7 @@ evalpred.crossval <- function(type=NULL, dir=NULL)
 	    lambda=lambda[1:nrow(res)],
 	    Measure=res,
 	    NonZero=nz[1:nrow(res), ]
-         )#,
-         #prediction=pred
+         )
       )
    })
    
@@ -349,18 +335,17 @@ if(measure == "AUC")
 d <- cv
 
 mytheme <- theme(
-	 axis.text.x=element_text(size=15),
-	 axis.text.y=element_text(size=20, hjust=1),
-	 axis.title.x=element_text(size=20),
-	 axis.title.y=element_text(size=20, angle=90),
-	 plot.title=element_text(size=30),
-	 #axis.ticks=element_blank(),
-	 plot.title=element_text(size=30),
-	 legend.text=element_text(size=20),
-	 legend.title=element_text(size=20, hjust=0),
-	 legend.key.size=unit(2, "lines"),
-	 legend.background=element_rect(colour=0, fill=0),
-	 legend.key=element_blank()
+   axis.text.x=element_text(size=15),
+   axis.text.y=element_text(size=20, hjust=1),
+   axis.title.x=element_text(size=20),
+   axis.title.y=element_text(size=20, angle=90),
+   plot.title=element_text(size=30),
+   plot.title=element_text(size=30),
+   legend.text=element_text(size=20),
+   legend.title=element_text(size=20, hjust=0),
+   legend.key.size=unit(2, "lines"),
+   legend.background=element_rect(colour=0, fill=0),
+   legend.key=element_blank()
 )
 
 numtasks <- max(length(grep("^NonZero_[[:digit:]]+", colnames(d))), 1)
@@ -516,7 +501,6 @@ get_topsnps <- function(...)
    
    if(length(snps) > 0)
    {
-      #rs <- scan("snps.txt", what=character())
       ref <- read.table("snps.txt", header=FALSE, sep="",
             stringsAsFactors=FALSE)
       rs <- ref[,1]
