@@ -30,7 +30,7 @@ CFLAGS = -std=gnu99 -Wall -ggdb3 -g3 \
 	  $(OS)
 
 targets = sparsnp scale transpose \
-	  cbind makefolds unpack univariable subsample \
+	  cbind makefolds unpack subsample \
 	  realpath gennetwork_test
 
 all: $(targets)
@@ -50,7 +50,8 @@ static: CFLAGS += -static
 
 static: $(targets)       
 
-LIBRARIES = -lpthread -llapack -lblas -lm #-lgfortran -lm
+LIBRARIES = -lpthread -lm
+EXTRA_LIBRARIES = -lpthread -llapack -lblas -lm
 
 sparsnp: common.c coder.c ind.c gmatrix.c link.c util.c options.c \
 	 main.c sparsnp.c matrix.c gennetwork.c
@@ -76,7 +77,7 @@ unpack: common.c coder.c ind.c gmatrix.c unpack.c util.c \
 univariable: common.c coder.c ind.c gmatrix.c link.c util.c \
 	     options.c sparsnp.c svd.c matrix.c thin.c \
 	     multivariable.c univariable.c gennetwork.c
-	$(CC) $(CFLAGS) -llapack -lblas -lm $^ $(LIBRARIES) -o univariable \
+	$(CC) $(CFLAGS) -llapack -lblas -lm $^ $(EXTRA_LIBRARIES) -o univariable \
 	$(MULDEF)
 
 subsample: common.c util.c coder.c ind.c gmatrix.c subsample.c \

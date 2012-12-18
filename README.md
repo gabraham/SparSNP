@@ -32,7 +32,8 @@ it under the terms of the GNU General Public License as published by
 the Free Software Foundation; either version 3 of the License, or
 (at your option) any later version.
 
-Copyright (C) 2011-2012 Gad Abraham and National ICT Australia (NICTA).
+Copyright (C) 2011-2012 Gad Abraham and National ICT Australia
+(http://www.NICTA.com.au).
 All rights reserved.
 
 Requirements
@@ -69,7 +70,7 @@ Run (assuming a PLINK BED/BIM/FAM dataset named MYDATA, i.e. MYDATA.bim)
    ```
 
 
-Documentation: see the document workflow.pdf
+Documentation: see the document https://github.com/gabraham/SparSNP/blob/master/workflow.pdf
 
 
 
