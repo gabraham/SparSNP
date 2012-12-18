@@ -24,7 +24,25 @@ memory-efficient analysis of all SNPs for phenotype prediction'', BMC
 Bioinformatics,
 2012, 13:88, [doi:10.1186/1471-2105-13-88](http://www.biomedcentral.com/1471-2105/13/88/)
 
-Copyright (C), Gad Abraham and National ICT Australia (2011-2012), All Rights Reserved. 
+License
+-------
+
+This program is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation; either version 3 of the License, or
+(at your option) any later version.
+
+Copyright (C) 2011-2012 Gad Abraham and National ICT Australia (NICTA).
+All rights reserved.
+
+Requirements
+------------
+
+   For the post-analysis scripts:  R packages ggplot2 >=0.9.3, scales, grid, abind, ROCR
+
+   A 64-bit operating system is recommended; we have tested SparSNP on 64-bit
+   OSX and Linux.
+
 
 Quick Start
 -----------
