@@ -67,8 +67,6 @@ Run (assuming a PLINK BED/BIM/FAM dataset named MYDATA, i.e. MYDATA.bim)
    eval.R
    ```
 
-Requirements for the post-analysis scripts:
-   R packages ggplot2 >=0.9.3, scales, grid, abind, ROCR
 
 Documentation: see the document workflow.pdf
 
