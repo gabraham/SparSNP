@@ -24,6 +24,10 @@ for(m in s) {
    eval(parse(text=sprintf("%s=\"%s\"", m[1], m[2])))
 }
 
+if(!exists("model", mode="character") || !model %in% c("linear", "sqrhinge") ) {
+   stop("model not specified, must be one of: sqrhinge, linear")
+}
+
 if(!exists("outdir", mode="character")) {
    outdir <- "predict"
 }
@@ -57,6 +61,20 @@ dither <- function(x, mind=1e-20, maxd=1e-8)
    x + runif(length(x), min=mind, max=maxd)
 }
 
+R2 <- function(pr, y) 
+{
+   pr <- cbind(pr)
+   y <- cbind(y)
+   if(ncol(y) != ncol(pr))
+      stop("ncol(y) doesn't match ncol(pr)")
+
+   s <- sapply(1:ncol(y), function(k) {
+      1 - sum((pr[,k] - y[,k])^2) / sum((y[,k] - mean(y[,k]))^2)
+   })
+   s[is.nan(s)] <- 0
+   s
+}
+
 lf <- list.files(path=outdir, pattern="profile$", full.names=TRUE)
 cat("found", length(lf), "profile files\n")
 nums <- sapply(sapply(strsplit(lf, "\\.profile"), strsplit, split="_"), tail, n=1)
@@ -71,34 +89,43 @@ res <- lapply(seq(along=lf), function(i) {
    # PLINK divides the predicted score by the number of SNPs, we don't want
    # that to we multiply to get original score
    score <- dither(prof$SCORE * prof$CNT + intercept)
-   pred <- prediction(labels=prof$PHENO, predictions=score)
-   perf <- performance(pred, "sens", "spec")
-   sens <- perf@y.values
-   spec <- perf@x.values
-   cutoffs <- pred@cutoffs
-   
-   ppv <- npv <- NULL
 
-   if(!is.na(prev)) {
-      ppv <- sapply(1:length(cutoffs), function(j) {
-         (sens[[j]] * prev) / (
-            sens[[j]] * prev + (1 - spec[[j]]) * (1 - prev))
-      })
-      npv <- sapply(1:length(cutoffs), function(j) {
-         (spec[[j]] * (1 - prev)) / (
-            (1 - sens[[j]]) * prev + spec[[j]] * (1 - prev))
-      })
+   if(model == "sqrhinge") {
+      pred <- prediction(labels=prof$PHENO, predictions=score)
+      perf <- performance(pred, "sens", "spec")
+      sens <- perf@y.values
+      spec <- perf@x.values
+      cutoffs <- pred@cutoffs
+      
+      ppv <- npv <- NULL
+
+      if(!is.na(prev)) {
+         ppv <- sapply(1:length(cutoffs), function(j) {
+            (sens[[j]] * prev) / (
+               sens[[j]] * prev + (1 - spec[[j]]) * (1 - prev))
+         })
+         npv <- sapply(1:length(cutoffs), function(j) {
+            (spec[[j]] * (1 - prev)) / (
+               (1 - sens[[j]]) * prev + spec[[j]] * (1 - prev))
+         })
+      }
+
+      list(
+         pred=pred,
+         perf=perf,
+         sens=sens,
+         spec=spec,
+         cutoffs=cutoffs,
+         ppv=ppv,
+         npv=npv
+      )
+   } else {
+      list(
+	 pred=score,
+	 observed=prof$PHENO,
+	 R2=R2(score, prof$PHENO)
+      )
    }
-
-   list(
-      pred=pred,
-      perf=perf,
-      sens=sens,
-      spec=spec,
-      cutoffs=cutoffs,
-      ppv=ppv,
-      npv=npv
-   )
 })
 
 f <- sprintf("%s/%s.RData", outdir, name) 

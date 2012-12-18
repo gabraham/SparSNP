@@ -27,10 +27,9 @@
 
 options(warn=-1)
 
-DIR="discovery"
 AVGFILE="avg_weights_opt"
 
-usage <- "usage: getmodels.R nzreq=<num SNPS required> <uni=FALSE>"
+usage <- "usage: getmodels.R nzreq=<num SNPS required> [uni=FALSE] [dir=DIR]"
 
 uni <- FALSE
 args <- commandArgs(TRUE)
@@ -41,6 +40,10 @@ for(m in s) {
 
 if(!exists("nzreq", mode="character")) {
    stop(usage)
+}
+
+if(!exists("dir", mode="character")) {
+   dir <- "discovery"
 }
 
 nzreq <- as.numeric(nzreq)
@@ -56,22 +59,30 @@ if(is.na(uni)) {
 library(methods)
 
 # Parse the parameters
-param <- scan("discovery/params.txt", what=character(), quiet=TRUE)
+param <- scan(sprintf("%s/params.txt", dir), what=character(), quiet=TRUE,
+   sep="\n")
 s <- sapply(param, strsplit, "=")
 for(i in seq(along=s)) {
    s1 <- s[[i]][1]
-   s2 <- s[[i]][2]
-   m <- as.numeric(s2)
-   s2 <- if(is.na(m)) {
-      paste("\"", s2, "\"", sep="")
-   } else m
+   if(length(s[[i]]) > 1) {
+      s2 <- s[[i]][2]
+      m <- as.numeric(s2)
+      s2 <- if(is.na(m)) {
+         paste("\"", s2, "\"", sep="")
+      } else m
+   } else {
+      s2 <- "\"\""
+   }
    x <- paste(s1, "=", s2)
    eval(parse(text=x))
 }
 
+if(NTASKS > 1) {
+   stop("getmodels currently does not support models with more than 1 task")
+}
+
 nreps <- NREPS
 nfolds <- NFOLDS
-dir <- DIR
 avgfile <- AVGFILE
 
 r <- read.table(sprintf("%s/snps.txt", dir), header=FALSE,
@@ -94,8 +105,7 @@ b <- lapply(1:nreps, function(rep) {
       w <- nzopt[[rep]][fold]
       f <- sprintf("%s/crossval%s/%sbeta.csv.%02d.%02d",
 	 dir, rep, prefix, w - 1, fold - 1)
-      cat(">>>", f, "\n")
-      r <- try(read.table(f, sep=":", header=FALSE), silent=FALSE)
+      r <- try(read.table(f, sep=",", header=FALSE), silent=FALSE)
       if(is(r, "try-error")) {
 	 NULL
       } else {
@@ -122,7 +132,7 @@ bpath <- lapply(1:nreps, function(rep) {
       )
       lapply(l, function(x) {
 	 cat(x, "\n")
-	 r <- read.table(x, sep=":", header=FALSE)
+	 r <- read.table(x, sep=",", header=FALSE)
 	 r$NonZero <- nrow(r)
 	 r
       })

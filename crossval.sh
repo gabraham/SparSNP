@@ -69,9 +69,12 @@ if ! [ -z "$PHENO" ];
 then
    FAM_CMD=""
    PHENO_CMD="-pheno $PHENO"
+   NCOL=$(head -1 $PHENO | wc -w)
+   NTASKS=$((NCOL-2))
 else
    FAM_CMD="-fam $FAM"
    PHENO_CMD=""
+   NTASKS=1
 fi
 
 ######################################################################
@@ -102,7 +105,7 @@ then
 fi
 
 cat > $DIR/params.txt<<EOF
-ROOT=$(echo $BED | awk -F'.' '{print $(NF-1)}')
+ROOT=$(echo $BED | sed 's/\.bed$//g')
 FAM=$FAM
 PHENO=$PHENO
 NFOLDS=$NFOLDS
@@ -113,6 +116,7 @@ LAMBDA2=$LAMBDA2
 MODEL=$MODEL
 BETA_SCALED=$UNSCALE
 Y_SCALED=$SCALEY
+NTASKS=$NTASKS
 EOF
 
 pushd $DIR

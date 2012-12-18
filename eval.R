@@ -410,28 +410,27 @@ m <- round(max(log2(d3$NonZero)))
 br <- 2^(0:m)
 br <- br[br <= max(d3$NonZero)]
 expr <- ifelse(measure == "AUC", "AUC", expression(R^2))
-#g <- g + geom_point(size=2.5, alpha=0.2)
-#g <- g + scale_x_log2("Number of SNPs in model", breaks=br, labels=br) 
 g <- g + scale_x_log2("Number of SNPs in model") 
 g <- g + scale_y_continuous(expr)
 g <- g + theme_bw() + mytheme
-#g <- g + scale_colour_grey(start=0, end=0.5)
 g <- g + stat_smooth(method="loess", size=2)
+if(length(unique(d3$Task)) == 1) {
+   g <- g + theme(legend.position="none")
+}
 
 pdf(sprintf("%s_%s.pdf", title, measure), width=14)
 print(g)
 dev.off()
 
-
 if(!is.null(prev))
 {
-   g <- ggplot(d[d$NonZero > 0, ], aes(x=NonZero, y=VarExp))
-   g <- g + geom_point(size=2.5) 
-   #g <- g + scale_x_log2("Number of SNPs in model", breaks=br, labels=br)
+   g <- ggplot(d3, aes(x=NonZero, y=VarExp, colour=Task))
    g <- g + scale_x_log2("Number of SNPs in model")
    g <- g + theme_bw() + mytheme
-   g <- g + scale_colour_grey(start=0, end=0.5)
-   g <- g + stat_smooth(method="loess")
+   g <- g + stat_smooth(method="loess", size=2)
+   if(length(unique(d3$Task)) == 1) {
+      g <- g + theme(legend.position="none")
+   }
    
    pdf(sprintf("%s_VarExp.pdf", title), width=14)
    print(g)
@@ -440,13 +439,13 @@ if(!is.null(prev))
 
 if(!is.null(h2l))
 {
-   g <- ggplot(d[d$NonZero > 0, ], aes(x=NonZero, y=GenVarExp))
-   g <- g + geom_point(size=2.5) 
-   #g <- g + scale_x_log2("Number of SNPs in model", breaks=br, labels=br)
+   g <- ggplot(d3, aes(x=NonZero, y=GenVarExp, colour=Task))
    g <- g + scale_x_log2("Number of SNPs in model")
    g <- g + theme_bw() + mytheme
-   g <- g + scale_colour_grey(start=0, end=0.5)
-   g <- g + stat_smooth(method="loess")
+   g <- g + stat_smooth(method="loess", size=2)
+   if(length(unique(d3$Task)) == 1) {
+      g <- g + theme(legend.position="none")
+   }
    
    pdf(sprintf("%s_GenVarExp.pdf", title), width=14)
    print(g)
@@ -456,7 +455,7 @@ if(!is.null(h2l))
 save(d3, file="discovery.RData")
 
 if(numtasks > 1)
-   stop("SNP tabulation broken for multitask")
+   stop("SNP tabulation not supported models with more than 1 task")
 
 # Find SNPs for best model in cross-validation
 # best: if specified as an integer >0 , then return the SNPs at size model

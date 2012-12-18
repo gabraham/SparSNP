@@ -28,6 +28,7 @@ TARGET=$1
 [[ -z "$DIR" ]] && DIR="discovery"
 [[ -z "$OUTDIR" ]] && OUTDIR="predict"
 [[ -z "$NUMPROCS" ]] && NUMPROCS=1
+[[ -z "$TOPSNP" ]] && TOPSNP=""
 
 AVGFILE="avg_weights_opt"
 
@@ -44,13 +45,16 @@ then
    exit 1
 fi
 
-# Get a risk score for the top SNP using logistic regression
-plink --noweb --bfile $ROOT \
-   --snp $(head -1 $DIR/$AVGFILE.score | cut -f1 -d' ') \
-   --logistic --out $DIR/topsnp
+if [ $TOPSNP ];
+then
+   # Get a risk score for the top SNP using logistic regression
+   plink --noweb --bfile $ROOT \
+      --snp $(head -1 $DIR/$AVGFILE.score | cut -f1 -d' ') \
+      --logistic --out $DIR/topsnp
 
-awk '{if(NR>1) print $2,$4,log($7)}' \
-   $DIR/topsnp.assoc.logistic > $DIR/topsnp.score
+   awk '{if(NR>1) print $2,$4,log($7)}' \
+      $DIR/topsnp.assoc.logistic > $DIR/topsnp.score
+fi
 
 # Predict on new data, multi-SNP
 function run {
