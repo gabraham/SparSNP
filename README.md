@@ -62,7 +62,8 @@ To install:
 
 Run (assuming a PLINK BED/BIM/FAM dataset named MYDATA, i.e. MYDATA.bim)
 
-   ```export PATH=<PATH_TO_SPARSNP>:$PATH
+   ```
+   export PATH=<PATH_TO_SPARSNP>:$PATH
    crossval.sh MYDATA sqrhinge 2>&1 | tee log
    eval.R
    ```
