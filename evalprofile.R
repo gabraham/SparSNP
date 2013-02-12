@@ -111,6 +111,7 @@ res <- lapply(seq(along=lf), function(i) {
       }
 
       list(
+	 score=score,
          pred=pred,
          perf=perf,
          sens=sens,

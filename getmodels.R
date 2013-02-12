@@ -77,6 +77,10 @@ for(i in seq(along=s)) {
    eval(parse(text=x))
 }
 
+if(!exists("NTASKS")) {
+   NTASKS <- 1
+}
+
 if(NTASKS > 1) {
    stop("getmodels currently does not support models with more than 1 task")
 }
