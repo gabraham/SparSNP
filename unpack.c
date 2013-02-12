@@ -11,14 +11,18 @@
 #include "common.h"
 #include "sparsnp.h"
 
-int unpack(gmatrix *g, char *filename_out)
+#define UNPACK_FORMAT_CHAR 1
+#define UNPACK_FORMAT_DOUBLE 2
+
+int unpack(gmatrix *g, char *filename_out, int dim, int format)
 {
    int i, j, p1;
    sample sm;
    FILE *out = NULL;
    void *tmp = NULL;
    int start;
-   int size = g->scalefile ? sizeof(double) : sizeof(char);
+   /*int size = g->scalefile ? sizeof(double) : sizeof(char);*/
+   int size = (format == UNPACK_FORMAT_CHAR) ? sizeof(char) : sizeof(double);
 
    if(!sample_init(&sm))
       return FAILURE;
@@ -30,13 +34,21 @@ int unpack(gmatrix *g, char *filename_out)
    start = 1;
    p1 = g->p + 1;
 
-   /* ignore intercept */
+   /* Write dimensions of the matrix */
+   if(dim)
+   {
+      printf("unpack: n=%d p=%d\n", g->n, g->p);
+      FWRITETEST(&(g->n), sizeof(g->n), 1, out);
+      FWRITETEST(&(g->p), sizeof(g->p), 1, out);
+   }
+
+   /* ignore intercept, start from j=1 */
    for(j = start ; j < p1 ; j++)
    {
-      if(!g->nextcol(g, &sm, j, NA_ACTION_RANDOM))
+      if(!g->nextcol(g, &sm, j, NA_ACTION_PROPORTIONAL))
 	 return FAILURE;
 
-      if(g->scalefile)
+      if(format == UNPACK_FORMAT_DOUBLE)
       {
 	 for(i = g->n - 1 ; i >= 0 ; --i)
 	    *((double*)tmp + i) = (double)sm.x[i];
@@ -60,17 +72,19 @@ int unpack(gmatrix *g, char *filename_out)
 int main(int argc, char *argv[])
 {
    int i, n = 0, p = 0;
-   char *filename_bin = NULL;
+   int dim = TRUE;
+   char *filename_bed = NULL;
    char *filename_out = NULL;
    char *file_scale = NULL;
    gmatrix g;
+   int unpack_format = UNPACK_FORMAT_DOUBLE;
 
    for(i = 1 ; i < argc ; i++)
    {
-      if(strcmp2(argv[i], "-bin"))
+      if(strcmp2(argv[i], "-bed"))
       {
 	 i++;
-	 filename_bin = argv[i];
+	 filename_bed = argv[i];
       }
       if(strcmp2(argv[i], "-out"))
       {
@@ -92,23 +106,33 @@ int main(int argc, char *argv[])
 	 i++;
 	 file_scale = argv[i];
       }
+      else if(strcmp2(argv[i], "-dim"))
+      {
+	 i++;
+	 dim = TRUE;
+      }
+      else if(strcmp2(argv[i], "-format"))
+      {
+	 i++;
+	 unpack_format = (int)atof(argv[i]);
+      }
    }
 
-   if(!filename_bin || !filename_out || n == 0 || p == 0)
+   if(!filename_bed || !filename_out || n == 0 || p == 0)
    {
-      printf("usage: unpack -bin <binfile> -out <outfile> \
--n <#n> -p <#p>\n");
+      printf("usage: unpack -bed <bedfile> -out <outfile> \
+-n <#n> -p <#p> [-format double|char] [-dim]\n");
       return EXIT_FAILURE;
    }
 
-   printf("unpacking %s to file %s\n", filename_bin, filename_out);
+   printf("unpacking %s to file %s\n", filename_bed, filename_out);
 
-   if(!gmatrix_init(&g, filename_bin, n, p, file_scale,
+   if(!gmatrix_init(&g, filename_bed, n, p, file_scale,
 	 YFORMAT01, 0, MODEL_LINEAR, MODELTYPE_REGRESSION, TRUE,
 	 NULL, MODE_TRAIN, NULL, NULL, FALSE, FALSE, 0, 0, FALSE))
       return EXIT_FAILURE;
 
-   if(!unpack(&g, filename_out))
+   if(!unpack(&g, filename_out, dim, unpack_format))
    {
       gmatrix_free(&g);
       return EXIT_FAILURE;

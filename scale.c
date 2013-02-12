@@ -38,13 +38,13 @@ int scale(gmatrix *g)
    MALLOCTEST(tmp, sizeof(double) * n);
    
    /* read intercept and ignore it*/
-   if(!g->nextcol(g, &sm, 0, NA_ACTION_ZERO))
+   if(!g->nextcol(g, &sm, 0, NA_ACTION_PROPORTIONAL))
       return FAILURE;
 
    for(j = 1 ; j < p1 ; j++)
    {
       /*printf("%d of %d", j, p1);*/
-      if(!g->nextcol(g, &sm, j, NA_ACTION_ZERO))
+      if(!g->nextcol(g, &sm, j, NA_ACTION_PROPORTIONAL))
 	 return FAILURE;
 
       ngood = g->mean[j] = g->sd[j] = 0;

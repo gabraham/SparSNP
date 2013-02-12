@@ -10,6 +10,7 @@
 
 #include <stdio.h>
 #include <math.h>
+#include <unistd.h>
 
 #include "common.h"
 #include "link.h"
@@ -29,9 +30,11 @@
 
 #define HASH_SIZE 64
 
+#define NA_ACTION_NONE 0
 #define NA_ACTION_DELETE 1
 #define NA_ACTION_ZERO 2
 #define NA_ACTION_RANDOM 3
+#define NA_ACTION_PROPORTIONAL 4
 
 /* Size of cache itself, excluding the counters and mappings
  * Remember: there are g->folds caches, not just one, so total memory required
@@ -144,6 +147,7 @@ typedef struct gmatrix {
    int corthresh;
    int phenoformat;
    int verbose;
+   double *proportions;
 } gmatrix;
 
 int sample_init(sample *);
@@ -179,6 +183,9 @@ int gmatrix_trim_beta(gmatrix *g);
 int gmatrix_make_fusion(gmatrix *g);
 int gmatrix_load_subsets(gmatrix *g);
 int gmatrix_plink_check_pheno(gmatrix *g);
+int gmatrix_disk_nextcol_raw(gmatrix *g, sample *s, int j);
+int gmatrix_init_proportions(gmatrix *g);
+int rand_geno_proportional(gmatrix *g, int j);
 
 void step_regular_linear(sample *s, gmatrix *g, int k,
    double *restrict d1_p, double *restrict d2_p);
@@ -196,4 +203,6 @@ void cache_free(cache *ca);
 void count_cases(gmatrix* g);
 
 int rand_geno();
+long gmatrix_lrand();
+double gmatrix_drand();
 

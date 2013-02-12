@@ -36,6 +36,7 @@ int gmatrix_init(gmatrix *g, char *filename, int n, int p,
       int cortype, int corthresh, int verbose)
 {
    int i, j, p1;
+   long seed = 0;
 
    g->verbose = verbose;
    g->file = NULL;
@@ -98,6 +99,11 @@ int gmatrix_init(gmatrix *g, char *filename, int n, int p,
    g->corthresh = corthresh;
    g->phenoformat = phenoformat;
 
+   seed = getpid();
+   srand48(seed);
+
+   printf("seed: %ld\n", seed);
+
    printf("Using PLINK binary format\n");
    printf("FAM file: %s\n", g->famfilename);
    g->offset = 3 - g->nseek; /* TODO: magic number */
@@ -157,9 +163,9 @@ int gmatrix_init(gmatrix *g, char *filename, int n, int p,
    MALLOCTEST(g->xcaches, g->nfolds * sizeof(cache));
    for(i = 0 ; i < g->nfolds ; i++)
    {
-      /* TODO: uses up g->n cells even though we don't really not all since in
-       * crossval there will be fewer training/test samples, but easier than
-       * figuring out exactly how many to use */
+      /* TODO: uses up g->n cells even though we don't really need all of
+       * them, since in crossval there will be fewer training/test samples,
+       * but it's easier than figuring out exactly how many to use */
       cache_init(g->xcaches + i, g->n, g->p + 1);
    }
 
@@ -170,6 +176,10 @@ int gmatrix_init(gmatrix *g, char *filename, int n, int p,
    CALLOCTEST(g->beta, (long)p1 * g->K, sizeof(double));
    CALLOCTEST(g->active, (long)p1 * g->K, sizeof(int));
    CALLOCTEST(g->ignore, (long)p1 * g->K, sizeof(int));
+
+   /* must be called before setting a scalefile */
+   if(!gmatrix_init_proportions(g))
+      return FAILURE;
 
    /* don't scale in prediction mode */
    if(g->mode == MODE_TRAIN)
@@ -281,6 +291,7 @@ void gmatrix_free(gmatrix *g)
    mapping_free(g->map);
    FREENULL(g->map);
    FREENULL(g->C);
+   FREENULL(g->proportions);
 }
 
 /* y is a copy of y_orig as needed for crossval - in training y are the
@@ -385,9 +396,68 @@ int gmatrix_mem_nextcol(gmatrix *g, sample *sm, int j, int na_action)
    return SUCCESS;
 }
 
+long gmatrix_lrand()
+{
+   return lrand48();
+}
+
+double gmatrix_drand()
+{
+   return drand48();
+}
+
 int rand_geno()
 {
-   return lrand48() % 3;
+   return gmatrix_lrand() % 3;
+}
+
+/* generate random phenotypes in proportion to their distribution in each SNP
+ */
+int rand_geno_proportional(gmatrix *g, int j)
+{
+   double r = gmatrix_drand();
+   int p1 = g->p + 1;
+   double cumsum[3] = {
+      g->proportions[j],                          /* genotype 0 */
+      g->proportions[j] + g->proportions[p1 + j], /* genotype 1 */
+      1,                                          /* genotype 2 */
+   };
+
+   if(r < cumsum[0])
+      return 0;
+   else if(r < cumsum[1])
+      return 1;
+   return 2;
+}
+
+/* TODO: duplicates code in gmatrix_disk_nextcol */
+int gmatrix_disk_nextcol_raw(gmatrix *g, sample *s, int j)
+{
+   int i, n1 = g->n - 1, n = g->n;
+   //int ret;
+   off_t seek;
+   
+   /*ret = cache_get(g->xcaches + g->fold, j, &xtmp);
+
+   if(ret == SUCCESS)
+   {
+      s->x = xtmp;
+      return SUCCESS;
+   }*/
+
+   /* Get data from disk and unpack, skip y */
+   seek = (off_t)j * g->nseek + g->offset;
+   FSEEKOTEST(g->file, seek, SEEK_SET);
+   FREADTEST(g->encbuf, sizeof(dtype), g->nencb, g->file);
+   
+   decode_plink_mapping(g->map, g->tmp, g->encbuf, g->nencb);
+
+   for(i = n1 ; i >= 0 ; --i)
+      s->x[i] = g->tmp[i];
+   s->n = n;
+   //s->x = xtmp;
+
+   return SUCCESS;
 }
 
 /*
@@ -490,6 +560,18 @@ inputs in gmatrix_disk_nextcol\n");
 	    }
 	    s->n = ngood;
 	 }
+	 else if(na_action == NA_ACTION_PROPORTIONAL)
+	 {
+	    for(i = n1 ; i >= 0 ; --i)
+	    {
+	       d = g->tmp[i];
+	       xtmp[i] = (
+		  d == X_LEVEL_NA 
+		     ? (double)rand_geno_proportional(g, j) : (double)d);
+	    }
+	    s->n = n;
+	 }
+	 else return FAILURE;
       }
    }
    else 
@@ -555,6 +637,20 @@ inputs in gmatrix_disk_nextcol\n");
 		  {
 		     xtmp[ngood] = (double)d;
 		  }
+	       }
+	    }
+	    s->n = ngood;
+	 }
+	 else if(na_action == NA_ACTION_PROPORTIONAL)
+	 {
+	    for(i = n1 ; i >= 0 ; --i)
+	    {
+	       if(g->folds_ind[f + i])
+	       {
+	          d = g->tmp[i];
+	          xtmp[k--] = (d == X_LEVEL_NA ?
+			(double)rand_geno_proportional(g, j) : (double)d);
+		  ngood++;
 	       }
 	    }
 	    s->n = ngood;
@@ -1029,6 +1125,51 @@ int gmatrix_init_lp(gmatrix *g)
       FREENULL(g->ylp_neg_y_ylp);
       CALLOCTEST(g->ylp_neg_y_ylp, g->ncurr * g->K, sizeof(double));
    }
+   return SUCCESS;
+}
+
+/* g->proportions is an (g->p+1) times 3 matrix, we don't use the first row */
+int gmatrix_init_proportions(gmatrix *g)
+{
+   int i, j, p1 = g->p + 1, n = g->n;
+   int x, ngood;
+   sample sm;
+   long sum0, sum1, sum2;
+   int gp0 = p1 * 0, /* :-) */
+       gp1 = p1 * 1,
+       gp2 = p1 * 2;
+
+   if(!sample_init(&sm))
+      return FAILURE;
+
+   MALLOCTEST(g->proportions, p1 * 3 * sizeof(double));
+   MALLOCTEST(sm.x, sizeof(double) * n);
+
+   for(j = 1 ; j < p1 ; j++)
+   {
+      if(!gmatrix_disk_nextcol_raw(g, &sm, j))
+	 return FAILURE;
+
+      ngood = sum0 = sum1 = sum2 = 0;
+      
+      for(i = 0 ; i < n ; i++)
+      {
+	 x = sm.x[i];
+	 if(x != X_LEVEL_NA)
+	 {
+	    sum0 += (x == 0);
+	    sum1 += (x == 1);
+	    sum2 += (x == 2);
+	    ngood++;
+	 }
+	 g->proportions[gp0 + j] = (double)sum0 / ngood;
+	 g->proportions[gp1 + j] = (double)sum1 / ngood;
+	 g->proportions[gp2 + j] = (double)sum2 / ngood;
+      }
+   }
+
+   FREENULL(sm.x);
+
    return SUCCESS;
 }
 

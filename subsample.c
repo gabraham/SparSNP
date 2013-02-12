@@ -40,7 +40,7 @@ int subsample(gmatrix *g, char *filename_out, int *subvec, int nsub)
    /* read a variable and write it, ignore intercept */
    for(j = 1 ; j < p1 ; j++)
    {
-      if(!g->nextcol(g, &sm, j, NA_ACTION_RANDOM))
+      if(!g->nextcol(g, &sm, j, NA_ACTION_PROPORTIONAL))
 	 return FAILURE;
 
       k = 0;
