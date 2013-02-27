@@ -142,7 +142,8 @@ int main(int argc, char *argv[])
 
    if(!gmatrix_init(&g, filename_bin, n, p, NULL,
 	 YFORMAT01, 0, MODEL_LINEAR, MODELTYPE_REGRESSION, TRUE,
-	 NULL, MODE_TRAIN, NULL, NULL, FALSE, FALSE, 0, 0, FALSE))
+	 NULL, MODE_TRAIN, NULL, NULL, FALSE, FALSE, 0, 0, FALSE,
+	 CACHE_MEM_DEFAULT))
       return EXIT_FAILURE;
 
    MALLOCTEST2(subvec, sizeof(int) * n);

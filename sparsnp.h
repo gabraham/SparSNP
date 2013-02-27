@@ -98,6 +98,7 @@ typedef struct Opt {
    int cortype;
    int corthresh;
    int phenoformat;
+   long maxmem;
 } Opt;
 
 int cd_gmatrix(gmatrix *g,

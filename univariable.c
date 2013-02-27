@@ -279,7 +279,7 @@ int do_train(gmatrix *g, Opt *opt, char tmp[])
 	    opt->folds_ind_file, opt->mode,
 	    opt->subset_file,
 	    opt->famfilename, opt->scaley, opt->unscale_beta,
-	    opt->cortype, opt->corthresh, opt->verbose))
+	    opt->cortype, opt->corthresh, opt->verbose, opt->maxmem))
       return FAILURE;
 
    g->nextcol = gmatrix_mem_nextcol;
@@ -415,7 +415,7 @@ int do_predict(gmatrix *g, Opt *opt, char *tmp)
 	    opt->folds_ind_file, opt->mode,
 	    opt->subset_file,
 	    opt->famfilename, opt->scaley, opt->unscale_beta,
-	    opt->cortype, opt->corthresh, opt->verbose))
+	    opt->cortype, opt->corthresh, opt->verbose, opt->maxmem))
       return FAILURE;
 
    g->nextcol = gmatrix_mem_nextcol;

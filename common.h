@@ -19,6 +19,12 @@
 #define SUCCESS 1
 #define FAILURE 0
 
+/* Size of cache itself, excluding the counters and mappings
+ * Remember: there are g->folds caches, not just one, so total memory required
+ * is CACHE_MEM_DEFAULT * g->nfolds.
+ * */
+#define CACHE_MEM_DEFAULT 134217728 /* 2^27=128MB */
+
 #define MAX_STR_LEN 10001
 
 #define MAX_NUM_PHENO 1024

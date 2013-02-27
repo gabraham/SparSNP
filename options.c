@@ -129,6 +129,9 @@ int opt_defaults(Opt *opt, short caller)
    opt->corthresh = 0;
    opt->phenoformat = PHENO_FORMAT_FAM;
 
+   /* in bytes */
+   opt->maxmem = CACHE_MEM_DEFAULT;
+
    return SUCCESS;
 }
 
@@ -381,6 +384,11 @@ int opt_parse(int argc, char* argv[], Opt* opt)
 	 i++;
 	 opt->corthresh = atof(argv[i]);
       }
+      else if(strcmp2(argv[i], "-maxmem"))
+      {
+	 i++;
+	 opt->maxmem = atoi(argv[i]);
+      }
 
    }
 
@@ -396,7 +404,7 @@ int opt_parse(int argc, char* argv[], Opt* opt)
 [-maxepochs <maxepochs>] [-maxiters <maxiters>] [-l1 <lambda1>] \
 -l2 <lambda2>] [-thresh <threshold>] [-foldind <foldsfile>] \
 [-pred <prediction file>] [-filter] [-unscale] [-pheno <filename>] \
-[-cortype [0/1/2]] [-corthresh <threshold>] [-v] [-vv]\n");
+[-cortype [0/1/2]] [-corthresh <threshold>] [-v] [-vv] [-maxmem]\n");
          return FAILURE;
       }
       else if(opt->n_beta_files > 1 && opt->mode == MODE_TRAIN)

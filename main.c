@@ -243,7 +243,8 @@ int do_train(gmatrix *g, Opt *opt, char tmp[])
 	    opt->folds_ind_file, opt->mode,
 	    opt->subset_file,
 	    opt->famfilename, opt->scaley, opt->unscale_beta,
-	    opt->cortype, opt->corthresh, opt->verbose))
+	    opt->cortype, opt->corthresh, opt->verbose,
+	    opt->maxmem))
       return FAILURE;
 
    printf("%d CV folds\n", g->nfolds);
@@ -311,7 +312,7 @@ int do_predict(gmatrix *g, Opt *opt, char tmp[])
 	    opt->folds_ind_file, opt->mode,
 	    opt->subset_file,
 	    opt->famfilename, opt->scaley, opt->unscale_beta,
-	    opt->cortype, opt->corthresh, opt->verbose))
+	    opt->cortype, opt->corthresh, opt->verbose, opt->maxmem))
       return FAILURE;
 
    if(g->nfolds > 1)

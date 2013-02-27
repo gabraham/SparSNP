@@ -33,7 +33,7 @@ int gmatrix_init(gmatrix *g, char *filename, int n, int p,
       short encoded, char *folds_ind_file,
       short mode, char *subset_file, 
       char *famfilename, int scaley, int unscale_beta,
-      int cortype, int corthresh, int verbose)
+      int cortype, int corthresh, int verbose, long maxmem)
 {
    int i, j, p1;
    long seed = 0;
@@ -166,7 +166,7 @@ int gmatrix_init(gmatrix *g, char *filename, int n, int p,
       /* TODO: uses up g->n cells even though we don't really need all of
        * them, since in crossval there will be fewer training/test samples,
        * but it's easier than figuring out exactly how many to use */
-      cache_init(g->xcaches + i, g->n, g->p + 1);
+      cache_init(g->xcaches + i, g->n, g->p + 1, maxmem);
    }
 
    g->nextcol = gmatrix_disk_nextcol;
@@ -1370,11 +1370,11 @@ int cache_get(cache *ca, int j, double **x)
  * n: number of samples per SNP
  * p: number of SNPs
  */
-int cache_init(cache *ca, int n, int p)
+int cache_init(cache *ca, int n, int p, long maxmem)
 {
    int i;
 
-   ca->nbins = CACHE_MAX_MEM / sizeof(double) / n;
+   ca->nbins = (int)(maxmem / sizeof(double) / n);
    ca->n = n;
    ca->lastfree = 0;
 

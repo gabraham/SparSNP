@@ -28,21 +28,11 @@
 #define YFORMAT01 1
 #define YFORMAT11 2
 
-#define HASH_SIZE 64
-
 #define NA_ACTION_NONE 0
 #define NA_ACTION_DELETE 1
 #define NA_ACTION_ZERO 2
 #define NA_ACTION_RANDOM 3
 #define NA_ACTION_PROPORTIONAL 4
-
-/* Size of cache itself, excluding the counters and mappings
- * Remember: there are g->folds caches, not just one, so total memory required
- * is CACHE_MAX_MEM * g->nfolds.
- * */
-#define CACHE_MAX_MEM 134217728  /* 2^27=128MB */
-/*#define CACHE_MAX_MEM   268435456*/ /* 2^27=128MB */
-/*#define CACHE_MAX_MEM   357913941*/ /* 2^27=128MB */
 
 #define CACHE_NOT_EXISTS -1
 
@@ -157,7 +147,7 @@ int gmatrix_init(gmatrix *g, char *filename, int n, int p,
       short encoded, char *folds_ind_file,
       short mode, char *subsample_file,
       char *famfilename, int scaley, int unscale_beta,
-      int cortype, int corthresh, int verbose);
+      int cortype, int corthresh, int verbose, long maxmem);
 int gmatrix_reset(gmatrix *);
 void gmatrix_free(gmatrix *);
 int gmatrix_disk_nextcol(gmatrix *g, sample *sm, int skip, int na_action);
@@ -198,7 +188,7 @@ void updatelp(gmatrix *g, const double update,
       const double *restrict x, int j, int k);
 
 int cache_get(cache *ca, int j, double **x);
-int cache_init(cache *ca, int n, int p);
+int cache_init(cache *ca, int n, int p, long maxmem);
 void cache_free(cache *ca);
 void count_cases(gmatrix* g);
 
