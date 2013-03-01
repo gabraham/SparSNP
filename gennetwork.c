@@ -21,7 +21,7 @@
  * matrix
  */
 int gennetwork(double *y, int n, int K,
-   double corthresh, int cortype, double *C)
+   double corthresh, int cortype, double *C, int *pairs, int *edges)
 {
    int i, j, k, e,
       nE = K * (K - 1) / 2;
@@ -72,6 +72,8 @@ int gennetwork(double *y, int n, int K,
 	 {
 	    eFrom[e] = i;
 	    eTo[e] = j;
+	    pairs[e] = i;
+	    pairs[e + nE] = j;
 	    e++;
 	 }
       }
@@ -84,6 +86,20 @@ int gennetwork(double *y, int n, int K,
 
       C[e + nE * i] = W[i * K + j];
       C[e + nE * j] = -W[i * K + j] * sign(R[i * K + j]);
+   }
+
+   /* make the (K-1) by K edges matrix */
+   for(j = 0 ; j < K ; j++)
+   {
+      e = 0;
+      for(i = 0 ; i < nE ; i++)
+      {
+	 if(C[i + nE * j] != 0)
+	 {
+	    edges[e + (K - 1) * j] = i;
+	    e++;
+	 }
+      }
    }
 
    FREENULL(S);

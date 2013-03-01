@@ -52,6 +52,7 @@ int opt_defaults(Opt *opt, short caller)
    opt->maxiters = 100;
    opt->lambda1 = -1;
    opt->lambda2 = 0;
+   opt->gamma = 0;
    opt->threshold = 1e-5;
    opt->trunc = 1e-10;
    opt->nzmax = 5000;
@@ -233,6 +234,11 @@ int opt_parse(int argc, char* argv[], Opt* opt)
 	 i++;
 	 opt->lambda2 = atof(argv[i]);
       }
+      else if(strcmp2(argv[i], "-gamma"))
+      {
+	 i++;
+	 opt->gamma = atof(argv[i]);
+      }
       else if(strcmp2(argv[i], "-l1min"))
       {
 	 i++;
@@ -402,7 +408,7 @@ int opt_parse(int argc, char* argv[], Opt* opt)
 -bed <filename> -fam <filename> -n <#samples> -p <#variables> -scale <scalefile> \
 [-betafiles <beta filename/s>] \
 [-maxepochs <maxepochs>] [-maxiters <maxiters>] [-l1 <lambda1>] \
--l2 <lambda2>] [-thresh <threshold>] [-foldind <foldsfile>] \
+-l2 <lambda2>] [-gamma <gamma>] [-thresh <threshold>] [-foldind <foldsfile>] \
 [-pred <prediction file>] [-filter] [-unscale] [-pheno <filename>] \
 [-cortype [0/1/2]] [-corthresh <threshold>] [-v] [-vv] [-maxmem]\n");
          return FAILURE;

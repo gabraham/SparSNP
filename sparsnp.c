@@ -82,6 +82,7 @@ int cd_gmatrix(gmatrix *g,
       const int maxiters,
       const double lambda1,
       const double lambda2,
+      const double gamma,
       const double trunc,
       int *numactiveK)
 {
@@ -94,9 +95,12 @@ int cd_gmatrix(gmatrix *g,
    sample sm;
    double *beta_old = NULL;
    int *active_old = NULL;
-   long pkj, p1K1 = p1 * K - 1;
-   double d1, d2;
+   long pkj, p1K1 = p1 * K - 1, kK1, l;
+   int v1, v2, e, sv;
+   int nE = K * (K - 1) / 2;
+   double d1, d2, df1, df2;
    double beta_pkj;
+   int dofusion = K > 1 && gamma > 0;
 
    if(!sample_init(&sm))
       return FAILURE;
@@ -114,6 +118,8 @@ int cd_gmatrix(gmatrix *g,
       for(k = 0 ; k < K ; k++)
       {
 	 numactiveK[k] = 0;
+	 kK1 = k * (K - 1);
+
 	 for(j = 0 ; j < p1; j++)
       	 {
 	    pkj = (long)p1 * k + j;
@@ -136,7 +142,32 @@ int cd_gmatrix(gmatrix *g,
 	       /* don't penalise intercept */
 	       if(j > 0)
 	       {
-		  s = beta_pkj - d1 / d2;
+		  //s = beta_pkj - d1 / d2;
+
+		  /* fusion penalty */
+		  df1 = 0;
+		  df2 = 0;
+
+		  if(dofusion)
+		  {
+		     for(l = 0 ; l < K - 1 ; l++)
+		     {
+	       	        e = g->edges[l + kK1];
+	       	        v1 = g->pairs[e];
+	       	        v2 = g->pairs[e + nE];
+	       	        sv = g->beta[j + v1 * p1] * g->C[e + v1 * nE]
+	       	           + g->beta[j + v2 * p1] * g->C[e + v2 * nE];
+	       	        df1 += sv * g->C[e + k * nE];
+		     }
+
+		     df1 *= gamma;
+
+		     /* 2nd derivative of fusion loss */
+	             df2 = gamma * g->diagCC[k];
+		  }
+
+	          s = beta_pkj - (d1 + df1) / (d2 + df2);
+
 		  beta_new = soft_threshold(s, lambda1) * l2recip;
 	       }
 	       else

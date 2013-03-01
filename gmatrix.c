@@ -292,6 +292,9 @@ void gmatrix_free(gmatrix *g)
    FREENULL(g->map);
    FREENULL(g->C);
    FREENULL(g->proportions);
+   FREENULL(g->diagCC);
+   FREENULL(g->edges);
+   FREENULL(g->pairs);
 }
 
 /* y is a copy of y_orig as needed for crossval - in training y are the
@@ -1075,7 +1078,8 @@ void gmatrix_zero_model(gmatrix *g)
 /* Create the fusion penalty matrix C from each Y matrix */
 int gmatrix_make_fusion(gmatrix *g)
 {
-   int nE = g->K * (g->K - 1) / 2;
+   int nE = g->K * (g->K - 1) / 2, k, e;
+   double *diagCC = NULL, s, t;
    
    if(g->K == 1)
       return SUCCESS;
@@ -1083,8 +1087,34 @@ int gmatrix_make_fusion(gmatrix *g)
    FREENULL(g->C);
    CALLOCTEST(g->C, nE * g->K, sizeof(double));
 
-   if(!gennetwork(g->y, g->ncurr, g->K, g->corthresh, g->cortype, g->C))
+   CALLOCTEST(g->pairs, nE * 2, sizeof(int));
+   CALLOCTEST(g->edges, g->K * (g->K - 1), sizeof(int));
+   
+   if(!gennetwork(g->y, g->ncurr, g->K, g->corthresh, g->cortype, g->C,
+	    g->pairs, g->edges))
       return FAILURE;
+
+   CALLOCTEST(g->diagCC, g->K, sizeof(double));
+   
+   for(k = 0 ; k < g->K ; k++)
+   {
+      s = 0;
+      for(e = 0 ; e < nE ; e++)
+      {
+	 t = g->C[e + k * nE]; 
+	 s += t * t; 
+      }
+      diagCC[k] = s;
+   }
+
+   // mapping of edges to vertices (two vertices per edge), zero-based index
+   // assumes that C is full size, i.e., all K(K-1)/2 edges are in it
+   // pairs <- t(apply(C, 1, function(r) which(r != 0))) - 1
+
+   // each kth column represents which edges task k is involved in
+   // edges <- matrix(which(C != 0, arr.ind=TRUE)[,1], K - 1) - 1
+
+
 
 #ifdef DEBUG
    if(!writematrixf(g->C, nE, g->K, "C.txt"))

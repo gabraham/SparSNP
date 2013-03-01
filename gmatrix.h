@@ -138,6 +138,9 @@ typedef struct gmatrix {
    int phenoformat;
    int verbose;
    double *proportions;
+   double *diagCC;
+   int *edges;
+   int *pairs;
 } gmatrix;
 
 int sample_init(sample *);

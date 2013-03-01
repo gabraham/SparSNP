@@ -13,6 +13,7 @@
 #define CORTYPE_SQR 2
 
 int gennetwork(double *y, int n, int K,
-   double corthresh, int cortype, double *C);
+   double corthresh, int cortype, double *C,
+   int *pairs, int *edges);
 
 
