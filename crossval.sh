@@ -51,10 +51,10 @@ MODEL=$2
 
 # Standardise the outputs, only really makes sense for linear regression
 # Note that we scale Y globally, not for each cross-validation fold
-#[[ -z "$SCALEY" ]] && SCALEY=""
+[[ -z "$SCALEY" ]] && [[ "$MODEL" == "linear" ]] && SCALEY="-scaley"
 
 # By default, return beta on the original scale of the data (before standardising)
-UNSCALE=${UNSCALE- "-unscale"}
+UNSCALE=${UNSCALE-"-unscale"}
 
 ######################################################################
 
