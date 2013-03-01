@@ -90,8 +90,8 @@ int run_train(Opt *opt, gmatrix *g)
    for(i = 1 ; i < opt->nlambda1 ; i++)
    {
       if(g->verbose)
-	 printf("\n[%d] Fitting with lambda1=%.10f lambda2=%.10f\n",
-	    i, opt->lambda1path[i], opt->lambda2);
+	 printf("\n[%d] Fitting with lambda1=%.10f lambda2=%.10f gamma=%.10f\n",
+	    i, opt->lambda1path[i], opt->lambda2, opt->gamma);
 
       /* return value is number of nonzero variables,
        * including the intercept */
@@ -322,8 +322,6 @@ int do_predict(gmatrix *g, Opt *opt, char tmp[])
 	       sizeof(char*) * opt->n_beta_files);
       for(b = 0 ; b < opt->n_beta_files ; b++)
 	 opt->beta_files_fold[b] = NULL;
-
-      printf("foo\n");
 
       /* cross-validation: prediction stage */
       for(k = 0 ; k < g->nfolds ; k++)

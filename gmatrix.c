@@ -98,6 +98,9 @@ int gmatrix_init(gmatrix *g, char *filename, int n, int p,
    g->cortype = cortype;
    g->corthresh = corthresh;
    g->phenoformat = phenoformat;
+   g->diagCC = NULL;
+   g->edges = NULL;
+   g->pairs = NULL;
 
    seed = getpid();
    srand48(seed);
@@ -1079,7 +1082,7 @@ void gmatrix_zero_model(gmatrix *g)
 int gmatrix_make_fusion(gmatrix *g)
 {
    int nE = g->K * (g->K - 1) / 2, k, e;
-   double *diagCC = NULL, s, t;
+   double s, t;
    
    if(g->K == 1)
       return SUCCESS;
@@ -1104,7 +1107,7 @@ int gmatrix_make_fusion(gmatrix *g)
 	 t = g->C[e + k * nE]; 
 	 s += t * t; 
       }
-      diagCC[k] = s;
+      g->diagCC[k] = s;
    }
 
    // mapping of edges to vertices (two vertices per edge), zero-based index

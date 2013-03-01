@@ -46,6 +46,9 @@ MODEL=$2
 # L2 penalty (elastic-net)
 [[ -z "$LAMBDA2" ]] && LAMBDA2=0
 
+# L2 fusion penalty (FMPR)
+[[ -z "$GAMMA" ]] && GAMMA=0
+
 # Standardise the outputs, only really makes sense for linear regression
 # Note that we scale Y globally, not for each cross-validation fold
 #[[ -z "$SCALEY" ]] && SCALEY=""
@@ -113,6 +116,7 @@ NREPS=$NREPS
 NZMAX=$NZMAX
 NLAMBDA1=$NLAMBDA1
 LAMBDA2=$LAMBDA2
+GAMMA=$GAMMA
 MODEL=$MODEL
 BETA_SCALED=$UNSCALE
 Y_SCALED=$SCALEY
@@ -161,7 +165,8 @@ function run {
       # Run the model
       $WRAPPER sparsnp -train -model $MODEL -n $N -p $P \
 	 -scale $SCALE -bed $BED -nzmax $NZMAX -nl1 $NLAMBDA1 -l1min $L1MIN -v \
-	 $FOLDIND_CMD $FAM_CMD $PHENO_CMD -l2 $LAMBDA2 $UNSCALE $SCALEY
+	 $FOLDIND_CMD $FAM_CMD $PHENO_CMD -l2 $LAMBDA2 \
+	 -gamma $GAMMA $UNSCALE $SCALEY
  
       if [ $NFOLDS -gt 1 ]
       then
@@ -182,7 +187,7 @@ function run {
 
 export -f run
 export NFOLDS N P BED FAM_CMD PHENO_CMD FOLDIND_CMD MODEL
-export UNSCALE SCALEY SCALE NZMAX NLAMBDA1 L1MIN LAMBDA2
+export UNSCALE SCALEY SCALE NZMAX NLAMBDA1 L1MIN LAMBDA2 GAMMA
 
 seq $REP_START $REP_END | xargs -P$NUMPROCS -I{} bash -c "run {}"
 
