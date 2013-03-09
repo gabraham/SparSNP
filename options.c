@@ -462,6 +462,15 @@ supported\n");
 	       (opt->model == MODEL_SQRHINGE) ? "sqrhinge" : "logistic");
    }
 
+   if(opt->model != MODEL_LINEAR && opt->scaley)
+   {
+      printf("Refusing to scale phenotypes Y (-scaley) with model: ");
+      printf("%s\n",
+	    (opt->model == MODEL_LINEAR) ? "linear" :
+	    (opt->model == MODEL_SQRHINGE) ? "sqrhinge" : "logistic");
+      return FAILURE;
+   }
+
    srand(opt->seed);
 
    CALLOCTEST2(opt->lambda1path, opt->nlambda1, sizeof(double))

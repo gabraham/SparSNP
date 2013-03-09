@@ -56,6 +56,8 @@ MODEL=$2
 # By default, return beta on the original scale of the data (before standardising)
 UNSCALE=${UNSCALE-"-unscale"}
 
+[[ -z "$VERBOSE" ]] && VERBOSE="-v"
+
 ######################################################################
 
 N=$(cat "$ROOT".fam | wc -l | awk '{print $1, $2}')
@@ -164,19 +166,20 @@ function run {
    
       # Run the model
       $WRAPPER sparsnp -train -model $MODEL -n $N -p $P \
-	 -scale $SCALE -bed $BED -nzmax $NZMAX -nl1 $NLAMBDA1 -l1min $L1MIN -v \
+	 -scale $SCALE -bed $BED -nzmax $NZMAX -nl1 $NLAMBDA1 -l1min $L1MIN \
 	 $FOLDIND_CMD $FAM_CMD $PHENO_CMD -l2 $LAMBDA2 \
-	 -gamma $GAMMA $UNSCALE $SCALEY
+	 -gamma $GAMMA $UNSCALE $SCALEY $VERBOSE
  
       if [ $NFOLDS -gt 1 ]
       then
 	 echo "############# Running prediction #############"
 	 # Predict for test folds
 	 B=$(for((i=0;i<NLAMBDA1;i++)); do printf 'beta.csv.%02d ' $i; done)
-	 $WRAPPER sparsnp -predict -model $MODEL -n $N -p $P -v \
+	 $WRAPPER sparsnp -predict -model $MODEL -n $N -p $P \
 	    -bed $BED -betafiles $B \
 	    -scale $SCALE $SCALEY \
-	    $FOLDIND_CMD $FAM_CMD $PHENO_CMD
+	    $FOLDIND_CMD $FAM_CMD $PHENO_CMD \
+	    $VERBOSE
       fi
 
       popd
@@ -188,6 +191,7 @@ function run {
 export -f run
 export NFOLDS N P BED FAM_CMD PHENO_CMD FOLDIND_CMD MODEL
 export UNSCALE SCALEY SCALE NZMAX NLAMBDA1 L1MIN LAMBDA2 GAMMA
+export VERBOSE
 
 seq $REP_START $REP_END | xargs -P$NUMPROCS -I{} bash -c "run {}"
 

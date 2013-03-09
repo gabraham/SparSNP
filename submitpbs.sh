@@ -37,7 +37,7 @@ cd \$PBS_O_WORKDIR
 
 if [ "$DOSPARSNP" ];
 then
-   crossval.sh \$ROOT sqrhinge 2>&1 | tee sparsnp.log
+   crossval.sh \$ROOT $MODEL 2>&1 | tee sparsnp.log
 fi
 
 if [ "$DOUNIVAR" ];
