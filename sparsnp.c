@@ -87,7 +87,7 @@ int cd_gmatrix(gmatrix *g,
       int *numactiveK)
 {
    const int p1 = g->p + 1, K = g->K;
-   int j, k, allconverged = 0, numactive = 0,
+   int j, k, allconverged = 1, numactive = 0,
        epoch = 1,
        good = FALSE;
    double beta_new, delta, s;
@@ -95,12 +95,13 @@ int cd_gmatrix(gmatrix *g,
    sample sm;
    double *beta_old = NULL;
    int *active_old = NULL;
-   long pkj, p1K1 = p1 * K - 1, kK1, l;
+   long pkj, p1K = p1 * K, p1K1 = p1 * K - 1, kK1, l;
    int v1, v2, e, sv;
    int nE = K * (K - 1) / 2;
    double d1, d2, df1, df2;
    double beta_pkj;
    int dofusion = K > 1 && gamma > 0;
+   long numconverged = 0;
 
    if(!sample_init(&sm))
       return FAILURE;
@@ -114,6 +115,7 @@ int cd_gmatrix(gmatrix *g,
    while(epoch <= maxepochs)
    {
       numactive = 0;
+      numconverged = 0;
 
       for(k = 0 ; k < K ; k++)
       {
@@ -131,6 +133,7 @@ int cd_gmatrix(gmatrix *g,
 #ifdef DEBUG
 	       printf("skipping inactive k=%d j=%d\n", k, j);
 #endif
+	       numconverged++;
 	    }
 	    else
       	    {
@@ -160,14 +163,12 @@ int cd_gmatrix(gmatrix *g,
 	       	        df1 += sv * g->C[e + k * nE];
 		     }
 
+		     /* derivatives of fusion loss */
 		     df1 *= gamma;
-
-		     /* 2nd derivative of fusion loss */
 	             df2 = gamma * g->diagCC[k];
 		  }
 
 	          s = beta_pkj - (d1 + df1) / (d2 + df2);
-
 		  beta_new = soft_threshold(s, lambda1) * l2recip;
 	       }
 	       else
@@ -195,14 +196,19 @@ int cd_gmatrix(gmatrix *g,
       	       }
 
       	       g->active[pkj] = (g->beta[pkj] != 0);
+
+	       if((delta == 0 && beta_pkj == 0) || fabs(delta) /
+		     fabs(beta_pkj) < 1e-4)
+		  numconverged++;
+
       	    }
 
 	    numactiveK[k] += g->active[pkj];
 	    numactive += g->active[pkj];
       	 }
 #ifdef DEBUG
-   	 printf("[end of task k=%d] numactive=%d (excl. %d intercept/s)\n",
-	    k, numactive - (k + 1), k+1);
+   	 printf("[end of task k=%d] numactive=%d numconverged=%ld (excl. %d intercept/s)\n",
+	    k, numactive - (K + 1), numconverged - (K + 1), K);
 
 	 printf("----------------\n");
 #endif
@@ -216,48 +222,65 @@ int cd_gmatrix(gmatrix *g,
       }
 
       /* State machine for active set convergence */ 
-      allconverged++;
+      //allconverged++;
+
 
       /* prepare for another iteration over *all*
        * (non-ignored) variables, store a copy of the
        * current active set for later */
-      if(allconverged == 1)
+
+      if(numconverged == p1K)
       {
 	 if(g->verbose)
-	    printf("prepare for final epoch\n");
-	 for(j = p1K1 ; j >= 0 ; --j)
-	 {
-	    active_old[j] = g->active[j];
-	    g->active[j] = !g->ignore[j];
-	 }
-      }
-      else /* 2nd iteration over all variables done, check
-	      whether active set has changed */
-      {
-	 for(j = p1K1 ; j >= 0 ; --j)
-	    if(g->active[j] != active_old[j])
-	       break;
+            printf("all (%ld) converged at epoch %d\n", numconverged, epoch);
 
-	 /* all equal, terminate */
-	 if(j < 0)
-	 {
-	    if(g->verbose)
-	       printf("\n[%ld] terminating at epoch %d \
+	 if(allconverged == 1)
+      	 {
+      	    if(g->verbose)
+      	       printf("prepare for final epoch\n");
+      	    for(j = p1K1 ; j >= 0 ; --j)
+      	    {
+      	       active_old[j] = g->active[j];
+      	       g->active[j] = !g->ignore[j];
+      	    }
+	    allconverged = 2;
+      	 }
+      	 else /* 2nd iteration over all variables done, check
+      	         whether active set has changed */
+      	 {
+      	    for(j = p1K1 ; j >= 0 ; --j)
+      	       if(g->active[j] != active_old[j])
+      	          break;
+
+      	    /* all equal, terminate */
+      	    if(j < 0)
+      	    {
+      	       if(g->verbose)
+      	          printf("\n[%ld] terminating at epoch %d \
 with %d active vars\n", time(NULL), epoch, numactive);
-	    good = TRUE;
-	    break;
-	 }
+      	       good = TRUE;
+      	       break;
+      	    }
 
-	 if(g->verbose)
-	    printf("active set changed, %d active vars\n",
-	       numactive);
+	    allconverged = 1;
+      	    if(g->verbose)
+      	       printf("active set changed, %d active vars\n",
+      	          numactive);
 
-	 /* active set has changed, iterate over
-	  * new active variables */
-	 for(j = p1K1 ; j >= 0 ; --j)
-	    active_old[j] = g->active[j];
-	 allconverged = 1;
+      	    /* active set has changed, iterate over
+      	     * new active variables */
+      	    for(j = p1K1 ; j >= 0 ; --j)
+	    {
+      	       active_old[j] = g->active[j];
+      	       g->active[j] = !g->ignore[j]; // NEW
+	    }
+      	    allconverged = 1;
+      	 }
       }
+      else if(g->verbose)
+	 printf("active set not yet converged at epoch %d \
+ (numconverged=%ld numactive=%d)\n",
+	    epoch, numconverged, numactive);
      
       epoch++;
    }

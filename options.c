@@ -48,7 +48,7 @@ int opt_defaults(Opt *opt, short caller)
    opt->nlambda1 = 100;
    opt->l1minratio = 1e-2;
    opt->l1max = -1;
-   opt->maxepochs = 10000;
+   opt->maxepochs = 1e5;
    opt->maxiters = 100;
    opt->lambda1 = -1;
    opt->lambda2 = 0;

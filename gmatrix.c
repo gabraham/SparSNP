@@ -1226,8 +1226,10 @@ void step_regular_linear(sample *s, gmatrix *g, int k,
       nki--;
    }
 
-   *d1_p = grad;
-   *d2_p = n - 1;
+   //*d1_p = grad;
+   //*d2_p = n - 1;
+   *d1_p = grad / n;
+   *d2_p = (n - 1) / (double)n;
 }
 
 void step_regular_logistic(sample *s, gmatrix *g, int k,
