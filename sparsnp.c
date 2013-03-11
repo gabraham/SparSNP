@@ -96,9 +96,9 @@ int cd_gmatrix(gmatrix *g,
    double *beta_old = NULL;
    int *active_old = NULL;
    long pkj, p1K = p1 * K, p1K1 = p1 * K - 1, kK1, l;
-   int v1, v2, e, sv;
+   int v1, v2, e;
    int nE = K * (K - 1) / 2;
-   double d1, d2, df1, df2;
+   double d1, d2, df1, df2, sv;
    double beta_pkj;
    int dofusion = K > 1 && gamma > 0;
    long numconverged = 0;
