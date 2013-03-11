@@ -111,6 +111,10 @@ fi
 
 cat > $DIR/params.txt<<EOF
 ROOT=$(echo $BED | sed 's/\.bed$//g')
+BED=$BED
+SCALE=$SCALE
+N=$N
+P=$P
 FAM=$FAM
 PHENO=$PHENO
 NFOLDS=$NFOLDS
