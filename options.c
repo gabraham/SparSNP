@@ -395,7 +395,6 @@ int opt_parse(int argc, char* argv[], Opt* opt)
 	 i++;
 	 opt->maxmem = atoi(argv[i]);
       }
-
    }
 
    if(opt->caller == OPTIONS_CALLER_CD) /* coordinate descent */

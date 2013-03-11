@@ -1221,7 +1221,6 @@ void step_regular_linear(sample *s, gmatrix *g, int k,
    /* compute gradient wrt task k*/
    for(i = n - 1 ; i >= 0 ; --i)
    {
-      //grad += x[i] * (lp[nki] - y[nki]);
       grad += x[i] * err[nki];
       nki--;
    }
@@ -1229,7 +1228,7 @@ void step_regular_linear(sample *s, gmatrix *g, int k,
    //*d1_p = grad;
    //*d2_p = n - 1;
    *d1_p = grad / n;
-   *d2_p = (n - 1) / (double)n;
+   *d2_p = (double)(n - 1) / n;
 }
 
 void step_regular_logistic(sample *s, gmatrix *g, int k,

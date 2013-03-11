@@ -18,8 +18,9 @@ then
 fi
 
 [[ -z "$DOSPARSNP" ]] && DOSPARSNP=1
+[[ -z "$NREPS" ]] && NREPS=10
 
-for((i=1;i<=30;i++))
+for((i=1;i<=$NREPS;i++))
 do
    export REP_START=$i
    export REP_END=$i
@@ -44,6 +45,7 @@ if [ "$DOUNIVAR" ];
 then
    crossvaluni.sh \$ROOT 2>&1 | tee univar.log
 fi
+
 
 EOF
 

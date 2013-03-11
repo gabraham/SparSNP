@@ -110,7 +110,7 @@ int cd_gmatrix(gmatrix *g,
    CALLOCTEST(active_old, (long)p1 * K, sizeof(int));
 
    for(j = p1K1 ; j >= 0 ; --j)
-      active_old[j] = g->active[j];
+      active_old[j] = g->active[j] = !g->ignore[j];
 
    while(epoch <= maxepochs)
    {
@@ -145,8 +145,6 @@ int cd_gmatrix(gmatrix *g,
 	       /* don't penalise intercept */
 	       if(j > 0)
 	       {
-		  //s = beta_pkj - d1 / d2;
-
 		  /* fusion penalty */
 		  df1 = 0;
 		  df2 = 0;
@@ -171,14 +169,13 @@ int cd_gmatrix(gmatrix *g,
 	          s = beta_pkj - (d1 + df1) / (d2 + df2);
 		  beta_new = soft_threshold(s, lambda1) * l2recip;
 	       }
-	       else
+	       else // neither l1 penalty nor fusion penalty applied to
+		    // intercept!
 		  s = beta_new = beta_pkj - d1 / d2;
 
 	       /* numerically close enough to zero */
 	       if(fabs(beta_new) < ZERO_THRESH)
 		  beta_new = 0;
-
-	       /*beta_new = clip(beta_new, -truncl, truncl);*/
 
       	       delta = beta_new - beta_pkj;
       	       
@@ -189,45 +186,27 @@ int cd_gmatrix(gmatrix *g,
 		  k, j, d1, d2, s, delta, beta_pkj, beta_new);
 #endif
 
-      	  //     if(fabs(delta) > ZERO_THRESH)
-      	       {
-      	          updatelp(g, delta, sm.x, j, k);
-      	          g->beta[pkj] = beta_new;
-      	       }
+	       updatelp(g, delta, sm.x, j, k);
+      	       g->beta[pkj] = beta_new;
 
       	       g->active[pkj] = (g->beta[pkj] != 0);
 
-	       if((delta == 0 && beta_pkj == 0) || fabs(delta) /
-		     fabs(beta_pkj) < 1e-4)
+	       if((delta == 0 && beta_pkj == 0) 
+		     || fabs(delta) / fabs(beta_pkj) < 1e-4)
 		  numconverged++;
-
       	    }
 
 	    numactiveK[k] += g->active[pkj];
 	    numactive += g->active[pkj];
       	 }
 #ifdef DEBUG
-   	 printf("[end of task k=%d] numactive=%d numconverged=%ld (excl. %d intercept/s)\n",
+   	 printf("[end of task k=%d] numactive=%d \
+ numconverged=%ld (excl. %d intercept/s)\n",
 	    k, numactive - (K + 1), numconverged - (K + 1), K);
 
 	 printf("----------------\n");
 #endif
       }
-
-      if(g->verbose)
-      {
-	 printf("fold: %d  epoch: %d  numactive: %d\n", 
-	    g->fold, epoch, numactive);
-	 fflush(stdout);
-      }
-
-      /* State machine for active set convergence */ 
-      //allconverged++;
-
-
-      /* prepare for another iteration over *all*
-       * (non-ignored) variables, store a copy of the
-       * current active set for later */
 
       if(numconverged == p1K)
       {
@@ -237,7 +216,7 @@ int cd_gmatrix(gmatrix *g,
 	 if(allconverged == 1)
       	 {
       	    if(g->verbose)
-      	       printf("prepare for final epoch\n");
+      	       printf("prepare for final epoch, make all active\n");
       	    for(j = p1K1 ; j >= 0 ; --j)
       	    {
       	       active_old[j] = g->active[j];
@@ -245,14 +224,12 @@ int cd_gmatrix(gmatrix *g,
       	    }
 	    allconverged = 2;
       	 }
-      	 else /* 2nd iteration over all variables done, check
-      	         whether active set has changed */
-      	 {
+	 else
+	 {
       	    for(j = p1K1 ; j >= 0 ; --j)
       	       if(g->active[j] != active_old[j])
       	          break;
 
-      	    /* all equal, terminate */
       	    if(j < 0)
       	    {
       	       if(g->verbose)
@@ -262,25 +239,18 @@ with %d active vars\n", time(NULL), epoch, numactive);
       	       break;
       	    }
 
-	    allconverged = 1;
       	    if(g->verbose)
-      	       printf("active set changed, %d active vars\n",
-      	          numactive);
+      	       printf("active set changed (j=%d), %d active vars\n",
+      	          j, numactive);
 
-      	    /* active set has changed, iterate over
-      	     * new active variables */
       	    for(j = p1K1 ; j >= 0 ; --j)
 	    {
       	       active_old[j] = g->active[j];
-      	       g->active[j] = !g->ignore[j]; // NEW
+      	       g->active[j] = !g->ignore[j];
 	    }
-      	    allconverged = 1;
+	    allconverged = 1;
       	 }
       }
-      else if(g->verbose)
-	 printf("active set not yet converged at epoch %d \
- (numconverged=%ld numactive=%d)\n",
-	    epoch, numconverged, numactive);
      
       epoch++;
    }
