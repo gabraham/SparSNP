@@ -52,6 +52,8 @@ int gmatrix_init(gmatrix *g, char *filename, int n, int p,
    g->yidx = 0;
    g->y = NULL;
    g->y_orig = NULL;
+   g->lossK = NULL;
+   g->l1lossK = NULL;
    g->loss = 0;
    g->err = NULL;
    g->lp = NULL;
@@ -102,6 +104,7 @@ int gmatrix_init(gmatrix *g, char *filename, int n, int p,
    g->edges = NULL;
    g->pairs = NULL;
    g->scaley = scaley;
+   g->tol = 1e-8;
 
    seed = getpid();
    srand48(seed);
@@ -145,6 +148,8 @@ int gmatrix_init(gmatrix *g, char *filename, int n, int p,
    srand48(time(NULL));
 
    CALLOCTEST(g->beta_orig, (long)p1 * g->K, sizeof(double));
+   CALLOCTEST(g->lossK, g->K, sizeof(double));
+   CALLOCTEST(g->l1lossK, g->K, sizeof(double));
    
    if(filename)
       FOPENTEST(g->file, filename, "rb");
@@ -302,6 +307,8 @@ void gmatrix_free(gmatrix *g)
    FREENULL(g->diagCC);
    FREENULL(g->edges);
    FREENULL(g->pairs);
+   FREENULL(g->lossK);
+   FREENULL(g->l1lossK);
 }
 
 /* y is a copy of y_orig as needed for crossval - in training y are the
@@ -739,7 +746,9 @@ these samples with PLINK; aborting\n",
  */
 int gmatrix_scale_y(gmatrix *g)
 {
+#ifdef DEBUG
    char buf[100];
+#endif
    int i, k, n = g->ncurr, K = g->K;
    double *mean = NULL,
 	  *sd = NULL;
@@ -1062,7 +1071,7 @@ int gmatrix_set_fold(gmatrix *g, int fold)
 /* zero the lp and adjust the lp-functions */
 void gmatrix_zero_model(gmatrix *g)
 {
-   int i, j, n = g->ncurr, p1 = g->p + 1, K = g->K;
+   int i, j, k, n = g->ncurr, p1 = g->p + 1, K = g->K;
 
    for(j = (long)p1 * K - 1 ; j >= 0 ; --j)
    {
@@ -1094,14 +1103,23 @@ void gmatrix_zero_model(gmatrix *g)
 	 g->ylp_neg_y_ylp[i] = g->ylp_neg_y[i] * g->ylp[i];
       }
    }
-
+   
+   for(k = 0 ; k < K ; k++)
+   {
+      g->lossK[k] = 0;
+      g->l1lossK[k] = 0;
+   }
+   
    g->loss = 0;
+   g->l1loss = 0;
 }
 
 /* Create the fusion penalty matrix C from each Y matrix */
 int gmatrix_make_fusion(gmatrix *g)
 {
+#ifdef DEBUG
    char buf[100];
+#endif
    int nE = g->K * (g->K - 1) / 2, k, e;
    double s, t;
    
@@ -1362,7 +1380,7 @@ void updatelp(gmatrix *g, const double update,
       }
    }
 
-   g->loss = loss * g->ncurr_recip;
+   g->lossK[k] = loss * g->ncurr_recip;
 }
 
 /*

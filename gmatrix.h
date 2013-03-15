@@ -80,7 +80,10 @@ typedef struct gmatrix {
    int ncurr;
    double ncurr_recip;
    int *ncurr_j;
-   int loss;
+   double *lossK;
+   double *l1lossK;
+   double loss;
+   double l1loss;
    int p;
    int K;
    int i;
@@ -142,6 +145,7 @@ typedef struct gmatrix {
    int *edges;
    int *pairs;
    int scaley;
+   double tol;
 } gmatrix;
 
 int sample_init(sample *);
