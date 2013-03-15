@@ -101,6 +101,7 @@ int gmatrix_init(gmatrix *g, char *filename, int n, int p,
    g->diagCC = NULL;
    g->edges = NULL;
    g->pairs = NULL;
+   g->scaley = scaley;
 
    seed = getpid();
    srand48(seed);
@@ -124,8 +125,8 @@ int gmatrix_init(gmatrix *g, char *filename, int n, int p,
 	 return FAILURE;
 
       gmatrix_plink_check_pheno(g);
-      if(scaley && !gmatrix_scale_y(g))
-	 return FAILURE;
+      //if(scaley && !gmatrix_scale_y(g))
+	// return FAILURE;
    }
 
    /* sensible default */
@@ -189,7 +190,7 @@ int gmatrix_init(gmatrix *g, char *filename, int n, int p,
    {
       g->scalefile = scalefile;
       if(g->scalefile && !gmatrix_read_scaling(g, g->scalefile))
-	 return FAILURE;
+         return FAILURE;
    }
    else
       g->scalefile = NULL;
@@ -199,9 +200,12 @@ int gmatrix_init(gmatrix *g, char *filename, int n, int p,
 
    gmatrix_set_ncurr(g);
    
-   if(g->mode == MODE_TRAIN && g->y_orig 
-      && !(gmatrix_split_y(g) && gmatrix_make_fusion(g)))
-	 return FAILURE;
+//   if(g->mode == MODE_TRAIN && g->y_orig 
+//      && !(gmatrix_split_y(g) 
+//      && gmatrix_make_fusion(g)))
+//	 return FAILURE;
+   
+   gmatrix_make_y(g);
 
    if(!gmatrix_init_lp(g))
       return FAILURE;
@@ -735,7 +739,8 @@ these samples with PLINK; aborting\n",
  */
 int gmatrix_scale_y(gmatrix *g)
 {
-   int i, k, n = g->n, K = g->K;
+   char buf[100];
+   int i, k, n = g->ncurr, K = g->K;
    double *mean = NULL,
 	  *sd = NULL;
    double delta;
@@ -743,7 +748,10 @@ int gmatrix_scale_y(gmatrix *g)
    printf("scaling y\n");
 
 #ifdef DEBUG
-   writematrixf(g->y_orig, n, K, "y_before.txt");
+   sprintf(buf, "y_%s_before_%02d.txt",
+      (g->mode == MODE_PREDICT) ? "predict" : "train",
+      g->fold);
+   writematrixf(g->y, n, K, buf);
 #endif
 
    CALLOCTEST(mean, g->K, sizeof(double));
@@ -754,9 +762,9 @@ int gmatrix_scale_y(gmatrix *g)
    {
       for(i = 0 ; i < n ; i++)
       {
-	 delta = g->y_orig[k * n + i] - mean[k];
+	 delta = g->y[k * n + i] - mean[k];
 	 mean[k] += delta / (i + 1);
-	 sd[k] += delta * (g->y_orig[k * n + i] - mean[k]);
+	 sd[k] += delta * (g->y[k * n + i] - mean[k]);
       }
       sd[k] = sqrt(sd[k] / (n - 1));
    }
@@ -764,10 +772,13 @@ int gmatrix_scale_y(gmatrix *g)
    /* now standardise Y */
    for(k = 0 ; k < K ; k++)
       for(i = 0 ; i < n ; i++)
-	 g->y_orig[k * n + i] = (g->y_orig[k * n + i] - mean[k]) / sd[k];
+	 g->y[k * n + i] = (g->y[k * n + i] - mean[k]) / sd[k];
 
 #ifdef DEBUG
-   writematrixf(g->y_orig, n, K, "y_after.txt");
+   sprintf(buf, "y_%s_after_%02d.txt",
+      (g->mode == MODE_PREDICT) ? "predict" : "train",
+      g->fold);
+   writematrixf(g->y, n, K, buf);
 #endif
 
    FREENULL(mean);
@@ -1027,6 +1038,15 @@ void gmatrix_set_ncurr(gmatrix *g)
    g->ncurr_recip = 1.0 / (g->ncurr - 1);
 }
 
+int gmatrix_make_y(gmatrix *g)
+{
+   return g->y_orig 
+      && gmatrix_split_y(g) 
+      && (!g->scaley || (g->scaley && gmatrix_scale_y(g)))
+      && (g->mode == MODE_PREDICT
+	    || (g->mode == MODE_TRAIN && gmatrix_make_fusion(g)));
+}
+
 int gmatrix_set_fold(gmatrix *g, int fold)
 {
    g->fold = fold;
@@ -1036,8 +1056,8 @@ int gmatrix_set_fold(gmatrix *g, int fold)
       return FAILURE;
    if(g->scalefile && !gmatrix_read_scaling(g, g->scalefile))
       return FAILURE;
-   return (g->y_orig) && gmatrix_split_y(g) && gmatrix_make_fusion(g);
-}
+   return gmatrix_make_y(g);
+ }
 
 /* zero the lp and adjust the lp-functions */
 void gmatrix_zero_model(gmatrix *g)
@@ -1081,6 +1101,7 @@ void gmatrix_zero_model(gmatrix *g)
 /* Create the fusion penalty matrix C from each Y matrix */
 int gmatrix_make_fusion(gmatrix *g)
 {
+   char buf[100];
    int nE = g->K * (g->K - 1) / 2, k, e;
    double s, t;
    
@@ -1117,10 +1138,9 @@ int gmatrix_make_fusion(gmatrix *g)
    // each kth column represents which edges task k is involved in
    // edges <- matrix(which(C != 0, arr.ind=TRUE)[,1], K - 1) - 1
 
-
-
 #ifdef DEBUG
-   if(!writematrixf(g->C, nE, g->K, "C.txt"))
+   sprintf(buf, "C_%02d.txt", g->fold);
+   if(!writematrixf(g->C, nE, g->K, buf))
       return FAILURE;
 #endif
 

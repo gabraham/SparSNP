@@ -280,6 +280,7 @@ int load_beta_sparse(double *beta, char *filename, int p)
       	 if(!feof(in))
 	 {
 	    fprintf(stderr, "error in reading FAM file '%s'\n", filename);
+	    FREENULL(tmp);
 	    return FAILURE;
 	 }
 	 break;

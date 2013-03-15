@@ -141,6 +141,7 @@ typedef struct gmatrix {
    double *diagCC;
    int *edges;
    int *pairs;
+   int scaley;
 } gmatrix;
 
 int sample_init(sample *);
@@ -179,6 +180,7 @@ int gmatrix_plink_check_pheno(gmatrix *g);
 int gmatrix_disk_nextcol_raw(gmatrix *g, sample *s, int j);
 int gmatrix_init_proportions(gmatrix *g);
 int rand_geno_proportional(gmatrix *g, int j);
+int gmatrix_make_y(gmatrix *g);
 
 void step_regular_linear(sample *s, gmatrix *g, int k,
    double *restrict d1_p, double *restrict d2_p);
