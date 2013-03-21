@@ -10,6 +10,7 @@
 
 #include "common.h"
 #include "sparsnp.h"
+#include "util.h"
 
 /* 
  * Find smallest lambda1 that makes all coefficients
@@ -101,8 +102,9 @@ int cd_gmatrix(gmatrix *g,
    double d1, d2, df1, df2, sv;
    double beta_pkj;
    int dofusion = K > 1 && gamma > 0;
-   //long numconverged = 0;
-   double lossmaxdelta = 0, lossold = 0, l1lossold;
+   double lossold = g->loss, flossold;
+   double lossoldk, l1lossoldk;
+   double fl1, fl2;
 
    if(!sample_init(&sm))
       return FAILURE;
@@ -110,14 +112,12 @@ int cd_gmatrix(gmatrix *g,
    CALLOCTEST(beta_old, (long)p1 * K, sizeof(double));
    CALLOCTEST(active_old, (long)p1 * K, sizeof(int));
 
-   for(j = p1K1 ; j >= 0 ; --j)
-      active_old[j] = g->active[j] = !g->ignore[j];
+   //for(j = p1K1 ; j >= 0 ; --j)
+     // active_old[j] = g->active[j] = !g->ignore[j];
 
    while(epoch <= maxepochs)
    {
       numactive = 0;
-      //numconverged = 0;
-      lossmaxdelta = 0;
 
       for(k = 0 ; k < K ; k++)
       {
@@ -130,14 +130,7 @@ int cd_gmatrix(gmatrix *g,
 	    beta_pkj = g->beta[pkj];
       	    beta_new = beta_old[pkj] = beta_pkj;
       	    
-      	    if(!g->active[pkj])
-	    {
-#ifdef DEBUG
-	       printf("skipping inactive k=%d j=%d\n", k, j);
-#endif
-	       //numconverged++;
-	    }
-	    else
+      	    if(g->active[pkj])
       	    {
 	       if(!g->nextcol(g, &sm, j, NA_ACTION_PROPORTIONAL))
 		  return FAILURE;
@@ -153,7 +146,8 @@ int cd_gmatrix(gmatrix *g,
 
 		  if(dofusion)
 		  {
-		     for(l = 0 ; l < K - 1 ; l++)
+		     /* K-1 iters */
+		     for(l = K - 2 ; l >= 0 ; --l)
 		     {
 	       	        e = g->edges[l + kK1];
 	       	        v1 = g->pairs[e];
@@ -171,8 +165,7 @@ int cd_gmatrix(gmatrix *g,
 	          s = beta_pkj - (d1 + df1) / (d2 + df2);
 		  beta_new = soft_threshold(s, lambda1) * l2recip;
 	       }
-	       else // neither l1 penalty nor fusion penalty applied to
-		    // intercept!
+	       else 
 		  s = beta_new = beta_pkj - d1 / d2;
 
 	       /* numerically close enough to zero */
@@ -181,95 +174,82 @@ int cd_gmatrix(gmatrix *g,
 
       	       delta = beta_new - beta_pkj;
       	       
-#ifdef DEBUG
-   if(j > 0)
-   printf("[k=%d j=%d] d1=%.6f d2=%.6f s=%.6f delta=%.6f\
- beta_old=%.6f beta_new=%.6f\n",
-		  k, j, d1, d2, s, delta, beta_pkj, beta_new);
-#endif
-	       lossold = g->lossK[k];
-	       l1lossold = g->l1lossK[k];
+      	       if(delta != 0)
+	       {
+		  lossoldk = g->lossK[k];
+		  l1lossoldk = g->l1lossK[k];
+		  updatelp(g, delta, sm.x, j, k); /* updates g->lossK[k] */
+		  g->l1lossK[k] = g->l1lossK[k] - fabs(beta_pkj) + fabs(beta_new);
+		  g->loss += g->lossK[k] - lossoldk 
+		     + g->l1lossK[k] - l1lossoldk;
+	       	  g->beta[pkj] = beta_new;
 
-	       updatelp(g, delta, sm.x, j, k);
-	       g->l1lossK[k] = g->l1lossK[k] - fabs(beta_pkj) + fabs(beta_new);
-
-      	       g->active[pkj] = (g->beta[pkj] != 0);
-
-	//       if((delta == 0 && beta_pkj == 0) 
-	//	     || fabs(delta) / fabs(beta_pkj) < 1e-4)
-	//	  numconverged++;
-
-	       // compute difference in linear+l1 loss, ignore fusion loss for now
-	       lossmaxdelta = fmax(
-		     fabs(lossold + lambda1 * l1lossold -
-			g->lossK[k] - lambda1 * g->l1lossK[k]),
-		     lossmaxdelta);
-
-	       //printf("lossold: %.6f l1lossold: %.6f lossK: %.6f l1lossK: %.6f lossmaxdelta: %.6f\n", lossold,
-	       //l1lossold, g->lossK[k], g->l1lossK[k], lossmaxdelta);
-
-	       g->beta[pkj] = beta_new;
-	       g->active[pkj] = (g->beta[pkj] != 0);
+		  if(dofusion)
+   	       	  {
+		     flossold = g->flossK[k];
+		     g->flossK[k] = 0;
+		     for(l = K - 2 ; l >= 0 ; --l)
+		     {
+			e = g->edges[l + kK1];
+			v1 = g->pairs[e];
+			v2 = g->pairs[e + nE];
+			fl1 = g->beta[j + v1 * p1] * g->C[e + v1 * nE];
+			fl2 = g->beta[j + v2 * p1] * g->C[e + v2 * nE];
+			g->flossK[k] += (fl1 * fl1 + fl2 * fl2);
+		     }
+		     g->flossK[k] *= gamma * 0.5;
+		     g->floss += g->flossK[k] - flossold;
+		  }
+	       }
+	       
+	       /* intercept always deemed active */
+	       g->active[pkj] = (j == 0) || (g->beta[pkj] != 0);
       	    }
 
 	    numactiveK[k] += g->active[pkj];
 	    numactive += g->active[pkj];
       	 }
-#ifdef DEBUG
-//   	 printf("[end of task k=%d] numactive=%d \
-// numconverged=%ld (excl. %d intercept/s)\n",
-//	    k, numactive - (K + 1), numconverged - (K + 1), K);
-//
-//	 printf("----------------\n");
-#endif
       }
 
-      /* 3-state machine for active set convergence */
-      if(lossmaxdelta < g->tol)
+      if(fabs(g->loss - lossold) / fabs(lossold) < g->tol)
 	 allconverged++;
 
-      /* prepare for another iteration over *all*
-       * (non-ignored) variables, store a copy of the
-       * current active set for later */
       if(allconverged == 1)
       {
-	 //if(g->verbose)
-	   // printf("prepare for final epoch\n");
-	 for(j = p1K1 ; j >= 0 ; --j)
-	 {
-	    active_old[j] = g->active[j];
-	    g->active[j] = !g->ignore[j];
-	 }
+         for(j = p1K1 ; j >= 0 ; --j)
+         {
+            active_old[j] = g->active[j];
+            g->active[j] = !g->ignore[j];
+         }
       }
       else if(allconverged == 2)
-	 /* 2nd iteration over all variables done, check
-	    whether active set has changed */
       {
-	 for(j = p1K1 ; j >= 0 ; --j)
-	    if(g->active[j] != active_old[j])
-	       break;
+         for(j = p1K1 ; j >= 0 ; --j)
+            if(g->active[j] != active_old[j])
+               break;
 
-	 /* all equal, terminate */
-	 if(j < 0)
-	 {
-	    if(g->verbose)
-	       printf("\n[%ld] terminating at epoch %d \
-		     with %d active vars\n", time(NULL), epoch, numactive);
-	    good = TRUE;
-	    break;
-	 }
+         if(j < 0)
+         {
+            if(g->verbose)
+	    {
+	       timestamp();
+               printf(" terminating at epoch %d \
+        	     with %d active vars\n", epoch, numactive);
+	    }
+            good = TRUE;
+            break;
+         }
 
-	 if(g->verbose)
-	    printf("active set changed, %d active vars\n",
-		  numactive);
+         if(g->verbose)
+            printf("active set changed, %d active vars\n",
+        	  numactive);
 
-	 /* active set has changed, iterate over
-	  * new active variables */
-	 for(j = p1K1 ; j >= 0 ; --j)
-	    active_old[j] = g->active[j];
-	 allconverged = 0;
+         for(j = p1K1 ; j >= 0 ; --j)
+            active_old[j] = g->active[j];
+         allconverged = 0;
       }     
       epoch++;
+      lossold = g->loss;
    }
    if(g->verbose)
       printf("\n");

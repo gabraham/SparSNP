@@ -104,7 +104,8 @@ int gmatrix_init(gmatrix *g, char *filename, int n, int p,
    g->edges = NULL;
    g->pairs = NULL;
    g->scaley = scaley;
-   g->tol = 1e-8;
+   g->flossK = NULL;
+   g->tol = 1e-6;
 
    seed = getpid();
    srand48(seed);
@@ -309,6 +310,7 @@ void gmatrix_free(gmatrix *g)
    FREENULL(g->pairs);
    FREENULL(g->lossK);
    FREENULL(g->l1lossK);
+   FREENULL(g->flossK);
 }
 
 /* y is a copy of y_orig as needed for crossval - in training y are the
@@ -1129,13 +1131,20 @@ int gmatrix_make_fusion(gmatrix *g)
    FREENULL(g->C);
    CALLOCTEST(g->C, nE * g->K, sizeof(double));
 
+   FREENULL(g->pairs);
    CALLOCTEST(g->pairs, nE * 2, sizeof(int));
+
+   FREENULL(g->edges);
    CALLOCTEST(g->edges, g->K * (g->K - 1), sizeof(int));
+
+   FREENULL(g->flossK);
+   CALLOCTEST(g->flossK, g->K, sizeof(double));
    
    if(!gennetwork(g->y, g->ncurr, g->K, g->corthresh, g->cortype, g->C,
 	    g->pairs, g->edges))
       return FAILURE;
 
+   FREENULL(g->diagCC);
    CALLOCTEST(g->diagCC, g->K, sizeof(double));
    
    for(k = 0 ; k < g->K ; k++)
@@ -1244,6 +1253,38 @@ int gmatrix_init_proportions(gmatrix *g)
    return SUCCESS;
 }
 
+void step_regular_logistic(sample *s, gmatrix *g, int k,
+   double *restrict d1_p, double *restrict d2_p)
+{
+   int i, n = g->ncurr, nki = n * k + n - 1;
+   double grad = 0, d2 = 0;
+   double *y = g->y,
+	  *lp_invlogit = g->lp_invlogit,
+	  *x = s->x;
+
+   /* compute 1st and 2nd derivatives wrt task k */
+   for(i = n - 1 ; i >= 0 ; --i)
+   {
+      grad += x[i] * (lp_invlogit[nki] - y[nki]);
+      d2 += x[i] * x[i] * lp_invlogit[nki] * (1 - lp_invlogit[nki]);
+      --nki;
+   }
+
+   grad *= g->ncurr_recip;
+   d2 *= g->ncurr_recip;
+
+   if(d2 == 0)
+   {
+      *d1_p = 0;
+      *d2_p = 1;
+   }
+   else
+   {
+      *d1_p = grad;
+      *d2_p = d2;
+   }
+}
+
 /* In linear regression, for standardised inputs x, the 2nd derivative is
  * always N since it is the sum of squares \sum_{i=1}^N x_{ij}^2 =
  * \sum_{i=1}^N 1 = N
@@ -1260,45 +1301,11 @@ void step_regular_linear(sample *s, gmatrix *g, int k,
    for(i = n - 1 ; i >= 0 ; --i)
    {
       grad += x[i] * err[nki];
-      nki--;
+      --nki;
    }
 
-   //*d1_p = grad;
-   //*d2_p = n - 1;
-   *d1_p = grad / n;
-   *d2_p = (double)(n - 1) / n;
-}
-
-void step_regular_logistic(sample *s, gmatrix *g, int k,
-   double *restrict d1_p, double *restrict d2_p)
-{
-   int i, n = g->ncurr, nki = n * k + n - 1;
-   double grad = 0, d2 = 0;
-   double *y = g->y,
-	  *lp_invlogit = g->lp_invlogit,
-	  *x = s->x;
-
-   /* compute 1st and 2nd derivatives wrt task k */
-   for(i = n - 1 ; i >= 0 ; --i)
-   {
-      grad += x[i] * (lp_invlogit[nki] - y[nki]);
-      d2 += x[i] * x[i] * lp_invlogit[nki] * (1 - lp_invlogit[nki]);
-      nki--;
-   }
-
-   grad *= g->ncurr_recip;
-   d2 *= g->ncurr_recip;
-
-   if(d2 == 0)
-   {
-      *d1_p = 0;
-      *d2_p = 1;
-   }
-   else
-   {
-      *d1_p = grad;
-      *d2_p = d2;
-   }
+   *d1_p = grad * g->ncurr_recip;
+   *d2_p = (n - 1) * g->ncurr_recip;
 }
 
 /*
@@ -1317,11 +1324,11 @@ void step_regular_sqrhinge(sample *s, gmatrix *g, int k,
    for(i = n - 1 ; i >= 0 ; --i)
    {
       grad += ylp_neg_y_ylp[nki] * x[i];
-      nki--;
+      --nki;
    }
 
-   *d1_p = grad;
-   *d2_p = n;
+   *d1_p = grad * g->ncurr_recip;
+   *d2_p = (n - 1) * g->ncurr_recip;
 }
 
 /* Update linear predictor and related variables.
@@ -1348,7 +1355,7 @@ void updatelp(gmatrix *g, const double update,
 	 lp[nki] += x[i] * update;
 	 err[nki] = lp[nki] - y[nki];
 	 loss += err[nki] * err[nki];
-	 nki--;
+	 --nki;
       }
    }
    else if(g->model == MODEL_LOGISTIC)
@@ -1359,7 +1366,7 @@ void updatelp(gmatrix *g, const double update,
 	 explp = exp(lp[nki]);
 	 lp_invlogit[nki] = explp / (1 + explp);
 	 loss += log(1 + explp) - y[nki] * lp[nki];
-	 nki--;
+	 --nki;
       }
    }
    else if(g->model == MODEL_SQRHINGE)
@@ -1369,14 +1376,14 @@ void updatelp(gmatrix *g, const double update,
 	 lp[nki] += x[i] * update;
 	 ylp = y[nki] * lp[nki] - 1;
 
-	 if(ylp < 0)
-	 {
+	 //if(ylp < 0)
+	 //{
 	    ylp_neg_y_ylp[nki] = y[nki] * ylp;
 	    loss += ylp * ylp;
-	 }
-	 else
-	    ylp_neg_y_ylp[nki] = 0;
-	 nki--;
+	 //}
+	 //else
+	   //ylp_neg_y_ylp[nki] = 0;
+	 --nki;
       }
    }
 

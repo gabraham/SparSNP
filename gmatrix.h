@@ -82,8 +82,10 @@ typedef struct gmatrix {
    int *ncurr_j;
    double *lossK;
    double *l1lossK;
+   double *flossK;
    double loss;
    double l1loss;
+   double floss;
    int p;
    int K;
    int i;

@@ -187,14 +187,6 @@ int opt_parse(int argc, char* argv[], Opt* opt)
 	    opt->predict_func = &linearphi1;
 	    opt->modeltype = MODELTYPE_REGRESSION;
 	 }
-	 else if(strcmp2(argv[i], MODEL_NAME_PCOR))
-	 {
-	    opt->inv_func = &linearinv;
-	    opt->step_func = &step_regular_linear;
-	    opt->model = MODEL_LINEAR;
-	    opt->predict_func = linearphi1;
-	    opt->modeltype = MODELTYPE_REGRESSION;
-	 }
 	 else
 	 {
 	    printf("model not available\n");

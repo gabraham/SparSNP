@@ -11,6 +11,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <math.h>
+#include <time.h>
 
 #include "util.h"
 #include "common.h"
@@ -305,5 +306,13 @@ int load_beta_sparse(double *beta, char *filename, int p)
 
    /* we don't check whether the phenotype file is well formed */
    return K;
+}
+
+void timestamp()
+{
+   time_t t = time(NULL);
+   char *s = asctime(localtime(&t));
+   s[strlen(s) - 1] = '\0';
+   printf("[%s]", s);
 }
 

@@ -22,7 +22,7 @@
 /* Size of cache itself, excluding the counters and mappings
  * Remember: there are g->folds caches, not just one, so total memory required
  * is CACHE_MEM_DEFAULT * g->nfolds.
- * */
+ */
 #define CACHE_MEM_DEFAULT 134217728 /* 2^27=128MB */
 
 #define MAX_STR_LEN 10001
@@ -52,12 +52,10 @@ typedef DTYPE dtype;
 #endif
 
 #define MODEL_LINEAR 1
-#define MODEL_PCOR 2
 #define MODEL_LOGISTIC 3
 #define MODEL_SQRHINGE 4
 
 #define MODEL_NAME_LINEAR "linear"
-#define MODEL_NAME_PCOR "pcor"
 #define MODEL_NAME_LOGISTIC "logistic"
 #define MODEL_NAME_SQRHINGE "sqrhinge"
 
