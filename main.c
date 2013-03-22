@@ -399,7 +399,8 @@ int main(int argc, char* argv[])
    gmatrix_free(&g);
    opt_free(&opt);
 
-   printf("Goodbye!\n");
+   timestamp();
+   printf(" Goodbye!\n");
 
    return ret == FAILURE ? EXIT_FAILURE : EXIT_SUCCESS;
 }

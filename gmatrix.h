@@ -158,6 +158,7 @@ typedef struct gmatrix {
    double gamma;
    double lambda2;
    double *lambda1;
+   long maxmem;
 } gmatrix;
 
 int sample_init(sample *);

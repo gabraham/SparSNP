@@ -107,8 +107,9 @@ int gmatrix_init(gmatrix *g, char *filename, int n, int p,
    g->pairs = NULL;
    g->scaley = scaley;
    g->flossK = NULL;
-   g->tol = 1e-5;
+   g->tol = 1e-6;
    g->gamma = gamma;
+   g->maxmem = maxmem;
 
    seed = getpid();
    srand48(seed);
@@ -182,14 +183,12 @@ int gmatrix_init(gmatrix *g, char *filename, int n, int p,
    if(encoded)
       MALLOCTEST(g->encbuf, sizeof(unsigned char) * g->nencb);
 
-   MALLOCTEST(g->xcaches, g->nfolds * sizeof(cache));
-   for(i = 0 ; i < g->nfolds ; i++)
-   {
-      /* TODO: uses up g->n cells even though we don't really need all of
-       * them, since in crossval there will be fewer training/test samples,
-       * but it's easier than figuring out exactly how many to use */
-      cache_init(g->xcaches + i, g->n, g->p + 1, maxmem);
-   }
+   //MALLOCTEST(g->xcaches, g->nfolds * sizeof(cache));
+   //for(i = 0 ; i < g->nfolds ; i++)
+   //   cache_init(g->xcaches + i, g->n, g->p + 1, maxmem);
+
+   MALLOCTEST(g->xcaches, sizeof(cache));
+   cache_init(g->xcaches, g->n, g->p + 1, maxmem);
 
    g->nextcol = gmatrix_disk_nextcol;
    if(!gmatrix_reset(g))
@@ -265,7 +264,7 @@ int gmatrix_setup_folds(gmatrix *g)
 
 void gmatrix_free(gmatrix *g)
 {
-   int i;
+   //int i;
    if(g->file)
    {
       fclose(g->file);
@@ -301,11 +300,15 @@ void gmatrix_free(gmatrix *g)
    FREENULL(g->active);
    FREENULL(g->numnz);
    
+   //if(g->xcaches)
+   //{
+   //   for(i = 0 ; i < g->nfolds ; i++)
+   //      cache_free(g->xcaches + i);
+   //}
+
    if(g->xcaches)
-   {
-      for(i = 0 ; i < g->nfolds ; i++)
-	 cache_free(g->xcaches + i);
-   }
+      cache_free(g->xcaches);
+
    FREENULL(g->xcaches);
 
    mapping_free(g->map);
@@ -510,7 +513,8 @@ int gmatrix_disk_nextcol(gmatrix *g, sample *s, int j, int na_action)
       return SUCCESS;
    }
 
-   ret = cache_get(g->xcaches + g->fold, j, &xtmp);
+   //ret = cache_get(g->xcaches + g->fold, j, &xtmp);
+   ret = cache_get(g->xcaches, j, &xtmp);
 
    if(ret == SUCCESS)
    {
@@ -1061,6 +1065,8 @@ int gmatrix_set_fold(gmatrix *g, int fold)
    g->fold = fold;
    gmatrix_set_ncurr(g);
 
+   cache_init(g->xcaches, g->n, g->p + 1, g->maxmem);
+
    if(!gmatrix_init_lp(g))
       return FAILURE;
    if(g->scalefile && !gmatrix_read_scaling(g, g->scalefile))
@@ -1449,6 +1455,8 @@ int cache_get(cache *ca, int j, double **x)
 int cache_init(cache *ca, int n, int p, long maxmem)
 {
    int i;
+
+   cache_free(ca);
 
    ca->nbins = (int)(maxmem / sizeof(double) / n);
    ca->n = n;

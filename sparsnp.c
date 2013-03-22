@@ -178,7 +178,10 @@ int cd_gmatrix(gmatrix *g,
       	       delta = beta_new - beta_pkj;
 
 	       if(delta != 0)
+	       {
 		  updateloss(g, beta_pkj, delta, sm.x, j, k, lambda1, gamma, nE); 
+		  //g->beta[pkj] = beta_new;
+	       }
       	       
 	       /* intercept always deemed active */
 	       g->active[pkj] = (j == 0) || (g->beta[pkj] != 0);
@@ -192,7 +195,10 @@ int cd_gmatrix(gmatrix *g,
       if(fabs(g->loss - lossold) / fabs(lossold) < g->tol)
 	 allconverged++;
       else
+      {
 	 allconverged = 0;
+	 printf("%d loss: %.6f lossold: %.6f\n", epoch, g->loss, lossold);
+      }
 
       if(allconverged == 1)
       {
@@ -207,7 +213,8 @@ int cd_gmatrix(gmatrix *g,
 	 if(g->verbose)
 	 {
 	    timestamp();
-	    printf(" resetting activeset at epoch %d\n", epoch);
+	    printf(" resetting activeset at epoch %d, loss: %.6f floss: %.6f\n",
+	       epoch, g->loss, g->floss);
 	 }
 	 mult = 2;
       }
@@ -257,9 +264,11 @@ int cd_gmatrix(gmatrix *g,
          allconverged = 0;
 	 mult *= 2;
       }     
+
       epoch++;
       lossold = g->loss;
    }
+
    if(g->verbose)
       printf("\n");
 
@@ -275,26 +284,26 @@ void updateloss(gmatrix *g, double beta_pkj,
 {
    double lossoldk = g->lossK[k];
    double l1lossoldk = g->l1lossK[k];
-   double tmp, flossold;
+   double flossold;
    double beta_new = beta_pkj + delta;
-   long pkj = (long)(g->p + 1) * k + j;
    int v1, v2, e, l, K = g->K;
    int kK1 = k * (K - 1);
    int p1 = g->p + 1;
    double fl1, fl2;
+   long pkj = (long)p1 * k + j;
 
    updatelp(g, delta, x, j, k); /* updates g->lossK[k] */
+   g->beta[pkj] = beta_new;
 
    if(j > 0)
       g->l1lossK[k] += fabs(beta_new) - fabs(beta_pkj);
 
-   tmp = g->loss;
    g->loss += g->lossK[k] - lossoldk + lambda1 * (g->l1lossK[k] - l1lossoldk);
-   g->beta[pkj] = beta_new;
 
    if(g->dofusion)
    {
       flossold = g->flossK[k];
+
       g->flossK[k] = 0;
       for(l = K - 2 ; l >= 0 ; --l)
       {
@@ -307,7 +316,7 @@ void updateloss(gmatrix *g, double beta_pkj,
       }
       g->flossK[k] *= gamma * 0.5;
       g->floss += g->flossK[k] - flossold;
-      g->loss += g->floss;
+      //g->loss += g->floss;
    }
 
 }
