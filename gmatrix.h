@@ -64,6 +64,11 @@ typedef struct sample {
    double *values;
 } sample;
 
+typedef struct pair {
+   int index;
+   double value;
+} pair;
+
 typedef struct gmatrix {
    char* filename;
    FILE* file;
@@ -148,6 +153,11 @@ typedef struct gmatrix {
    int *pairs;
    int scaley;
    double tol;
+   pair *grad_array;
+   int dofusion;
+   double gamma;
+   double lambda2;
+   double *lambda1;
 } gmatrix;
 
 int sample_init(sample *);
@@ -157,7 +167,8 @@ int gmatrix_init(gmatrix *g, char *filename, int n, int p,
       short encoded, char *folds_ind_file,
       short mode, char *subsample_file,
       char *famfilename, int scaley, int unscale_beta,
-      int cortype, int corthresh, int verbose, long maxmem);
+      int cortype, int corthresh, int verbose, long maxmem,
+      double gamma);
 int gmatrix_reset(gmatrix *);
 void gmatrix_free(gmatrix *);
 int gmatrix_disk_nextcol(gmatrix *g, sample *sm, int skip, int na_action);
@@ -206,4 +217,6 @@ void count_cases(gmatrix* g);
 int rand_geno();
 long gmatrix_lrand();
 double gmatrix_drand();
+void gmatrix_sort_grad_array(gmatrix *g);
+int grad_array_compare(const void *a, const void *b);
 

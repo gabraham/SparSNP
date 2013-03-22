@@ -124,6 +124,10 @@ int opt_parse(int argc, char* argv[], Opt* opt);
 int make_lambda1path(Opt *opt, gmatrix *g);
 int run(Opt *opt, gmatrix *g);
 void zero_model(gmatrix *g);
+void updateloss(gmatrix *g, double beta_pkj,
+   double delta, double *x,
+   int j, int k, double lambda1, double gamma, int nE);
+
 
 //double step_regular_linear(sample *s, gmatrix *g);
 //double step_regular_logistic(sample *s, gmatrix *g);

@@ -24,6 +24,7 @@ double get_lambda1max_gmatrix(gmatrix *g,
    long p1 = g->p + 1;
    int k, K = g->K;
    double d1, d2, s, zmax = 0, beta_new;
+   long jp1k;
    sample sm;
 
    if(!sample_init(&sm))
@@ -42,7 +43,8 @@ double get_lambda1max_gmatrix(gmatrix *g,
          s += g->y[n * k + i];
    
       beta_new = inv_func(s / n);
-      updatelp(g, beta_new, sm.x, 0, k);
+      //updatelp(g, beta_new, sm.x, 0, k);
+      updateloss(g, 0, beta_new, sm.x, 0, k, 0, 0, 0); 
 
       if(g->verbose)
 	 printf("[k=%d] intercept: %.15f (%d samples)\n", k, beta_new, n);
@@ -52,7 +54,8 @@ double get_lambda1max_gmatrix(gmatrix *g,
        * first because it's not penalised. */
       for(j = 1 ; j < p1; j++)
       {
-         if(g->ignore[p1 * k + j])
+	 jp1k = j + p1 * k;
+         if(g->ignore[jp1k])
 	    continue;
 	    
          if(!g->nextcol(g, &sm, j, NA_ACTION_PROPORTIONAL))
@@ -61,6 +64,7 @@ double get_lambda1max_gmatrix(gmatrix *g,
          step_func(&sm, g, k, &d1, &d2);
 	 s = fabs(d1 / d2);
          zmax = (zmax < s) ? s : zmax;
+	 g->grad_array[jp1k].value = s;
       } 
    
       /* intercept */
@@ -101,10 +105,9 @@ int cd_gmatrix(gmatrix *g,
    int nE = K * (K - 1) / 2;
    double d1, d2, df1, df2, sv;
    double beta_pkj;
-   int dofusion = K > 1 && gamma > 0;
-   double lossold = g->loss, flossold;
-   double lossoldk, l1lossoldk;
-   double fl1, fl2;
+   double lossold = g->loss;
+   int mult = 2, idx;
+   int mx;
 
    if(!sample_init(&sm))
       return FAILURE;
@@ -112,7 +115,7 @@ int cd_gmatrix(gmatrix *g,
    CALLOCTEST(beta_old, (long)p1 * K, sizeof(double));
    CALLOCTEST(active_old, (long)p1 * K, sizeof(int));
 
-   //for(j = p1K1 ; j >= 0 ; --j)
+   for(j = p1K1 ; j >= 0 ; --j)
      // active_old[j] = g->active[j] = !g->ignore[j];
 
    while(epoch <= maxepochs)
@@ -134,7 +137,7 @@ int cd_gmatrix(gmatrix *g,
       	    {
 	       if(!g->nextcol(g, &sm, j, NA_ACTION_PROPORTIONAL))
 		  return FAILURE;
-
+	       
       	       step_func(&sm, g, k, &d1, &d2);
 
 	       /* don't penalise intercept */
@@ -144,7 +147,7 @@ int cd_gmatrix(gmatrix *g,
 		  df1 = 0;
 		  df2 = 0;
 
-		  if(dofusion)
+		  if(g->dofusion)
 		  {
 		     /* K-1 iters */
 		     for(l = K - 2 ; l >= 0 ; --l)
@@ -173,35 +176,10 @@ int cd_gmatrix(gmatrix *g,
 		  beta_new = 0;
 
       	       delta = beta_new - beta_pkj;
-      	       
-      	       if(delta != 0)
-	       {
-		  lossoldk = g->lossK[k];
-		  l1lossoldk = g->l1lossK[k];
-		  updatelp(g, delta, sm.x, j, k); /* updates g->lossK[k] */
-		  g->l1lossK[k] = g->l1lossK[k] - fabs(beta_pkj) + fabs(beta_new);
-		  g->loss += g->lossK[k] - lossoldk 
-		     + g->l1lossK[k] - l1lossoldk;
-	       	  g->beta[pkj] = beta_new;
 
-		  if(dofusion)
-   	       	  {
-		     flossold = g->flossK[k];
-		     g->flossK[k] = 0;
-		     for(l = K - 2 ; l >= 0 ; --l)
-		     {
-			e = g->edges[l + kK1];
-			v1 = g->pairs[e];
-			v2 = g->pairs[e + nE];
-			fl1 = g->beta[j + v1 * p1] * g->C[e + v1 * nE];
-			fl2 = g->beta[j + v2 * p1] * g->C[e + v2 * nE];
-			g->flossK[k] += (fl1 * fl1 + fl2 * fl2);
-		     }
-		     g->flossK[k] *= gamma * 0.5;
-		     g->floss += g->flossK[k] - flossold;
-		  }
-	       }
-	       
+	       if(delta != 0)
+		  updateloss(g, beta_pkj, delta, sm.x, j, k, lambda1, gamma, nE); 
+      	       
 	       /* intercept always deemed active */
 	       g->active[pkj] = (j == 0) || (g->beta[pkj] != 0);
       	    }
@@ -213,14 +191,25 @@ int cd_gmatrix(gmatrix *g,
 
       if(fabs(g->loss - lossold) / fabs(lossold) < g->tol)
 	 allconverged++;
+      else
+	 allconverged = 0;
 
       if(allconverged == 1)
       {
+	 /* reset active-set to contain all (non monomorphic) coordinates, in
+	  * order to check whether non-active coordinates become active again 
+	  * or vice-versa */
          for(j = p1K1 ; j >= 0 ; --j)
          {
             active_old[j] = g->active[j];
             g->active[j] = !g->ignore[j];
          }
+	 if(g->verbose)
+	 {
+	    timestamp();
+	    printf(" resetting activeset at epoch %d\n", epoch);
+	 }
+	 mult = 2;
       }
       else if(allconverged == 2)
       {
@@ -233,20 +222,40 @@ int cd_gmatrix(gmatrix *g,
             if(g->verbose)
 	    {
 	       timestamp();
-               printf(" terminating at epoch %d \
-        	     with %d active vars\n", epoch, numactive);
+               printf(" terminating at epoch %d with %d active vars\n",
+		  epoch, numactive);
 	    }
             good = TRUE;
             break;
          }
 
          if(g->verbose)
-            printf("active set changed, %d active vars\n",
-        	  numactive);
+	 {
+	    timestamp();
+            printf(" active set changed, %d active vars, mx:", numactive);
+	 }
 
+	 /* keep iterating over existing active set, keep track
+	  * of the current active set */
          for(j = p1K1 ; j >= 0 ; --j)
             active_old[j] = g->active[j];
+
+	 /* double the size of the active set */
+	 for(k = 0 ; k < K ; k++)
+	 {
+	    mx = fminl(mult * numactiveK[k], p1);
+	    printf("%d ", mx);
+	    for(j = mx - 1 ; j >= 0 ; --j)
+	    {
+	       idx = g->grad_array[j + k * p1].index + k * p1;
+	       g->active[idx] = !g->ignore[idx];
+	    }
+	 }
+
+	 printf("\n");
+
          allconverged = 0;
+	 mult *= 2;
       }     
       epoch++;
       lossold = g->loss;
@@ -260,3 +269,45 @@ int cd_gmatrix(gmatrix *g,
    return good ? numactive : CDFAILURE;
 }
 
+void updateloss(gmatrix *g, double beta_pkj,
+   double delta, double *x,
+   int j, int k, double lambda1, double gamma, int nE)
+{
+   double lossoldk = g->lossK[k];
+   double l1lossoldk = g->l1lossK[k];
+   double tmp, flossold;
+   double beta_new = beta_pkj + delta;
+   long pkj = (long)(g->p + 1) * k + j;
+   int v1, v2, e, l, K = g->K;
+   int kK1 = k * (K - 1);
+   int p1 = g->p + 1;
+   double fl1, fl2;
+
+   updatelp(g, delta, x, j, k); /* updates g->lossK[k] */
+
+   if(j > 0)
+      g->l1lossK[k] += fabs(beta_new) - fabs(beta_pkj);
+
+   tmp = g->loss;
+   g->loss += g->lossK[k] - lossoldk + lambda1 * (g->l1lossK[k] - l1lossoldk);
+   g->beta[pkj] = beta_new;
+
+   if(g->dofusion)
+   {
+      flossold = g->flossK[k];
+      g->flossK[k] = 0;
+      for(l = K - 2 ; l >= 0 ; --l)
+      {
+	 e = g->edges[l + kK1];
+	 v1 = g->pairs[e];
+	 v2 = g->pairs[e + nE];
+	 fl1 = g->beta[j + v1 * p1] * g->C[e + v1 * nE];
+	 fl2 = g->beta[j + v2 * p1] * g->C[e + v2 * nE];
+	 g->flossK[k] += (fl1 * fl1 + fl2 * fl2);
+      }
+      g->flossK[k] *= gamma * 0.5;
+      g->floss += g->flossK[k] - flossold;
+      g->loss += g->floss;
+   }
+
+}

@@ -33,10 +33,12 @@ int gmatrix_init(gmatrix *g, char *filename, int n, int p,
       short encoded, char *folds_ind_file,
       short mode, char *subset_file, 
       char *famfilename, int scaley, int unscale_beta,
-      int cortype, int corthresh, int verbose, long maxmem)
+      int cortype, int corthresh, int verbose, long maxmem,
+      double gamma)
 {
-   int i, j, p1;
+   int i, j, k, p1;
    long seed = 0;
+   long p1K;
 
    g->verbose = verbose;
    g->file = NULL;
@@ -105,7 +107,8 @@ int gmatrix_init(gmatrix *g, char *filename, int n, int p,
    g->pairs = NULL;
    g->scaley = scaley;
    g->flossK = NULL;
-   g->tol = 1e-6;
+   g->tol = 1e-5;
+   g->gamma = gamma;
 
    seed = getpid();
    srand48(seed);
@@ -129,13 +132,7 @@ int gmatrix_init(gmatrix *g, char *filename, int n, int p,
 	 return FAILURE;
 
       gmatrix_plink_check_pheno(g);
-      //if(scaley && !gmatrix_scale_y(g))
-	// return FAILURE;
    }
-
-   /* sensible default */
-   //if(g->K <= 0)
-     // g->K = MAX_NUM_PHENO;
 
    if(g->mode == MODE_TRAIN && g->modeltype == MODELTYPE_CLASSIFICATION)
    {
@@ -148,7 +145,22 @@ int gmatrix_init(gmatrix *g, char *filename, int n, int p,
 
    srand48(time(NULL));
 
-   CALLOCTEST(g->beta_orig, (long)p1 * g->K, sizeof(double));
+   p1K = (long)p1 * g->K;
+   CALLOCTEST(g->beta_orig, p1K, sizeof(double));
+   CALLOCTEST(g->grad_array, p1K, sizeof(pair));
+
+   for(k = 0 ; k < g->K ; k++)
+   {
+      g->grad_array[k * p1].index = 0;
+      g->grad_array[k * p1].value = INFINITY;
+
+      for(j = 1 ; j < p1 ; j++)
+      {
+	 g->grad_array[j + k * p1].index = j;
+	 g->grad_array[j + k * p1].value = 0;
+      }
+   }
+
    CALLOCTEST(g->lossK, g->K, sizeof(double));
    CALLOCTEST(g->l1lossK, g->K, sizeof(double));
    
@@ -205,11 +217,6 @@ int gmatrix_init(gmatrix *g, char *filename, int n, int p,
       g->active[j] = !g->ignore[j];
 
    gmatrix_set_ncurr(g);
-   
-//   if(g->mode == MODE_TRAIN && g->y_orig 
-//      && !(gmatrix_split_y(g) 
-//      && gmatrix_make_fusion(g)))
-//	 return FAILURE;
    
    gmatrix_make_y(g);
 
@@ -311,6 +318,7 @@ void gmatrix_free(gmatrix *g)
    FREENULL(g->lossK);
    FREENULL(g->l1lossK);
    FREENULL(g->flossK);
+   FREENULL(g->grad_array);
 }
 
 /* y is a copy of y_orig as needed for crossval - in training y are the
@@ -453,17 +461,8 @@ int rand_geno_proportional(gmatrix *g, int j)
 int gmatrix_disk_nextcol_raw(gmatrix *g, sample *s, int j)
 {
    int i, n1 = g->n - 1, n = g->n;
-   //int ret;
    off_t seek;
-   
-   /*ret = cache_get(g->xcaches + g->fold, j, &xtmp);
-
-   if(ret == SUCCESS)
-   {
-      s->x = xtmp;
-      return SUCCESS;
-   }*/
-
+ 
    /* Get data from disk and unpack, skip y */
    seek = (off_t)j * g->nseek + g->offset;
    FSEEKOTEST(g->file, seek, SEEK_SET);
@@ -474,7 +473,6 @@ int gmatrix_disk_nextcol_raw(gmatrix *g, sample *s, int j)
    for(i = n1 ; i >= 0 ; --i)
       s->x[i] = g->tmp[i];
    s->n = n;
-   //s->x = xtmp;
 
    return SUCCESS;
 }
@@ -639,7 +637,8 @@ inputs in gmatrix_disk_nextcol\n");
 	       if(g->folds_ind[f + i])
 	       {
 	          d = g->tmp[i];
-	          xtmp[k--] = (d == X_LEVEL_NA ? (double)rand_geno() : (double)d);
+	          xtmp[k--] = 
+		     (d == X_LEVEL_NA ? (double)rand_geno() : (double)d);
 		  ngood++;
 	       }
 	    }
@@ -1045,7 +1044,6 @@ void gmatrix_set_ncurr(gmatrix *g)
    {
       g->ncurr = g->n; 
    }
-   /*g->ncurr_recip = 1.0 / g->ncurr;*/
    g->ncurr_recip = 1.0 / (g->ncurr - 1);
 }
 
@@ -1125,8 +1123,13 @@ int gmatrix_make_fusion(gmatrix *g)
    int nE = g->K * (g->K - 1) / 2, k, e;
    double s, t;
    
-   if(g->K == 1)
+   if(g->K == 1 || g->gamma <= 0)
+   {
+      g->dofusion = FALSE;
       return SUCCESS;
+   }
+
+   g->dofusion = TRUE;
 
    FREENULL(g->C);
    CALLOCTEST(g->C, nE * g->K, sizeof(double));
@@ -1375,14 +1378,8 @@ void updatelp(gmatrix *g, const double update,
       {
 	 lp[nki] += x[i] * update;
 	 ylp = y[nki] * lp[nki] - 1;
-
-	 //if(ylp < 0)
-	 //{
-	    ylp_neg_y_ylp[nki] = y[nki] * ylp;
-	    loss += ylp * ylp;
-	 //}
-	 //else
-	   //ylp_neg_y_ylp[nki] = 0;
+	 ylp_neg_y_ylp[nki] = y[nki] * ylp;
+	 loss += ylp * ylp;
 	 --nki;
       }
    }
@@ -1492,5 +1489,29 @@ void count_cases(gmatrix *g)
    int i = 0;
    for(i = g->n * g->K - 1 ; i >= 0 ; --i)
       g->ncases += g->y_orig[i] == 1;
+}
+
+int grad_array_compare(const void *a, const void *b)
+{
+   double ax = ((const struct pair*)a)->value;
+   double bx = ((const struct pair*)b)->value;
+
+   if(ax > bx)
+      return -1;
+   else if(ax < bx)
+      return 1;
+   else
+      return 0;
+}
+
+void gmatrix_sort_grad_array(gmatrix *g)
+{
+   int k;
+   int p1 = g->p + 1;
+
+   for(k = 0 ; k < g->K ; k++)
+   {
+      qsort(g->grad_array + k * p1, p1, sizeof(pair), grad_array_compare);
+   }
 }
 

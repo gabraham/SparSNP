@@ -43,6 +43,8 @@ int make_lambda1path(Opt *opt, gmatrix *g)
    }
    opt->lambda1path[0] = opt->lambda1max;
 
+   gmatrix_sort_grad_array(g);
+
    opt->lambda1min = opt->lambda1max * opt->l1minratio;
    opt->lambda1path[opt->nlambda1 - 1] = opt->lambda1min;
    s = (log10(opt->lambda1max) - log10(opt->lambda1min)) / (opt->nlambda1 - 1);
@@ -244,7 +246,7 @@ int do_train(gmatrix *g, Opt *opt, char tmp[])
 	    opt->subset_file,
 	    opt->famfilename, opt->scaley, opt->unscale_beta,
 	    opt->cortype, opt->corthresh, opt->verbose,
-	    opt->maxmem))
+	    opt->maxmem, opt->gamma))
       return FAILURE;
 
    printf("%d CV folds\n", g->nfolds);
@@ -312,7 +314,8 @@ int do_predict(gmatrix *g, Opt *opt, char tmp[])
 	    opt->folds_ind_file, opt->mode,
 	    opt->subset_file,
 	    opt->famfilename, opt->scaley, opt->unscale_beta,
-	    opt->cortype, opt->corthresh, opt->verbose, opt->maxmem))
+	    opt->cortype, opt->corthresh, opt->verbose, opt->maxmem,
+	    opt->gamma))
       return FAILURE;
 
    if(g->nfolds > 1)
@@ -395,6 +398,8 @@ int main(int argc, char* argv[])
 
    gmatrix_free(&g);
    opt_free(&opt);
+
+   printf("Goodbye!\n");
 
    return ret == FAILURE ? EXIT_FAILURE : EXIT_SUCCESS;
 }
