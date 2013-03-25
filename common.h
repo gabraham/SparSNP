@@ -23,7 +23,7 @@
  * Remember: there are g->folds caches, not just one, so total memory required
  * is CACHE_MEM_DEFAULT * g->nfolds.
  */
-#define CACHE_MEM_DEFAULT 134217728 /* 2^27=128MB */
+#define CACHE_MEM_DEFAULT 268435456 /* 2^28=128MB */
 
 #define MAX_STR_LEN 10001
 

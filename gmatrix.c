@@ -188,6 +188,12 @@ int gmatrix_init(gmatrix *g, char *filename, int n, int p,
    //   cache_init(g->xcaches + i, g->n, g->p + 1, maxmem);
 
    MALLOCTEST(g->xcaches, sizeof(cache));
+   g->xcaches->mapping = NULL;
+   g->xcaches->revmapping = NULL;
+   g->xcaches->counter = NULL;
+   g->xcaches->x = NULL;
+   g->xcaches->tmp = NULL;
+
    cache_init(g->xcaches, g->n, g->p + 1, maxmem);
 
    g->nextcol = gmatrix_disk_nextcol;
