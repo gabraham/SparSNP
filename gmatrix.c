@@ -57,6 +57,7 @@ int gmatrix_init(gmatrix *g, char *filename, int n, int p,
    g->lossK = NULL;
    g->l1lossK = NULL;
    g->loss = 0;
+   g->floss = 0;
    g->err = NULL;
    g->lp = NULL;
    g->err = NULL;
@@ -1124,6 +1125,7 @@ void gmatrix_zero_model(gmatrix *g)
    
    g->loss = 0;
    g->l1loss = 0;
+   g->floss = 0;
 }
 
 /* Create the fusion penalty matrix C from each Y matrix */
@@ -1150,7 +1152,7 @@ int gmatrix_make_fusion(gmatrix *g)
    CALLOCTEST(g->pairs, nE * 2, sizeof(int));
 
    FREENULL(g->edges);
-   CALLOCTEST(g->edges, g->K * (g->K - 1), sizeof(int));
+   CALLOCTEST(g->edges, (g->K - 1) * g->K, sizeof(int));
 
    FREENULL(g->flossK);
    CALLOCTEST(g->flossK, g->K, sizeof(double));

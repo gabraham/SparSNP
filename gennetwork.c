@@ -19,6 +19,8 @@
 /*
  * Creates the nE by nV (num edges by num vertices/tasks) fusion penalty
  * matrix
+ * 
+ * pairs is an nE * 2 matrix of which tasks are in which pair
  */
 int gennetwork(double *y, int n, int K,
    double corthresh, int cortype, double *C, int *pairs, int *edges)
