@@ -11,7 +11,7 @@
 # 
 
 usage <- paste("usage: eval.R [title=<title>]",
-      "[prev=<K>] [h2l=<V>] [mode=discovery|validation]",
+      "[prev=<K>] [h2l=<V>] [mode=discovery|validation] [taskfile=<file>]",
       "(prev must be specified if h2l is specified)")
 
 args <- commandArgs(TRUE)
@@ -47,6 +47,12 @@ if(exists("h2l")) {
       stop(usage)
 } else {
    h2l <- NULL
+}
+
+if(!exists("taskfile", mode="character")) {
+   tasks <- NULL
+} else {
+   tasks <- scan(taskfile, what=character())
 }
 
 best <- NULL
@@ -105,9 +111,9 @@ evalpred.crossval <- function(type=NULL, dir=NULL)
    
    cv.d <- pred <- NULL
    cv <- lapply(folds, function(fold) {
-      y <- as.matrix(read.table(sprintf("y.%02d", fold), sep=","))
+      Y <- as.matrix(read.table(sprintf("y.%02d", fold), sep=","))
       
-      if(length(unique(y)) == 1) {
+      if(length(unique(Y)) == 1) {
 	 stop("only one unique value of y found, cannot evaluate prediction",
 	    "(file=", sprintf("y.%02d", fold), ")")
       }
@@ -127,22 +133,25 @@ evalpred.crossval <- function(type=NULL, dir=NULL)
       # Don't count the intercept, except for first #nonzero
    
       res <- if(type == "AUC") {
-	 y <- cbind(as.numeric(as.character(factor(y, labels=c(0, 1)))))
+	 #y <- cbind(as.numeric(as.character(factor(y, labels=c(0, 1)))))
+	 y <- apply(Y, 2, function(m) {
+	    as.numeric(as.character(factor(m, labels=c(0, 1))))
+	 })
 	 apply(pr, 3, function(p) {
 	    auc(p, y)
 	 })
       } else {
 	 apply(pr, 3, function(p) {
-	    r2(p, y)
+	    r2(p, Y)
 	 })
       }
       
       # apply messes up orientation when res is a vector
       res <- t(rbind(res)) 
 
-      if(ncol(y) > 1) {
-	 colnames(res) <- paste("Measure", 1:ncol(y), sep="_")
-	 colnames(nz) <- paste("NonZero", 1:ncol(y), sep="_")
+      if(ncol(Y) > 1) {
+	 colnames(res) <- paste("Measure", 1:ncol(Y), sep="_")
+	 colnames(nz) <- paste("NonZero", 1:ncol(Y), sep="_")
       } else {
 	 colnames(res) <- "Measure"
 	 colnames(nz) <- "NonZero"
@@ -291,7 +300,6 @@ extract.params <- function(nm)
 
 model <- extract.params("MODEL")
 nfolds <- as.integer(extract.params("NFOLDS"))
-nreps <- as.integer(extract.params("NREPS"))
 
 measure <- if(model == "sqrhinge" || model == "logistic") {
    "AUC"
@@ -307,6 +315,9 @@ if(measure != "AUC" && !is.null(prev))
 }
 
 dirs <- list.files(pattern="^crossval[[:digit:]]+$")
+#dirs <- paste("crossval", 1:3, sep="")
+nreps <- length(dirs)
+
 for(d in dirs)
 {
    setwd(d)
@@ -372,7 +383,11 @@ if(numtasks > 1) {
 }
 
 d3 <- d3[d3$NonZero > 0 ,]
-d3$Task <- factor(d3$Task)
+if(is.null(tasks)) {
+   d3$Task <- factor(d3$Task)
+} else {
+   d3$Task <- factor(d3$Task, labels=tasks)
+}
 
 #g <- ggplot(d3, aes(x=NonZero, y=Measure, colour=Task, line=Task))
 #g <- g + geom_smooth(method="loess", size=1.5) + scale_x_log10()   

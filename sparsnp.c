@@ -91,7 +91,6 @@ int cd_gmatrix(gmatrix *g,
       const double trunc,
       int *numactiveK)
 {
-   char buf[100];
    const int p1 = g->p + 1, K = g->K;
    int j, k, allconverged = 0, numactive = 0,
        epoch = 1,
@@ -109,12 +108,10 @@ int cd_gmatrix(gmatrix *g,
    double lossold = g->loss;
    int mult = 2, idx;
    int mx;
-   double fl1, fl2;
    double *BCT = NULL;
    int i;
    double tmp;
    int m;
-   long jep1;
 
    if(!sample_init(&sm))
       return FAILURE;
@@ -221,60 +218,20 @@ int cd_gmatrix(gmatrix *g,
 
       if(g->dofusion)
       {
-	 //g->floss = 0;
-	 //for(k = 0 ; k < K ; k++)
-	 //{
-	 //   kK1 = k * (K - 1);
-
-	 //   g->flossK[k] = 0;
-	 //   for(j = 1 ; j < p1 ; j++)
-	 //   {
-	 //      for(l = 0 ; l < K - 1 ; l++)
-	 //      {
-	 //         e = g->edges[l + kK1];
-	 //         v1 = g->pairs[e];
-	 //         v2 = g->pairs[e + nE];
-	 //         fl1 = g->beta[j + v1 * p1] * g->C[e + v1 * nE];
-	 //         fl2 = g->beta[j + v2 * p1] * g->C[e + v2 * nE];
-	 //         g->flossK[k] += (fl1 * fl1 + fl2 * fl2);
-	 //         printf("k:%d j:%d l:%d e:%d v1:%d v2:%d id1:%d id2:%d C1:%d C2:%d fl1:%.6f fl2:%.6f\n",
-	 //            k, j, l, e, v1, v2, j + v1 * p1, j + v2 * p1,
-	 //            e + v1 * nE, e + v2 * nE, fl1, fl2);
-	 //      }
-	 //   }
-	 //   g->floss += g->flossK[k];
-	 //   printf("g->flossK[%d]: %.6f\n", k, g->flossK[k]);
-	 //}
 	 g->floss = 0;
-	 for(j = 1 ; j < p1 ; j++)
+	 for(j = p1 - 1 ; j >= 1 ; --j)
 	 {
-	    for(e = 0 ; e < nE ; e++)
+	    for(e = nE - 1 ; e >= 0 ; --e)
 	    {
-	       k = 0;
-	       jep1 = (long)j + e * p1;
-	       BCT[jep1] = g->beta[j + k * p1] * g->C[e + k * nE];
-	       for(k = 1 ; k < K ; k++)
-		  BCT[jep1] += g->beta[j + k * p1] * g->C[e + k * nE];
-	       g->floss += BCT[jep1] * BCT[jep1];
+	       v1 = g->pairs[e];
+	       v2 = g->pairs[e + nE];
+	       sv = g->beta[j + v1 * p1] * g->C[e + v1 * nE] 
+	          + g->beta[j + v2 * p1] * g->C[e + v2 * nE];
+	       g->floss += sv * sv;
 	    }
 	 }
 
 	 g->loss += gamma * 0.5 * g->floss;
-
-	 //sprintf(buf, "B_%d_%d.txt", g->fold, epoch);
-	 //writematrixf(g->beta, g->p + 1, g->K, buf);
-
-	 //sprintf(buf, "lp_%d.txt", g->fold);
-	 //writematrixf(g->lp, g->ncurr, g->K, buf);
-
-	 //sprintf(buf, "ytr_%d.txt", g->fold);
-	 //writematrixf(g->y, g->ncurr, g->K, buf);
-
-	 //sprintf(buf, "edges_%d_%d.txt", g->fold, epoch);
-	 //writematrixl(g->edges, g->K - 1, g->K, buf);
-
-	 //sprintf(buf, "pairs_%d_%d.txt", g->fold, epoch);
-	 //writematrixl(g->pairs, nE, 2, buf);
       }
 
       if(fabs(g->loss - lossold) / fabs(lossold) < g->tol)
@@ -370,12 +327,8 @@ void updateloss(gmatrix *g, double beta_pkj,
 {
    double lossoldk = g->lossK[k];
    double l1lossoldk = g->l1lossK[k];
-   double flossold;
    double beta_new = beta_pkj + delta;
-   int v1, v2, e, l, K = g->K;
-   int kK1 = k * (K - 1);
    int p1 = g->p + 1;
-   double fl1, fl2;
    long pkj = (long)p1 * k + j;
 
    updatelp(g, delta, x, j, k); /* updates g->lossK[k] */
@@ -385,28 +338,5 @@ void updateloss(gmatrix *g, double beta_pkj,
       g->l1lossK[k] += fabs(beta_new) - fabs(beta_pkj);
 
    g->loss += g->lossK[k] - lossoldk + lambda1 * (g->l1lossK[k] - l1lossoldk);
-
-   //if(j > 0 && g->dofusion)
-   //{
-   //   flossold = g->flossK[k];
-
-   //   g->flossK[k] = 0;
-   //   //for(l = K - 2 ; l >= 0 ; --l)
-   //   for(l = 0 ; l < K - 1 ; l++)
-   //   {
-   //      e = g->edges[l + kK1];
-   //      printf("e: %d\n", e);
-   //      v1 = g->pairs[e];
-   //      v2 = g->pairs[e + nE];
-   //      fl1 = g->beta[j + v1 * p1] * g->C[e + v1 * nE];
-   //      fl2 = g->beta[j + v2 * p1] * g->C[e + v2 * nE];
-   //      g->flossK[k] += (fl1 * fl1 + fl2 * fl2);
-   //   }
-
-   //   p1 = 0;
-   //   //g->flossK[k] *= gamma * 0.5;
-   //   //g->floss += g->flossK[k] - flossold;
-   //   //g->loss += g->floss;
-   //}
 }
 
