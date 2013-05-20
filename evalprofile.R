@@ -75,9 +75,10 @@ R2 <- function(pr, y)
    s
 }
 
-lf <- list.files(path=outdir, pattern="profile$", full.names=TRUE)
+lf <- list.files(path=outdir, pattern="[[:digit:]]+\\.profile$", full.names=TRUE)
 cat("found", length(lf), "profile files\n")
 nums <- sapply(sapply(strsplit(lf, "\\.profile"), strsplit, split="_"), tail, n=1)
+lf <- lf[order(as.integer(nums))]
 
 res <- lapply(seq(along=lf), function(i) {
    cat("reading", lf[i], "\n")
