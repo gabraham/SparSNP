@@ -150,20 +150,19 @@ function run {
    echo "dir=$dir"
 
    # don't clobber an existing directory
-   if ! [ -d $dir ] || [ $CLOBBER ];
+   if ! [ -d $dir ] || [ "$CLOBBER" ];
    then
       mkdir $dir
       pushd $dir
 
-      # Create cross-validation folds
-      makefolds -folds folds.txt -ind folds.ind -nfolds $NFOLDS -n $N
-
       # Get scale of each crossval fold
-      if ! [ -s scale.bin.00 ]
+      if [ "$USEFOLDS" ]
       then
-	 scale -bed $BED -n $N -p $P $FOLDIND_CMD
+	 echo "Using old folds and scale files."
       else
-	 echo "Found scale files, skipping scaling."
+	 # Create cross-validation folds
+	 makefolds -folds folds.txt -ind folds.ind -nfolds $NFOLDS -n $N
+	 scale -bed $BED -n $N -p $P $FOLDIND_CMD
       fi
 	 
       echo "############# Running training #############"
