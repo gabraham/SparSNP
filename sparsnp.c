@@ -43,7 +43,6 @@ double get_lambda1max_gmatrix(gmatrix *g,
          s += g->y[n * k + i];
    
       beta_new = inv_func(s / n);
-      //updatelp(g, beta_new, sm.x, 0, k);
       updateloss(g, 0, beta_new, sm.x, 0, k, 0, 0, 0); 
 
       if(g->verbose)
@@ -107,19 +106,14 @@ int cd_gmatrix(gmatrix *g,
    double beta_pkj;
    double lossold = g->loss;
    int mult = 2, idx;
-   int mx;
-   double *BCT = NULL;
-   int i;
+   int mx, i, m;
    double tmp;
-   int m;
 
    if(!sample_init(&sm))
       return FAILURE;
 
    CALLOCTEST(beta_old, (long)p1 * K, sizeof(double));
    CALLOCTEST(active_old, (long)p1 * K, sizeof(int));
-
-   CALLOCTEST(BCT, (long)p1 * nE, sizeof(double));
 
    //for(j = p1K1 ; j >= 0 ; --j)
      // active_old[j] = g->active[j] = !g->ignore[j];
@@ -215,7 +209,6 @@ int cd_gmatrix(gmatrix *g,
 	    g->l1loss += fabs(g->beta[j + k * p1]);
       g->loss += lambda1 * g->l1loss;
       
-
       if(g->dofusion)
       {
 	 g->floss = 0;
@@ -316,7 +309,6 @@ int cd_gmatrix(gmatrix *g,
 
    FREENULL(beta_old);
    FREENULL(active_old);
-   FREENULL(BCT);
 
    return good ? numactive : CDFAILURE;
 }
