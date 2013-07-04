@@ -76,6 +76,7 @@ typedef struct gmatrix {
    double *y;
    double *xtmp;
    double *ytmp;
+   int *sex;
    int *good;
    int n;
    int *ntrain;

@@ -54,6 +54,7 @@ int gmatrix_init(gmatrix *g, char *filename, int n, int p,
    g->yidx = 0;
    g->y = NULL;
    g->y_orig = NULL;
+   g->sex = NULL;
    g->lossK = NULL;
    g->l1lossK = NULL;
    g->loss = 0;
@@ -271,7 +272,6 @@ int gmatrix_setup_folds(gmatrix *g)
 
 void gmatrix_free(gmatrix *g)
 {
-   //int i;
    if(g->file)
    {
       fclose(g->file);
@@ -282,6 +282,7 @@ void gmatrix_free(gmatrix *g)
    FREENULL(g->sd);
    FREENULL(g->y);
    FREENULL(g->y_orig);
+   FREENULL(g->sex);
    FREENULL(g->xtmp);
    FREENULL(g->ignore);
    FREENULL(g->tmp);
@@ -307,17 +308,10 @@ void gmatrix_free(gmatrix *g)
    FREENULL(g->active);
    FREENULL(g->numnz);
    
-   //if(g->xcaches)
-   //{
-   //   for(i = 0 ; i < g->nfolds ; i++)
-   //      cache_free(g->xcaches + i);
-   //}
-
    if(g->xcaches)
       cache_free(g->xcaches);
 
    FREENULL(g->xcaches);
-
    mapping_free(g->map);
    FREENULL(g->map);
    FREENULL(g->C);
@@ -740,6 +734,7 @@ these samples with PLINK; aborting\n",
 	 return FAILURE;
       }
       g->y_orig[i] = atof(pheno);
+      strncpy(g->sex[i], sex, FAM_MAX_CHARS - 1);
       i++;
    }
 
