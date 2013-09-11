@@ -91,7 +91,7 @@ res <- lapply(seq(along=lf), function(i) {
    # PLINK divides the predicted score by the number of SNPs, we don't want
    # that to we multiply to get original score
    score <- dither(prof$SCORE * prof$CNT + intercept)
-   nz <- prof$CNT / 2
+   nz <- prof$CNT / 2 # CNT is alleles not SNPs
 
    if(model == "sqrhinge") {
       pred <- prediction(labels=prof$PHENO, predictions=score)
