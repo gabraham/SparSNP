@@ -46,6 +46,10 @@ if(!exists("dir", mode="character")) {
    dir <- "discovery"
 }
 
+if(!exists("thresh", mode="character")) {
+   thresh <- 0.6
+}
+
 nzreq <- as.numeric(nzreq)
 if(is.na(nzreq) || as.integer(nzreq) != nzreq || nzreq <= 0) {
    stop(usage)
@@ -145,7 +149,9 @@ bpath3 <- lapply(bpath2, head, n=m)
 bpathm <- lapply(1:m, function(i) {
    r <- lapply(bpath3, function(x) x[[i]])
    r2 <- do.call(rbind, r) 
-   with(r2, tapply(V2, V1, function(x) sum(x) / length(r)))
+   w <- names(which(table(r2$V1) / length(r) >= thresh))
+   r3 <- r2[r2$V1 %in% w, ]
+   with(r3, tapply(V2, V1, function(x) sum(x) / length(r)))
 })
 
 # Average weights at chosen model, over cross-validation reps, 

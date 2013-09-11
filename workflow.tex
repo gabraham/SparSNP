@@ -74,11 +74,11 @@ export PATH=<PATH_TO_SPARSNP>:$PATH
       }
 
       \item Test for differential missingness: \\
-      \texttt{\$ plink --file discovery\_filtered --missing} \\
+      \texttt{\$ plink --bfile discovery\_filtered --missing} \\
       (remove SNPs as indicated by output)
 
       \item Test for sample relatedness with a threshold of $\hat{\pi}=0.05$: \\
-      \texttt{\$ plink --file discovery\_filtered --Z-genome --min 0.05} \\
+      \texttt{\$ plink --bfile discovery\_filtered --Z-genome --min 0.05} \\
       (remove related samples as indicated by output)
 
       \item Check for stratification using PCA, for example, using

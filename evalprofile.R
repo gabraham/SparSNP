@@ -78,6 +78,8 @@ R2 <- function(pr, y)
 lf <- list.files(path=outdir, pattern="profile$", full.names=TRUE)
 cat("found", length(lf), "profile files\n")
 nums <- sapply(sapply(strsplit(lf, "\\.profile"), strsplit, split="_"), tail, n=1)
+lf <- lf[order(as.integer(nums))]
+nums <- sort(nums)
 
 res <- lapply(seq(along=lf), function(i) {
    cat("reading", lf[i], "\n")
@@ -89,10 +91,12 @@ res <- lapply(seq(along=lf), function(i) {
    # PLINK divides the predicted score by the number of SNPs, we don't want
    # that to we multiply to get original score
    score <- dither(prof$SCORE * prof$CNT + intercept)
+   nz <- prof$CNT / 2
 
    if(model == "sqrhinge") {
       pred <- prediction(labels=prof$PHENO, predictions=score)
       perf <- performance(pred, "sens", "spec")
+      auc <- performance(pred, "auc")
       sens <- perf@y.values
       spec <- perf@x.values
       cutoffs <- pred@cutoffs
@@ -117,13 +121,16 @@ res <- lapply(seq(along=lf), function(i) {
          spec=spec,
          cutoffs=cutoffs,
          ppv=ppv,
-         npv=npv
+         npv=npv,
+	 auc=auc,
+	 nz=nz
       )
    } else {
       list(
 	 pred=score,
 	 observed=prof$PHENO,
-	 R2=R2(score, prof$PHENO)
+	 R2=R2(score, prof$PHENO),
+	 nz=nz
       )
    }
 })
