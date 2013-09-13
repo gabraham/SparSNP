@@ -735,7 +735,7 @@ these samples with PLINK; aborting\n",
       }
       g->y_orig[i] = atof(pheno);
       //strncpy(g->sex[i], sex, FAM_MAX_CHARS - 1);
-      g->sex[i] = *sex;
+      //g->sex[i] = *sex;
       i++;
    }
 
