@@ -495,8 +495,7 @@ tabulate.snps <- function(best=NULL, d)
       l <- lapply(1:nfolds, function(fold) {
 
 	 s <- as.matrix(read.table(
-	    sprintf("crossval%s/nonzero.csv.%02d", rep, fold - 1),
-	    sep=",", row.names=1))
+	    sprintf("crossval%s/nonzero.csv.%02d", rep, fold - 1)))
 	 
 	 # Never select zero as a legitimate model
 	 s[s == 0] <- -Inf
