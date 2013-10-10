@@ -55,12 +55,6 @@ library(ROCR)
 cat("indir:", indir, "\n")
 cat("outdir:", outdir, "\n")
 
-# Prevent ties in data that results in fewer cutoffs than data points
-dither <- function(x, mind=1e-20, maxd=1e-8)
-{
-   x + runif(length(x), min=mind, max=maxd)
-}
-
 R2 <- function(pr, y) 
 {
    pr <- cbind(pr)
@@ -89,7 +83,7 @@ res <- lapply(seq(along=lf), function(i) {
    
    # PLINK divides the predicted score by the number of SNPs, we don't want
    # that to we multiply to get original score
-   score <- dither(prof$SCORE * prof$CNT + intercept)
+   score <- prof$SCORE * prof$CNT + intercept
    nz <- prof$CNT / 2 # CNT is alleles not SNPs
 
    if(model == "sqrhinge") {
