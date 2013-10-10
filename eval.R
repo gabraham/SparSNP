@@ -69,7 +69,7 @@ scale_x_log2 <- function(...)
 
 # Process prediction results
 
-auc <- function(p, y)
+auc <- function(p, y, se=FALSE)
 {
    y <- cbind(y)
    p <- cbind(p)

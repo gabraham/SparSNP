@@ -79,12 +79,11 @@ lf <- list.files(path=outdir, pattern="[[:digit:]]+\\.profile$", full.names=TRUE
 cat("found", length(lf), "profile files\n")
 nums <- sapply(sapply(strsplit(lf, "\\.profile"), strsplit, split="_"), tail, n=1)
 lf <- lf[order(as.integer(nums))]
-nums <- sort(nums)
 
 res <- lapply(seq(along=lf), function(i) {
    cat("reading", lf[i], "\n")
    prof <- read.table(lf[i], header=TRUE)
-   intf <- sprintf("%s/intercept_path_%s.txt", indir, nums[i]) 
+   intf <- sprintf("%s/intercept_path_%s.txt", indir, i) 
    cat("reading intercept file", intf, "\n")
    intercept <- scan(intf, quiet=TRUE)
    
