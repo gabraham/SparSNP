@@ -86,7 +86,7 @@ int main(int argc, char *argv[])
 
    if(n == 0 || file_folds == NULL)
    {
-      printf("usage: split -folds <filename> -ind <filename> \
+      printf("usage: makefolds -folds <filename> -ind <filename> \
 -nfolds <#nfolds> -n <#n> [-seed <seed>]\n");
       return EXIT_FAILURE;
    }

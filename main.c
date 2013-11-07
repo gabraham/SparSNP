@@ -25,51 +25,49 @@ int make_lambda1path(Opt *opt, gmatrix *g)
    double s;
    char tmp[MAX_STR_LEN];
 
-   /*if(opt->l1max >= 0)
-   {
-      opt->lambda1max = opt->l1max;
-      if(opt->verbose)
-         printf("lambda1max specified: %.20f\n", opt->lambda1max);
-   }
-   else*/
-   {
-      /* create lambda1 path */
-      /* get lambda1 max */
-      opt->lambda1max = get_lambda1max_gmatrix(g, opt->phi1_func,
-	    opt->phi2_func, opt->inv_func, opt->step_func);
-      if(g->verbose)
-	 printf("lambda1max: %.10f\n", opt->lambda1max);
-      /*opt->lambda1path[0] = opt->lambda1max;*/
-   }
+   /* MUST compute the max lambda1 even if lambda1 given */
+   opt->lambda1max = get_lambda1max_gmatrix(g, opt->phi1_func,
+	 opt->phi2_func, opt->inv_func, opt->step_func);
+   if(g->verbose)
+      printf("lambda1max: %.10f\n", opt->lambda1max);
    opt->lambda1path[0] = opt->lambda1max;
 
-   gmatrix_sort_grad_array(g);
-
-   opt->lambda1min = opt->lambda1max * opt->l1minratio;
-   opt->lambda1path[opt->nlambda1 - 1] = opt->lambda1min;
-   s = (log10(opt->lambda1max) - log10(opt->lambda1min)) / (opt->nlambda1 - 1);
-   for(i = 1 ; i < opt->nlambda1 ; i++)
-      opt->lambda1path[i] = pow(10, log10(opt->lambda1max) - s * i);
-
-   if(g->verbose)
-      printf("lambda1min: %.10f\n", opt->lambda1path[i-1]);
-
-   /* Write the coefs for model with intercept only */
-   snprintf(tmp, MAX_STR_LEN, "%s.%02d.%02d",
-	 opt->beta_files[0], 0, g->fold);
-
-   if(g->unscale_beta)
+   if(opt->lambda1 == NOT_DEFINED)
    {
-      unscale_beta(g->beta_orig, g->beta, g->mean, g->sd, g->p + 1, g->K);
-      if(!write_beta_sparse(tmp, g->beta_orig, g->p + 1, g->K))
-	 return FAILURE;
-   }
-   else if(!write_beta_sparse(tmp, g->beta, g->p + 1, g->K))
+      /* create lambda1 path */
+      gmatrix_sort_grad_array(g);
+      opt->lambda1min = opt->lambda1max * opt->l1minratio;
+      opt->lambda1path[opt->nlambda1 - 1] = opt->lambda1min;
+      s = (log10(opt->lambda1max) - log10(opt->lambda1min)) / (opt->nlambda1 - 1);
+      for(i = 1 ; i < opt->nlambda1 ; i++)
+         opt->lambda1path[i] = pow(10, log10(opt->lambda1max) - s * i);
+      if(g->verbose)
+	 printf("lambda1min: %.10f\n", opt->lambda1path[i-1]);
+   
+      /* Write the coefs for model with intercept only */
+      snprintf(tmp, MAX_STR_LEN, "%s.%02d.%02d",
+	    opt->beta_files[0], 0, g->fold);
+
+      if(g->unscale_beta)
+      {
+	 unscale_beta(g->beta_orig, g->beta, g->mean, g->sd, g->p + 1, g->K);
+	 if(!write_beta_sparse(tmp, g->beta_orig, g->p + 1, g->K))
+	    return FAILURE;
+      }
+      else if(!write_beta_sparse(tmp, g->beta, g->p + 1, g->K))
 	 return FAILURE;
 
-   snprintf(tmp, MAX_STR_LEN, "%s.%02d", opt->lambda1pathfile, g->fold);
-   return writevectorf(tmp, opt->lambda1path, opt->nlambda1);
-}
+      snprintf(tmp, MAX_STR_LEN, "%s.%02d", opt->lambda1pathfile, g->fold);
+      return writevectorf(tmp, opt->lambda1path, opt->nlambda1);
+   }
+
+   /* don't write out beta when lambda1 is given */
+   if(g->verbose)
+      printf("setting lambda1: %.10f\n", opt->lambda1);
+   opt->nlambda1 = 2;
+   opt->lambda1path[1] = opt->lambda1;
+   return SUCCESS;
+ }
 
 /*
  * Run coordinate descent for each lambda1 penalty

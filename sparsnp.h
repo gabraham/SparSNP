@@ -29,6 +29,8 @@
 #define PATH_MAX 8192
 #endif
 
+#define NOT_DEFINED -1
+
 typedef double (*predict_pt)(double);
 typedef double (*phi1)(double);
 typedef double (*phi2)(double);

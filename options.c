@@ -47,10 +47,10 @@ int opt_defaults(Opt *opt, short caller)
    opt->model = 0;
    opt->nlambda1 = 100;
    opt->l1minratio = 1e-2;
-   opt->l1max = -1;
+   opt->l1max = NOT_DEFINED;
    opt->maxepochs = 1e5;
    opt->maxiters = 100;
-   opt->lambda1 = -1;
+   opt->lambda1 = NOT_DEFINED;
    opt->lambda2 = 0;
    opt->gamma = 0;
    opt->threshold = 1e-5;
