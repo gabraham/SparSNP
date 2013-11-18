@@ -10,7 +10,7 @@
 # All rights reserved.
 # 
 
-usage <- paste("usage: eval.R [title=<title>]",
+usage <- paste("usage: eval.R [dir=<dir>] [title=<title>]",
       "[prev=<K>] [h2l=<V>] [mode=discovery|validation] [taskfile=<file>]",
       "(prev must be specified if h2l is specified)")
 
@@ -25,6 +25,20 @@ if(!exists("mode", mode="character"))
 
 if(!mode %in% c("discovery", "validation"))
    stop(usage)
+
+if(!exists("dir", mode="character")) {
+   if(mode == "discovery") {
+      dir <- "discovery"
+   } else {
+      dir <- "validation"
+   }
+}
+
+if(length(dir) == 0 || dir == "" || is.na(dir)
+   || is.na(file.info(dir)[, "isdir"])) {
+   cat("Error: Directory", dir, "doesn't exist\n")
+   stop(usage)
+}
 
 if(!exists("title", mode="character"))
    title <- mode
@@ -54,6 +68,7 @@ if(!exists("taskfile", mode="character")) {
 } else {
    tasks <- scan(taskfile, what=character())
 }
+
 
 best <- NULL
 
@@ -284,13 +299,13 @@ rootdir <- getwd()
 
 if(mode == "discovery") {
    fun <- evalpred.crossval
-   setwd("discovery")
+   setwd(dir)
 } else {
    fun <- evalpred.validation
-   setwd("validation")
+   setwd(dir)
 }
 
-params <- scan(sprintf("%s/discovery/params.txt", rootdir),
+params <- scan(sprintf("%s/%s/params.txt", rootdir, dir),
    what="character", quiet=TRUE)
 
 extract.params <- function(nm)
@@ -315,13 +330,12 @@ if(measure != "AUC" && !is.null(prev))
 }
 
 dirs <- list.files(pattern="^crossval[[:digit:]]+$")
-#dirs <- paste("crossval", 1:3, sep="")
 nreps <- length(dirs)
 
 for(d in dirs)
 {
    setwd(d)
-   fun(type=measure, sprintf("%s/discovery/%s", rootdir, d))
+   fun(type=measure, sprintf("%s/%s/%s", rootdir, dir, d))
    setwd("../")
 }
 

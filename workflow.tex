@@ -112,7 +112,7 @@ export PATH=<PATH_TO_SPARSNP>:$PATH
 	 \item Plot AUC and explained phenotypic and genetic variance in the
 	 cross-validation replications, with the optional
 	 population prevalence $K=1\%$ and heritability $h^2_L=50\%$:\\
-	 \texttt{\$ eval.R discovery\_filtered prev=0.01 h2l=0.5} \\
+	 \texttt{\$ eval.R dir=discovery\_filtered prev=0.01 h2l=0.5} \\
 	 The plots \texttt{discovery\_filtered\_AUC.pdf},
 	 \texttt{discovery\_filtered\_VarExp.pdf}, and
 	 \texttt{discovery\_filtered\_GenVarExp.pdf}
@@ -183,9 +183,11 @@ rs3129763 58 0.966666666666667 60
 
 	 \texttt{\$ evalprofile.R model=sqrhinge prev=0.01}
 
-	 If you used an non-default directory for predict, then specify it:
+	 If you used an non-default directory for discovery and/or non-default
+	 for validation, then specify it:
 
-	 \texttt{\$ evalprofile.R model=sqrhinge prev=0.01 outdir=validation\_filtered\_dir}
+	 \texttt{\$ evalprofile.R model=sqrhinge prev=0.01 \textbackslash \\
+	 indir=discovery\_filtered outdir=validation\_filtered\_dir}
 
 	 The results will be saved in the directory you specified in the file
 	 \texttt{results.RData}.
