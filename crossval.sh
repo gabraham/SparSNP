@@ -58,6 +58,8 @@ UNSCALE=${UNSCALE-"-unscale"}
 
 [[ -z "$VERBOSE" ]] && VERBOSE="-v"
 
+[[ -z "$DIR" ]] && DIR="discovery"
+
 ######################################################################
 
 N=$(cat "$ROOT".fam | wc -l | awk '{print $1, $2}')
@@ -101,8 +103,6 @@ echo "NZMAX: $NZMAX"
 echo "BED: $BED"
 echo "BIM: $BIM"
 echo "FAM: $FAM"
-
-DIR=discovery
 
 if ! [ -d "$DIR" ];
 then

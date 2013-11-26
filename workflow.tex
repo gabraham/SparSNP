@@ -4,6 +4,7 @@
 \usepackage{a4wide}
 \usepackage[round]{natbib}
 \usepackage{graphicx}
+\usepackage{hyperref}
 
 \title{SparSNP --- Workflow example}
 \author{Gad Abraham gad.abraham@unimelb.edu.au}
@@ -21,12 +22,12 @@
 \end{figure}
 
 
-Here we describe a typical analysis using SparSNP.  We assume that we have
-two datasets in PLINK BED/BIM/FAM format, named \texttt{discovery} and
-\texttt{validation}, on the same SNP microarray platform. The phenotype in
-the FAM file can be discrete (1 for controls and 2 for cases) or continuous.
-In the following, we assume the user is working with a Unix-like command
-line shell such as Bash.
+Here we describe a typical analysis using SparSNP.  We assume that we have two
+datasets in PLINK~\citep{purcell2007} BED/BIM/FAM format, named
+\texttt{discovery} and \texttt{validation}, on the same SNP microarray platform.
+The phenotype in the FAM file can be discrete (1 for controls and 2 for cases)
+or continuous.  In the following, we assume the user is working with a Unix-like
+command line shell such as Bash.
 
 \begin{enumerate}
 
@@ -35,8 +36,10 @@ line shell such as Bash.
    Requirements:\\
    
       \begin{itemize}
+	 \item Linux / Unix / Mac operating system, preferably 64-bit.
 	 \item \textsf{R}, with packages ggplot2 ($\ge 0.9.3$), scales, grid, abind, ROCR
 	 \item C compiler, gcc or clang
+	 \item make
       \end{itemize}
 
    Download and install:
@@ -46,39 +49,52 @@ cd SparSNP
 make
 \end{verbatim}
 
-   Prior to running SparSNP you must include the directory in the path:
+   Prior to running SparSNP you must include the directory you unpacked it in, in the path:
 \begin{verbatim}
 export PATH=<PATH_TO_SPARSNP>:$PATH
 \end{verbatim}
 
+   \item \textbf{Quick Start}\\
+
+   Assuming the data is called \texttt{my-data.bed}, \texttt{my-data.bim},
+   \texttt{my-data.fam} (case sensitive) and it's case/control data:
+
+      \begin{itemize}
+	 \item \texttt{export PATH=<PATH\_TO\_SPARSNP>:\$PATH}
+	 \item \texttt{crossval.sh my-data sqrhinge 2>\&1 | tee log}
+	 \item \texttt{eval.R} to plot cross-validation AUC results in
+	 \texttt{discovery/discovery\_AUC.pdf}
+      \end{itemize}
    
 
-   \item \textbf{Quality control}\\
+   \item \textbf{Quality Control}\\
       SparSNP implements simple imputation of genotypes such that missing
       genotypes are randomly assigned the value \{0,1,2\} with probability
-      of~1/3 each, which does not introduce substantial bias to the model when
-      the proportion of missingness is small and the genotypes are missing at
-      random. We recommend removing samples and SNPs with high missingness,
-      and testing for differential missingness between cases and controls.
-
+      proportional to the genotypes in non-missing samples of each
+      SNP\footnote{Earlier versions assigned equal probability to each
+      genotype.}, which
+      does not introduce substantial bias to the model when the proportion of
+      missingness is small and the genotypes are missing at random. We recommend
+      removing samples and SNPs with high missingness, and testing for
+      differential missingness between cases and controls.
 
       \begin{itemize}
 
       \item Remove markers with missingness $\ge 0.01$, MAF $\le 0.01$, and
       Hardy-Weinberg test for equilibrium in
       controls of $p\le 10^{-4}$, and samples with missingness $\ge 0.01$: \\
-      \texttt{\$ plink --bfile discovery --geno 0.01 --mind 0.01
+      \texttt{\$ plink --noweb --bfile my-data --geno 0.01 --mind 0.01
       \textbackslash \\ --maf 0.01 --hwe
       0.0001 \textbackslash \\
-      --make-bed --out discovery\_filtered
+      --make-bed --out my-data-filtered
       }
 
       \item Test for differential missingness: \\
-      \texttt{\$ plink --bfile discovery\_filtered --missing} \\
+      \texttt{\$ plink --noweb --bfile my-data-filtered --missing} \\
       (remove SNPs as indicated by output)
 
       \item Test for sample relatedness with a threshold of $\hat{\pi}=0.05$: \\
-      \texttt{\$ plink --bfile discovery\_filtered --Z-genome --min 0.05} \\
+      \texttt{\$ plink --noweb --bfile my-data-filtered --Z-genome --min 0.05} \\
       (remove related samples as indicated by output)
 
       \item Check for stratification using PCA, for example, using
@@ -100,33 +116,42 @@ export PATH=<PATH_TO_SPARSNP>:$PATH
 	 \item Run cross-validation. By default, $10\times10$-fold
 	 cross-validation will be performed, allowing up to $\min \{N, p\}$ SNPs
 	 in the model, using a case/control phenotype: \\ for classification
-	 (case/control)\\ \texttt{\$ crossval.sh discovery\_filtered sqrhinge}\\
+	 (case/control)\\ \texttt{\$ crossval.sh my-data-filtered sqrhinge}\\
 	 and for continuous outputs (linear regression)\\ \texttt{\$ crossval.sh
-	 discovery\_filtered linear}\\ The \texttt{crossval.sh} script can be
+	 my-data-filtered linear}\\ The \texttt{crossval.sh} script can be
 	 modified to perform more cross-validation folds or to tune the model
 	 parameters.
 
 	 You can run SparSNP on 10 cores at once using\\
-	 \texttt{\$ NUMPROCS=10 crossval.sh discovery\_filtered sqrhinge}
+	 \texttt{\$ NUMPROCS=10 crossval.sh my-data-filtered sqrhinge}
+
+	 You can run change the default output directory \texttt{discovery} to
+	 \texttt{my-discovery} using\\
+	 \texttt{\$ DIR=my-discovery-dir crossval.sh my-data-filtered sqrhinge}
 
 	 \item Plot AUC and explained phenotypic and genetic variance in the
-	 cross-validation replications, with the optional
-	 population prevalence $K=1\%$ and heritability $h^2_L=50\%$:\\
-	 \texttt{\$ eval.R dir=discovery\_filtered prev=0.01 h2l=0.5} \\
-	 The plots \texttt{discovery\_filtered\_AUC.pdf},
-	 \texttt{discovery\_filtered\_VarExp.pdf}, and
-	 \texttt{discovery\_filtered\_GenVarExp.pdf}
-	 will be produced in the
-	 directory \texttt{discovery}.
-	 The raw AUC and explained variance data is stored in the
-	 \texttt{.Rdata} file named \texttt{discovery\_filtered.RData}.
-	 The prevalence and heritability are optional. Prevalence is needed
-	 for computing explained genetic and phenotypic variance, and heritability is
-	 needed for computing explained genetic variance.
+	 cross-validation replications: \\
+	 \texttt{\$ eval.R} \\
+	 Optionally, supply population prevalence $K=1\%$ and heritability $h^2_L=50\%$:\\
+	 \texttt{\$ eval.R prev=0.01 h2l=0.5} \\
+	 The plots \texttt{discovery\_AUC.pdf},
+	 \texttt{discovery\_VarExp.pdf}, and \texttt{discovery\_GenVarExp.pdf}
+	 will be produced in the directory \texttt{discovery} (the last two
+	 plots will be produced only if you supply prevalence and/or
+	 heritability).  The raw AUC and
+	 explained variance data is stored in the \texttt{.Rdata} file named
+	 \texttt{discovery.RData}.  
+	 If used a non-standard directory, you need to specify it: \\
+	 \texttt{\$ eval.R dir=my-discovery-dir prev=0.01 h2l=0.5} \\
+	 Note that currently for \texttt{linear} models \texttt{eval.R} only
+	 computes $R^2$ and not the explained heritability etc.
 
 	 \item The set of models with best predictive ability will
 	 automatically be chosen from the results, based on smoothing
-	 of the AUC or $R^2$. The SNPs appearing in these models will be
+	 of the AUC\footnote{The $\lambda$ grid must be fine enough
+	 to produce good smooths. The default \texttt{NLAMBDA1=30} is usually
+	 sufficient but may need to be increased in some cases.}.
+	 The SNPs appearing in these models will be
 	 tabulated according to how many time they were included over all
 	 cross-validation folds. To inspect the SNPs selected by models that
 	 maximise the predictive ability:\\
@@ -142,7 +167,8 @@ rs3129763 58 0.966666666666667 60
 	 \end{verbatim}
 	 The SNPs are ordered by the number of times they were included in a
 	 model with non-zero weight (Counts) out of the total number of
-	 cross-validation folds (Replications), also shown as a Proportion.
+	 cross-validation folds (Replications, i.e.
+	 \texttt{NREPS}$\times$\texttt{NFOLDS}), also shown as a Proportion.
 	 SNPs at the top of the list are more stably selected by the lasso and
 	 are potentially more robust markers than SNPs at the bottom of the
 	 list.
@@ -152,12 +178,15 @@ rs3129763 58 0.966666666666667 60
    \item \textbf{Optional: Apply models to validation data}
 
       SparSNP models trained on the discovery dataset can be tested on an
-      independent dataset, if one is available. Datasets can differ in terms
-      of which SNPs are assayed, their ordering in the PLINK files, and their
-      minor allele frequencies. SparSNP is completely oblivious to these
-      differences and cannot detect them, hence we use PLINK scoring. The
-      one caveat is that PLINK scoring does not have an intercept term, which
-      we must add on. The process is:
+      independent dataset, if one is available. Datasets can differ in terms of
+      which SNPs are assayed, their ordering in the PLINK files, and their minor
+      allele frequencies\footnote{Strand flips will cause some predictor SNPs to
+      be ignored, see
+      \url{http://pngu.mgh.harvard.edu/~purcell/plink/dataman.shtml\#flip} to
+      fix this prior to running the prediction stage.}. SparSNP is completely
+      oblivious to these differences and cannot detect them, hence we use PLINK
+      scoring. The one caveat is that PLINK scoring does not have an intercept
+      term, which we must add on. The process is:
       \begin{itemize}
 
 	 \item Extract a consensus model from the training data using
@@ -166,16 +195,24 @@ rs3129763 58 0.966666666666667 60
 
 	 \texttt{\$ getmodels.R nzreq=256}
 
-	 \item Call \texttt{predict.sh} on the validation dataset which will
+	 And if you used a non-standard discovery directory:\\
+	 \texttt{\$ getmodels.R nzreq=256 dir=my-discovery-dir}
+
+	 \item Call \texttt{predict.sh} on the validation dataset
+	 \texttt{my-validation-data} which will
 	 call PLINK scoring internally:
 
-	 \texttt{\$ predict.sh validation\_filtered}
+	 \texttt{\$ predict.sh my-validation-data}
+
+	 If you used a non-standard discovery directory:\\
+	 \texttt{\$ DIR=my-discovery-dir predict.sh my-validation-data}
 
 	 Optionally, you can declare OUTDIR to specify a directory other than
-	 ``predict'', and use multi-processing if you have multiple cores:
+	 \texttt{predict} (say \texttt{my-validation-dir}), and use multi-processing if
+	 you have multiple cores:
 
-	 \texttt{\$ NUMPROCS=10 OUTDIR=validation\_filtered\_dir \textbackslash \\
-	    predict.sh validation\_filtered}
+	 \texttt{\$ NUMPROCS=10 OUTDIR=my-validation-dir \textbackslash \\
+	    predict.sh my-validation-data}
 
 	 \item Call \texttt{evalprofile.R} to compute ROC/AUC on the
 	 validation data, optionally with the prevalence to
@@ -183,16 +220,18 @@ rs3129763 58 0.966666666666667 60
 
 	 \texttt{\$ evalprofile.R model=sqrhinge prev=0.01}
 
-	 If you used an non-default directory for discovery and/or non-default
-	 for validation, then specify it:
+	 If you used an non-default directory for discovery (say
+	 \texttt{my-discovery-dir}) and/or non-default
+	 for validation (say \texttt{my-validation-dir}), then specify it:
 
 	 \texttt{\$ evalprofile.R model=sqrhinge prev=0.01 \textbackslash \\
-	 indir=discovery\_filtered outdir=validation\_filtered\_dir}
+	 indir=my-discovery-dir outdir=my-validation-dir}
 
-	 The results will be saved in the directory you specified in the file
+	 The results will be saved in the directory you specified, in the file
 	 \texttt{results.RData}.
 
-	 You can now load the results, stored as a list, one element per model
+	 You can now load the results (assuming you used the default output
+	 directory \texttt{predict}), stored as a list, one element per model
 	 in the path, plot the results or compute new one curves using the
 	 ROCR \texttt{pred} object:
 
@@ -210,10 +249,16 @@ rs3129763 58 0.966666666666667 60
       \item \texttt{evalprofile.R} can compute $R^2$ for linear
       regression models, in which case prevalence shouldn't be supplied:
 
-	 \texttt{\$ evalprofile.R model=linear outdir=validation\_filtered\_dir}
+	 \texttt{\$ evalprofile.R model=linear outdir=my-validation-dir}
+
+	 and if you used a non-standard discovery directory:
+
+	 \texttt{\$ evalprofile.R model=linear \textbackslash \\
+	    indir=my-discovery-dir outdir=my-validation-dir}
 
 	 Note that an alternative phenotype file is currently not supported
-	 for \texttt{evalprofile.R}
+	 for \texttt{evalprofile.R}, that is, the validation FAM file must
+	 contain a phenotype (not \texttt{-9}).
 
       \end{itemize}
 
@@ -233,12 +278,17 @@ rs3129763 58 0.966666666666667 60
 	 visualisation or for validating the model on other datasets.
       \end{itemize}
       
+       \item \textbf{Optional parameters}
 
-\end{enumerate}
+
 
 Some options that can be set by setting the environment variables before
-calling \texttt{crossval.sh} are:
+calling \texttt{crossval.sh}:
 \begin{itemize}
+
+   \item \texttt{NUMPROCS}: number of processes to use in parallel, should be
+   between 1 and the number of cross-validation replications \texttt{NREPS} (not folds),
+   (default=1)
 
    \item \texttt{LAMBDA2}: $\ell_2$  penalty for elastic-net (default=0)
 
@@ -262,9 +312,15 @@ calling \texttt{crossval.sh} are:
    FamilyID IndividualID PhenotypeA PhenotypeB ... \\
    \emph{without a header line}.
    When $K$ phenotypes are available SparSNP will fit a multivariate
-   model (multi-task), equivalent to $K$ separate models.
+   model equivalent to $K$ separate models.
 
 \end{itemize}
+Example of using the optional parameters:
+
+\texttt{NUMPROCS=10 LAMBDA2=0.1 NFOLDS=3 NREPS=10 NZMAX=500  \textbackslash \\
+crossval.sh my-data sqrhinge 2>\&1 | tee log}
+
+\end{enumerate}
 
 \bibliography{sparsnp_bmc}
 \bibliographystyle{unsrtnat}
