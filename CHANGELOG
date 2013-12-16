@@ -1,0 +1,4 @@
+2013-12-16
+   * Reverted default scaling of continuous phenotypes (in linear model),
+     set the bash argument SCALEY to any non-empty string to enable it, as in 
+     SCALEY=yes crossval.sh root linear

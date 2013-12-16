@@ -22,5 +22,6 @@ makefolds -bed ${ROOT}.bed -n $N -p $P \
    -nfolds 1 -ind folds.ind -folds folds.txt 
 scale -bed ${ROOT}.bed -n $N -p $P -foldind folds.ind
 sparsnp -train -model $MODEL -n $N -p $P -foldind folds.ind -l1 $L1 \
-   -v -bed ${ROOT}.bed -fam ${ROOT}.fam -scale scale.bin.00
+   -v -bed ${ROOT}.bed -fam ${ROOT}.fam \
+      -scale scale.bin.00 $SCALEY
 
