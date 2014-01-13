@@ -1406,6 +1406,7 @@ int cache_get(cache *ca, int j, double **x)
 {
    int m = ca->mapping[j];
    int r;
+   ca->counter[j]++;
 
    /* in cache */
    if(m != CACHE_NOT_EXISTS)
