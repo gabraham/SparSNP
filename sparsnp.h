@@ -72,6 +72,7 @@ typedef struct Opt {
    int ntrain;
    int *trainf;
    char *lambda1pathfile;
+   char *lambda1pathfile_input;
    step step_func;
    short inmemory;
    char *scalefile;

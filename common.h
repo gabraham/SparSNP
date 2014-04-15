@@ -131,14 +131,14 @@ return FAILURE; \
 #define FREADTEST(x, size, count, stream) \
 if((retval = fread(x, size, count, stream)) < count) { \
 fprintf(stderr, "read fewer items (%lu) than expected (%lu)\n", \
-retval, (unsigned long)count); \
+(unsigned long)retval, (unsigned long)count); \
 fflush(stderr); return FAILURE; \
 }
 
 #define FWRITETEST(x, size, count, stream) \
 if((retval = fwrite(x, size, count, stream)) < count) { \
 fprintf(stderr, "wrote fewer items (%lu) than expected (%lu)\n", \
-retval, (unsigned long)count); \
+(unsigned long)retval, (unsigned long)count); \
 return FAILURE; \
 }
 

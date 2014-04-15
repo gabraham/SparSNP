@@ -60,6 +60,8 @@ UNSCALE=${UNSCALE-"-unscale"}
 
 [[ -z "$DIR" ]] && DIR="discovery"
 
+! [[ -z "$LAMBDA1PATH" ]] && LAMBDA1PATH="-lambda1pathfile_input $(realpath $LAMBDA1PATH)"
+
 ######################################################################
 
 N=$(cat "$ROOT".fam | wc -l | awk '{print $1, $2}')
@@ -171,7 +173,7 @@ function run {
       $WRAPPER sparsnp -train -model $MODEL -n $N -p $P \
 	 -scale $SCALE -bed $BED -nzmax $NZMAX -nl1 $NLAMBDA1 -l1min $L1MIN \
 	 $FOLDIND_CMD $FAM_CMD $PHENO_CMD -l2 $LAMBDA2 \
-	 -gamma $GAMMA $UNSCALE $SCALEY $VERBOSE
+	 -gamma $GAMMA $UNSCALE $SCALEY $VERBOSE $LAMBDA1PATH
  
       if [ $NFOLDS -gt 1 ]
       then

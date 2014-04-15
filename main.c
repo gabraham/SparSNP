@@ -28,8 +28,6 @@ int make_lambda1path(Opt *opt, gmatrix *g)
    /* MUST compute the max lambda1 even if lambda1 given */
    opt->lambda1max = get_lambda1max_gmatrix(g, opt->phi1_func,
 	 opt->phi2_func, opt->inv_func, opt->step_func);
-   if(g->verbose)
-      printf("lambda1max: %.10f\n", opt->lambda1max);
    opt->lambda1path[0] = opt->lambda1max;
 
    if(opt->lambda1 == NOT_DEFINED)
@@ -39,10 +37,31 @@ int make_lambda1path(Opt *opt, gmatrix *g)
       opt->lambda1min = opt->lambda1max * opt->l1minratio;
       opt->lambda1path[opt->nlambda1 - 1] = opt->lambda1min;
       s = (log10(opt->lambda1max) - log10(opt->lambda1min)) / (opt->nlambda1 - 1);
-      for(i = 1 ; i < opt->nlambda1 ; i++)
-         opt->lambda1path[i] = pow(10, log10(opt->lambda1max) - s * i);
-      if(g->verbose)
-	 printf("lambda1min: %.10f\n", opt->lambda1path[i-1]);
+
+      /* overwrite lambda1 path with the one read from file if given */
+      if (opt->lambda1pathfile_input == NULL)
+      {
+	 for(i = 1 ; i < opt->nlambda1 ; i++)
+	    opt->lambda1path[i] = pow(10, log10(opt->lambda1max) - s * i);
+      }
+      else
+      {
+	 if (readvectorf(opt->lambda1pathfile_input,
+                         opt->lambda1path, opt->nlambda1))
+	 {
+	    if(g->verbose)
+	      printf("Read lambda1 path from %s\n", opt->lambda1pathfile_input);
+	    opt->lambda1min = opt->lambda1path[opt->nlambda1 - 1];
+	    opt->lambda1max = opt->lambda1path[0];
+	 }
+        else
+	 return FAILURE;
+      }
+
+      if(g->verbose) {
+	 printf("lambda1max: %.10f\n", opt->lambda1max);
+	 printf("lambda1min: %.10f\n", opt->lambda1path[opt->nlambda1 - 1]);
+      }
    
       /* Write the coefs for model with intercept only */
       snprintf(tmp, MAX_STR_LEN, "%s.%02d.%02d",
@@ -75,6 +94,7 @@ int make_lambda1path(Opt *opt, gmatrix *g)
 int run_train(Opt *opt, gmatrix *g)
 {
    int i, ret, k;
+   int firstlambda = 0;
    int *numactiveK = NULL;
    char tmp[MAX_STR_LEN];
 
@@ -87,7 +107,10 @@ int run_train(Opt *opt, gmatrix *g)
    CALLOCTEST(numactiveK, g->K, sizeof(int));
 
    /* don't start from zero, getlambda1max already computed that solution */
-   for(i = 1 ; i < opt->nlambda1 ; i++)
+   if(opt->lambda1pathfile_input == NULL)
+      firstlambda = 1;
+
+   for(i = firstlambda ; i < opt->nlambda1 ; i++)
    {
       if(g->verbose)
 	 printf("\n[%d] Fitting with lambda1=%.10f lambda2=%.10f gamma=%.10f\n",
@@ -265,7 +288,9 @@ int do_train(gmatrix *g, Opt *opt, char tmp[])
 	    break;
 
 	 gmatrix_zero_model(g);
-	 make_lambda1path(opt, g);
+	 if (!make_lambda1path(opt, g))
+	    return FAILURE;
+
 	 gmatrix_reset(g);
 
 	 if(!(ret &= run_train(opt, g)))
@@ -288,7 +313,9 @@ int do_train(gmatrix *g, Opt *opt, char tmp[])
       if(!writematrixf(g->y, g->ncurr, g->K, "y.txt"))
 	 return FAILURE;
 
-      make_lambda1path(opt, g);
+      if (!make_lambda1path(opt, g))
+	 return FAILURE;
+
       gmatrix_reset(g);
       ret = run_train(opt, g);
       printf("train returned: %d\n", ret);

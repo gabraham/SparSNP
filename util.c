@@ -146,6 +146,22 @@ int readvectorl(char *filename, int *x, int n)
    return SUCCESS;
 }
 
+int readvectorf(char *filename, double *x, int n)
+{
+   int i = 0;
+   FILE *in = NULL;
+   FOPENTEST(in, filename, "r");
+
+   while(!feof(in))
+   {
+      if(fscanf(in, "%lf", x + i) == EOF)
+	 break;
+      i++;
+   }
+   fclose(in);
+   return SUCCESS;
+}
+
 /* takes beta on original scale and puts it on zero-mean unit-variance scale 
  * of new data */
 void scale_beta(double *beta2, double *beta1,

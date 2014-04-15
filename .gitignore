@@ -2,3 +2,12 @@
 *.s
 .DS_Store
 tags
+cbind
+gennetwork_test
+makefolds
+realpath
+scale
+sparsnp
+subsample
+transpose
+unpack

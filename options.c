@@ -19,6 +19,11 @@ void opt_free(Opt *opt)
       free(opt->lambda1path);
       opt->lambda1path = NULL;
    }
+   if(opt->lambda1pathfile_input)
+   {
+      free(opt->lambda1pathfile_input);
+      opt->lambda1pathfile_input = NULL;
+   }
 
    if(opt->beta_files)
    {
@@ -70,6 +75,7 @@ int opt_defaults(Opt *opt, short caller)
    opt->ntrain = opt->n;
    opt->subset_file = NULL;
    opt->lambda1pathfile = "lambda1path.csv";
+   opt->lambda1pathfile_input = NULL;
    opt->step_func = NULL;
    opt->scalefile = "scale.bin";
    opt->yformat = YFORMAT01;
@@ -387,6 +393,12 @@ int opt_parse(int argc, char* argv[], Opt* opt)
 	 i++;
 	 opt->maxmem = atoi(argv[i]);
       }
+      else if(strcmp2(argv[i], "-lambda1pathfile_input"))
+      {
+	 i++;
+	 MALLOCTEST(opt->lambda1pathfile_input, strlen(argv[i]) + 1);
+	 strcpy(opt->lambda1pathfile_input, argv[i]);
+      }
    }
 
    if(opt->caller == OPTIONS_CALLER_CD) /* coordinate descent */
@@ -399,7 +411,8 @@ int opt_parse(int argc, char* argv[], Opt* opt)
 -bed <filename> -fam <filename> -n <#samples> -p <#variables> -scale <scalefile> \
 [-betafiles <beta filename/s>] \
 [-maxepochs <maxepochs>] [-maxiters <maxiters>] [-l1 <lambda1>] \
--l2 <lambda2>] [-gamma <gamma>] [-thresh <threshold>] [-foldind <foldsfile>] \
+[-lamdba1pathfile_input <lambda1 filename>] \
+[-l2 <lambda2>] [-gamma <gamma>] [-thresh <threshold>] [-foldind <foldsfile>] \
 [-pred <prediction file>] [-filter] [-unscale] [-pheno <filename>] \
 [-cortype [0/1/2]] [-corthresh <threshold>] [-v] [-vv] [-maxmem]\n");
          return FAILURE;
