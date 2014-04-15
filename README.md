@@ -72,6 +72,8 @@ Run (assuming a PLINK BED/BIM/FAM dataset named MYDATA, i.e. MYDATA.bim)
 
 Documentation: see the document https://github.com/gabraham/SparSNP/blob/master/workflow.pdf
 
+Changelog: see https://github.com/gabraham/SparSNP/blob/master/CHANGELOG
+
 
 
 
