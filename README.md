@@ -74,6 +74,11 @@ Documentation: see the document https://github.com/gabraham/SparSNP/blob/master/
 
 Changelog: see https://github.com/gabraham/SparSNP/blob/master/CHANGELOG
 
+Acknowledgments
+---------------
+
+   * Marco Colombo, patches for consistent lambda1 path
+
 
 
 
