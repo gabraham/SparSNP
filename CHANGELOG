@@ -1,3 +1,8 @@
+2014-04-15
+   * Added LAMBDA1PATH environment variable to crossval.sh, allowing the use
+     of a single file containing the lambda1 path values. Thanks to Marco
+     Colombo for patches implementing this feature.
+
 2013-12-16
    * Reverted default scaling of continuous phenotypes (in linear model),
      set the bash argument SCALEY to any non-empty string to enable it, as in 
