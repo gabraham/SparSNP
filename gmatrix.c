@@ -1104,7 +1104,7 @@ void gmatrix_zero_model(gmatrix *g)
    }
    else if(g->model == MODEL_SQRHINGE)
    {
-      for(i = n * K - 1 ; j >= 0 ; --i)
+      for(i = n * K - 1 ; i >= 0 ; --i)
       {
 	 g->ylp[i] = -1;    /* y * 0 - 1 = -1  */
 	 g->ylp_neg[i] = 1; /* ylp < 0 => true */
