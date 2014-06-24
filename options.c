@@ -225,7 +225,7 @@ int opt_parse(int argc, char* argv[], Opt* opt)
       {
 	 i++;
 	 opt->lambda1 = atof(argv[i]);
-	 opt->nlambda1 = 1;
+	 opt->nlambda1 = 2; /* must be equal to 2 to prevent error later */
       }
       else if(strcmp2(argv[i], "-l2"))
       {
