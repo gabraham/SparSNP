@@ -83,7 +83,7 @@ int make_lambda1path(Opt *opt, gmatrix *g)
    /* don't write out beta when lambda1 is given */
    if(g->verbose)
       printf("setting lambda1: %.10f\n", opt->lambda1);
-   opt->nlambda1 = 2;
+   /*opt->nlambda1 = 2;*/
    opt->lambda1path[1] = opt->lambda1;
    return SUCCESS;
  }
