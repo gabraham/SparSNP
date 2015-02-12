@@ -81,10 +81,10 @@ res <- lapply(seq(along=lf), function(i) {
    cat("reading intercept file", intf, "\n")
    intercept <- scan(intf, quiet=TRUE)
    
-   # PLINK divides the predicted score by the number of SNPs, we don't want
+   # PLINK divides the predicted score by the number of alleles, we don't want
    # that to we multiply to get original score
-   score <- prof$SCORE * prof$CNT + intercept
-   nz <- prof$CNT / 2 # CNT is alleles not SNPs
+   score <- prof$SCORE * max(prof$CNT) + intercept
+   nz <- max(prof$CNT) / 2 # CNT is alleles not SNPs
 
    if(model == "sqrhinge") {
       pred <- prediction(labels=prof$PHENO, predictions=score)
